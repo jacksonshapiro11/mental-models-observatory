@@ -4,24 +4,56 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:debug": "NODE_OPTIONS='--inspect' next dev --turbopack",
     "build": "next build --turbopack",
+    "build:analyze": "ANALYZE=true npm run build",
     "start": "next start",
-    "lint": "eslint"
+    "start:prod": "NODE_ENV=production npm run start",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "lint:staged": "lint-staged",
+    "type-check": "tsc --noEmit",
+    "type-check:watch": "tsc --noEmit --watch",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "clean": "rm -rf .next out .turbopack",
+    "clean:all": "rm -rf .next out .turbopack node_modules package-lock.json && npm install",
+    "analyze": "ANALYZE=true npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:type": "npm run type-check",
+    "test:lint": "npm run lint",
+    "test:format": "npm run format:check",
+    "test:all": "npm run test:type && npm run test:lint && npm run test:format",
+    "validate": "npm run test:all",
+    "postinstall": "echo \"✅ Installation complete. Run 'npm run dev' to start development.\"",
+    "prepare": "husky install || echo 'Husky not installed'",
+    "deploy:vercel": "vercel --prod",
+    "deploy:preview": "vercel",
+    "parse-readwise": "node scripts/parse-readwise-framework.js",
+    "setup": "./scripts/setup.sh"
   },
   "dependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.10",
+    "autoprefixer": "^10.4.16",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.12",
+    "lucide-react": "^0.541.0",
+    "next": "15.5.0",
+    "postcss": "^8.4.31",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.5.0"
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "^3.4.0"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.5.0",
-    "@eslint/eslintrc": "^3"
+    "prettier": "^3.6.2",
+    "typescript": "^5"
   }
 }
