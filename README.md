@@ -348,13 +348,30 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Framer Motion](https://www.framer.com/motion/) for animations
 - [Lucide](https://lucide.dev/) for icons
 
+## 📚 Complete Documentation Suite
+
+### Quick Start
+- **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** - Essential commands, common tasks, troubleshooting
+- **[DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** - Complete deployment instructions with validation
+
+### Technical Deep Dives  
+- **[DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md)** - Complete development process and organizational knowledge
+- **[TECHNICAL_ARCHITECTURE.md](docs/TECHNICAL_ARCHITECTURE.md)** - System architecture and slug mapping details
+- **[readwise-integration.md](docs/readwise-integration.md)** - Readwise API integration documentation
+
+### Key Resources
+- **System Health**: `/api/readwise/debug` endpoint for live status
+- **Model Testing**: `scripts/check-real-model-slugs.js` validates all 119 models
+- **Troubleshooting**: Comprehensive guides in each documentation file
+
 ## 📞 Support
 
 For questions or support:
 
-- Email: [your-email@example.com](mailto:your-email@example.com)
-- GitHub Issues: [Create an issue](https://github.com/yourusername/mental-models-observatory/issues)
-- Documentation: [Project Wiki](https://github.com/yourusername/mental-models-observatory/wiki)
+- **Documentation**: Complete guides in `/docs/` folder
+- **GitHub Issues**: [Create an issue](https://github.com/jacksonshapiro11/mental-models-observatory/issues)  
+- **System Status**: Check `/api/readwise/debug` for live system health
+- **Emergency**: Use rollback procedures in deployment guide
 
 ---
 
