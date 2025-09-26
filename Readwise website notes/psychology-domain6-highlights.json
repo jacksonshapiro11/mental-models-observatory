@@ -1,0 +1,386 @@
+[
+  {
+    "modelId": "system-1-vs-system-2-thinking",
+    "modelTitle": "System 1 vs System 2 Thinking",
+    "curatedHighlights": [
+      {
+        "readwiseId": 511965064,
+        "text": "Mental life is conducted at a stroll and only rarely are we engaging system 2 in an effortfull jog or run. When we become super focused we also become blind to many things. You can be super focused on reading but not see the gorilla on the screen. Mental effort is also finite and runs out when you are using it more the less you see around you. You only have x amount of attention so even if you're 100% focused you can't have materially more attention than your max capable attention. The more skilled or talented you are at something the less attention you need to devote to it to perform at a similar level to someone with less of the two. System one can deal with simple integrations but system 2 deals with integrating complex topics Intelligence is the control of attention and efficiency in performing tasks. Time pressure adds to fast thinking and causes more effortful thinking We solve by easy steps and work by the law of least effort",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.5,
+        "qualityScore": 9.2,
+        "insightType": "definition",
+        "curatorReason": "Perfect description of the fundamental difference between System 1 and System 2, including the finite nature of attention and the gorilla experiment"
+      },
+      {
+        "readwiseId": 511964972,
+        "text": "Self control is system 2 requires attention and effort. Finite reservoir of attention and control and when you use it you need to reload it. Emotional or intense situations deplete self control like heading thinking or drinking ect. There is a difference between being worn out through emotional ways which you can replenish and being deleted in mental energy you can't think harder than possible ie add 3 ask. Judges grant parole more after lunch than before. You're not you when you're hungry Bat and ball problem bat + ball costs $1.10 together and bat is $1 more how much is the ball. This requires a lot of cognitive effort to not say $1 even if it's easy. Most people answer this wrong it shows were generally lazy and can be easily biased. Many people are overconfident and prone to place too much faith in their intuition System 1 is impulsive system 2 is lazy",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.3,
+        "qualityScore": 9.0,
+        "insightType": "mechanism",
+        "curatorReason": "Explains the finite nature of cognitive resources and provides concrete examples like judges and the bat-ball problem"
+      },
+      {
+        "readwiseId": 762339598,
+        "text": "Layers of the brain one is the most ancient level that does automates activity if your body is cold the body works harder to warm up. Layer 2 directs layer one through emotions we feel bad so we tell layer 1 to send signal to stress eat. Layer 3 neocortex this is we control feelings send them to layer 2 then layer 1. These are not purely hierarchical and can have complex interactions. Automaticity emotion and cognition the 3 layers.",
+        "book": {
+          "title": "Behave",
+          "author": "Robert Sapolsky"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.8,
+        "insightType": "mechanism",
+        "curatorReason": "Provides neurological foundation for the dual-process theory with three-layer brain model"
+      },
+      {
+        "readwiseId": 511086181,
+        "text": "The best we can do is a compromise: learn to recognize situations in which mistakes are likely and try harder to avoid significant mistakes when the stakes are high. The premise of this book is that it is easier to recognize other people's mistakes than our own.",
+        "book": {
+          "title": "Thinking, Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.7,
+        "insightType": "application",
+        "curatorReason": "Practical wisdom about when to engage System 2 thinking and the asymmetry in recognizing mistakes"
+      },
+      {
+        "readwiseId": 511964800,
+        "text": "We have norms or mental models for things in our head and system 2 raises flags when something is outside the norm. The large mouse climbed over the small elephant you still think the elephant is much bigger than the mouse but this can also be a trick when what is expected is replaced by something similar or you experience an anomaly more frequently you raise the probability when that is not the case. We have norms and sometimes when things go against them we are surprised. We also view things in cause and effect lights even if there is no clear reason. Mental models we have",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.5,
+        "insightType": "example",
+        "curatorReason": "Illustrates how System 2 activates when encountering anomalies that violate our mental models"
+      },
+      {
+        "readwiseId": 661292925,
+        "text": "You can run into trouble when you blindly trust your gut in situations where it is unclear whether you should be thinking fast or slow.",
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.6,
+        "insightType": "application",
+        "curatorReason": "Clear warning about when the dual-process theory becomes practically important"
+      },
+      {
+        "readwiseId": 511086188,
+        "text": "Mood evidently affects the operation of System 1: when we are uncomfortable and unhappy, we lose touch with our intuition.",
+        "book": {
+          "title": "Thinking, Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.5,
+        "insightType": "mechanism",
+        "curatorReason": "Shows how emotional state affects system operation"
+      },
+      {
+        "readwiseId": 597494238,
+        "text": "By practicing resonant frequency breathing at a specific rate, we can control the baroreflex in our autonomic nervous system, allowing us to regulate functions like heart rate and blood pressure. Resonant frequency breathing at a rate of five to 6.5 breaths per minute stimulates the baroreflex and strengthens it, improving overall control over the body.",
+        "book": {
+          "title": "#176 — Dr. Leah Lagos and Joe Mazzulla — Control Your Heart, Conquer Your Stress",
+          "author": "The Knowledge Project - Members Only"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.7,
+        "insightType": "practice",
+        "curatorReason": "Practical technique for managing physiological state that affects thinking systems"
+      },
+      {
+        "readwiseId": 697294571,
+        "text": "Scientists who work in labs, and have to run experiments or crunch numbers, can famously work long hours. Theoreticians can't, as there's only so much time you can usefully think about math. Right before a paper deadline, you might push hard to get results written up. On the other hand, weeks could go by with little more than the occasional brainstorming session. An average day might require two or three hours of hard cogitation.",
+        "book": {
+          "title": "How I Learned to Concentrate | The New Yorker",
+          "author": "Cal Newport"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "example",
+        "curatorReason": "Real-world illustration of the finite nature of System 2 thinking in academic work"
+      },
+      {
+        "readwiseId": 622137677,
+        "text": "In the end, the novice spends a lot of time considering a possible course of action, whereas the expert spends much of their time thinking about where a particular action leaves him. The novice spends time searching for what they could do? The expert, already filled with a repository of possible actions, asks what happens if they take a particular action.",
+        "book": {
+          "title": "% Solution by Recognition",
+          "author": "fs.blog"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 9.0,
+        "insightType": "contrast",
+        "curatorReason": "Shows how expertise changes the balance between System 1 and System 2 thinking"
+      }
+    ]
+  },
+  {
+    "modelId": "cognitive-biases-systematic-errors",
+    "modelTitle": "Cognitive Biases & Systematic Errors",
+    "curatedHighlights": [
+      {
+        "readwiseId": 511964588,
+        "text": "Jumping to conclusions is good when cost for mistakes are low and bad when they are high. Jumping to conclusions can be very useful and important but it can also lead to a lot of hardship If someone is heading toward the bank you would think they're getting money but if you learn they're in a boat you realize something different system one gives the knee jerk answer based on the most likely outcome given all the information which is normally right but with more or different context can be very wrong. If you have the context of a boat in mind your answer may be different than if you had money on your mind Conscious doubt is system 2 not system 1 system 1 just accepts and is biased to believe Humans to understand something must believe first in the statement then work out what would need to be true about the world to believe Halo effect liking breeds liking Confirmation bias trying to confirm instead of search for truth. Limit bias things that happen early on bias the remaining entries To derive the best information make sure it's independent and unbiased by other sources eliminate redundancy What you see is all their is you can't conceptualize the unknown unknowns. Need to build on different eventualities jumping to conclusions on limited information is a huge source of bias and error. People who heard one sided evidence were more confident than those who heard both sides because they didn't even conceptualists thru could be wrong. Peoples confidence is dependent on the stories we tell ourselves which is heavily influenced by how much we know if we only know half we can be very confident and wrong. Wusiati is also greatly effected by framing effects and base rates are ignored",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.5,
+        "insightType": "comprehensive",
+        "curatorReason": "Comprehensive overview of multiple biases with practical examples and mechanisms"
+      },
+      {
+        "readwiseId": 511963951,
+        "text": "Availability influences your opinion if you can think of things easier than you're more likely to associate yourself with those things. If something comes easily to mind you overrate it's likelihood. Availability biases are a function of system 1. The more media stories the more likely you think it is when it's really unlikely overall",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.5,
+        "qualityScore": 9.0,
+        "insightType": "definition",
+        "curatorReason": "Clear explanation of availability heuristic with media example"
+      },
+      {
+        "readwiseId": 511963929,
+        "text": "Affect heuristic people make decision based on their emotions. Substituting how to feel about something for what you think about something replacing thinking with feelings. The more you like something the better or less risky it is halo effect for ideas. We overrate the risk of horrible situations because they're rare but more memorable than say heart disease. Availability cascades bad thing happens then news focuses on that and talks about it all the time then people see it more and expect it's more likely than it is because gruesome images come to mind easier than a lot of very minor ones",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.4,
+        "qualityScore": 8.9,
+        "insightType": "definition",
+        "curatorReason": "Explains affect heuristic and availability cascade with concrete examples"
+      },
+      {
+        "readwiseId": 661292916,
+        "text": "The human tendency to gather and interpret new information in a biased way to confirm preexisting beliefs is called confirmation bias.",
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.5,
+        "insightType": "definition",
+        "curatorReason": "Clear, concise definition of confirmation bias"
+      },
+      {
+        "readwiseId": 511086183,
+        "text": "The gorilla study illustrates two important facts about our minds: we can be blind to the obvious, and we are also blind to our blindness.",
+        "book": {
+          "title": "Thinking, Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 9.3,
+        "insightType": "example",
+        "curatorReason": "Powerful illustration of inattentional blindness and meta-cognitive blindness"
+      },
+      {
+        "readwiseId": 511086182,
+        "text": "This is the essence of intuitive heuristics: when faced with a difficult question, we often answer an easier one instead, usually without noticing the substitution.",
+        "book": {
+          "title": "Thinking, Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.3,
+        "qualityScore": 9.1,
+        "insightType": "mechanism",
+        "curatorReason": "Captures the core mechanism of cognitive substitution"
+      },
+      {
+        "readwiseId": 806741295,
+        "text": "Bias and logical fallacies that cause ignorance. 1. The pinhole problem we have very limited data and perspective in our current space and time and are very biased by this we basically see the world through a pinhole from our point of view. 2. Metaphor problem what metaphors are we using how are they misleading. 3 map is not the territory. 4 criterial problem how do we enforce criteria like beauty and elegance how is that defined do these definitions help or bias inquiry. 5. Truth problem what is truth how certain does it need to be to be true. 95% confident 99% or 100% truth isn't absolute. 6. Ptolemy problem theories have versimiltude and are right in some regards but wrong in others how do we accept that newton was both more right than the past and less right than the futures. 7. The man with a hammer problem you use your tools because you know how not because they're best fit for the problem. 8. The lamp light problem when you lose your keys you look under the lamp light even though that is only 2% of the total area but it's the easiest place to look. 9. The meddler problem when we investigate or observe something we can effect what is being observed observer effect. 10. Reading in problem. When we look at data we use assumptions local to the investigators which bias the view. 11. Pomenties problem the danger in reducing everything to one causal principle. Issue with reductionism. 12. Closure problem. The need to feel like you need an explanation or a final answer. The universe isn't so generous and clean.",
+        "book": {
+          "title": "The Frontiers of Knowledge",
+          "author": "A. C. Grayling"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.4,
+        "insightType": "comprehensive",
+        "curatorReason": "Comprehensive taxonomy of 12 major cognitive biases and logical fallacies"
+      },
+      {
+        "readwiseId": 515357877,
+        "text": "To notice your bias you need to understand the argument from both sides 1. Double standard test am I too harsh or loose on my own position am I setting a double standard 2. The outside view of I started day 1 what would I do right now 3. Conformity or yes man test. Try people's opinions and see if they have a true opinion for the other side or they're just bs and copying 4. Selective skeptic test only criticizing the views you dint hold abs more or less blindly accepting conforming evidence even if it might be non rigorous or wrong 5. Status quo bias test we are loss averse to the present and would rather keep with the status quo than deviate for what might be better for us. View both situations staying in your job and leaving it objectively before moving",
+        "book": {
+          "title": "The Scout Mindset",
+          "author": "Julia Galef"
+        },
+        "relevanceScore": 9.1,
+        "qualityScore": 8.8,
+        "insightType": "practice",
+        "curatorReason": "Practical framework for detecting and counteracting personal biases"
+      },
+      {
+        "readwiseId": 511349721,
+        "text": "When we work backward from results to figure out why those things happened, we are susceptible to a variety of cognitive traps, like assuming causation when there is only a correlation, or cherry-picking data to confirm the narrative we prefer. We will pound a lot of square pegs into round holes to maintain the illusion of a tight relationship between our outcomes and our decisions.",
+        "book": {
+          "title": "Thinking in Bets",
+          "author": "Annie Duke"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.7,
+        "insightType": "mechanism",
+        "curatorReason": "Explains outcome bias and post-hoc rationalization with vivid metaphor"
+      },
+      {
+        "readwiseId": 639385073,
+        "text": "Instead of working hard create a system for thinking and knowledge acquisition from the big models big disciplines. Synthesis over disparate ideas. Contrast based perception putting your hand in warm and cold water then putting them both together they don't feel the same such is with contrast in judgement. Incentives are vital like the fedex fallacy incentives create outcomes. Incentives rule the world but don't over optimize for one area balance is needed. Same as aresdotle is nichomachean ethics good people behave with the incentives. Dont blame people but the bad incentives. Design better systems to get better outcomes. Prompt rewards are important. We have people we like or love or dislike or hate who have a larger effect on us than the average person choose these people wisely. Man has a strong doubt avoidance tendency. We also hate change and inconsistency. We hate lack of clarity and change. We rarely change our minds. Avoid confirmation bias. People prefer to stick in their ways. Initiation ceremonies enhance commitment. We assume these roles then we become them over time because we assume the identity. Teaching something to others even if wrong makes us understand and believe it more. Modern education teaches bad politics who the students then push on us when they're young and influenable then they're a communist for life.",
+        "book": {
+          "title": "Poor Charlie's Almanack",
+          "author": "Charlie Munger"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.9,
+        "insightType": "comprehensive",
+        "curatorReason": "Munger's systematic approach to understanding multiple biases and their systemic nature"
+      }
+    ]
+  },
+  {
+    "modelId": "kahneman-8-decision-questions",
+    "modelTitle": "Kahneman's 8 Decision-Making Questions",
+    "curatedHighlights": [
+      {
+        "readwiseId": 755905523,
+        "text": "Question 1: Am I thinking fast or slow? \nQuestion 2: Am I too stressed to think clearly? \nQuestion 3: Is this a reversible decision? \nQuestion 4: What would you think about this if it were someone else's decision?\nQuestion 5: What would I think about this a year from now?\nQuestion 6: What would I advise a friend to do in this situation?\nQuestion 7: What's the quality of the evidence?\nQuestion 8: What are the opposing arguments?",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 10.0,
+        "qualityScore": 9.8,
+        "insightType": "framework",
+        "curatorReason": "The complete framework exactly as described in the model"
+      },
+      {
+        "readwiseId": 661292975,
+        "text": "You can deal with this conflict by categorizing decisions as either reversible decisions or irreversible decisions. Irreversible decisions are hard if not impossible to unwind. And they tend to be really important.",
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.7,
+        "insightType": "application",
+        "curatorReason": "Elaborates on Question 3 about decision reversibility"
+      },
+      {
+        "readwiseId": 517894744,
+        "text": "Exceptional decision makers find themselves in consistently good positions where all of their options are good. Good decision makers are adept at identifying one-way doors versus two-way doors. For one-way doors, speed is the most important metric for making a decision.",
+        "book": {
+          "title": "#164 Ravi Gupta — the Realities of Success",
+          "author": "The Knowledge Project with Shane Parrish"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.9,
+        "insightType": "application",
+        "curatorReason": "Practical application of the reversibility framework in business contexts"
+      },
+      {
+        "readwiseId": 622137687,
+        "text": "The decision maker of experience has at his disposal a checklist of things to watch out for before finally accepting a decision. A large part of the difference between the experienced decision maker and the novice in these situations is not any particular intangible like \"judgment\" or \"intuition.\" If one could open the lid, so to speak, and see what was in the head of the experienced decision-maker, one would find that he had at his disposal repertoires of possible actions; that he had checklists of things to think about before he acted; and that he had mechanisms in his mind to evoke these, and bring these to his conscious attention when the situations for decisions arose.",
+        "book": {
+          "title": "% Solution by Recognition",
+          "author": "fs.blog"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.8,
+        "insightType": "mechanism",
+        "curatorReason": "Explains how expert decision-makers systematically approach decisions with checklists"
+      },
+      {
+        "readwiseId": 511349691,
+        "text": "Experience taught me how invaluable it is to reflect on and write down my decision-making criteria whenever I made a decision, so I got in the habit of doing that.",
+        "book": {
+          "title": "Principles",
+          "author": "Ray Dalio"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.5,
+        "insightType": "practice",
+        "curatorReason": "Practical implementation of systematic decision-making documentation"
+      },
+      {
+        "readwiseId": 597481159,
+        "text": "Being attuned to one's internal state is crucial in making decisions to engage or disengage. Physiological state plays a significant role in decision making and perception of context. A highly sympathetic state can lead to myopic thinking and limited blood flow.",
+        "book": {
+          "title": "#176 — Dr. Leah Lagos and Joe Mazzulla — Control Your Heart, Conquer Your Stress",
+          "author": "The Knowledge Project - Members Only"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.7,
+        "insightType": "mechanism",
+        "curatorReason": "Addresses Question 2 about stress affecting thinking with physiological explanation"
+      },
+      {
+        "readwiseId": 722448058,
+        "text": "Blend knowledge and position power. Have meeting of peers with a senior person to provide an outside view. He shouldn't drive the decision but be a wall to bounce this off of. A business decision isn't life to death don't be paralyzed just make it. If you can't make a clear decision the person with the most at stake should make the decision. Don't worry about sounding dumb. Make sure you don't wait too long but don't make a decision too fast and don't have all the facts debating is vital to a decision.",
+        "book": {
+          "title": "High Output Management",
+          "author": "Andrew S. Grove"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.6,
+        "insightType": "application",
+        "curatorReason": "Practical framework for organizational decision-making that incorporates external perspective"
+      },
+      {
+        "readwiseId": 525350729,
+        "text": "Jeff walks away from a Great Wall Street job and life to sell books on the internet. Regret minimization framework when you're 80 will you be sad you missed your Wall Street bonus or the next big wave of technology the choice was easy everyone thought he was crazy.",
+        "book": {
+          "title": "Jeff Bezos Amazon the Everything Store",
+          "author": "Founders Pod"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.8,
+        "insightType": "example",
+        "curatorReason": "Real-world application of Question 5 (temporal perspective) in a major life decision"
+      },
+      {
+        "readwiseId": 661292978,
+        "text": "There is also a model that explains the downside of making many decisions in a limited period: decision fatigue. As you make more and more decisions, you get fatigued, leading to a worsening of decision quality.",
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.5,
+        "insightType": "mechanism",
+        "curatorReason": "Explains how cognitive load affects decision quality over time"
+      },
+      {
+        "readwiseId": 511349960,
+        "text": "Because learning takes practice, we are more likely to get things right at small stakes than at large stakes. This means critics have to decide which argument they want to apply. If learning is crucial, then as the stakes go up, decision-making quality is likely to go down.",
+        "book": {
+          "title": "Misbehaving",
+          "author": "Richard H. Thaler"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.7,
+        "insightType": "counterpoint",
+        "curatorReason": "Important insight about how decision quality paradoxically decreases when stakes are highest"
+      }
+    ]
+  },
+  {
+    "modelId": "mental-accounting-reference-points",
+    "modelTitle": "Mental Accounting & Reference Point Dependence",
+    "curatedHighlights": [
+      {
+        "readwiseId": 511961717,
+        "text": "Mental accounting we view things differently based on a reference point. If we are given a ticket to a game and the weathers bad we're less likely to go then had we bought that ticket likewise

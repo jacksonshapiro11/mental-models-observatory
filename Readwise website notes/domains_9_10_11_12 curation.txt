@@ -1,0 +1,1535 @@
+{
+  "domain9": {
+    "modelId": "9a-daily-compounding",
+    "modelTitle": "The Power of Daily Compounding",
+    "modelDescription": "How 1% daily improvements create dramatic long-term changes through compounding effects",
+    "curatedHighlights": [
+      {
+        "readwiseId": 736184555,
+        "book": {
+          "title": "Atomic Habits",
+          "author": "James Clear"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.5,
+        "insightType": "definition",
+        "curatorReason": "Perfect metaphor for compounding - habits as compound interest of self-improvement with clear time horizon explanation"
+      },
+      {
+        "readwiseId": 518559462,
+        "book": {
+          "title": "The Psychology of Money", 
+          "author": "Morgan Housel"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.2,
+        "insightType": "example",
+        "curatorReason": "Concrete Buffett example showing exponential effect of extra compounding time - $12mm vs $100bn"
+      },
+      {
+        "readwiseId": 525349055,
+        "book": {
+          "title": "Atomic Habits",
+          "author": "James Clear"
+        },
+        "relevanceScore": 9.4,
+        "qualityScore": 8.8,
+        "insightType": "case study",
+        "curatorReason": "British cycling team real-world example of 1% improvements creating Olympic-level results"
+      },
+      {
+        "readwiseId": 525351121,
+        "book": {
+          "title": "Jeff Bezos Amazon the Everything Store",
+          "author": "Founders Pod"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.7,
+        "insightType": "principle",
+        "curatorReason": "Captures essence of steady incremental progress compounded over decades"
+      },
+      {
+        "readwiseId": 780432799,
+        "book": {
+          "title": "The Psychology of Money",
+          "author": "Morgan Housel"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 9.1,
+        "insightType": "mechanism",
+        "curatorReason": "Explains why growth takes time while destruction is instant - fundamental asymmetry of compounding"
+      },
+      {
+        "readwiseId": 736184550,
+        "book": {
+          "title": "Atomic Habits",
+          "author": "James Clear"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.9,
+        "insightType": "principle",
+        "curatorReason": "Time as multiplier concept - habits make time ally or enemy through compounding"
+      },
+      {
+        "readwiseId": 525347317,
+        "book": {
+          "title": "Atomic Habits",
+          "author": "James Clear"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.5,
+        "insightType": "application",
+        "curatorReason": "Practical momentum concept - showing up consistently vs perfection for compounding"
+      },
+      {
+        "readwiseId": 627534691,
+        "book": {
+          "title": "Same as Ever: A Guide to What Never Changes",
+          "author": "Morgan Housel"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.6,
+        "insightType": "counterpoint",
+        "curatorReason": "Important negative compounding concept - small risks compound into big problems"
+      },
+      {
+        "readwiseId": 525349009,
+        "book": {
+          "title": "Atomic Habits",
+          "author": "James Clear"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.4,
+        "insightType": "application",
+        "curatorReason": "Environment design for automatic compounding - making good habits inevitable"
+      },
+      {
+        "readwiseId": 661292984,
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.0,
+        "insightType": "definition",
+        "curatorReason": "Basic definition of compound interest mechanism underlying the mental model"
+      }
+    ]
+  },
+  
+  "domain9b": {
+    "modelId": "9b-exponential-linear-thinking",
+    "modelTitle": "Exponential vs. Linear Thinking", 
+    "modelDescription": "Why humans struggle with exponential patterns and how to overcome this limitation",
+    "curatedHighlights": [
+      {
+        "readwiseId": 556805105,
+        "book": {
+          "title": "How to Do Great Work",
+          "author": "paulgraham.com"
+        },
+        "relevanceScore": 9.7,
+        "qualityScore": 9.4,
+        "insightType": "mechanism",
+        "curatorReason": "Perfect explanation of exponential growth feeling flat in beginning and why we underrate it early"
+      },
+      {
+        "readwiseId": 521159690,
+        "book": {
+          "title": "The Exponential Age",
+          "author": "Azeem Azhar"
+        },
+        "relevanceScore": 9.5,
+        "qualityScore": 9.0,
+        "insightType": "principle",
+        "curatorReason": "Core insight about human linear thinking vs exponential reality - evolutionary mismatch"
+      },
+      {
+        "readwiseId": 625013343,
+        "book": {
+          "title": "Superlinear Returns",
+          "author": "Paul Graham"
+        },
+        "relevanceScore": 9.3,
+        "qualityScore": 8.8,
+        "insightType": "insight",
+        "curatorReason": "Explains exponential growth as outside evolutionary nature - fundamental limitation"
+      },
+      {
+        "readwiseId": 521160379,
+        "book": {
+          "title": "The Exponential Age", 
+          "author": "Azeem Azhar"
+        },
+        "relevanceScore": 9.1,
+        "qualityScore": 8.7,
+        "insightType": "example",
+        "curatorReason": "Technology adoption patterns showing exponential doesn't look like much initially"
+      },
+      {
+        "readwiseId": 518559324,
+        "book": {
+          "title": "The Psychology of Money",
+          "author": "Morgan Housel"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "application",
+        "curatorReason": "Optimism grows through compounding while pessimism is immediate - mental model for thinking"
+      },
+      {
+        "readwiseId": 521159867,
+        "book": {
+          "title": "The Exponential Age",
+          "author": "Azeem Azhar"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.3,
+        "insightType": "mechanism",
+        "curatorReason": "Exponential stacked on exponentials creates lollapalooza effects"
+      },
+      {
+        "readwiseId": 521160406,
+        "book": {
+          "title": "The Exponential Age",
+          "author": "Azeem Azhar"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.4,
+        "insightType": "example",
+        "curatorReason": "S-curve technology adoption showing steeper curves over time"
+      },
+      {
+        "readwiseId": 518562628,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.1,
+        "insightType": "principle",
+        "curatorReason": "Scaling laws drive biological systems through exponential relationships"
+      },
+      {
+        "readwiseId": 627534603,
+        "book": {
+          "title": "Same as Ever: A Guide to What Never Changes",
+          "author": "Morgan Housel"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.5,
+        "insightType": "application",
+        "curatorReason": "Go long exponential growth and innovation - practical investment in exponential thinking"
+      },
+      {
+        "readwiseId": 525243378,
+        "book": {
+          "title": "170 - Burning MEV With Justin Drake and Dom",
+          "author": "Bankless"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.2,
+        "insightType": "example",
+        "curatorReason": "Nielsen's law and exponential bandwidth growth showing technological exponentials"
+      }
+    ]
+  },
+
+  "domain9c": {
+    "modelId": "9c-superlinear-returns",
+    "modelTitle": "Superlinear Returns & Power Laws",
+    "modelDescription": "When small advantages create disproportionate outcomes through exponential effects",
+    "curatedHighlights": [
+      {
+        "readwiseId": 622250078,
+        "book": {
+          "title": "Superlinear Returns",
+          "author": "Paul Graham"
+        },
+        "relevanceScore": 9.9,
+        "qualityScore": 9.7,
+        "insightType": "definition",
+        "curatorReason": "Perfect foundational explanation of superlinear returns reducing to exponential growth and thresholds"
+      },
+      {
+        "readwiseId": 622258464,
+        "book": {
+          "title": "Superlinear Returns",
+          "author": "Paul Graham"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.3,
+        "insightType": "mechanism",
+        "curatorReason": "Explains threshold crossing leading to exponential growth and vice versa - key feedback loop"
+      },
+      {
+        "readwiseId": 622265043,
+        "book": {
+          "title": "Superlinear Returns",
+          "author": "Paul Graham"
+        },
+        "relevanceScore": 9.4,
+        "qualityScore": 9.1,
+        "insightType": "application",
+        "curatorReason": "Fields requiring independent thinking align with superlinear returns - key insight for career choice"
+      },
+      {
+        "readwiseId": 518574749,
+        "book": {
+          "title": "Zero to One",
+          "author": "Peter Theil"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 8.9,
+        "insightType": "application",
+        "curatorReason": "Power law distribution in VC and need to concentrate rather than diversify"
+      },
+      {
+        "readwiseId": 622264197,
+        "book": {
+          "title": "Superlinear Returns",
+          "author": "Paul Graham"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.7,
+        "insightType": "application",
+        "curatorReason": "Who should pursue superlinear returns - ambitious people and young risk-takers"
+      },
+      {
+        "readwiseId": 518559453,
+        "book": {
+          "title": "The Psychology of Money",
+          "author": "Morgan Housel"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.8,
+        "insightType": "example",
+        "curatorReason": "Art dealer example showing power law returns - 1% successes outweigh 99% failures"
+      },
+      {
+        "readwiseId": 518562833,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.4,
+        "insightType": "principle",
+        "curatorReason": "Networks driven by power law distributions that change exponentially with scale"
+      },
+      {
+        "readwiseId": 661293000,
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.0,
+        "insightType": "definition",
+        "curatorReason": "Clear definition of power law distribution - few occurrences account for outsized proportion"
+      },
+      {
+        "readwiseId": 518562618,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.3,
+        "insightType": "application",
+        "curatorReason": "Risk assessment using power law - multiply probability by magnitude for tail events"
+      },
+      {
+        "readwiseId": 518563846,
+        "book": {
+          "title": "Antifragile",
+          "author": "nassim taleb"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.5,
+        "insightType": "principle",
+        "curatorReason": "Scale and asymmetric risk - systems scale as power laws with different effects at different scales"
+      }
+    ]
+  },
+
+  "domain9d": {
+    "modelId": "9d-work-compounds",
+    "modelTitle": "Work That Compounds & Knowledge Compounding",
+    "modelDescription": "Choosing activities that build on themselves over time through learning and audience effects",
+    "curatedHighlights": [
+      {
+        "readwiseId": 622263727,
+        "book": {
+          "title": "Superlinear Returns",
+          "author": "Paul Graham"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.6,
+        "insightType": "definition",
+        "curatorReason": "Perfect explanation of two ways work compounds - directly and through learning, with audience example"
+      },
+      {
+        "readwiseId": 622266194,
+        "book": {
+          "title": "Superlinear Returns",
+          "author": "Paul Graham"
+        },
+        "relevanceScore": 9.4,
+        "qualityScore": 9.2,
+        "insightType": "application",
+        "curatorReason": "'Do things that don't scale' principle showing how initial effort kicks off exponential growth"
+      },
+      {
+        "readwiseId": 545155036,
+        "book": {
+          "title": "3 Weeks of Monk Mode — What Did We Build?",
+          "author": "The Espresso Hour"
+        },
+        "relevanceScore": 9.1,
+        "qualityScore": 8.8,
+        "insightType": "framework",
+        "curatorReason": "Uncapped upside + zero downside framework for choosing compounding activities like writing"
+      },
+      {
+        "readwiseId": 587949321,
+        "book": {
+          "title": "Free Writing",
+          "author": "Jackson"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.5,
+        "insightType": "principle",
+        "curatorReason": "Knowledge lies in connections - systems view showing how understanding compounds"
+      },
+      {
+        "readwiseId": 572698880,
+        "book": {
+          "title": "#314 Paul Graham",
+          "author": "Founders"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.4,
+        "insightType": "application",
+        "curatorReason": "Finding work with aptitude and interest that compounds through learning and discovery"
+      },
+      {
+        "readwiseId": 572711214,
+        "book": {
+          "title": "#314 Paul Graham",
+          "author": "Founders"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.3,
+        "insightType": "principle",
+        "curatorReason": "Fields should become more interesting as you learn - sign of compounding knowledge"
+      },
+      {
+        "readwiseId": 511350006,
+        "book": {
+          "title": "Complexity",
+          "author": "M. Mitchell Waldrop"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "principle",
+        "curatorReason": "Increasing returns principle applies to all high technology - foundational compounding concept"
+      },
+      {
+        "readwiseId": 570722806,
+        "book": {
+          "title": "#277 Paul Graham's Essays Part 3",
+          "author": "Founders"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.2,
+        "insightType": "application",
+        "curatorReason": "Focus on one core skill that compounds - writing software as competitive advantage"
+      },
+      {
+        "readwiseId": 558971080,
+        "book": {
+          "title": "#191 the Almanack of Naval Ravikant — a Guide to Wealth and Happiness",
+          "author": "Founders"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.7,
+        "insightType": "principle",
+        "curatorReason": "Learning is abundant, desire to learn is scarce - more learning creates more leverage"
+      },
+      {
+        "readwiseId": 713118344,
+        "book": {
+          "title": "101 Things I Would Tell My Self From 10 Years Ago",
+          "author": "Approach with Alacrity"
+        },
+        "relevanceScore": 8.4,
+        "qualityScore": 8.0,
+        "insightType": "application",
+        "curatorReason": "1:10 production to consumption ratio - compounding through creating vs consuming"
+      }
+    ]
+  },
+
+  "domain9e": {
+    "modelId": "9e-jump-universality",
+    "modelTitle": "Jump to Universality",
+    "modelDescription": "How incremental improvement suddenly creates universal capability in digital systems",
+    "curatedHighlights": [
+      {
+        "readwiseId": 515352789,
+        "book": {
+          "title": "The Beginning of Infinity",
+          "author": "david deutsch"
+        },
+        "relevanceScore": 9.9,
+        "qualityScore": 9.8,
+        "insightType": "definition",
+        "curatorReason": "Perfect definition of jump to universality - incremental improvement causing outsized increase in reach"
+      },
+      {
+        "readwiseId": 511349708,
+        "book": {
+          "title": "The Fabric of Reality",
+          "author": "David Deutsch"
+        },
+        "relevanceScore": 9.3,
+        "qualityScore": 9.1,
+        "insightType": "principle",
+        "curatorReason": "Self-similarity property enables universality of computation - deep physical principle"
+      },
+      {
+        "readwiseId": 511967950,
+        "book": {
+          "title": "Complexity",
+          "author": "M. Mitchel Waldrop"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.8,
+        "insightType": "mechanism",
+        "curatorReason": "Class 4 rules create universal computation at edge of chaos - emergence of universality"
+      },
+      {
+        "readwiseId": 518562835,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "principle",
+        "curatorReason": "Simple rules create complex outcomes through emergent behavior - path to universality"
+      },
+      {
+        "readwiseId": 518577749,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.4,
+        "insightType": "example",
+        "curatorReason": "Self-organization through simple rules - fractals and genetic code as universal systems"
+      },
+      {
+        "readwiseId": 511968308,
+        "book": {
+          "title": "Chaos",
+          "author": "James Gleick"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.7,
+        "insightType": "insight",
+        "curatorReason": "Knowledge creation at edge of chaos - where universal patterns emerge from complexity"
+      },
+      {
+        "readwiseId": 525350726,
+        "book": {
+          "title": "Jeff Bezos Amazon the Everything Store",
+          "author": "Founders Pod"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.2,
+        "insightType": "example",
+        "curatorReason": "Internet growth 230,000% - exponential technology wave enabling universal systems"
+      },
+      {
+        "readwiseId": 511968267,
+        "book": {
+          "title": "Chaos",
+          "author": "James Gleick"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.3,
+        "insightType": "principle",
+        "curatorReason": "Simple systems give complex behavior, complex systems give simple behavior - universality principle"
+      },
+      {
+        "readwiseId": 518578202,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 8.4,
+        "qualityScore": 8.1,
+        "insightType": "mechanism",
+        "curatorReason": "Self-organization creates new structure through simple organizing principles"
+      },
+      {
+        "readwiseId": 819693125,
+        "book": {
+          "title": "#452 – Dario Amodei — Anthropic CEO on Claude, AGI & the Future of AI & Humanity",
+          "author": "Lex Fridman Podcast"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.5,
+        "insightType": "example",
+        "curatorReason": "AGI as smooth exponential advancement toward universal intelligence capability"
+      }
+    ]
+  },
+
+  "domain10a": {
+    "modelId": "10a-fractals-self-similarity",
+    "modelTitle": "Fractals & Self-Similarity Across Scales",
+    "modelDescription": "Pattern recognition across scales showing how structures repeat at different dimensions",
+    "curatedHighlights": [
+      {
+        "readwiseId": 518562636,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.5,
+        "insightType": "definition",
+        "curatorReason": "Perfect definition of fractals as same scaled up/down with scaling laws and measurement effects"
+      },
+      {
+        "readwiseId": 511968577,
+        "book": {
+          "title": "Chaos",
+          "author": "James Gleick"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.3,
+        "insightType": "mechanism",
+        "curatorReason": "Coastline measurement showing fractals in nature - more specific measurement increases length infinitely"
+      },
+      {
+        "readwiseId": 511349766,
+        "book": {
+          "title": "Chaos",
+          "author": "James Gleick"
+        },
+        "relevanceScore": 9.4,
+        "qualityScore": 9.0,
+        "insightType": "definition",
+        "curatorReason": "Concise definition of self-similarity as symmetry across scale with recursive patterns"
+      },
+      {
+        "readwiseId": 511968534,
+        "book": {
+          "title": "Chaos",
+          "author": "James Gleick"
+        },
+        "relevanceScore": 9.1,
+        "qualityScore": 8.8,
+        "insightType": "principle",
+        "curatorReason": "Each scale change brings new phenomena - emergent behaviors at different fractal scales"
+      },
+      {
+        "readwiseId": 701705612,
+        "book": {
+          "title": "Robin Dunbar - Optimizing Human Connection (Dunbar's Number) - [Invest Like the Best, EP.367]",
+          "author": "Invest Like the Best with Patrick O'Shaughnessy"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.7,
+        "insightType": "example",
+        "curatorReason": "Dunbar's number showing fractal scaling in human relationships - 5, 15, 50, 150, 500 pattern"
+      },
+      {
+        "readwiseId": 511968345,
+        "book": {
+          "title": "Chaos",
+          "author": "James Gleick"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.3,
+        "insightType": "insight",
+        "curatorReason": "Fractal shapes emerge from both deterministic and random processes - universal pattern"
+      },
+      {
+        "readwiseId": 511968275,
+        "book": {
+          "title": "Chaos",
+          "author": "James Gleick"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.5,
+        "insightType": "application",
+        "curatorReason": "Dynamic systems create fractal structures more responsive to change than static systems"
+      },
+      {
+        "readwiseId": 518562631,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 8.4,
+        "qualityScore": 8.1,
+        "insightType": "example",
+        "curatorReason": "Biological limits to fractal scaling - mammals can't scale smaller due to circulation constraints"
+      },
+      {
+        "readwiseId": 518559032,
+        "book": {
+          "title": "The Death and Life of Great American Cities",
+          "author": "Jane Jacobs"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.4,
+        "insightType": "counterpoint",
+        "curatorReason": "Organic fractal cities dismissed as slums by linear thinkers - bias against fractal patterns"
+      },
+      {
+        "readwiseId": 518562623,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.2,
+        "insightType": "application",
+        "curatorReason": "Cities structured like human brains with Dunbar number relationships - fractal social organization"
+      }
+    ]
+  },
+
+  "domain10b": {
+    "modelId": "10b-scaling-laws",
+    "modelTitle": "Scaling Laws & Dimensional Analysis",
+    "modelDescription": "How physical constraints govern behavior at different scales through mathematical relationships",
+    "curatedHighlights": [
+      {
+        "readwiseId": 518562845,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 9.7,
+        "qualityScore": 9.4,
+        "insightType": "principle",
+        "curatorReason": "Core insight that scaling is non-linear - economies of scale vs increasing returns to scale"
+      },
+      {
+        "readwiseId": 518562816,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 9.5,
+        "qualityScore": 9.2,
+        "insightType": "example",
+        "curatorReason": "Kleiber's law - metabolic rate scales to 3/4 power of mass, fundamental biological scaling law"
+      },
+      {
+        "readwiseId": 518562862,
+        "book": {
+          "title": "Scale", 
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 9.3,
+        "qualityScore": 8.9,
+        "insightType": "framework",
+        "curatorReason": "General scaling laws as goal - universal relationships underlying many phenomena"
+      },
+      {
+        "readwiseId": 518562605,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.7,
+        "insightType": "application",
+        "curatorReason": "Cities scale with 15% scaling ratio - more interactions create both innovation and problems"
+      },
+      {
+        "readwiseId": 518562588,
+        "book": {
+          "title": "Scale", 
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.5,
+        "insightType": "example",
+        "curatorReason": "Companies scale linearly with 10.5 year half-lives - different scaling law than cities"
+      },
+      {
+        "readwiseId": 518562824,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.6,
+        "insightType": "principle",
+        "curatorReason": "Cities follow power law distributions for both infrastructure and ideas - dual scaling"
+      },
+      {
+        "readwiseId": 627534717,
+        "book": {
+          "title": "Same as Ever: A Guide to What Never Changes",
+          "author": "Morgan Housel"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.4,
+        "insightType": "application",
+        "curatorReason": "Scale importance - things can only exist at certain scales, need to match time horizons"
+      },
+      {
+        "readwiseId": 518562653,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.3,
+        "insightType": "insight",
+        "curatorReason": "Different things matter at different scales - earth is blue at large scale, complex at small scale"
+      },
+      {
+        "readwiseId": 518566949,
+        "book": {
+          "title": "Antifragile",
+          "author": "nassim taleb"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.2,
+        "insightType": "principle",
+        "curatorReason": "Procrustean bed - forcing things to fit wrong scale creates fragility"
+      },
+      {
+        "readwiseId": 518562819,
+        "book": {
+          "title": "Scale",
+          "author": "Geoffrey West"
+        },
+        "relevanceScore": 8.4,
+        "qualityScore": 8.0,
+        "insightType": "application",
+        "curatorReason": "Building models in line with scale - need to understand proportional effects"
+      }
+    ]
+  },
+
+  "domain10c": {
+    "modelId": "10c-boundaries-system-definition",
+    "modelTitle": "Boundaries & System Definition",
+    "modelDescription": "Understanding how we define and separate systems from their environments through arbitrary but necessary boundaries",
+    "curatedHighlights": [
+      {
+        "readwiseId": 518578003,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 9.9,
+        "qualityScore": 9.8,
+        "insightType": "definition",
+        "curatorReason": "Perfect explanation of boundaries as arbitrary but necessary for system differentiation - core concept"
+      },
+      {
+        "readwiseId": 518577814,
+        "book": {
+          "title": "Thinking in Systems", 
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.4,
+        "insightType": "principle",
+        "curatorReason": "Mental models as simplified representations - map vs territory concept for system boundaries"
+      },
+      {
+        "readwiseId": 518578021,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 9.3,
+        "qualityScore": 9.1,
+        "insightType": "mechanism",
+        "curatorReason": "Bounded rationality in systems - actors lack full picture, boundaries limit information"
+      },
+      {
+        "readwiseId": 806741236,
+        "book": {
+          "title": "The Frontiers of Knowledge",
+          "author": "A. C. Grayling"
+        },
+        "relevanceScore": 9.1,
+        "qualityScore": 8.8,
+        "insightType": "insight",
+        "curatorReason": "We carve up reality according to needs and interests - utility as ultimate sorting function"
+      },
+      {
+        "readwiseId": 511349931,
+        "book": {
+          "title": "The Black Swan",
+          "author": "Nassim Nicholas Taleb"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.7,
+        "insightType": "warning",
+        "curatorReason": "Categorizing becomes pathological when seen as definitive - need to consider fuzzy boundaries"
+      },
+      {
+        "readwiseId": 518577146,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.5,
+        "insightType": "principle", 
+        "curatorReason": "Systems are self-contained with characteristic responses - internal boundaries define behavior"
+      },
+      {
+        "readwiseId": 762339603,
+        "book": {
+          "title": "Behave",
+          "author": "Robert Sapolsky"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "application",
+        "curatorReason": "Disciplines as arbitrary boundaries - complex world transcends these artificial divisions"
+      },
+      {
+        "readwiseId": 518578248,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.4,
+        "insightType": "application",
+        "curatorReason": "Ability to redraw boundaries when wrong - mental flexibility for changing system definitions"
+      },
+      {
+        "readwiseId": 661292746,
+        "book": {
+          "title": "Legal Systems Very Different From Ours",
+          "author": "David Friedman, Peter Leeson, David Skarbek"
+        },
+        "relevanceScore": 8.4,
+        "qualityScore": 8.1,
+        "insightType": "principle",
+        "curatorReason": "Boundaries change when enough people push without complaint - social boundary evolution"
+      },
+      {
+        "readwiseId": 518558823,
+        "book": {
+          "title": "The Death and Life of Great American Cities",
+          "author": "Jane Jacobs"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.2,
+        "insightType": "example",
+        "curatorReason": "Borders with no ownership become tragedy of commons - boundary definition affects responsibility"
+      }
+    ]
+  },
+
+  "domain11a": {
+    "modelId": "11a-flow-states-optimal-experience",
+    "modelTitle": "Flow States & Optimal Experience",
+    "modelDescription": "The psychology of peak performance and deep engagement through optimal challenge-skill balance",
+    "curatedHighlights": [
+      {
+        "readwiseId": 511349680,
+        "book": {
+          "title": "Flow",
+          "author": "Mihaly Csikszentmihalyi"
+        },
+        "relevanceScore": 9.9,
+        "qualityScore": 9.7,
+        "insightType": "definition",
+        "curatorReason": "Perfect definition of optimal experience - voluntary effort to stretch limits, something we make happen"
+      },
+      {
+        "readwiseId": 584017702,
+        "book": {
+          "title": "Flow",
+          "author": "mihaly csikszentmihalyi"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.5,
+        "insightType": "framework",
+        "curatorReason": "Complete 8-component framework of flow state - clear goals, feedback, challenge-skill balance, etc."
+      },
+      {
+        "readwiseId": 736184554,
+        "book": {
+          "title": "Atomic Habits",
+          "author": "James Clear"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.3,
+        "insightType": "principle",
+        "curatorReason": "Goldilocks Rule - peak motivation at edge of current abilities, core flow principle"
+      },
+      {
+        "readwiseId": 511349684,
+        "book": {
+          "title": "Flow",
+          "author": "Mihaly Csikszentmihalyi"
+        },
+        "relevanceScore": 9.4,
+        "qualityScore": 9.1,
+        "insightType": "mechanism",
+        "curatorReason": "Flow appears at boundary between boredom and anxiety - precise challenge-skill balance"
+      },
+      {
+        "readwiseId": 511349677,
+        "book": {
+          "title": "Flow",
+          "author": "Mihaly Csikszentmihalyi"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 8.9,
+        "insightType": "application",
+        "curatorReason": "Control of consciousness - ability to focus attention at will, oblivious to distractions"
+      },
+      {
+        "readwiseId": 584017731,
+        "book": {
+          "title": "Flow",
+          "author": "mihaly csikszentmihalyi"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.7,
+        "insightType": "application",
+        "curatorReason": "5-step framework for creating flow in body and mind - goals, feedback, concentration, skills, challenges"
+      },
+      {
+        "readwiseId": 511965064,
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "mechanism",
+        "curatorReason": "Skilled performance requires less attention - mastery enables flow through reduced cognitive load"
+      },
+      {
+        "readwiseId": 525346503,
+        "book": {
+          "title": "Atomic Habits",
+          "author": "James Clear"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.5,
+        "insightType": "application",
+        "curatorReason": "Edge of abilities for flow and focus - professionals show up when bored, not just when motivated"
+      },
+      {
+        "readwiseId": 511349685,
+        "book": {
+          "title": "Flow",
+          "author": "Mihaly Csikszentmihalyi"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.4,
+        "insightType": "principle",
+        "curatorReason": "Direct control of experience - moment-by-moment enjoyment overcomes obstacles to fulfillment"
+      },
+      {
+        "readwiseId": 584018080,
+        "book": {
+          "title": "Flow",
+          "author": "mihaly csikszentmihalyi"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.3,
+        "insightType": "application",
+        "curatorReason": "Flow in relationships and solitude - structuring space, time, and activities for optimal experience"
+      }
+    ]
+  },
+
+  "domain11b": {
+    "modelId": "11b-temporal-coordination-system-rhythm",
+    "modelTitle": "Temporal Coordination & System Rhythm",
+    "modelDescription": "Understanding timing, cycles, and coordination across time in complex systems",
+    "curatedHighlights": [
+      {
+        "readwiseId": 518577493,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.6,
+        "insightType": "principle",
+        "curatorReason": "Core insight - feedback can only change future behavior, flows can't react instantly, system delays"
+      },
+      {
+        "readwiseId": 511086165,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella H. Meadows"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.4,
+        "insightType": "mechanism",
+        "curatorReason": "Delays are pervasive and strong determinants of system behavior - changing delay length changes system"
+      },
+      {
+        "readwiseId": 518577530,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 9.4,
+        "qualityScore": 9.2,
+        "insightType": "application",
+        "curatorReason": "Signal through noise - understanding system response timing critical for proper intervention"
+      },
+      {
+        "readwiseId": 518578008,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 8.9,
+        "insightType": "example",
+        "curatorReason": "Climate effects show after decades - must anticipate and act before delays make problems irreversible"
+      },
+      {
+        "readwiseId": 518577476,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.7,
+        "insightType": "definition",
+        "curatorReason": "Feedback loops as reinforcing behavior over time - when behavior persists, mechanism creates it"
+      },
+      {
+        "readwiseId": 661293046,
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.5,
+        "insightType": "framework",
+        "curatorReason": "Inertia concepts - flywheel, activation energy, how to assess and reverse temporal patterns"
+      },
+      {
+        "readwiseId": 511086168,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella H. Meadows"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.6,
+        "insightType": "principle",
+        "curatorReason": "Exponentially growing systems need both reinforcing and balancing loops - finite environment constraint"
+      },
+      {
+        "readwiseId": 525175625,
+        "book": {
+          "title": "#301 Tiger Woods",
+          "author": "Founders"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.4,
+        "insightType": "application",
+        "curatorReason": "Stress-recover-improve cycle - temporal rhythm essential for growth and avoiding injury"
+      },
+      {
+        "readwiseId": 731271047,
+        "book": {
+          "title": "#090 How Exercise Prevents & Reverses Heart Aging | Benjamin Levine, M.D.",
+          "author": "FoundMyFitness"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.3,
+        "insightType": "example",
+        "curatorReason": "Body adapts to variety not repetition - same training for year showed no fitness gains"
+      },
+      {
+        "readwiseId": 511349661,
+        "book": {
+          "title": "Algorithms to Live By",
+          "author": "Brian Christian, Tom Griffiths"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.2,
+        "insightType": "principle",
+        "curatorReason": "Time interval determines explore vs exploit balance - temporal horizon shapes optimal strategy"
+      }
+    ]
+  },
+
+  "domain12a": {
+    "modelId": "12a-power-concentration-centralization",
+    "modelTitle": "Power Concentration & Natural Centralization",
+    "modelDescription": "Understanding how power naturally flows and consolidates in systems and institutions",
+    "curatedHighlights": [
+      {
+        "readwiseId": 511958412,
+        "book": {
+          "title": "Lessons of History",
+          "author": "Will and Ariel Durant"
+        },
+        "relevanceScore": 9.9,
+        "qualityScore": 9.8,
+        "insightType": "principle",
+        "curatorReason": "Perfect core insight - power naturally converges to center, ineffective when divided, freedom needs limitation"
+      },
+      {
+        "readwiseId": 521156076,
+        "book": {
+          "title": "Principles for Dealing With the Changing World Order",
+          "author": "Ray Dalio"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.4,
+        "insightType": "framework",
+        "curatorReason": "6-stage cycle of power concentration - new order to civil war, wealth gaps drive political change"
+      },
+      {
+        "readwiseId": 592780496,
+        "book": {
+          "title": "The Ancient City",
+          "author": "Numa Denis Fustel de Coulanges"
+        },
+        "relevanceScore": 9.3,
+        "qualityScore": 9.1,
+        "insightType": "mechanism",
+        "curatorReason": "Revolutions happen gradually then suddenly - power shifts cemented before people realize change started"
+      },
+      {
+        "readwiseId": 735079674,
+        "book": {
+          "title": "The History of Philosophy",
+          "author": "A. C. Grayling"
+        },
+        "relevanceScore": 9.1,
+        "qualityScore": 8.8,
+        "insightType": "framework",
+        "curatorReason": "Hobbes Leviathan - absolute power to government but people can overthrow if it fails to protect"
+      },
+      {
+        "readwiseId": 691604872,
+        "book": {
+          "title": "A History of Western Philosophy",
+          "author": "Bertrand Russell"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.7,
+        "insightType": "application",
+        "curatorReason": "Machiavelli - balance of powers, outcome over process, virtue signaling important for power"
+      },
+      {
+        "readwiseId": 511958391,
+        "book": {
+          "title": "Lessons of History",
+          "author": "Will and Ariel Durant"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "principle",
+        "curatorReason": "Socialism and capitalism lead to same end - key man risk vs centralization, power corrupts"
+      },
+      {
+        "readwiseId": 627530185,
+        "book": {
+          "title": "All Life Is Problem Solving",
+          "author": "Karl Popper"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.5,
+        "insightType": "application",
+        "curatorReason": "Two-party system better than proportional - allows clear implementation vs tyranny of minority"
+      },
+      {
+        "readwiseId": 521158746,
+        "book": {
+          "title": "Seeing Like a State",
+          "author": "James Scott"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.4,
+        "insightType": "mechanism",
+        "curatorReason": "High modernist state power - legibility provides capacity, ideology provides desire, authoritarianism provides ability"
+      },
+      {
+        "readwiseId": 515351923,
+        "book": {
+          "title": "The Beginning of Infinity",
+          "author": "david deutsch"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.3,
+        "insightType": "principle",
+        "curatorReason": "Good government defined by ability to remove bad rulers - competition for better explanations"
+      },
+      {
+        "readwiseId": 691604199,
+        "book": {
+          "title": "A History of Western Philosophy",
+          "author": "Bertrand Russell"
+        },
+        "relevanceScore": 8.4,
+        "qualityScore": 8.2,
+        "insightType": "framework",
+        "curatorReason": "Locke political philosophy - power from state classes, checks and balances, property rights"
+      }
+    ]
+  },
+
+  "domain12b": {
+    "modelId": "12b-power-games-authentic-strength",
+    "modelTitle": "Power Games vs. Authentic Strength",
+    "modelDescription": "Distinguishing between power over others and true personal power through ego transcendence",
+    "curatedHighlights": [
+      {
+        "readwiseId": 736184602,
+        "book": {
+          "title": "The Power of Now",
+          "author": "Eckhart Tolle"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.6,
+        "insightType": "definition",
+        "curatorReason": "Perfect ego identification list - possessions, work, status, knowledge, appearance - none are you"
+      },
+      {
+        "readwiseId": 762337862,
+        "book": {
+          "title": "Right Thing, Right Now",
+          "author": "Ryan Holiday"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.4,
+        "insightType": "principle",
+        "curatorReason": "Become powerful - nothing gets done without power, understand how it works or you're defeated"
+      },
+      {
+        "readwiseId": 592780710,
+        "book": {
+          "title": "Designing Your Work Life",
+          "author": "Bill Burnett, Dave Evans"
+        },
+        "relevanceScore": 9.4,
+        "qualityScore": 9.2,
+        "insightType": "framework",
+        "curatorReason": "Power as 3D matrix - influence, authority, position - dynamic structure requiring navigation"
+      },
+      {
+        "readwiseId": 847791016,
+        "book": {
+          "title": "Graham Duncan - Talent Whisperer - [Invest Like the Best, EP.409]",
+          "author": "Invest Like the Best with Patrick O'Shaughnessy"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 8.9,
+        "insightType": "definition",
+        "curatorReason": "Moneymaker mentality - create more value than capture, long-term greedy, make money over being right"
+      },
+      {
+        "readwiseId": 856327517,
+        "book": {
+          "title": "Tuesdays With Morrie",
+          "author": "Mitch Albom"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.7,
+        "insightType": "application",
+        "curatorReason": "Turn on emotional faucet - experience fear/loneliness fully then put aside, don't let control you"
+      },
+      {
+        "readwiseId": 563189467,
+        "book": {
+          "title": "#171 Naval Ravikant — the Angel Philosopher",
+          "author": "The Knowledge Project with Shane Parrish"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "application",
+        "curatorReason": "Break habit of uncontrolled thinking - weaken sense of self, live in present reality vs seeking external happiness"
+      },
+      {
+        "readwiseId": 762339222,
+        "book": {
+          "title": "Philosophy and Life",
+          "author": "AC Grayling"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.5,
+        "insightType": "principle",
+        "curatorReason": "Daoism - go with the flow, water flowing around rocks, non-striving manner, accept life process"
+      },
+      {
+        "readwiseId": 653948810,
+        "book": {
+          "title": "What I Believe",
+          "author": "Bertrand Russell"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.4,
+        "insightType": "insight",
+        "curatorReason": "Great renunciation - give up unattainable dreams without regret, cultivate inner control despite external events"
+      },
+      {
+        "readwiseId": 721906688,
+        "book": {
+          "title": "Michael Jordan in His Own Words",
+          "author": "Founders"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.3,
+        "insightType": "application",
+        "curatorReason": "Focus on present moment - external expectations never higher than your own, limits and fears are illusions"
+      },
+      {
+        "readwiseId": 511349793,
+        "book": {
+          "title": "10% Happier",
+          "author": "Dan Harris"
+        },
+        "relevanceScore": 8.4,
+        "qualityScore": 8.2,
+        "insightType": "practice",
+        "curatorReason": "Create spaces in daily life where aware but not thinking - simple as one conscious breath"
+      }
+    ]
+  },
+
+  "domain12c": {
+    "modelId": "12c-regulatory-capture-institutional-decay",
+    "modelTitle": "Regulatory Capture & Institutional Decay",
+    "modelDescription": "How institutions become captured by the interests they're meant to regulate, leading to system failure",
+    "curatedHighlights": [
+      {
+        "readwiseId": 518578035,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 9.9,
+        "qualityScore": 9.7,
+        "insightType": "mechanism",
+        "curatorReason": "Perfect explanation of policy resistance - bounded rationality when subsystem goals differ from system goals"
+      },
+      {
+        "readwiseId": 814734430,
+        "book": {
+          "title": "Why Are We Here? Crypto-Anarchism Explained | Arjun Bhuptani",
+          "author": "Bankless"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.4,
+        "insightType": "mechanism",
+        "curatorReason": "Monopoly-authoritarianism flywheel - corporations fund politicians who pass protective policy, solidifying monopolies"
+      },
+      {
+        "readwiseId": 880482102,
+        "book": {
+          "title": "Epic Systems",
+          "author": "Acquired"
+        },
+        "relevanceScore": 9.3,
+        "qualityScore": 9.1,
+        "insightType": "example",
+        "curatorReason": "Healthcare digitization regulatory capture - HITECH Act led to Epic domination, door closed behind them"
+      },
+      {
+        "readwiseId": 741438781,
+        "book": {
+          "title": "Chevron Deference — 40-Year Decision Reversed & Explained | Justin Slaughter",
+          "author": "Bankless (private feed for jacksonshapiro11@gmail.com)"
+        },
+        "relevanceScore": 9.1,
+        "qualityScore": 8.8,
+        "insightType": "example",
+        "curatorReason": "Chevron deference reversal - agencies accumulate power over time, create power vacuums with bad incentives"
+      },
+      {
+        "readwiseId": 521159017,
+        "book": {
+          "title": "Seeing Like a State",
+          "author": "James Scott"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.7,
+        "insightType": "principle",
+        "curatorReason": "State vs individual power - competing incentive structures, employees vs owners time horizon mismatch"
+      },
+      {
+        "readwiseId": 518578192,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "leverage",
+        "curatorReason": "Rules shape system incentives - when rule-makers and stakeholders different, clear misalignment"
+      },
+      {
+        "readwiseId": 518578137,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.5,
+        "insightType": "principle",
+        "curatorReason": "Rule beating - evasive action around intent, letter not spirit of law, systems do what they're built to do"
+      },
+      {
+        "readwiseId": 661292734,
+        "book": {
+          "title": "Legal Systems Very Different From Ours",
+          "author": "David Friedman, Peter Leeson, David Skarbek"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.4,
+        "insightType": "insight",
+        "curatorReason": "Power depends on manipulating authorities and community - ability to defend against manipulation crucial"
+      },
+      {
+        "readwiseId": 581371998,
+        "book": {
+          "title": "Rolls Royce",
+          "author": "Founders Pod"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.3,
+        "insightType": "example",
+        "curatorReason": "Regulatory capture from railway industry killed innovation - over-regulation protecting incumbents"
+      },
+      {
+        "readwiseId": 592780477,
+        "book": {
+          "title": "The Ancient City",
+          "author": "Numa Denis Fustel de Coulanges"
+        },
+        "relevanceScore": 8.4,
+        "qualityScore": 8.2,
+        "insightType": "example",
+        "curatorReason": "Late-stage democracy - officials selling favors, rule of whoever has most resources, institutional rot"
+      }
+    ]
+  }
+}

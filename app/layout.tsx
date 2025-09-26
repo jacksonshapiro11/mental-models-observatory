@@ -1,8 +1,15 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import Navigation from '@/components/layout/Navigation';
+import Footer from '@/components/layout/Footer';
+import { SkipToContent } from '@/components/ui/AccessibilityEnhanced';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ 
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: {
@@ -56,67 +63,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
-      <body className={`${inter.className} h-full bg-white text-gray-900 antialiased`}>
+      <body className={`${inter.className} h-full bg-neutral-25 text-neutral-800 antialiased`}>
         <div className="flex min-h-full flex-col">
-          <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex h-16 items-center justify-between">
-                <div className="flex items-center">
-                  <a href="/" className="flex items-center space-x-2">
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">🧠</span>
-                    </div>
-                    <span className="text-xl font-bold text-gray-900">Mental Models Observatory</span>
-                  </a>
-                </div>
-                <nav className="hidden md:flex items-center space-x-8">
-                  <a href="/domains" className="text-gray-600 hover:text-gray-900 transition-colors">
-                    Domains
-                  </a>
-                  <a href="/models" className="text-gray-600 hover:text-gray-900 transition-colors">
-                    Models
-                  </a>
-                  <a href="/about" className="text-gray-600 hover:text-gray-900 transition-colors">
-                    About
-                  </a>
-                </nav>
-              </div>
-            </div>
+          <header className="p-4 bg-blue-600 text-white">
+            <h1>Mental Models Observatory</h1>
           </header>
-          <main className="flex-1">
+          <main id="main-content" className="flex-1 p-4">
             {children}
           </main>
-          <footer className="border-t border-gray-200 bg-gray-50">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Mental Models Observatory</h3>
-                  <p className="text-gray-600">
-                    A comprehensive collection of mental models organized across 40 domains of knowledge.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Quick Links</h4>
-                  <ul className="space-y-2">
-                    <li><a href="/domains" className="text-gray-600 hover:text-gray-900">Domains</a></li>
-                    <li><a href="/models" className="text-gray-600 hover:text-gray-900">Models</a></li>
-                    <li><a href="/about" className="text-gray-600 hover:text-gray-900">About</a></li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Connect</h4>
-                  <ul className="space-y-2">
-                    <li><a href="https://github.com/yourusername/mental-models-observatory" className="text-gray-600 hover:text-gray-900">GitHub</a></li>
-                    <li><a href="mailto:your-email@example.com" className="text-gray-600 hover:text-gray-900">Contact</a></li>
-                  </ul>
-                </div>
-              </div>
-              <div className="mt-8 pt-8 border-t border-gray-200">
-                <p className="text-center text-gray-500 text-sm">
-                  © {new Date().getFullYear()} Mental Models Observatory. Built with ❤️ for the mental models community.
-                </p>
-              </div>
-            </div>
+          <footer className="p-4 bg-gray-800 text-white">
+            <p>© 2024 Mental Models Observatory</p>
           </footer>
         </div>
       </body>

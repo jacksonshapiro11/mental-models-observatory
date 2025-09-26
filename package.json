@@ -30,6 +30,10 @@
     "deploy:vercel": "vercel --prod",
     "deploy:preview": "vercel",
     "parse-readwise": "node scripts/parse-readwise-framework.js",
+    "test-readwise": "node scripts/test-readwise-connection.js",
+    "test-readwise-integration": "node scripts/test-readwise-integration.js",
+    "standardize-domains": "node scripts/standardize-domains.js",
+    "test-data": "node scripts/test-data-manager.js",
     "setup": "./scripts/setup.sh"
   },
   "dependencies": {
@@ -37,6 +41,7 @@
     "@tailwindcss/typography": "^0.5.10",
     "autoprefixer": "^10.4.16",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.1",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.541.0",
     "next": "15.5.0",

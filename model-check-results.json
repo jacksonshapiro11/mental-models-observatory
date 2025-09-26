@@ -1,0 +1,993 @@
+{
+  "total": 119,
+  "working": 64,
+  "broken": 55,
+  "workingModels": [
+    {
+      "slug": "memento-mori-death-as-teacher",
+      "title": "Philosophy and Life",
+      "domain": "Time & Mortality Awareness",
+      "highlightCount": 10
+    },
+    {
+      "slug": "regret-vs-mistakes-framework",
+      "title": "Steve Jobs material",
+      "domain": "Time & Mortality Awareness",
+      "highlightCount": 10
+    },
+    {
+      "slug": "finite-life-recognition-atelic-activities",
+      "title": "Four Thousand Weeks",
+      "domain": "Time & Mortality Awareness",
+      "highlightCount": 10
+    },
+    {
+      "slug": "present-moment-elasticity-time-perception",
+      "title": "Einstein",
+      "domain": "Time & Mortality Awareness",
+      "highlightCount": 10
+    },
+    {
+      "slug": "thermodynamics-energy-conservation",
+      "title": "Scale",
+      "domain": "Physics & Fundamental Constraints",
+      "highlightCount": 10
+    },
+    {
+      "slug": "information-theory-physical-reality",
+      "title": "Reality Is Not What It Seems",
+      "domain": "Physics & Fundamental Constraints",
+      "highlightCount": 10
+    },
+    {
+      "slug": "quantum-mechanics-measurement",
+      "title": "The Frontiers of Knowledge",
+      "domain": "Physics & Fundamental Constraints",
+      "highlightCount": 10
+    },
+    {
+      "slug": "relativity-space-time",
+      "title": "Reality Is Not What It Seems",
+      "domain": "Physics & Fundamental Constraints",
+      "highlightCount": 10
+    },
+    {
+      "slug": "non-linear-dynamics-initial-conditions",
+      "title": "Chaos",
+      "domain": "Physics & Fundamental Constraints",
+      "highlightCount": 10
+    },
+    {
+      "slug": "energy-as-core-resource-ultimate-constraint",
+      "title": "Scale",
+      "domain": "Energy & Resource Flows",
+      "highlightCount": 10
+    },
+    {
+      "slug": "metabolic-constraints-biological-scaling",
+      "title": "Scale",
+      "domain": "Energy & Resource Flows",
+      "highlightCount": 10
+    },
+    {
+      "slug": "stocks-flows-system-structure",
+      "title": "Thinking in Systems",
+      "domain": "Systems Thinking & Complexity",
+      "highlightCount": 10
+    },
+    {
+      "slug": "feedback-loops-system-dynamics",
+      "title": "Thinking in Systems",
+      "domain": "Systems Thinking & Complexity",
+      "highlightCount": 10
+    },
+    {
+      "slug": "emergence-complex-adaptive-systems",
+      "title": "Complexity",
+      "domain": "Systems Thinking & Complexity",
+      "highlightCount": 10
+    },
+    {
+      "slug": "leverage-points-high-impact-interventions",
+      "title": "Thinking in Systems",
+      "domain": "Systems Thinking & Complexity",
+      "highlightCount": 10
+    },
+    {
+      "slug": "models-as-mental-procedures-operating-systems",
+      "title": "Complexity",
+      "domain": "Mental Models & Cross-Disciplinary Thinking",
+      "highlightCount": 10
+    },
+    {
+      "slug": "cross-disciplinary-synthesis-the-best-answer-problem",
+      "title": "Thinking in Systems",
+      "domain": "Mental Models & Cross-Disciplinary Thinking",
+      "highlightCount": 10
+    },
+    {
+      "slug": "system-1-vs-system-2-thinking",
+      "title": "Thinking",
+      "domain": "Psychology & Human Behavior",
+      "highlightCount": 12
+    },
+    {
+      "slug": "cognitive-biases-systematic-errors",
+      "title": "Thinking",
+      "domain": "Psychology & Human Behavior",
+      "highlightCount": 10
+    },
+    {
+      "slug": "probabilistic-thinking-base-rate-neglect",
+      "title": "Thinking",
+      "domain": "Decision-Making Under Uncertainty",
+      "highlightCount": 10
+    },
+    {
+      "slug": "expected-value-asymmetric-payoffs",
+      "title": "Antifragile",
+      "domain": "Decision-Making Under Uncertainty",
+      "highlightCount": 11
+    },
+    {
+      "slug": "decision-fatigue-cognitive-resource-management",
+      "title": "Super Thinking",
+      "domain": "Decision-Making Under Uncertainty",
+      "highlightCount": 12
+    },
+    {
+      "slug": "critical-approach-fallibilism",
+      "title": "Conjectures and Refutations",
+      "domain": "Philosophy & Truth-Seeking",
+      "highlightCount": 1
+    },
+    {
+      "slug": "good-explanations-vs-prophecy",
+      "title": "Complexity",
+      "domain": "Philosophy & Truth-Seeking",
+      "highlightCount": 1
+    },
+    {
+      "slug": "boundaries-system-definition",
+      "title": "Thinking in Systems",
+      "domain": "Spatial-Geometric Thinking & Constraints",
+      "highlightCount": 10
+    },
+    {
+      "slug": "flow-states-optimal-experience",
+      "title": "Andy Matuschak",
+      "domain": "Temporal Dynamics & Flow States",
+      "highlightCount": 10
+    },
+    {
+      "slug": "temporal-coordination-system-rhythm",
+      "title": "Thinking in Systems",
+      "domain": "Temporal Dynamics & Flow States",
+      "highlightCount": 10
+    },
+    {
+      "slug": "regulatory-capture-institutional-decay",
+      "title": "Thinking in Systems",
+      "domain": "Power Dynamics & Political Systems",
+      "highlightCount": 10
+    },
+    {
+      "slug": "cultural-transmission-memetic-evolution",
+      "title": "Wanting",
+      "domain": "Cultural Anthropology & Social Identity",
+      "highlightCount": 10
+    },
+    {
+      "slug": "social-reality-construction-collective-belief",
+      "title": "The Frontiers of Knowledge",
+      "domain": "Cultural Anthropology & Social Identity",
+      "highlightCount": 10
+    },
+    {
+      "slug": "semantics-vs-meaning-deep-understanding",
+      "title": "The Creativity Code",
+      "domain": "Language & Communication Systems",
+      "highlightCount": 10
+    },
+    {
+      "slug": "signal-vs-noise-information-quality",
+      "title": "Thinking in Systems",
+      "domain": "Information Theory & Media Ecology",
+      "highlightCount": 10
+    },
+    {
+      "slug": "information-cascades-availability-bias",
+      "title": "Thinking",
+      "domain": "Information Theory & Media Ecology",
+      "highlightCount": 10
+    },
+    {
+      "slug": "predictive-processing-constructed-experience",
+      "title": "How Meditation Deconstructs Your Mind",
+      "domain": "Information Theory & Media Ecology",
+      "highlightCount": 10
+    },
+    {
+      "slug": "empathy-perspective-taking",
+      "title": "Meditations",
+      "domain": "Relationships & Human Connection",
+      "highlightCount": 10
+    },
+    {
+      "slug": "compounding-human-connections",
+      "title": "Steven Spielberg",
+      "domain": "Relationships & Human Connection",
+      "highlightCount": 10
+    },
+    {
+      "slug": "value-investing-systems-thinking",
+      "title": "Poor Charlie's Almanack",
+      "domain": "Investment & Capital Allocation",
+      "highlightCount": 6
+    },
+    {
+      "slug": "risk-management-asymmetric-payoffs",
+      "title": "Poor Charlie's Almanack",
+      "domain": "Investment & Capital Allocation",
+      "highlightCount": 10
+    },
+    {
+      "slug": "knowledge-compounding-synthesis",
+      "title": "Complexity",
+      "domain": "Learning & Skill Development",
+      "highlightCount": 10
+    },
+    {
+      "slug": "learning-by-doing-experience-curves",
+      "title": "Bill Gurley & Michael Mauboussin",
+      "domain": "Learning & Skill Development",
+      "highlightCount": 10
+    },
+    {
+      "slug": "competitive-advantage-sustainable-moats",
+      "title": "Zero to One",
+      "domain": "Business Strategy & Competition",
+      "highlightCount": 10
+    },
+    {
+      "slug": "innovation-unique-differentiation",
+      "title": "Founders Podcasts",
+      "domain": "Business Strategy & Competition",
+      "highlightCount": 10
+    },
+    {
+      "slug": "secrets-non-consensus-insights",
+      "title": "Zero to One",
+      "domain": "Business Strategy & Competition",
+      "highlightCount": 10
+    },
+    {
+      "slug": "incentive-alignment-system-design",
+      "title": "Thinking in Systems",
+      "domain": "Incentives & Mechanism Design",
+      "highlightCount": 10
+    },
+    {
+      "slug": "game-theory-strategic-interaction",
+      "title": "Complexity",
+      "domain": "Incentives & Mechanism Design",
+      "highlightCount": 10
+    },
+    {
+      "slug": "rules-system-leverage",
+      "title": "Thinking in Systems",
+      "domain": "Incentives & Mechanism Design",
+      "highlightCount": 10
+    },
+    {
+      "slug": "co-evolution-arms-races",
+      "title": "Complexity",
+      "domain": "Evolution & Biology",
+      "highlightCount": 40
+    },
+    {
+      "slug": "combinatorial-creativity-recombination",
+      "title": "The Idea Factory",
+      "domain": "Creativity & Innovation",
+      "highlightCount": 10
+    },
+    {
+      "slug": "aesthetic-innovation-mathematical-beauty",
+      "title": "The Creativity Code",
+      "domain": "Creativity & Innovation",
+      "highlightCount": 10
+    },
+    {
+      "slug": "design-principles-user-mental-models",
+      "title": "The Design of Everyday Things",
+      "domain": "Engineering & Design",
+      "highlightCount": 10
+    },
+    {
+      "slug": "reliability-safety-margins",
+      "title": "Thinking in Systems",
+      "domain": "Engineering & Design",
+      "highlightCount": 10
+    },
+    {
+      "slug": "network-effects-emergent-behavior",
+      "title": "Complexity",
+      "domain": "Complex Adaptive Systems",
+      "highlightCount": 10
+    },
+    {
+      "slug": "adaptation-continuous-evolution",
+      "title": "Complexity",
+      "domain": "Complex Adaptive Systems",
+      "highlightCount": 10
+    },
+    {
+      "slug": "statistical-inference-sample-size-awareness",
+      "title": "The Creativity Code",
+      "domain": "Statistics & Data Science",
+      "highlightCount": 10
+    },
+    {
+      "slug": "neural-networks-executive-function",
+      "title": "Behave",
+      "domain": "Neuroscience & Consciousness",
+      "highlightCount": 10
+    },
+    {
+      "slug": "strategic-thinking-equilibrium-concepts",
+      "title": "The Beginning of Infinity",
+      "domain": "Game Theory & Strategic Interaction",
+      "highlightCount": 10
+    },
+    {
+      "slug": "cooperation-strategies-reciprocity",
+      "title": "Complexity",
+      "domain": "Game Theory & Strategic Interaction",
+      "highlightCount": 10
+    },
+    {
+      "slug": "identity-based-habits-self-concept",
+      "title": "Atomic Habits",
+      "domain": "Habit Formation & Behavior Change",
+      "highlightCount": 10
+    },
+    {
+      "slug": "systems-vs-goals-compound-habits",
+      "title": "Atomic Habits",
+      "domain": "Habit Formation & Behavior Change",
+      "highlightCount": 10
+    },
+    {
+      "slug": "supply-demand-emergent-market-behavior",
+      "title": "Thinking in Systems",
+      "domain": "Economics & Market Dynamics",
+      "highlightCount": 10
+    },
+    {
+      "slug": "behavioral-economics-psychological-market-forces",
+      "title": "Thinking",
+      "domain": "Economics & Market Dynamics",
+      "highlightCount": 10
+    },
+    {
+      "slug": "resourcefulness-constraint-navigation",
+      "title": "Claude Hopkins",
+      "domain": "Practical Wisdom & Resourcefulness",
+      "highlightCount": 10
+    },
+    {
+      "slug": "execution-implementation-mastery",
+      "title": "Claude Hopkins",
+      "domain": "Practical Wisdom & Resourcefulness",
+      "highlightCount": 10
+    },
+    {
+      "slug": "purpose-transcendent-meaning",
+      "title": "Man's Search for Meaning",
+      "domain": "Ritual & Meaning-Making",
+      "highlightCount": 10
+    }
+  ],
+  "brokenModels": [
+    {
+      "slug": "first-principles-reasoning-ground-up-construction",
+      "title": "Leonardo DaVinci",
+      "domain": "Mental Models & Cross-Disciplinary Thinking"
+    },
+    {
+      "slug": "bias-inherent-in-models-hidden-assumptions",
+      "title": "The Structure of Scientific Revolutions",
+      "domain": "Mental Models & Cross-Disciplinary Thinking"
+    },
+    {
+      "slug": "model-testing-refinement-through-criticism",
+      "title": "Thinking in Systems",
+      "domain": "Mental Models & Cross-Disciplinary Thinking"
+    },
+    {
+      "slug": "kahneman-s-8-decision-making-questions",
+      "title": "Thinking",
+      "domain": "Psychology & Human Behavior"
+    },
+    {
+      "slug": "mental-accounting-reference-point-dependence",
+      "title": "Thinking",
+      "domain": "Psychology & Human Behavior"
+    },
+    {
+      "slug": "social-psychology-environmental-influence",
+      "title": "Behave",
+      "domain": "Psychology & Human Behavior"
+    },
+    {
+      "slug": "decision-quality-vs-outcome-separation",
+      "title": "Annie Duke and Howard Marks",
+      "domain": "Decision-Making Under Uncertainty"
+    },
+    {
+      "slug": "the-ladder-vs-the-spectrum-thinking-about-thinking",
+      "title": "What's Our Problem",
+      "domain": "Philosophy & Truth-Seeking"
+    },
+    {
+      "slug": "paradigm-shifts-transcendence",
+      "title": "The Structure of Scientific Revolutions",
+      "domain": "Philosophy & Truth-Seeking"
+    },
+    {
+      "slug": "consciousness-the-hard-problem",
+      "title": "The Frontiers of Knowledge",
+      "domain": "Philosophy & Truth-Seeking"
+    },
+    {
+      "slug": "the-power-of-daily-compounding",
+      "title": "Atomic Habits",
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "slug": "exponential-vs-linear-thinking",
+      "title": "The Exponential Age",
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "slug": "superlinear-returns-power-laws",
+      "title": "Superlinear Returns",
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "slug": "work-that-compounds-knowledge-compounding",
+      "title": "How to Do Great Work",
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "slug": "jump-to-universality",
+      "title": "The Beginning of Infinity",
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "slug": "fractals-self-similarity-across-scales",
+      "title": "Chaos",
+      "domain": "Spatial-Geometric Thinking & Constraints"
+    },
+    {
+      "slug": "scaling-laws-dimensional-analysis",
+      "title": "Scale",
+      "domain": "Spatial-Geometric Thinking & Constraints"
+    },
+    {
+      "slug": "power-concentration-natural-centralization",
+      "title": "Lessons of History",
+      "domain": "Power Dynamics & Political Systems"
+    },
+    {
+      "slug": "power-games-vs-authentic-strength",
+      "title": "The Power of Now",
+      "domain": "Power Dynamics & Political Systems"
+    },
+    {
+      "slug": "language-as-mental-model-reverse-compression",
+      "title": "The Creativity Code",
+      "domain": "Language & Communication Systems"
+    },
+    {
+      "slug": "human-computer-symbiosis-cognitive-augmentation",
+      "title": "The Dream Machine",
+      "domain": "Technology & Human-Computer Interaction"
+    },
+    {
+      "slug": "technology-as-capability-amplifier",
+      "title": "Founders Podcasts",
+      "domain": "Technology & Human-Computer Interaction"
+    },
+    {
+      "slug": "coordination-mechanisms-human-cooperation",
+      "title": "Bankless Podcast",
+      "domain": "Organizational Design & Institutions"
+    },
+    {
+      "slug": "bureaucracy-vs-agility-trade-offs",
+      "title": "Poor Charlie's Almanack",
+      "domain": "Organizational Design & Institutions"
+    },
+    {
+      "slug": "high-trust-culture-autonomous-teams",
+      "title": "Mark Leonard's Shareholder Letters",
+      "domain": "Organizational Design & Institutions"
+    },
+    {
+      "slug": "love-as-nuclear-fuel-life-foundation",
+      "title": "The Science of Happiness",
+      "domain": "Relationships & Human Connection"
+    },
+    {
+      "slug": "horizontal-vs-vertical-relationships",
+      "title": "The Courage to Be Disliked",
+      "domain": "Relationships & Human Connection"
+    },
+    {
+      "slug": "physical-foundations-as-life-infrastructure",
+      "title": "Outlive",
+      "domain": "Health & Human Optimization"
+    },
+    {
+      "slug": "proactive-vs-reactive-health-strategy",
+      "title": "Outlive",
+      "domain": "Health & Human Optimization"
+    },
+    {
+      "slug": "physiological-states-decision-quality",
+      "title": "Dr. Leah Lagos and Joe Mazzulla",
+      "domain": "Health & Human Optimization"
+    },
+    {
+      "slug": "present-moment-awareness-non-identification",
+      "title": "10% Happier",
+      "domain": "Mindfulness & Inner Work"
+    },
+    {
+      "slug": "mind-body-integration-embodied-presence",
+      "title": "The Power of Now",
+      "domain": "Mindfulness & Inner Work"
+    },
+    {
+      "slug": "deconstructing-mental-patterns-pain-body",
+      "title": "The Power of Now",
+      "domain": "Mindfulness & Inner Work"
+    },
+    {
+      "slug": "transcending-ego-two-selves-integration",
+      "title": "The Power of Now",
+      "domain": "Mindfulness & Inner Work"
+    },
+    {
+      "slug": "power-laws-concentration-vs-diversification",
+      "title": "Zero to One",
+      "domain": "Investment & Capital Allocation"
+    },
+    {
+      "slug": "deliberate-practice-expertise-development",
+      "title": "Andy Matuschak",
+      "domain": "Learning & Skill Development"
+    },
+    {
+      "slug": "variation-selection-and-heredity",
+      "title": "Lessons of History",
+      "domain": "Evolution & Biology"
+    },
+    {
+      "slug": "pattern-recognition-universal-constants",
+      "title": "Chaos",
+      "domain": "Mathematics & Logic"
+    },
+    {
+      "slug": "logic-optimization-under-constraints",
+      "title": "The Frontiers of Knowledge",
+      "domain": "Mathematics & Logic"
+    },
+    {
+      "slug": "historical-cycles-pendulum-swings",
+      "title": "Lessons of History",
+      "domain": "History & Institutional Evolution"
+    },
+    {
+      "slug": "institutional-path-dependence-lock-in-effects",
+      "title": "Complexity",
+      "domain": "History & Institutional Evolution"
+    },
+    {
+      "slug": "data-interpretation-aesthetic-vs-functional-truth",
+      "title": "Seeing Like a State",
+      "domain": "Statistics & Data Science"
+    },
+    {
+      "slug": "the-hard-problem-consciousness-integration",
+      "title": "The Frontiers of Knowledge",
+      "domain": "Neuroscience & Consciousness"
+    },
+    {
+      "slug": "ritual-design-sacred-experience-creation",
+      "title": "Philosophy and Life",
+      "domain": "Ritual & Meaning-Making"
+    },
+    {
+      "slug": "identity-formation-through-narrative-construction",
+      "title": "Philosophy and Life",
+      "domain": "Narrative & Identity"
+    },
+    {
+      "slug": "multifaceted-identity-adaptive-self-concept",
+      "title": "Maya Shankar",
+      "domain": "Narrative & Identity"
+    },
+    {
+      "slug": "story-as-sense-making-mental-model-construction",
+      "title": "The Psychology of Money",
+      "domain": "Narrative & Identity"
+    },
+    {
+      "slug": "identity-affirmation-conscious-self-creation",
+      "title": "Alfalfa Podcast",
+      "domain": "Narrative & Identity"
+    },
+    {
+      "slug": "bottlenecks-system-constraint-identification",
+      "title": "Thinking in Systems",
+      "domain": "Constraint Theory & Optimization"
+    },
+    {
+      "slug": "optimization-within-limits-resource-allocation",
+      "title": "Thinking in Systems",
+      "domain": "Constraint Theory & Optimization"
+    },
+    {
+      "slug": "creative-constraint-navigation-inversion",
+      "title": "Zero to One",
+      "domain": "Constraint Theory & Optimization"
+    },
+    {
+      "slug": "levels-of-emergence-scale-transitions",
+      "title": "The Fabric of Reality",
+      "domain": "Emergence & Levels of Abstraction"
+    },
+    {
+      "slug": "reductionism-vs-holism-integration",
+      "title": "The Fabric of Reality",
+      "domain": "Emergence & Levels of Abstraction"
+    },
+    {
+      "slug": "simple-rules-generating-complex-behaviors",
+      "title": "Chaos",
+      "domain": "Emergence & Levels of Abstraction"
+    },
+    {
+      "slug": "universality-infinite-reach-from-finite-means",
+      "title": "The Beginning of Infinity",
+      "domain": "Emergence & Levels of Abstraction"
+    }
+  ],
+  "brokenByDomain": {
+    "Mental Models & Cross-Disciplinary Thinking": [
+      {
+        "slug": "first-principles-reasoning-ground-up-construction",
+        "title": "Leonardo DaVinci",
+        "domain": "Mental Models & Cross-Disciplinary Thinking"
+      },
+      {
+        "slug": "bias-inherent-in-models-hidden-assumptions",
+        "title": "The Structure of Scientific Revolutions",
+        "domain": "Mental Models & Cross-Disciplinary Thinking"
+      },
+      {
+        "slug": "model-testing-refinement-through-criticism",
+        "title": "Thinking in Systems",
+        "domain": "Mental Models & Cross-Disciplinary Thinking"
+      }
+    ],
+    "Psychology & Human Behavior": [
+      {
+        "slug": "kahneman-s-8-decision-making-questions",
+        "title": "Thinking",
+        "domain": "Psychology & Human Behavior"
+      },
+      {
+        "slug": "mental-accounting-reference-point-dependence",
+        "title": "Thinking",
+        "domain": "Psychology & Human Behavior"
+      },
+      {
+        "slug": "social-psychology-environmental-influence",
+        "title": "Behave",
+        "domain": "Psychology & Human Behavior"
+      }
+    ],
+    "Decision-Making Under Uncertainty": [
+      {
+        "slug": "decision-quality-vs-outcome-separation",
+        "title": "Annie Duke and Howard Marks",
+        "domain": "Decision-Making Under Uncertainty"
+      }
+    ],
+    "Philosophy & Truth-Seeking": [
+      {
+        "slug": "the-ladder-vs-the-spectrum-thinking-about-thinking",
+        "title": "What's Our Problem",
+        "domain": "Philosophy & Truth-Seeking"
+      },
+      {
+        "slug": "paradigm-shifts-transcendence",
+        "title": "The Structure of Scientific Revolutions",
+        "domain": "Philosophy & Truth-Seeking"
+      },
+      {
+        "slug": "consciousness-the-hard-problem",
+        "title": "The Frontiers of Knowledge",
+        "domain": "Philosophy & Truth-Seeking"
+      }
+    ],
+    "Exponential Thinking & Compounding": [
+      {
+        "slug": "the-power-of-daily-compounding",
+        "title": "Atomic Habits",
+        "domain": "Exponential Thinking & Compounding"
+      },
+      {
+        "slug": "exponential-vs-linear-thinking",
+        "title": "The Exponential Age",
+        "domain": "Exponential Thinking & Compounding"
+      },
+      {
+        "slug": "superlinear-returns-power-laws",
+        "title": "Superlinear Returns",
+        "domain": "Exponential Thinking & Compounding"
+      },
+      {
+        "slug": "work-that-compounds-knowledge-compounding",
+        "title": "How to Do Great Work",
+        "domain": "Exponential Thinking & Compounding"
+      },
+      {
+        "slug": "jump-to-universality",
+        "title": "The Beginning of Infinity",
+        "domain": "Exponential Thinking & Compounding"
+      }
+    ],
+    "Spatial-Geometric Thinking & Constraints": [
+      {
+        "slug": "fractals-self-similarity-across-scales",
+        "title": "Chaos",
+        "domain": "Spatial-Geometric Thinking & Constraints"
+      },
+      {
+        "slug": "scaling-laws-dimensional-analysis",
+        "title": "Scale",
+        "domain": "Spatial-Geometric Thinking & Constraints"
+      }
+    ],
+    "Power Dynamics & Political Systems": [
+      {
+        "slug": "power-concentration-natural-centralization",
+        "title": "Lessons of History",
+        "domain": "Power Dynamics & Political Systems"
+      },
+      {
+        "slug": "power-games-vs-authentic-strength",
+        "title": "The Power of Now",
+        "domain": "Power Dynamics & Political Systems"
+      }
+    ],
+    "Language & Communication Systems": [
+      {
+        "slug": "language-as-mental-model-reverse-compression",
+        "title": "The Creativity Code",
+        "domain": "Language & Communication Systems"
+      }
+    ],
+    "Technology & Human-Computer Interaction": [
+      {
+        "slug": "human-computer-symbiosis-cognitive-augmentation",
+        "title": "The Dream Machine",
+        "domain": "Technology & Human-Computer Interaction"
+      },
+      {
+        "slug": "technology-as-capability-amplifier",
+        "title": "Founders Podcasts",
+        "domain": "Technology & Human-Computer Interaction"
+      }
+    ],
+    "Organizational Design & Institutions": [
+      {
+        "slug": "coordination-mechanisms-human-cooperation",
+        "title": "Bankless Podcast",
+        "domain": "Organizational Design & Institutions"
+      },
+      {
+        "slug": "bureaucracy-vs-agility-trade-offs",
+        "title": "Poor Charlie's Almanack",
+        "domain": "Organizational Design & Institutions"
+      },
+      {
+        "slug": "high-trust-culture-autonomous-teams",
+        "title": "Mark Leonard's Shareholder Letters",
+        "domain": "Organizational Design & Institutions"
+      }
+    ],
+    "Relationships & Human Connection": [
+      {
+        "slug": "love-as-nuclear-fuel-life-foundation",
+        "title": "The Science of Happiness",
+        "domain": "Relationships & Human Connection"
+      },
+      {
+        "slug": "horizontal-vs-vertical-relationships",
+        "title": "The Courage to Be Disliked",
+        "domain": "Relationships & Human Connection"
+      }
+    ],
+    "Health & Human Optimization": [
+      {
+        "slug": "physical-foundations-as-life-infrastructure",
+        "title": "Outlive",
+        "domain": "Health & Human Optimization"
+      },
+      {
+        "slug": "proactive-vs-reactive-health-strategy",
+        "title": "Outlive",
+        "domain": "Health & Human Optimization"
+      },
+      {
+        "slug": "physiological-states-decision-quality",
+        "title": "Dr. Leah Lagos and Joe Mazzulla",
+        "domain": "Health & Human Optimization"
+      }
+    ],
+    "Mindfulness & Inner Work": [
+      {
+        "slug": "present-moment-awareness-non-identification",
+        "title": "10% Happier",
+        "domain": "Mindfulness & Inner Work"
+      },
+      {
+        "slug": "mind-body-integration-embodied-presence",
+        "title": "The Power of Now",
+        "domain": "Mindfulness & Inner Work"
+      },
+      {
+        "slug": "deconstructing-mental-patterns-pain-body",
+        "title": "The Power of Now",
+        "domain": "Mindfulness & Inner Work"
+      },
+      {
+        "slug": "transcending-ego-two-selves-integration",
+        "title": "The Power of Now",
+        "domain": "Mindfulness & Inner Work"
+      }
+    ],
+    "Investment & Capital Allocation": [
+      {
+        "slug": "power-laws-concentration-vs-diversification",
+        "title": "Zero to One",
+        "domain": "Investment & Capital Allocation"
+      }
+    ],
+    "Learning & Skill Development": [
+      {
+        "slug": "deliberate-practice-expertise-development",
+        "title": "Andy Matuschak",
+        "domain": "Learning & Skill Development"
+      }
+    ],
+    "Evolution & Biology": [
+      {
+        "slug": "variation-selection-and-heredity",
+        "title": "Lessons of History",
+        "domain": "Evolution & Biology"
+      }
+    ],
+    "Mathematics & Logic": [
+      {
+        "slug": "pattern-recognition-universal-constants",
+        "title": "Chaos",
+        "domain": "Mathematics & Logic"
+      },
+      {
+        "slug": "logic-optimization-under-constraints",
+        "title": "The Frontiers of Knowledge",
+        "domain": "Mathematics & Logic"
+      }
+    ],
+    "History & Institutional Evolution": [
+      {
+        "slug": "historical-cycles-pendulum-swings",
+        "title": "Lessons of History",
+        "domain": "History & Institutional Evolution"
+      },
+      {
+        "slug": "institutional-path-dependence-lock-in-effects",
+        "title": "Complexity",
+        "domain": "History & Institutional Evolution"
+      }
+    ],
+    "Statistics & Data Science": [
+      {
+        "slug": "data-interpretation-aesthetic-vs-functional-truth",
+        "title": "Seeing Like a State",
+        "domain": "Statistics & Data Science"
+      }
+    ],
+    "Neuroscience & Consciousness": [
+      {
+        "slug": "the-hard-problem-consciousness-integration",
+        "title": "The Frontiers of Knowledge",
+        "domain": "Neuroscience & Consciousness"
+      }
+    ],
+    "Ritual & Meaning-Making": [
+      {
+        "slug": "ritual-design-sacred-experience-creation",
+        "title": "Philosophy and Life",
+        "domain": "Ritual & Meaning-Making"
+      }
+    ],
+    "Narrative & Identity": [
+      {
+        "slug": "identity-formation-through-narrative-construction",
+        "title": "Philosophy and Life",
+        "domain": "Narrative & Identity"
+      },
+      {
+        "slug": "multifaceted-identity-adaptive-self-concept",
+        "title": "Maya Shankar",
+        "domain": "Narrative & Identity"
+      },
+      {
+        "slug": "story-as-sense-making-mental-model-construction",
+        "title": "The Psychology of Money",
+        "domain": "Narrative & Identity"
+      },
+      {
+        "slug": "identity-affirmation-conscious-self-creation",
+        "title": "Alfalfa Podcast",
+        "domain": "Narrative & Identity"
+      }
+    ],
+    "Constraint Theory & Optimization": [
+      {
+        "slug": "bottlenecks-system-constraint-identification",
+        "title": "Thinking in Systems",
+        "domain": "Constraint Theory & Optimization"
+      },
+      {
+        "slug": "optimization-within-limits-resource-allocation",
+        "title": "Thinking in Systems",
+        "domain": "Constraint Theory & Optimization"
+      },
+      {
+        "slug": "creative-constraint-navigation-inversion",
+        "title": "Zero to One",
+        "domain": "Constraint Theory & Optimization"
+      }
+    ],
+    "Emergence & Levels of Abstraction": [
+      {
+        "slug": "levels-of-emergence-scale-transitions",
+        "title": "The Fabric of Reality",
+        "domain": "Emergence & Levels of Abstraction"
+      },
+      {
+        "slug": "reductionism-vs-holism-integration",
+        "title": "The Fabric of Reality",
+        "domain": "Emergence & Levels of Abstraction"
+      },
+      {
+        "slug": "simple-rules-generating-complex-behaviors",
+        "title": "Chaos",
+        "domain": "Emergence & Levels of Abstraction"
+      },
+      {
+        "slug": "universality-infinite-reach-from-finite-means",
+        "title": "The Beginning of Infinity",
+        "domain": "Emergence & Levels of Abstraction"
+      }
+    ]
+  }
+}

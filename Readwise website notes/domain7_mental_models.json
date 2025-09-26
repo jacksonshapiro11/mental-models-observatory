@@ -1,0 +1,518 @@
+[
+  {
+    "modelId": "probabilistic-thinking-base-rate-neglect",
+    "modelTitle": "Probabilistic Thinking & Base Rate Neglect",
+    "curatedHighlights": [
+      {
+        "readwiseId": 511963714,
+        "text": "1. The inside view vs the outside view. How the people in the group think it will go and how other groups performed in the same task. The group thought it would take 2 years based on their skills and intuitions but similarly skilled teams generally took 7-10 years with a 40% of failure the inside view misses all the unforeseen circumstances of the outside view 2 planning fallacy people assume the best case not the ev or realistic case 3. Perseverance knowing this project could take 7-10 years and even though no one wanted to commit that there was enough cognitive dissonance to believe it was different this time The inside view prevents you from seeing the unknown unknowns that throw a wrench in plans people only see what is in front of them and extrapolate even if what has been done so far isn't indicative of the future of the project If the data is reliable the outside view is the base rate and the inside view is the intuition about the specific situation. Find a good reference class for the problem find useful statistics in that reference class then use specifics of the case to adjust from there The planning fallacy leads to over optimistic guesses that do not weigh the risks properly because hey understate and don't fully understand the risks",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.5,
+        "insightType": "definition",
+        "curatorReason": "Perfect articulation of inside vs outside view with concrete example and explanation of base rates"
+      },
+      {
+        "readwiseId": 515357859,
+        "text": "We need to think grey instead of thinking in certainties either 100% or 0%. Press secretary of trying to paint the rosy picture vs the board trying to figure out the truth. Calibrate your bets by assigning percentages to each side to get a sense of what the payoff needed given what the risk is",
+        "book": {
+          "title": "The Scout Mindset",
+          "author": "Julia Galef"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.8,
+        "insightType": "practice",
+        "curatorReason": "Concise explanation of probabilistic thinking vs binary thinking with practical calibration advice"
+      },
+      {
+        "readwiseId": 639917722,
+        "text": "Separate single outcomes from decision quality. Mind the same size of a decision set. Think about learning environments everyone is a genius in a bull market. We don't like to think our successful decisions are luck based. Scientific method. Understand base rates when splitting luck and skill and understand the drivers making $100 through arbitrage and a radon stock gave different causal factors so that helps you understand luck and skill. Look through alternate histories and somethings are unknown unknowns. Know what you know and not know. Have a forecast and probability that you're right. Too much confidence leads to issue not measured uncertainty. We want to think we're smart and don't look for the factors that can lead to our success and failure. We hate hearing we're wrong.",
+        "book": {
+          "title": "The Insight — Conversations – Special Episode With Annie Duke and Howard Marks",
+          "author": "The Memo by Howard Marks"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 9.0,
+        "insightType": "mechanism",
+        "curatorReason": "Excellent integration of probabilistic thinking with base rates and learning from outcomes"
+      },
+      {
+        "readwiseId": 511963926,
+        "text": "Tom w substitution of description over base rates. Even though we know there are more shy social scientists then computer scientists 10% of social scientists are shy while 50% of computer scientists are and if there are 10x more social scientists someone whose shy is more likely to be of that group than computer scientists but when we here the description we use association and representation instead of base rates so we overrate the % he will be a computer scientists becauseof representative bias. Question of probability is harder than similarity so the question gets replaced and the answer gets muddied and wrong. We neglect base rates because of representativeness",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.7,
+        "insightType": "example",
+        "curatorReason": "Classic example demonstrating how representativeness bias causes base rate neglect with clear numerical illustration"
+      },
+      {
+        "readwiseId": 511963880,
+        "text": "Prediction correlation between 2 measures is = shared factors among determinants. If correlation is 30% we can come up with a guess like this 1. Start with the average 2. Given the information use intensity matching to see the full effect. Match evidence to predictive variable 3. Estimate your evidence between the correlation between the 2 variables. Ie get the correlation between the 2 vars 4. If the correlation is .3 move 30% from step 2 to step 1 This helps you build on your intuitive prediction by lowering the bias when you make the prediction. Non regressive to the mean will be biased based on the evidence unless the correlation is 100% This is an approximation on statistical evidence but in some situations where tail events are really valuable and the data doesn't follow a mean distribution we need to overweight our predictions and underweight regress to the mean because there is huge value in the in linear effects. Using regression the the mean hurts your ability to hit home runs but helps you hit singles and take walks. For vc intuition is more important than mean regression for making bank loans it's the opposite. The value of this most is you get to measure and think about of how you know",
+        "book": {
+          "title": "Thinking Fast and Slow", 
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.5,
+        "insightType": "mechanism",
+        "curatorReason": "Detailed formula for probabilistic prediction that balances intuition with base rates"
+      },
+      {
+        "readwiseId": 511963975,
+        "text": "Extreme outcomes are biased by small sample sizes. Cities with low instances of kidney cancer are rural small populations mostly Republican in the Midwest and south and cities with high instances of kidney cancer have the same characteristics more the law of small numbers than anything about the towns or people there. Of you did the sample the next year the towns might be different but their characteristics would be the same People use small sample sizes and create inaccurate results It's easier to look for why something is true than to constantly maintain doubt",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.1,
+        "qualityScore": 8.9,
+        "insightType": "example",
+        "curatorReason": "Perfect illustration of how small sample sizes mislead us and why we must consider base rates"
+      },
+      {
+        "readwiseId": 515357877,
+        "text": "To notice your bias you need to understand the argument from both sides 1. Double standard test am I too harsh or loose on my own position am I setting a double standard 2. The outside view of I started day 1 what would I do right now 3. Conformity or yes man test. Try people's opinions and see if they have a true opinion for the other side or they're just bs and copying 4. Selective skeptic test only criticizing the views you dint hold abs more or less blindly accepting conforming evidence even if it might be non rigorous or wrong 5. Status quo bias test we are loss averse to the present and would rather keep with the status quo than deviate for what might be better for us. View both situations staying in your job and leaving it objectively before moving",
+        "book": {
+          "title": "The Scout Mindset",
+          "author": "Julia Galef"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 9.2,
+        "insightType": "practice",
+        "curatorReason": "Comprehensive toolkit for overcoming biases that prevent proper probabilistic thinking"
+      },
+      {
+        "readwiseId": 511963908,
+        "text": "2 situations a flood that kills 1k people or an earth quake that causes a flood that kills 1k. 1 is obviously more likely but people thought scenario 2 was more plausible because it was more representative and easier to imagine. Less is more fitting into one bucket vs fitting into 2 buckets. 1 bucket will always be easier A set of high value baseball cards valued higher than a set of the same cards + a few worse ones when done independently when viewed together this mistake wasn't made",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.6,
+        "insightType": "example",
+        "curatorReason": "Demonstrates conjunction fallacy and why specific scenarios seem more probable than general ones"
+      },
+      {
+        "readwiseId": 511963951,
+        "text": "Availability influences your opinion if you can think of things easier than you're more likely to associate yourself with those things. If something comes easily to mind you overrate it's likelihood. Availability biases are a function of system 1. The more media stories the more likely you think it is when it's really unlikely overall",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.4,
+        "insightType": "mechanism",
+        "curatorReason": "Clear explanation of how availability heuristic distorts probability assessments"
+      },
+      {
+        "readwiseId": 780432998,
+        "text": "When you start from the premise that you're an objective thinker, you lend your conclusions an air of unimpeachability they usually don't deserve.",
+        "book": {
+          "title": "The Scout Mindset",
+          "author": "Julia Galef"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 9.0,
+        "insightType": "counterpoint",
+        "curatorReason": "Important warning against overconfidence in our own objectivity when making probabilistic assessments"
+      }
+    ]
+  },
+  {
+    "modelId": "expected-value-asymmetric-payoffs",
+    "modelTitle": "Expected Value & Asymmetric Payoffs",
+    "curatedHighlights": [
+      {
+        "readwiseId": 518564722,
+        "text": "Barbell mitigate fragility risk to you don't ruin and maximize exposure to upside with small calculated bets. Balancing life instead of being in the middle with mitigated upside but not fully mitigated downside. Remove risk of ruin expose yourself to additional risk",
+        "book": {
+          "title": "Antifragile",
+          "author": "Nassim Taleb"
+        },
+        "relevanceScore": 9.5,
+        "qualityScore": 9.2,
+        "insightType": "application",
+        "curatorReason": "Perfect description of barbell strategy for asymmetric risk management"
+      },
+      {
+        "readwiseId": 545155036,
+        "text": "How I think about building new skills and taking on new initiatives right now is a framework from Tim Ferriss, which is when you're evaluating something to potentially spend your time on, it should have two things. It should have in some way uncapped upside such that if you do it, there's a chance of a lottery outcome, whatever you decide that lottery outcome is, but it's some kind of exponential upside. And the downside worst case is that you build a skill that then you could reapply elsewhere. And so I look at writing on Twitter as the perfect example of this. The upside is every single time you publish a tweet, it could go viral. Anyone on the world could see it, Elon Musk could see it, you could reach the most powerful people in the world. So if you publish 100 tweets, 200, 500, 1000, you're putting all those lottery tickets on goal, or in your pocket, worst case, you write 100 tweets for 100 days and you become a little bit better of a writer and no one reads them at all. And so I think for anyone thinking of how am I, what am I leveling up on right now? Make sure you're playing a game that has both exponential upside and zero downside because you would build a skill that then you could reapply later.",
+        "book": {
+          "title": "3 Weeks of Monk Mode — What Did We Build?",
+          "author": "The Espresso Hour"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.0,
+        "insightType": "application",
+        "curatorReason": "Perfect real-world example of seeking asymmetric payoffs with concrete Twitter example"
+      },
+      {
+        "readwiseId": 511961823,
+        "text": "People are risk averse in gains and risk seeking in losses Narrow framing is seeing each event as a one off while broad framing you can see closer to the true ev. If your need to play a game once and are loss averse 2-1 then yiu might not take a 1.5 ev but if you can play the game 1000 times your chances of loss are very small and your outcome will trend closer to the expected value Broad view of outcomes instead of narrow is the outside view and usually closer to optimal",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.3,
+        "qualityScore": 8.8,
+        "insightType": "mechanism",
+        "curatorReason": "Explains prospect theory and why broad framing enables better expected value decisions"
+      },
+      {
+        "readwiseId": 518563846,
+        "text": "Asymmetric risk and scale. When risk is even but pay offs are non linear the important news of scale and how some systems scale up and down as power laws a big Boulder has a different effect than that bolder broken into 1 mm pieces",
+        "book": {
+          "title": "Antifragile",
+          "author": "Nassim Taleb"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.5,
+        "insightType": "definition",
+        "curatorReason": "Core concept of asymmetric risk with scale effects and power law dynamics"
+      },
+      {
+        "readwiseId": 511349689,
+        "text": "Making a handful of good uncorrelated bets that are balanced and leveraged well is the surest way of having a lot of upside without being exposed to unacceptable downside.",
+        "book": {
+          "title": "Principles",
+          "author": "Ray Dalio"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.7,
+        "insightType": "application",
+        "curatorReason": "Practical portfolio construction advice for asymmetric payoffs"
+      },
+      {
+        "readwiseId": 518564456,
+        "text": "Buy optionality when possible if you can get a free or cheap option do it. Everything good and bad is driven by the tails so push out there could be very good or bad variation is good an average of 50 with no variation is very different when variation is added",
+        "book": {
+          "title": "Antifragile",
+          "author": "Nassim Taleb"
+        },
+        "relevanceScore": 9.1,
+        "qualityScore": 8.6,
+        "insightType": "practice",
+        "curatorReason": "Clear advice on seeking optionality and embracing positive convexity"
+      },
+      {
+        "readwiseId": 518559414,
+        "text": "The purpose of margin fir safety is to render the prediction unnecessary. The World is governed by odds not certainty and therefore we need to have adequate protection from things going to wrong way. When taking risk the risk of ruins the most important so that is the first one you need to avoid",
+        "book": {
+          "title": "The Psychology of Money",
+          "author": "Morgan Housel"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.9,
+        "insightType": "principle",
+        "curatorReason": "Fundamental principle of managing downside risk while seeking upside"
+      },
+      {
+        "readwiseId": 511349884,
+        "text": "In general, the upside potential for being right about growth is more dramatic, and the upside potential for being right about value is more consistent. Value is my approach. In my book, consistency trumps drama.",
+        "book": {
+          "title": "The Most Important Thing",
+          "author": "Howard Marks"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.8,
+        "insightType": "application",
+        "curatorReason": "Investment perspective on different types of asymmetric payoffs and risk-reward profiles"
+      },
+      {
+        "readwiseId": 518563795,
+        "text": "Negative convexity and randomness are bad because things with negative convexity will have proportionally worse outcomes for the same amount of risk ie traffic being light leads ri you showing up 5 minutes early but being heavy 50 minutes late risk return",
+        "book": {
+          "title": "Antifragile",
+          "author": "Nassim Taleb"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.4,
+        "insightType": "counterpoint",
+        "curatorReason": "Important warning about negative convexity - situations to avoid when seeking asymmetric payoffs"
+      },
+      {
+        "readwiseId": 511349937,
+        "text": "The payoff of a human venture is, in general, inversely proportional to what it is expected to be.",
+        "book": {
+          "title": "The Black Swan",
+          "author": "Nassim Nicholas Taleb"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 9.1,
+        "insightType": "principle",
+        "curatorReason": "Counterintuitive insight about where the biggest payoffs actually come from"
+      }
+    ]
+  },
+  {
+    "modelId": "decision-quality-outcome-separation",
+    "modelTitle": "Decision Quality vs. Outcome Separation",
+    "curatedHighlights": [
+      {
+        "readwiseId": 511349726,
+        "text": "The quality of our lives is the sum of decision quality plus luck.",
+        "book": {
+          "title": "Thinking in Bets",
+          "author": "Annie Duke"
+        },
+        "relevanceScore": 9.5,
+        "qualityScore": 9.3,
+        "insightType": "definition",
+        "curatorReason": "Fundamental equation that separates decision quality from luck-driven outcomes"
+      },
+      {
+        "readwiseId": 511349718,
+        "text": "What makes a decision great is not that it has a great outcome. A great decision is the result of a good process, and that process must include an attempt to accurately represent our own state of knowledge. That state of knowledge, in turn, is some variation of \"I'm not sure.\"",
+        "book": {
+          "title": "Thinking in Bets",
+          "author": "Annie Duke"
+        },
+        "relevanceScore": 9.7,
+        "qualityScore": 9.5,
+        "insightType": "definition",
+        "curatorReason": "Core principle that great decisions come from process, not outcomes, with epistemic humility"
+      },
+      {
+        "readwiseId": 511349720,
+        "text": "Pete Carroll was a victim of our tendency to equate the quality of a decision with the quality of its outcome. Poker players have a word for this: \"resulting.\" When I started playing poker, more experienced players warned me about the dangers of resulting, cautioning me to resist the temptation to change my strategy just because a few hands didn't turn out well in the short run.",
+        "book": {
+          "title": "Thinking in Bets",
+          "author": "Annie Duke"
+        },
+        "relevanceScore": 9.4,
+        "qualityScore": 8.9,
+        "insightType": "example",
+        "curatorReason": "Concrete example of resulting fallacy with memorable sports reference"
+      },
+      {
+        "readwiseId": 511349717,
+        "text": "Thinking in bets starts with recognizing that there are exactly two things that determine how our lives turn out: the quality of our decisions and luck. Learning to recognize the difference between the two is what thinking in bets is all about.",
+        "book": {
+          "title": "Thinking in Bets",
+          "author": "Annie Duke"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.1,
+        "insightType": "definition",
+        "curatorReason": "Clear delineation between controllable decision quality and uncontrollable luck"
+      },
+      {
+        "readwiseId": 511349721,
+        "text": "When we work backward from results to figure out why those things happened, we are susceptible to a variety of cognitive traps, like assuming causation when there is only a correlation, or cherry-picking data to confirm the narrative we prefer. We will pound a lot of square pegs into round holes to maintain the illusion of a tight relationship between our outcomes and our decisions.",
+        "book": {
+          "title": "Thinking in Bets",
+          "author": "Annie Duke"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 8.8,
+        "insightType": "mechanism",
+        "curatorReason": "Explains the psychological traps we fall into when judging decisions by outcomes"
+      },
+      {
+        "readwiseId": 511963893,
+        "text": "Correlation and regression are 2 views on the same concept. When the correlation between 2 scores is imperfect there will be a regression to the mean. Things explained in one way in a causal story will be more attributable to regression to the mean than causal factors. Intelligent women tend to marry less intelligent men because the correlation between spouses isn't perfect. These say the same thing but the causal story is more controversial than the statistically fact. Criticism usually is followed by improved performance and praise by reduced performance because of regression to the mean. Those who had done really well will likely not do as well and likewise those that had not done really well will do better die to mean reversion not any skill specific factor. Luck + skill = regression to the mean",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.7,
+        "insightType": "mechanism",
+        "curatorReason": "Statistical foundation for understanding why we often mistake regression for causal factors"
+      },
+      {
+        "readwiseId": 511349949,
+        "text": "So regression to the mean is an indispensable tool for testing the role of luck in performance: Mauboussin notes that slow regression is more often seen in activities dominated by skill, while faster regression is more associated with chance.",
+        "book": {
+          "title": "Superforecasting",
+          "author": "Philip E. Tetlock, Dan Gardner"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "mechanism",
+        "curatorReason": "Practical tool for separating skill from luck using regression rates"
+      },
+      {
+        "readwiseId": 511963849,
+        "text": "To think clearly about the future we need to clean up our thoughts on the past. We can't know what going to happen only have some idea because the future is unknown so nothing can be known about it we have to do the best we can with what we have. We do have incredible hindsight bias in outcomes. Tough to know the unknowable and it's more clear in hindsight. People think they thought something different in the past based on how the future turned out they change their past beliefs. Outcome bias makes it hard to understand beliefs when the decision was made. Hindsight is unkind with people who act for agents for others. The worse the outcome the greater the hindsight bias. We think we know more in the moment then we actually do. Tough to understand skill vs luck in a situation that is rare and a few lucky outcomes in big situations can lead to skill being overrated for that person",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 9.2,
+        "insightType": "mechanism",
+        "curatorReason": "Explains hindsight bias and how it distorts our ability to evaluate past decisions fairly"
+      },
+      {
+        "readwiseId": 511349722,
+        "text": "Hindsight bias is the tendency, after an outcome is known, to see the outcome as having been inevitable.",
+        "book": {
+          "title": "Thinking in Bets",
+          "author": "Annie Duke"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.5,
+        "insightType": "definition",
+        "curatorReason": "Concise definition of hindsight bias that corrupts outcome evaluation"
+      },
+      {
+        "readwiseId": 780432996,
+        "text": "\"You want to get into a mental state where if the bad outcome comes to pass, you will only nod your head and say 'I knew this card was in the deck, and I knew the odds, and I would make the same bets again, given the same opportunities.'\"",
+        "book": {
+          "title": "The Scout Mindset",
+          "author": "Julia Galef"
+        },
+        "relevanceScore": 9.1,
+        "qualityScore": 9.0,
+        "insightType": "practice",
+        "curatorReason": "Ideal mindset for maintaining decision quality focus despite negative outcomes"
+      }
+    ]
+  },
+  {
+    "modelId": "decision-fatigue-cognitive-resource-management", 
+    "modelTitle": "Decision Fatigue & Cognitive Resource Management",
+    "curatedHighlights": [
+      {
+        "readwiseId": 661292978,
+        "text": "There is also a model that explains the downside of making many decisions in a limited period: decision fatigue. As you make more and more decisions, you get fatigued, leading to a worsening of decision quality.",
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.0,
+        "insightType": "definition",
+        "curatorReason": "Perfect definition of decision fatigue from the source you referenced"
+      },
+      {
+        "readwiseId": 511964972,
+        "text": "Self control is system 2 requires attention and effort. Finite reservoir of attention and control and when you use it you need to reload it. Emotional or intense situations deplete self control like heading thinking or drinking ect. There is a difference between being worn out through emotional ways which you can replenish and being deleted in mental energy you can't think harder than possible ie add 3 ask. Judges grant parole more after lunch than before. You're not you when you're hungry Bat and ball problem bat + ball costs $1.10 together and bat is $1 more how much is the ball. This requires a lot of cognitive effort to not say $1 even if it's easy. Most people answer this wrong it shows were generally lazy and can be easily biased. Many people are overconfident and prone to place too much faith in their intuition System 1 is impulsive system 2 is lazy",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.5,
+        "qualityScore": 9.2,
+        "insightType": "mechanism",
+        "curatorReason": "Comprehensive explanation of cognitive resource depletion with famous judges/parole example"
+      },
+      {
+        "readwiseId": 525348062,
+        "text": "A commitment device - lock in your future actions while in the present. Change the task so it's harder to back out then just do it. Make good habits inevitable and bad habits impossible. Make the good habit automatic. Using a cash register to limit theft not pushing notifications to maintain focus. Automate many things like commitments to 401 ks out of your daily salary automatically. Make it easy Reduce friction prime the environment master the decisive moment optimize the the high leverage moments. Use the 2 minute rule. Automate your habits or invert all these.",
+        "book": {
+          "title": "Atomic Habits",
+          "author": "James Clear"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.8,
+        "insightType": "practice",
+        "curatorReason": "Practical strategies for automating decisions to preserve cognitive resources"
+      },
+      {
+        "readwiseId": 517894744,
+        "text": "The really good decision maker is what they do is they're very good at identifying the one way doors versus the two way doors, right? And on the one way doors, their metric is speed. And they're sort of like, I need the feedback as soon as possible, on the two way doors, their feedback mechanism is just like, I gotta optimize for speed. I gotta make this one quickly. I don't care if it's wrong, if it's wrong, we'll fix it. One of my big things is you can bounce back from any mistake other than a mistake of integrity. If you don't make a mistake of integrity, you can really actually just like fix almost anything, right? And then I think those same decision makers on the one way doors, they're super thoughtful and they get them right.",
+        "book": {
+          "title": "#164 Ravi Gupta — the Realities of Success",
+          "author": "The Knowledge Project with Shane Parrish"
+        },
+        "relevanceScore": 9.3,
+        "qualityScore": 8.9,
+        "insightType": "application",
+        "curatorReason": "Framework for allocating cognitive resources based on decision reversibility"
+      },
+      {
+        "readwiseId": 541660366,
+        "text": "Every day, I think we all make a lot of decisions. But to be honest, a lot of decisions are kind of low impact. They are a lot of them reversible. It doesn't really matter that much. I think the consensus we got to was every year, there's probably maybe three decisions that are actually important that you do to bake. The problem is you don't really know what those three are beforehand, but in retrospect, it generally is obvious. And I think maybe it's where to analogy, but I think in life, it's also similar to in life, you make a lot of decisions about do you have ice cream today or not, for example, but probably that doesn't matter that much. Probably the path I got all of us here comes down to probably five or 10 decisions you made in your life. And so I think preparing yourself for those maybe three important decisions is important.",
+        "book": {
+          "title": "Retool CEO David Hsu on Finding Product-Market Fit via Sales",
+          "author": "ACQ2: The Acquired Interviews"
+        },
+        "relevanceScore": 9.1,
+        "qualityScore": 8.7,
+        "insightType": "principle",
+        "curatorReason": "Key insight about decision importance hierarchy and resource allocation"
+      },
+      {
+        "readwiseId": 525348068,
+        "text": "Decisive moments - the key points that define your day when you set a 5 am alarm do you snooze it or go to the gym. Make habits short the 2 minute rule. First 2 minutes are a gateway habit that leads a larger goal. A habit must be established before it can be improved. Standardize before you can optimize. Master the art of showing up. Take the smallest action that confirms who you are. Make something easy then layer on. If you want to lose weight first go to the gym once a week for 15 minutes then twice ect.",
+        "book": {
+          "title": "Atomic Habits",
+          "author": "James Clear"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.6,
+        "insightType": "practice",
+        "curatorReason": "Practical approach to managing decision load through habit formation and leverage points"
+      },
+      {
+        "readwiseId": 842979379,
+        "text": "1. Question every requirement. Each should come with the name of the person who made it. Never accept that it came from a department. Then you should question it, no matter how smart that person is…even if that requirement came from me. 2. Delete any part of the process you can…if you do not end up adding back at least 10% of them, then you didn't delete enough. 3. Simply and optimize..after step two. 4. Accelerate cycle time. Every process should be sped up. 5. Automate. That comes last.",
+        "book": {
+          "title": "Elon Musk",
+          "author": "Walter Isaacson"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 9.0,
+        "insightType": "application",
+        "curatorReason": "Systematic approach to reducing decision load through process optimization and automation"
+      },
+      {
+        "readwiseId": 669205990,
+        "text": "1. Do a brain dump. Write down all tasks in your head. All projects, goals, and to-dos. This releases cognitive load. 2. Separate tasks. Distill it down to 3-5 big tasks for the day. Use the Eisenhower Matrix to separate tasks by importance. 3. Create a Morning Routine list. Every day, start with a simple 5-15 minute routine. This helps your brain switch into a productive state. 4. Time Block. Schedule time for each task. Work for 90 minutes and then take a break. Use the Pomodoro Technique. 5. Connect tasks to goals. For each task, ask \"Why?\" Knowing the why behind each task links it to goals. 6. Stop overloading your list. Busy does not mean productive. 3-5 major tasks and 1-2 minor tasks are enough. This prevents burnout and keeps you motivated.",
+        "book": {
+          "title": "People With Checklists Complete Their Work 40% Faster",
+          "author": "Dan"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 8.5,
+        "insightType": "practice",
+        "curatorReason": "Comprehensive system for managing cognitive load through organization and prioritization"
+      },
+      {
+        "readwiseId": 755905523,
+        "text": "Question 1: Am I thinking fast or slow? Question 2: Am I too stressed to think clearly? Question 3: Is this a reversible decision? Question 4: What would you think about this if it were someone else's decision? Question 5: What would I think about this a year from now? Question 6: What would I advise a friend to do in this situation? Question 7: What's the quality of the evidence? Question 8: What are the opposing arguments?",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 9.1,
+        "insightType": "practice",
+        "curatorReason": "Kahneman's personal checklist for managing cognitive resources in important decisions"
+      },
+      {
+        "readwiseId": 838104193,
+        "text": "A daily routine will get you through the day and help you make the most of it. \"A schedule defends from chaos and whim,\" writes Annie Dillard. \"It is a net for catching days.\" When you don't know what to do next, your routine tells you. When you don't have much time, a routine helps you make the little time you have count. When you have all the time in the world, a routine helps you make sure you don't waste it.",
+        "book": {
+          "title": "Keep Going: Chapter 1",
+          "author": "Austin Kleon"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.8,
+        "insightType": "principle",
+        "curatorReason": "Importance of routines in preserving cognitive resources for important decisions"
+      },
+      {
+        "readwiseId": 661292977,
+        "text": "addition to increased decision-making time, there is evidence that a wealth of options can create anxiety in certain contexts. This anxiety is known as the paradox of choice,",
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.4,
+        "insightType": "mechanism",
+        "curatorReason": "Explains how too many options depletes cognitive resources and creates decision paralysis"
+      }
+    ]
+  }
+]

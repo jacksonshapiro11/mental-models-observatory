@@ -1,0 +1,395 @@
+{
+  "foundMappings": [
+    {
+      "brokenSlug": "first-principles-reasoning-ground-up-construction",
+      "brokenName": "First Principles Reasoning & Ground-Up Construction",
+      "workingId": "first-principles-thinking",
+      "highlightCount": 2,
+      "domain": "Mental Models & Cross-Disciplinary Thinking"
+    },
+    {
+      "brokenSlug": "bias-inherent-in-models-hidden-assumptions",
+      "brokenName": "Bias Inherent in Models & Hidden Assumptions",
+      "workingId": "design-principles-user-models",
+      "highlightCount": 10,
+      "domain": "Mental Models & Cross-Disciplinary Thinking"
+    },
+    {
+      "brokenSlug": "model-testing-refinement-through-criticism",
+      "brokenName": "Model Testing & Refinement Through Criticism",
+      "workingId": "design-principles-user-models",
+      "highlightCount": 10,
+      "domain": "Mental Models & Cross-Disciplinary Thinking"
+    },
+    {
+      "brokenSlug": "kahneman-s-8-decision-making-questions",
+      "brokenName": "Kahneman's 8 Decision-Making Questions",
+      "workingId": "decision-fatigue-cognitive-resource-management",
+      "highlightCount": 12,
+      "domain": "Psychology & Human Behavior"
+    },
+    {
+      "brokenSlug": "mental-accounting-reference-point-dependence",
+      "brokenName": "Mental Accounting & Reference Point Dependence",
+      "workingId": "deconstructing-mental-patterns",
+      "highlightCount": 10,
+      "domain": "Psychology & Human Behavior"
+    },
+    {
+      "brokenSlug": "social-psychology-environmental-influence",
+      "brokenName": "Social Psychology & Environmental Influence",
+      "workingId": "social-reality-construction-collective-belief",
+      "highlightCount": 10,
+      "domain": "Psychology & Human Behavior"
+    },
+    {
+      "brokenSlug": "decision-quality-vs-outcome-separation",
+      "brokenName": "Decision Quality vs. Outcome Separation",
+      "workingId": "decision-quality-outcome-separation",
+      "highlightCount": 11,
+      "domain": "Decision-Making Under Uncertainty"
+    },
+    {
+      "brokenSlug": "the-ladder-vs-the-spectrum-thinking-about-thinking",
+      "brokenName": "The Ladder vs. The Spectrum (Thinking About Thinking)",
+      "workingId": "8c-ladder-vs-spectrum",
+      "highlightCount": 1,
+      "domain": "Philosophy & Truth-Seeking"
+    },
+    {
+      "brokenSlug": "consciousness-the-hard-problem",
+      "brokenName": "Consciousness & the Hard Problem",
+      "workingId": "hard-problem-consciousness-integration",
+      "highlightCount": 10,
+      "domain": "Philosophy & Truth-Seeking"
+    },
+    {
+      "brokenSlug": "the-power-of-daily-compounding",
+      "brokenName": "The Power of Daily Compounding",
+      "workingId": "12b-power-games-authentic-strength",
+      "highlightCount": 10,
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "brokenSlug": "exponential-vs-linear-thinking",
+      "brokenName": "Exponential vs. Linear Thinking",
+      "workingId": "9b-exponential-linear-thinking",
+      "highlightCount": 10,
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "brokenSlug": "superlinear-returns-power-laws",
+      "brokenName": "Superlinear Returns & Power Laws",
+      "workingId": "9c-superlinear-returns",
+      "highlightCount": 10,
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "brokenSlug": "work-that-compounds-knowledge-compounding",
+      "brokenName": "Work That Compounds & Knowledge Compounding",
+      "workingId": "9d-work-compounds",
+      "highlightCount": 10,
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "brokenSlug": "jump-to-universality",
+      "brokenName": "Jump to Universality",
+      "workingId": "9e-jump-universality",
+      "highlightCount": 10,
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "brokenSlug": "fractals-self-similarity-across-scales",
+      "brokenName": "Fractals & Self-Similarity Across Scales",
+      "workingId": "10a-fractals-self-similarity",
+      "highlightCount": 10,
+      "domain": "Spatial-Geometric Thinking & Constraints"
+    },
+    {
+      "brokenSlug": "scaling-laws-dimensional-analysis",
+      "brokenName": "Scaling Laws & Dimensional Analysis",
+      "workingId": "10b-scaling-laws",
+      "highlightCount": 10,
+      "domain": "Spatial-Geometric Thinking & Constraints"
+    },
+    {
+      "brokenSlug": "power-concentration-natural-centralization",
+      "brokenName": "Power Concentration & Natural Centralization",
+      "workingId": "12a-power-concentration-centralization",
+      "highlightCount": 10,
+      "domain": "Power Dynamics & Political Systems"
+    },
+    {
+      "brokenSlug": "power-games-vs-authentic-strength",
+      "brokenName": "Power Games vs. Authentic Strength",
+      "workingId": "12b-power-games-authentic-strength",
+      "highlightCount": 10,
+      "domain": "Power Dynamics & Political Systems"
+    },
+    {
+      "brokenSlug": "language-as-mental-model-reverse-compression",
+      "brokenName": "Language as Mental Model & Reverse Compression",
+      "workingId": "language-mental-model-reverse-compression",
+      "highlightCount": 10,
+      "domain": "Language & Communication Systems"
+    },
+    {
+      "brokenSlug": "human-computer-symbiosis-cognitive-augmentation",
+      "brokenName": "Human-Computer Symbiosis & Cognitive Augmentation",
+      "workingId": "human-computer-symbiosis",
+      "highlightCount": 10,
+      "domain": "Technology & Human-Computer Interaction"
+    },
+    {
+      "brokenSlug": "technology-as-capability-amplifier",
+      "brokenName": "Technology as Capability Amplifier",
+      "workingId": "technology-capability-amplifier",
+      "highlightCount": 10,
+      "domain": "Technology & Human-Computer Interaction"
+    },
+    {
+      "brokenSlug": "coordination-mechanisms-human-cooperation",
+      "brokenName": "Coordination Mechanisms & Human Cooperation",
+      "workingId": "coordination-mechanisms",
+      "highlightCount": 10,
+      "domain": "Organizational Design & Institutions"
+    },
+    {
+      "brokenSlug": "bureaucracy-vs-agility-trade-offs",
+      "brokenName": "Bureaucracy vs. Agility Trade-offs",
+      "workingId": "bureaucracy-agility-tradeoffs",
+      "highlightCount": 10,
+      "domain": "Organizational Design & Institutions"
+    },
+    {
+      "brokenSlug": "high-trust-culture-autonomous-teams",
+      "brokenName": "High-Trust Culture & Autonomous Teams",
+      "workingId": "high-trust-autonomous-teams",
+      "highlightCount": 10,
+      "domain": "Organizational Design & Institutions"
+    },
+    {
+      "brokenSlug": "love-as-nuclear-fuel-life-foundation",
+      "brokenName": "Love as Nuclear Fuel & Life Foundation",
+      "workingId": "love-nuclear-fuel",
+      "highlightCount": 9,
+      "domain": "Relationships & Human Connection"
+    },
+    {
+      "brokenSlug": "horizontal-vs-vertical-relationships",
+      "brokenName": "Horizontal vs. Vertical Relationships",
+      "workingId": "horizontal-vertical-relationships",
+      "highlightCount": 10,
+      "domain": "Relationships & Human Connection"
+    },
+    {
+      "brokenSlug": "physical-foundations-as-life-infrastructure",
+      "brokenName": "Physical Foundations as Life Infrastructure",
+      "workingId": "physical-foundations-infrastructure",
+      "highlightCount": 10,
+      "domain": "Health & Human Optimization"
+    },
+    {
+      "brokenSlug": "proactive-vs-reactive-health-strategy",
+      "brokenName": "Proactive vs. Reactive Health Strategy",
+      "workingId": "proactive-reactive-health",
+      "highlightCount": 10,
+      "domain": "Health & Human Optimization"
+    },
+    {
+      "brokenSlug": "physiological-states-decision-quality",
+      "brokenName": "Physiological States & Decision Quality",
+      "workingId": "physiological-states-decisions",
+      "highlightCount": 10,
+      "domain": "Health & Human Optimization"
+    },
+    {
+      "brokenSlug": "present-moment-awareness-non-identification",
+      "brokenName": "Present-Moment Awareness & Non-Identification",
+      "workingId": "present-moment-awareness",
+      "highlightCount": 10,
+      "domain": "Mindfulness & Inner Work"
+    },
+    {
+      "brokenSlug": "mind-body-integration-embodied-presence",
+      "brokenName": "Mind-Body Integration & Embodied Presence",
+      "workingId": "mind-body-integration",
+      "highlightCount": 10,
+      "domain": "Mindfulness & Inner Work"
+    },
+    {
+      "brokenSlug": "deconstructing-mental-patterns-pain-body",
+      "brokenName": "Deconstructing Mental Patterns & Pain Body",
+      "workingId": "deconstructing-mental-patterns",
+      "highlightCount": 10,
+      "domain": "Mindfulness & Inner Work"
+    },
+    {
+      "brokenSlug": "transcending-ego-two-selves-integration",
+      "brokenName": "Transcending Ego & Two-Selves Integration",
+      "workingId": "transcending-ego-integration",
+      "highlightCount": 10,
+      "domain": "Mindfulness & Inner Work"
+    },
+    {
+      "brokenSlug": "power-laws-concentration-vs-diversification",
+      "brokenName": "Power Laws & Concentration vs. Diversification",
+      "workingId": "power-laws-concentration-diversification",
+      "highlightCount": 10,
+      "domain": "Investment & Capital Allocation"
+    },
+    {
+      "brokenSlug": "deliberate-practice-expertise-development",
+      "brokenName": "Deliberate Practice & Expertise Development",
+      "workingId": "deliberate-practice-expertise",
+      "highlightCount": 10,
+      "domain": "Learning & Skill Development"
+    },
+    {
+      "brokenSlug": "variation-selection-and-heredity",
+      "brokenName": "Variation, Selection, and Heredity",
+      "workingId": "variation-selection-heredity",
+      "highlightCount": 10,
+      "domain": "Evolution & Biology"
+    },
+    {
+      "brokenSlug": "pattern-recognition-universal-constants",
+      "brokenName": "Pattern Recognition & Universal Constants",
+      "workingId": "pattern-recognition-constants",
+      "highlightCount": 10,
+      "domain": "Mathematics & Logic"
+    },
+    {
+      "brokenSlug": "logic-optimization-under-constraints",
+      "brokenName": "Logic & Optimization Under Constraints",
+      "workingId": "logic-optimization-constraints",
+      "highlightCount": 10,
+      "domain": "Mathematics & Logic"
+    },
+    {
+      "brokenSlug": "historical-cycles-pendulum-swings",
+      "brokenName": "Historical Cycles & Pendulum Swings",
+      "workingId": "historical-cycles-pendulum",
+      "highlightCount": 10,
+      "domain": "History & Institutional Evolution"
+    },
+    {
+      "brokenSlug": "institutional-path-dependence-lock-in-effects",
+      "brokenName": "Institutional Path Dependence & Lock-in Effects",
+      "workingId": "institutional-path-dependence",
+      "highlightCount": 11,
+      "domain": "History & Institutional Evolution"
+    },
+    {
+      "brokenSlug": "data-interpretation-aesthetic-vs-functional-truth",
+      "brokenName": "Data Interpretation & Aesthetic vs. Functional Truth",
+      "workingId": "data-interpretation-aesthetic-functional-truth",
+      "highlightCount": 10,
+      "domain": "Statistics & Data Science"
+    },
+    {
+      "brokenSlug": "the-hard-problem-consciousness-integration",
+      "brokenName": "The Hard Problem & Consciousness Integration",
+      "workingId": "hard-problem-consciousness-integration",
+      "highlightCount": 10,
+      "domain": "Neuroscience & Consciousness"
+    },
+    {
+      "brokenSlug": "ritual-design-sacred-experience-creation",
+      "brokenName": "Ritual Design & Sacred Experience Creation",
+      "workingId": "ritual-design-sacred-experience",
+      "highlightCount": 10,
+      "domain": "Ritual & Meaning-Making"
+    },
+    {
+      "brokenSlug": "identity-formation-through-narrative-construction",
+      "brokenName": "Identity Formation Through Narrative Construction",
+      "workingId": "identity-narrative-construction",
+      "highlightCount": 10,
+      "domain": "Narrative & Identity"
+    },
+    {
+      "brokenSlug": "multifaceted-identity-adaptive-self-concept",
+      "brokenName": "Multifaceted Identity & Adaptive Self-Concept",
+      "workingId": "identity-based-habits-self-concept",
+      "highlightCount": 10,
+      "domain": "Narrative & Identity"
+    },
+    {
+      "brokenSlug": "story-as-sense-making-mental-model-construction",
+      "brokenName": "Story as Sense-Making & Mental Model Construction",
+      "workingId": "story-sense-making-mental-models",
+      "highlightCount": 10,
+      "domain": "Narrative & Identity"
+    },
+    {
+      "brokenSlug": "identity-affirmation-conscious-self-creation",
+      "brokenName": "Identity Affirmation & Conscious Self-Creation",
+      "workingId": "identity-affirmation-conscious-creation",
+      "highlightCount": 10,
+      "domain": "Narrative & Identity"
+    },
+    {
+      "brokenSlug": "bottlenecks-system-constraint-identification",
+      "brokenName": "Bottlenecks & System Constraint Identification",
+      "workingId": "bottlenecks-system-constraints",
+      "highlightCount": 10,
+      "domain": "Constraint Theory & Optimization"
+    },
+    {
+      "brokenSlug": "optimization-within-limits-resource-allocation",
+      "brokenName": "Optimization Within Limits & Resource Allocation",
+      "workingId": "optimization-within-limits",
+      "highlightCount": 10,
+      "domain": "Constraint Theory & Optimization"
+    },
+    {
+      "brokenSlug": "creative-constraint-navigation-inversion",
+      "brokenName": "Creative Constraint Navigation & Inversion",
+      "workingId": "creative-constraint-navigation",
+      "highlightCount": 10,
+      "domain": "Constraint Theory & Optimization"
+    },
+    {
+      "brokenSlug": "levels-of-emergence-scale-transitions",
+      "brokenName": "Levels of Emergence & Scale Transitions",
+      "workingId": "levels-emergence-scale-transitions",
+      "highlightCount": 10,
+      "domain": "Emergence & Levels of Abstraction"
+    },
+    {
+      "brokenSlug": "reductionism-vs-holism-integration",
+      "brokenName": "Reductionism vs. Holism Integration",
+      "workingId": "reductionism-holism-integration",
+      "highlightCount": 10,
+      "domain": "Emergence & Levels of Abstraction"
+    },
+    {
+      "brokenSlug": "simple-rules-generating-complex-behaviors",
+      "brokenName": "Simple Rules Generating Complex Behaviors",
+      "workingId": "simple-rules-complex-behaviors",
+      "highlightCount": 10,
+      "domain": "Emergence & Levels of Abstraction"
+    },
+    {
+      "brokenSlug": "universality-infinite-reach-from-finite-means",
+      "brokenName": "Universality & Infinite Reach From Finite Means",
+      "workingId": "universality-infinite-reach",
+      "highlightCount": 10,
+      "domain": "Emergence & Levels of Abstraction"
+    }
+  ],
+  "stillBroken": [
+    {
+      "slug": "paradigm-shifts-transcendence",
+      "name": "Paradigm Shifts & Transcendence",
+      "domain": "Philosophy & Truth-Seeking"
+    }
+  ],
+  "summary": {
+    "total": 55,
+    "fixed": 54,
+    "remaining": 1,
+    "successRate": 98
+  }
+}

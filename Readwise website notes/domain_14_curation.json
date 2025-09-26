@@ -1,0 +1,236 @@
+[
+  {
+    "modelId": "language-mental-model-reverse-compression",
+    "modelTitle": "Language as Mental Model & Reverse Compression",
+    "modelDescription": "How language shapes thought and reality construction by serving as a compression algorithm for mental models",
+    "curatedHighlights": [
+      {
+        "readwiseId": 511967224,
+        "book": {
+          "title": "The Creativity Code",
+          "author": "Marcus du Sautoy"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.4,
+        "insightType": "core definition",
+        "curatorReason": "Perfect articulation of language as reverse compression algorithm and the distinction between words and objects"
+      },
+      {
+        "readwiseId": 542261295,
+        "book": {
+          "title": "Retool CEO David Hsu on Finding Product-Market Fit via Sales",
+          "author": "ACQ2: The Acquired Interviews"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.2,
+        "insightType": "communication limits",
+        "curatorReason": "Excellent explanation of lossy compression in language communication and bandwidth limitations"
+      },
+      {
+        "readwiseId": 735079485,
+        "book": {
+          "title": "The History of Philosophy",
+          "author": "A. C. Grayling"
+        },
+        "relevanceScore": 9.4,
+        "qualityScore": 8.9,
+        "insightType": "semantics vs meaning",
+        "curatorReason": "Frege's fundamental distinction between reference and meaning - crucial for understanding language limitations"
+      },
+      {
+        "readwiseId": 735079452,
+        "book": {
+          "title": "The History of Philosophy",
+          "author": "A. C. Grayling"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 8.7,
+        "insightType": "philosophical framework",
+        "curatorReason": "Ordinary language philosophy perspective on clarification vs science and logical geography of concepts"
+      },
+      {
+        "readwiseId": 518578268,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.8,
+        "insightType": "practical application",
+        "curatorReason": "Shows how language bounds understanding and the importance of precise word choice in systems thinking"
+      },
+      {
+        "readwiseId": 511965503,
+        "book": {
+          "title": "The Dream Machine",
+          "author": "M. Mitchell Waldrop"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "cognitive science",
+        "curatorReason": "Chomsky's revolution showing language as complex grammatical system vs. behaviorist stimulus-response"
+      },
+      {
+        "readwiseId": 728154084,
+        "book": {
+          "title": "A 'Razor' Is a Rule of Thumb That Simplifies Decision-Making",
+          "author": "everhusk"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.4,
+        "insightType": "communication principles",
+        "curatorReason": "Grice's razor - practical framework for clear communication that cuts through noise to meaning"
+      },
+      {
+        "readwiseId": 511965816,
+        "book": {
+          "title": "The Dream Machine",
+          "author": "M. Mitchell Waldrop"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.8,
+        "insightType": "systems integration",
+        "curatorReason": "Shows how mental models and language enable level 2 conversations and human-computer symbiosis"
+      },
+      {
+        "readwiseId": 584017731,
+        "book": {
+          "title": "Flow",
+          "author": "Mihaly Csikszentmihalyi"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.3,
+        "insightType": "learning application",
+        "curatorReason": "Practical guidance on thinking about language use, meaning of words, and building mental models through reading"
+      },
+      {
+        "readwiseId": 806741202,
+        "book": {
+          "title": "The Frontiers of Knowledge",
+          "author": "A. C. Grayling"
+        },
+        "relevanceScore": 8.4,
+        "qualityScore": 8.1,
+        "insightType": "historical context",
+        "curatorReason": "Shows symbolic communication as crucial step in human development and complexity creation"
+      }
+    ]
+  },
+  {
+    "modelId": "semantics-vs-meaning-deep-understanding",
+    "modelTitle": "Semantics vs. Meaning & Deep Understanding",
+    "modelDescription": "The distinction between word definitions and experiential understanding - knowing definitions vs. true comprehension",
+    "curatedHighlights": [
+      {
+        "readwiseId": 511967224,
+        "book": {
+          "title": "The Creativity Code",
+          "author": "Marcus du Sautoy"
+        },
+        "relevanceScore": 9.7,
+        "qualityScore": 9.3,
+        "insightType": "core distinction",
+        "curatorReason": "Perfectly captures the difference between descriptive knowledge and true understanding - chair example is illuminating"
+      },
+      {
+        "readwiseId": 735079485,
+        "book": {
+          "title": "The History of Philosophy",
+          "author": "A. C. Grayling"
+        },
+        "relevanceScore": 9.5,
+        "qualityScore": 9.0,
+        "insightType": "philosophical foundation",
+        "curatorReason": "Frege's reference vs meaning distinction - foundational for understanding semantics vs experiential knowledge"
+      },
+      {
+        "readwiseId": 735079452,
+        "book": {
+          "title": "The History of Philosophy",
+          "author": "A. C. Grayling"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 8.8,
+        "insightType": "philosophical application",
+        "curatorReason": "Shows how names are rigid designators but don't capture essence - words vs deeper meaning distinction"
+      },
+      {
+        "readwiseId": 735079480,
+        "book": {
+          "title": "The History of Philosophy",
+          "author": "A. C. Grayling"
+        },
+        "relevanceScore": 8.9,
+        "qualityScore": 8.6,
+        "insightType": "linguistic philosophy",
+        "curatorReason": "Wittgenstein's insight that philosophical problems often stem from language misunderstanding vs. true meaning"
+      },
+      {
+        "readwiseId": 661293433,
+        "book": {
+          "title": "Discourses and Selected Writings",
+          "author": "Epictetus"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.4,
+        "insightType": "practical wisdom",
+        "curatorReason": "Shows how everyone has preconceptions about words like 'good' but these mental models vary and need development"
+      },
+      {
+        "readwiseId": 511965428,
+        "book": {
+          "title": "The Dream Machine",
+          "author": "M. Mitchell Waldrop"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.7,
+        "insightType": "information theory",
+        "curatorReason": "Shannon's information vs meaning distinction - 'will you marry me' vs complex legal document example"
+      },
+      {
+        "readwiseId": 521153978,
+        "book": {
+          "title": "The Idea Factory",
+          "author": "John Gertner"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.5,
+        "insightType": "technical framework",
+        "curatorReason": "Information theory foundations showing how information resolves uncertainty vs mere transmission"
+      },
+      {
+        "readwiseId": 518567943,
+        "book": {
+          "title": "Antifragile",
+          "author": "Nassim Taleb"
+        },
+        "relevanceScore": 8.4,
+        "qualityScore": 8.2,
+        "insightType": "domain dependence",
+        "curatorReason": "Shows how same concept (lifting) means different things in different domains - semantics vs contextual meaning"
+      },
+      {
+        "readwiseId": 511967956,
+        "book": {
+          "title": "Complexity",
+          "author": "M. Mitchell Waldrop"
+        },
+        "relevanceScore": 8.3,
+        "qualityScore": 8.3,
+        "insightType": "systems perspective",
+        "curatorReason": "Mental structures as competing rules with hierarchy - shows how understanding emerges from rule systems"
+      },
+      {
+        "readwiseId": 525341599,
+        "book": {
+          "title": "Conjectures and Refutations",
+          "author": "Karl Popper"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.6,
+        "insightType": "epistemological foundation",
+        "curatorReason": "Shows active interpretation vs passive reception - we create meaning through stories and theories"
+      }
+    ]
+  }
+]

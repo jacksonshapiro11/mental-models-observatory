@@ -1,21 +1,47 @@
+'use client';
+
+import ReadwiseHighlights from '@/components/content/ReadwiseHighlights';
+import { getModelBySlug, getRelatedModels } from '@/lib/data';
+import { ArrowLeft, ArrowRight, BookOpen, Lightbulb, Target, Users } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getModelBySlug, getRelatedModels } from '@/lib/data';
-import { ArrowLeft, ArrowRight, BookOpen, Users, Target, Lightbulb } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface ModelPageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
-export default async function ModelPage({ params }: ModelPageProps) {
-  const { slug } = await params;
-  const model = getModelBySlug(slug);
-  const relatedModels = getRelatedModels(slug);
+export default function ModelPage({ params }: ModelPageProps) {
+  const [model, setModel] = useState<any>(null);
+  const [relatedModels, setRelatedModels] = useState<any[]>([]);
+  const [slug, setSlug] = useState<string>('');
+
+  useEffect(() => {
+    const loadData = async () => {
+      const resolvedParams = await params;
+      const modelData = getModelBySlug(resolvedParams.slug);
+      const relatedData = getRelatedModels(resolvedParams.slug);
+      
+      if (!modelData) {
+        notFound();
+      }
+      
+      setModel(modelData);
+      setRelatedModels(relatedData);
+      setSlug(resolvedParams.slug);
+    };
+    
+    loadData();
+  }, [params]);
 
   if (!model) {
-    notFound();
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   return (
@@ -112,52 +138,14 @@ export default async function ModelPage({ params }: ModelPageProps) {
           </div>
         </section>
 
-        {/* Sources */}
-        {model.sources.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center mb-6">
-              <BookOpen className="h-6 w-6 text-purple-600 mr-3" />
-              <h2 className="text-2xl font-bold text-gray-900">Sources</h2>
-            </div>
-            <div className="space-y-4">
-              {model.sources.map((source) => (
-                <div key={source.id} className="card">
-                  <div className="card-content">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">{source.title}</h3>
-                        <p className="text-gray-600 text-sm">by {source.author}</p>
-                        <p className="text-gray-500 text-xs mt-1 capitalize">{source.type}</p>
-                      </div>
-                      {source.url && (
-                        <a
-                          href={source.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                        >
-                          View Source
-                        </a>
-                      )}
-                    </div>
-                    {source.highlights.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-900 mb-2">Key Highlights:</h4>
-                        <div className="space-y-2">
-                          {source.highlights.map((highlight, index) => (
-                            <blockquote key={index} className="border-l-4 border-blue-200 pl-4 italic text-gray-700 text-sm">
-                              "{highlight}"
-                            </blockquote>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Curated Insights from Readwise */}
+        <section className="mb-12">
+          <div className="flex items-center mb-6">
+            <BookOpen className="h-6 w-6 text-purple-600 mr-3" />
+            <h2 className="text-2xl font-bold text-gray-900">Curated Insights from Readwise</h2>
+          </div>
+          <ReadwiseHighlights modelSlug={slug} />
+        </section>
 
         {/* Tags */}
         <section className="mb-12">

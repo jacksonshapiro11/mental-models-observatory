@@ -1,0 +1,353 @@
+[
+  {
+    "modelId": "signal-vs-noise-information-quality",
+    "modelTitle": "Signal vs. Noise & Information Quality",
+    "modelDescription": "Distinguishing meaningful information from irrelevant data and designing systems that amplify signal over noise",
+    "curatedHighlights": [
+      {
+        "readwiseId": 521153978,
+        "book": {
+          "title": "The Idea Factory",
+          "author": "John Gertner"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.5,
+        "insightType": "foundational definition",
+        "curatorReason": "Shannon's definitive information theory - information resolves uncertainty, signal through noise principle"
+      },
+      {
+        "readwiseId": 518577530,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.2,
+        "insightType": "systems application",
+        "curatorReason": "Perfect example of signal vs noise in system design with car dealership feedback loops"
+      },
+      {
+        "readwiseId": 546245738,
+        "book": {
+          "title": "The Noise Bottleneck: When More Information Is Harmful",
+          "author": "fs.blog"
+        },
+        "relevanceScore": 9.7,
+        "qualityScore": 9.4,
+        "insightType": "frequency paradox",
+        "curatorReason": "Brilliant insight showing how more frequent data observation increases noise ratio - counterintuitive but crucial"
+      },
+      {
+        "readwiseId": 546245816,
+        "book": {
+          "title": "The Noise Bottleneck: When More Information Is Harmful",
+          "author": "fs.blog"
+        },
+        "relevanceScore": 9.4,
+        "qualityScore": 9.0,
+        "insightType": "practical warning",
+        "curatorReason": "Shows the paradox that more information can reduce understanding - vital for information diet"
+      },
+      {
+        "readwiseId": 556030268,
+        "book": {
+          "title": "#648 — James Clear, Atomic Habits",
+          "author": "The Tim Ferriss Show"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 8.8,
+        "insightType": "practical application",
+        "curatorReason": "Actionable insight about curating information flows to improve thinking quality"
+      },
+      {
+        "readwiseId": 511965428,
+        "book": {
+          "title": "The Dream Machine",
+          "author": "M. Mitchell Waldrop"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.7,
+        "insightType": "technical foundation",
+        "curatorReason": "Shannon's 5-part communication system and information vs meaning distinction"
+      },
+      {
+        "readwiseId": 889447941,
+        "book": {
+          "title": "#228 Elad Gil: How to Spot a Billion-Dollar Startup",
+          "author": "The Knowledge Project with Shane Parrish"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "competitive advantage",
+        "curatorReason": "Different types of information advantage - finding, weighing, access, and unique interpretation"
+      },
+      {
+        "readwiseId": 511968431,
+        "book": {
+          "title": "Chaos",
+          "author": "James Gleick"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.4,
+        "insightType": "complex systems",
+        "curatorReason": "Strange attractors as signal in chaotic dynamic systems - patterns emerge from noise"
+      },
+      {
+        "readwiseId": 518578186,
+        "book": {
+          "title": "Thinking in Systems",
+          "author": "Donella Meadows"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.5,
+        "insightType": "leverage point",
+        "curatorReason": "Information flows as key leverage point in system design - creates accountability and transparency"
+      },
+      {
+        "readwiseId": 581369184,
+        "book": {
+          "title": "Henry Singleton",
+          "author": "Founders Pod"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.3,
+        "insightType": "focus application",
+        "curatorReason": "Henry Singleton's singular focus removing noise to focus on signal - practical example of information filtering"
+      }
+    ]
+  },
+  {
+    "modelId": "information-cascades-availability-bias",
+    "modelTitle": "Information Cascades & Availability Bias",
+    "modelDescription": "How information spreads and influences collective behavior through availability heuristics and media attention",
+    "curatedHighlights": [
+      {
+        "readwiseId": 511963951,
+        "book": {
+          "title": "Thinking, Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.7,
+        "qualityScore": 9.3,
+        "insightType": "core mechanism",
+        "curatorReason": "Definitive explanation of availability bias and how media stories distort probability perception"
+      },
+      {
+        "readwiseId": 661292898,
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 9.5,
+        "qualityScore": 9.0,
+        "insightType": "definition",
+        "curatorReason": "Clear, concise definition of availability bias and how recent information distorts objective reality"
+      },
+      {
+        "readwiseId": 661292899,
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 9.3,
+        "qualityScore": 8.8,
+        "insightType": "modern application",
+        "curatorReason": "Shows how personalized algorithms and filter bubbles amplify availability bias in digital age"
+      },
+      {
+        "readwiseId": 511086184,
+        "book": {
+          "title": "Thinking, Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 8.9,
+        "insightType": "media mechanism",
+        "curatorReason": "Direct connection between media coverage and perceived importance - core availability cascade mechanism"
+      },
+      {
+        "readwiseId": 511964588,
+        "book": {
+          "title": "Thinking, Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.7,
+        "insightType": "cognitive mechanism",
+        "curatorReason": "What you see is all there is - explains how limited information creates overconfidence"
+      },
+      {
+        "readwiseId": 627534802,
+        "book": {
+          "title": "Same as Ever: A Guide to What Never Changes",
+          "author": "Morgan Housel"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.5,
+        "insightType": "scale effects",
+        "curatorReason": "Law of large numbers means rare events happen daily globally - availability cascade fuel"
+      },
+      {
+        "readwiseId": 511963880,
+        "book": {
+          "title": "Thinking, Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.4,
+        "insightType": "prediction framework",
+        "curatorReason": "Shows when to rely on base rates vs intuition - distinguishes normal vs power law environments"
+      },
+      {
+        "readwiseId": 661292916,
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.3,
+        "insightType": "related bias",
+        "curatorReason": "Confirmation bias as complement to availability - both distort information processing"
+      },
+      {
+        "readwiseId": 696046546,
+        "book": {
+          "title": "The Archive — You Bet!",
+          "author": "The Memo by Howard Marks"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.6,
+        "insightType": "decision framework",
+        "curatorReason": "Information availability as key dimension in decision-making under uncertainty"
+      },
+      {
+        "readwiseId": 661292972,
+        "book": {
+          "title": "Super Thinking",
+          "author": "Gabriel Weinberg, Lauren McCann"
+        },
+        "relevanceScore": 8.4,
+        "qualityScore": 8.2,
+        "insightType": "information overload",
+        "curatorReason": "Too much information can complicate rather than improve decisions - connects to availability cascades"
+      }
+    ]
+  },
+  {
+    "modelId": "predictive-processing-constructed-experience",
+    "modelTitle": "Predictive Processing & Constructed Experience",
+    "modelDescription": "How the mind constructs reality from information through prediction rather than direct perception",
+    "curatedHighlights": [
+      {
+        "readwiseId": 841665654,
+        "book": {
+          "title": "How Meditation Deconstructs Your Mind",
+          "author": "Oshan Jarow"
+        },
+        "relevanceScore": 9.8,
+        "qualityScore": 9.5,
+        "insightType": "core theory",
+        "curatorReason": "Perfect articulation of predictive processing theory - we experience predictions, not direct reality"
+      },
+      {
+        "readwiseId": 848098441,
+        "book": {
+          "title": "From Many to (N)one: Meditation and the Plasticity of the Predictive Mind",
+          "author": "sciencedirect.com"
+        },
+        "relevanceScore": 9.6,
+        "qualityScore": 9.2,
+        "insightType": "technical mechanism",
+        "curatorReason": "Detailed explanation of how meditation affects predictive hierarchies and precision weighting"
+      },
+      {
+        "readwiseId": 806741100,
+        "book": {
+          "title": "The Frontiers of Knowledge",
+          "author": "A. C. Grayling"
+        },
+        "relevanceScore": 9.4,
+        "qualityScore": 9.0,
+        "insightType": "neuroscience integration",
+        "curatorReason": "Shows recurrent processing and integrated information theory connecting to predictive processing"
+      },
+      {
+        "readwiseId": 515356983,
+        "book": {
+          "title": "The Structure of Scientific Revolutions",
+          "author": "Thomas Kuhn"
+        },
+        "relevanceScore": 9.2,
+        "qualityScore": 8.8,
+        "insightType": "paradigm filtering",
+        "curatorReason": "Paradigms as transformation glasses - we see what our conceptual experience teaches us to see"
+      },
+      {
+        "readwiseId": 582266269,
+        "book": {
+          "title": "Free Writing",
+          "author": "Jackson"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.7,
+        "insightType": "belief construction",
+        "curatorReason": "Connectionist knowledge and belief web - how our predictive models are built from connections"
+      },
+      {
+        "readwiseId": 511350010,
+        "book": {
+          "title": "Why We Sleep",
+          "author": "Matthew Walker"
+        },
+        "relevanceScore": 8.8,
+        "qualityScore": 8.6,
+        "insightType": "information processing",
+        "curatorReason": "Sleep cycles as information processing stages - reception, reflection, integration model"
+      },
+      {
+        "readwiseId": 728174207,
+        "book": {
+          "title": "Mapping the Mind of a Large Language Model",
+          "author": "anthropic.com"
+        },
+        "relevanceScore": 8.7,
+        "qualityScore": 8.5,
+        "insightType": "AI parallel",
+        "curatorReason": "AI feature clustering shows how predictive models organize conceptual similarity"
+      },
+      {
+        "readwiseId": 542153596,
+        "book": {
+          "title": "This Is Water by David Foster Wallace",
+          "author": "fs.blog"
+        },
+        "relevanceScore": 8.6,
+        "qualityScore": 8.8,
+        "insightType": "experiential construction",
+        "curatorReason": "Different belief templates create different meanings from same experience - classic predictive processing example"
+      },
+      {
+        "readwiseId": 820097307,
+        "book": {
+          "title": "#452 – Dario Amodei — Anthropic CEO",
+          "author": "Lex Fridman Podcast"
+        },
+        "relevanceScore": 8.5,
+        "qualityScore": 8.4,
+        "insightType": "computational theory",
+        "curatorReason": "Superposition hypothesis shows how neural networks compress and predict - mirrors predictive processing"
+      },
+      {
+        "readwiseId": 841674025,
+        "book": {
+          "title": "How Meditation Deconstructs Your Mind",
+          "author": "Oshan Jarow"
+        },
+        "relevanceScore": 8.4,
+        "qualityScore": 8.3,
+        "insightType": "deconstruction method",
+        "curatorReason": "Cessation as complete shutdown of predictive processing - ultimate demonstration of constructed experience"
+      }
+    ]
+  }
+]

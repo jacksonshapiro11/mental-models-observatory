@@ -1,0 +1,125 @@
+{
+  "totalModels": 77,
+  "domainsWithModels": 13,
+  "missingDomains": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    8,
+    17,
+    18,
+    19,
+    20,
+    22,
+    23,
+    24,
+    27,
+    28,
+    29,
+    30,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40
+  ],
+  "domainGroups": [
+    {
+      "name": "domains-01-05",
+      "models": []
+    },
+    {
+      "name": "domains-06-10",
+      "models": [
+        {
+          "domainId": 7,
+          "modelCount": 4
+        },
+        {
+          "domainId": 9,
+          "modelCount": 5
+        },
+        {
+          "domainId": 10,
+          "modelCount": 3
+        }
+      ]
+    },
+    {
+      "name": "domains-11-15",
+      "models": [
+        {
+          "domainId": 11,
+          "modelCount": 2
+        },
+        {
+          "domainId": 12,
+          "modelCount": 3
+        },
+        {
+          "domainId": 13,
+          "modelCount": 2
+        },
+        {
+          "domainId": 14,
+          "modelCount": 2
+        },
+        {
+          "domainId": 15,
+          "modelCount": 3
+        }
+      ]
+    },
+    {
+      "name": "domains-16-20",
+      "models": [
+        {
+          "domainId": 16,
+          "modelCount": 16
+        }
+      ]
+    },
+    {
+      "name": "domains-21-25",
+      "models": [
+        {
+          "domainId": 21,
+          "modelCount": 15
+        },
+        {
+          "domainId": 25,
+          "modelCount": 2
+        }
+      ]
+    },
+    {
+      "name": "domains-26-30",
+      "models": [
+        {
+          "domainId": 26,
+          "modelCount": 10
+        }
+      ]
+    },
+    {
+      "name": "domains-31-35",
+      "models": [
+        {
+          "domainId": 31,
+          "modelCount": 10
+        }
+      ]
+    },
+    {
+      "name": "domains-36-40",
+      "models": []
+    }
+  ]
+}

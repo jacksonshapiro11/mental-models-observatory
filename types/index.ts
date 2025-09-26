@@ -9,8 +9,14 @@ export type {
 export type {
   ReadwiseHighlight,
   ReadwiseBook,
-  ReadwiseResponse
-} from '@/lib/readwise';
+  ReadwiseResponse,
+  ReadwiseTag,
+  GetHighlightsParams,
+  GetBooksParams,
+  ReadwiseError,
+  CacheEntry,
+  RequestOptions
+} from '@/types/readwise';
 
 // Additional types for the application
 export interface NavigationItem {
