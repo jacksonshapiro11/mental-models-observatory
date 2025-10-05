@@ -614,7 +614,7 @@ export class DynamicPathGenerator {
       'Option Evaluation': ['evaluation', 'comparison', 'trade-off', 'decision']
     };
     
-    const keywords = skillKeywords[skill] || [];
+    const keywords = skillKeywords[skill as keyof typeof skillKeywords] || [];
     
     return models.filter(model => {
       const modelText = `${model.slug} ${model.name} ${model.description}`.toLowerCase();

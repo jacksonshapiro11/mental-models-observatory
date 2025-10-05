@@ -82,6 +82,8 @@ export default function ContinuationWidget({ className = '' }: ContinuationWidge
     if (progress.achievements.length === 0) return null;
     
     const latest = progress.achievements.sort((a, b) => b.unlockedAt - a.unlockedAt)[0];
+    if (!latest) return null;
+    
     const isRecent = Date.now() - latest.unlockedAt < 24 * 60 * 60 * 1000; // 24 hours
     
     if (!isRecent) return null;

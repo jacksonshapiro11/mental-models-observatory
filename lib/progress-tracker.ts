@@ -112,8 +112,11 @@ export class ProgressTracker {
     // Update or add model view
     const existingIndex = progress.modelsViewed.findIndex(m => m.slug === slug);
     if (existingIndex >= 0) {
-      progress.modelsViewed[existingIndex].timeSpent += timeSpent;
-      progress.modelsViewed[existingIndex].completed = completed || progress.modelsViewed[existingIndex].completed;
+      const existingModel = progress.modelsViewed[existingIndex];
+      if (existingModel) {
+        existingModel.timeSpent += timeSpent;
+        existingModel.completed = completed || existingModel.completed;
+      }
     } else {
       progress.modelsViewed.push({
         slug,
@@ -143,7 +146,10 @@ export class ProgressTracker {
     
     const existingIndex = progress.domainsExplored.findIndex(d => d.slug === slug);
     if (existingIndex >= 0) {
-      progress.domainsExplored[existingIndex].modelsViewed++;
+      const existingDomain = progress.domainsExplored[existingIndex];
+      if (existingDomain) {
+        existingDomain.modelsViewed++;
+      }
     } else {
       progress.domainsExplored.push({
         slug,
@@ -165,11 +171,16 @@ export class ProgressTracker {
     
     const existingIndex = progress.pathsStarted.findIndex(p => p.pathId === pathId);
     if (existingIndex >= 0) {
-      progress.pathsStarted[existingIndex].currentStep = Math.max(
-        progress.pathsStarted[existingIndex].currentStep,
-        currentStep
-      );
-      progress.pathsStarted[existingIndex].completed = completed || progress.pathsStarted[existingIndex].completed;
+      const existingPath = progress.pathsStarted[existingIndex];
+      if (existingPath) {
+        existingPath.currentStep = Math.max(
+          existingPath.currentStep,
+          currentStep
+        );
+      }
+      if (existingPath) {
+        existingPath.completed = completed || existingPath.completed;
+      }
     } else {
       progress.pathsStarted.push({
         pathId,
@@ -342,12 +353,15 @@ export class ProgressTracker {
     // If they've viewed models but not completed any, suggest focusing
     const incompleteModels = progress.modelsViewed.filter(m => !m.completed);
     if (incompleteModels.length > 0) {
-      suggestions.push({
-        type: 'model',
-        slug: incompleteModels[0].slug,
-        reason: 'Complete this concept you started exploring',
-        priority: 8
-      });
+      const firstIncomplete = incompleteModels[0];
+      if (firstIncomplete) {
+        suggestions.push({
+          type: 'model',
+          slug: firstIncomplete.slug,
+          reason: 'Complete this concept you started exploring',
+          priority: 8
+        });
+      }
     }
     
     // If they're strong in one domain, suggest related domains
@@ -355,7 +369,7 @@ export class ProgressTracker {
       const strongestDomain = progress.domainsExplored
         .sort((a, b) => b.modelsViewed - a.modelsViewed)[0];
       
-      if (strongestDomain.modelsViewed >= 3) {
+      if (strongestDomain && strongestDomain.modelsViewed >= 3) {
         suggestions.push({
           type: 'domain',
           slug: 'related-domain', // This would need domain relationship mapping
