@@ -130,7 +130,7 @@ function parseMarkdownFile(filePath: string): ModelHighlights[] {
           console.log(`  ✅ Parsed model: ${modelData.modelId}`);
         }
       } catch (error) {
-        console.error(`  ❌ Error parsing JSON in markdown file ${path.basename(filePath)}:`, error.message);
+        console.error(`  ❌ Error parsing JSON in markdown file ${path.basename(filePath)}:`, error instanceof Error ? error.message : String(error));
         // Continue with next JSON block
       }
     }
@@ -184,13 +184,13 @@ function parseJsonFile(filePath: string): ModelHighlights[] {
       return models;
     }
   } catch (error) {
-    console.error(`Error parsing JSON file ${path.basename(filePath)}:`, error.message);
+    console.error(`Error parsing JSON file ${path.basename(filePath)}:`, error instanceof Error ? error.message : String(error));
     
     // Fallback: try to extract partial data from corrupted JSON
     try {
       return extractPartialModels(content, path.basename(filePath));
     } catch (fallbackError) {
-      console.error(`Fallback parsing also failed for ${path.basename(filePath)}:`, fallbackError.message);
+      console.error(`Fallback parsing also failed for ${path.basename(filePath)}:`, fallbackError instanceof Error ? fallbackError.message : String(fallbackError));
     }
   }
   
@@ -229,7 +229,7 @@ function extractPartialModels(content: string, fileName: string): ModelHighlight
 
 // Aggressive JSON repair for corrupted files
 function fixJsonSyntax(jsonContent: string): string {
-  let fixed = jsonContent
+  const fixed = jsonContent
     // Remove BOM
     .replace(/^\uFEFF/, '')
     // Remove trailing commas before closing braces/brackets
@@ -244,7 +244,8 @@ function fixJsonSyntax(jsonContent: string): string {
     JSON.parse(fixed);
     return fixed;
   } catch (error) {
-    if (error.message.includes('Unterminated string') || error.message.includes('Expected')) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('Unterminated string') || errorMessage.includes('Expected')) {
       // Try to find the last valid complete object/array
       const lines = fixed.split('\n');
       for (let i = lines.length - 1; i >= 0; i--) {
@@ -300,7 +301,7 @@ function parseTextFile(filePath: string, fileName: string): ModelHighlights[] {
         }));
       }
     } catch (error) {
-      console.error(`Error parsing text file ${fileName} as JSON:`, error.message);
+      console.error(`Error parsing text file ${fileName} as JSON:`, error instanceof Error ? error.message : String(error));
     }
   }
   
@@ -320,7 +321,7 @@ function parseTextFile(filePath: string, fileName: string): ModelHighlights[] {
         }));
       }
     } catch (error) {
-      console.error(`Error parsing text file ${fileName} as JSON:`, error.message);
+      console.error(`Error parsing text file ${fileName} as JSON:`, error instanceof Error ? error.message : String(error));
     }
   }
   

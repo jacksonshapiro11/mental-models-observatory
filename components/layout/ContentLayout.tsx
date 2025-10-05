@@ -70,6 +70,7 @@ export function ContentLayout({
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
+    return undefined;
   }, [sidebarOpen]);
 
   // Prevent body scroll when mobile sidebar is open

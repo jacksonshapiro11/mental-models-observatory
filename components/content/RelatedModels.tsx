@@ -150,12 +150,12 @@ export function RelatedModels({
                       <div className="flex items-center space-x-2 mb-3">
                         <Badge 
                           variant="outline" 
-                          className={`text-xs ${getRelationshipColor(relationshipType)}`}
+                          className={`text-xs ${getRelationshipColor(relationshipType || 'related')}`}
                         >
                           <span className="mr-1">
-                            {getRelationshipIcon(relationshipType)}
+                            {getRelationshipIcon(relationshipType || 'related')}
                           </span>
-                          {formatRelationshipType(relationshipType)}
+                          {formatRelationshipType(relationshipType || 'related')}
                         </Badge>
                       </div>
                     )}
@@ -216,12 +216,12 @@ export function RelatedModels({
                   {showRelationshipType && (
                     <Badge 
                       variant="outline" 
-                      className={`text-xs mb-3 ${getRelationshipColor(relationshipType)}`}
+                      className={`text-xs mb-3 ${getRelationshipColor(relationshipType || 'related')}`}
                     >
                       <span className="mr-1">
-                        {getRelationshipIcon(relationshipType)}
+                        {getRelationshipIcon(relationshipType || 'related')}
                       </span>
-                      {formatRelationshipType(relationshipType)}
+                      {formatRelationshipType(relationshipType || 'related')}
                     </Badge>
                   )}
 

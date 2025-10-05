@@ -46,7 +46,10 @@ export async function getCachedHighlight(
         entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
         const toRemove = Math.floor(MAX_CACHE_SIZE * 0.2);
         for (let i = 0; i < toRemove; i++) {
-          highlightCache.delete(entries[i][0]);
+          const entry = entries[i];
+          if (entry) {
+            highlightCache.delete(entry[0]);
+          }
         }
       }
       

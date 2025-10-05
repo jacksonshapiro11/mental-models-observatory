@@ -1,6 +1,7 @@
 'use client';
 
 import ReadwiseHighlights from '@/components/content/ReadwiseHighlights';
+import WhatsNextModal from '@/components/guide/WhatsNextModal';
 import { getAllModels } from '@/lib/data';
 import { DEFAULT_LEARNING_PATHS } from '@/lib/user-profile';
 import { LearningPath } from '@/types/user';
@@ -21,10 +22,47 @@ export default function PathPage({ params }: PathPageProps) {
   const [completedModels, setCompletedModels] = useState<Set<string>>(new Set());
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [customPath, setCustomPath] = useState<LearningPath | null>(null);
+  const [showWhatsNext, setShowWhatsNext] = useState(false);
 
   useEffect(() => {
     const loadPath = async () => {
       const resolvedParams = await params;
+      
+      // First check for dynamic paths in sessionStorage
+      const dynamicPathsData = sessionStorage.getItem('dynamic_paths');
+      console.log('Looking for path ID:', resolvedParams.id);
+      console.log('Dynamic paths data:', dynamicPathsData);
+      
+      if (dynamicPathsData) {
+        try {
+          const dynamicPaths = JSON.parse(dynamicPathsData);
+          console.log('Parsed dynamic paths:', dynamicPaths);
+          const foundDynamicPath = dynamicPaths.find((p: any) => p.id === resolvedParams.id);
+          console.log('Found dynamic path:', foundDynamicPath);
+          
+          if (foundDynamicPath) {
+            // Convert dynamic path to LearningPath format
+            const convertedPath: LearningPath = {
+              id: foundDynamicPath.id,
+              title: foundDynamicPath.title,
+              description: foundDynamicPath.description,
+              difficulty: foundDynamicPath.difficulty === 'gentle' ? 'beginner' : 
+                         foundDynamicPath.difficulty === 'moderate' ? 'intermediate' : 'advanced',
+              estimatedTime: foundDynamicPath.estimatedTotalTime,
+              models: foundDynamicPath.models.map((m: any) => m.model.slug),
+              domains: foundDynamicPath.models.map((m: any) => m.model.domainSlug).filter(Boolean),
+              tags: foundDynamicPath.pathType ? [foundDynamicPath.pathType] : [],
+              icon: '🎯'
+            };
+            setPath(convertedPath);
+            return;
+          }
+        } catch (error) {
+          console.error('Error parsing dynamic paths:', error);
+        }
+      }
+      
+      // Fallback to default paths
       const foundPath = DEFAULT_LEARNING_PATHS.find(p => p.id === resolvedParams.id);
       if (!foundPath) {
         notFound();
@@ -55,8 +93,25 @@ export default function PathPage({ params }: PathPageProps) {
   };
 
   const nextModel = () => {
+    // Auto-mark current model as complete when they hit next
+    if (currentModel) {
+      setCompletedModels(prev => new Set(prev).add(currentModel.slug));
+    }
+    
     if (currentModelIndex < pathModels.length - 1) {
       setCurrentModelIndex(currentModelIndex + 1);
+    }
+  };
+  
+  const finishPath = () => {
+    // Mark final model as complete
+    if (currentModel) {
+      setCompletedModels(prev => {
+        const newSet = new Set(prev).add(currentModel.slug);
+        // Show What's Next modal after state update
+        setTimeout(() => setShowWhatsNext(true), 100);
+        return newSet;
+      });
     }
   };
 
@@ -145,7 +200,7 @@ export default function PathPage({ params }: PathPageProps) {
               {/* Model Progress List */}
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold text-neutral-800 mb-3">Learning Path</h3>
-                {pathModels.map((model, index) => (
+                {pathModels.filter((model): model is NonNullable<typeof model> => Boolean(model)).map((model, index) => (
                   <button
                     key={model.id}
                     onClick={() => setCurrentModelIndex(index)}
@@ -200,14 +255,16 @@ export default function PathPage({ params }: PathPageProps) {
                         onClick={() => {
                           // Add a random model from available models
                           const allModels = getAllModels();
-                          const availableModels = allModels.filter(m => !pathModels.some(pm => pm.slug === m.slug));
+                          const availableModels = allModels.filter(m => !pathModels.some(pm => pm?.slug === m.slug));
                           if (availableModels.length > 0) {
                             const randomModel = availableModels[Math.floor(Math.random() * availableModels.length)];
-                            const newPath = {
-                              ...path,
-                              models: [...path.models, randomModel.slug]
-                            };
-                            setCustomPath(newPath);
+                            if (randomModel) {
+                              const newPath = {
+                                ...path,
+                                models: [...path.models, randomModel.slug]
+                              };
+                              setCustomPath(newPath);
+                            }
                           }
                         }}
                         className="btn btn-sm btn-outline"
@@ -402,16 +459,6 @@ export default function PathPage({ params }: PathPageProps) {
                   </button>
 
                   <div className="flex items-center space-x-3">
-                    {!completedModels.has(currentModel.slug) && (
-                      <button
-                        onClick={() => markModelComplete(currentModel.slug)}
-                        className="btn btn-primary"
-                      >
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Mark Complete
-                      </button>
-                    )}
-                    
                     {completedModels.has(currentModel.slug) && (
                       <span className="inline-flex items-center px-3 py-2 rounded-lg bg-foundational-100 text-foundational-800 text-sm font-medium">
                         <CheckCircle className="w-4 h-4 mr-2" />
@@ -421,29 +468,17 @@ export default function PathPage({ params }: PathPageProps) {
                   </div>
 
                   {currentModelIndex === pathModels.length - 1 ? (
-                    <div className="flex items-center space-x-3">
-                      {completedModels.size === pathModels.length ? (
-                        <Link
-                          href="/"
-                          className="btn btn-primary"
-                        >
-                          <Star className="w-4 h-4 mr-2" />
-                          Path Complete! Return Home
-                        </Link>
-                      ) : (
-                        <button
-                          onClick={nextModel}
-                          disabled
-                          className="btn btn-outline opacity-50 cursor-not-allowed"
-                        >
-                          Complete All Models
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      onClick={finishPath}
+                      className="btn btn-primary"
+                    >
+                      <Star className="w-4 h-4 mr-2" />
+                      Finish Path
+                    </button>
                   ) : (
                     <button
                       onClick={nextModel}
-                      className="btn btn-outline"
+                      className="btn btn-primary"
                     >
                       Next
                       <ArrowRight className="w-4 h-4 ml-2" />
@@ -455,6 +490,15 @@ export default function PathPage({ params }: PathPageProps) {
           </div>
         </div>
       </div>
+      
+      {/* What's Next Modal */}
+      {showWhatsNext && path && (
+        <WhatsNextModal
+          completedPath={path}
+          completedModels={Array.from(completedModels)}
+          onClose={() => setShowWhatsNext(false)}
+        />
+      )}
     </div>
   );
 }

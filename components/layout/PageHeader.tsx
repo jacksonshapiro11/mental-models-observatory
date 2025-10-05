@@ -102,7 +102,7 @@ export function PageHeader({
       try {
         await navigator.share({
           title: title,
-          text: description || subtitle,
+          text: description || subtitle || '',
           url: window.location.href
         });
       } catch (err) {

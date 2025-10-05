@@ -31,7 +31,7 @@ export interface CuratedHighlight {
 export interface ModelHighlights {
   modelId: string;
   modelTitle: string;
-  modelDescription: string;
+  modelDescription?: string;
   curatedHighlights: CuratedHighlight[];
 }
 

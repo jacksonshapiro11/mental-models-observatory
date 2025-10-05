@@ -307,7 +307,7 @@ export function SearchResults({
           </h3>
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}>
             {groupedResults.domains.map((result) => (
-              <div key={result.item.id} onClick={() => onResultClick?.(result)}>
+              <div key={(result.item as any).id} onClick={() => onResultClick?.(result)}>
                 <DomainCard 
                   domain={result.item as any}
                   variant={viewMode === 'list' ? 'list' : 'grid'}
@@ -333,7 +333,7 @@ export function SearchResults({
           </h3>
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}>
             {groupedResults.submodels.map((result) => (
-              <div key={result.item.id} onClick={() => onResultClick?.(result)}>
+              <div key={(result.item as any).id} onClick={() => onResultClick?.(result)}>
                 <SubModelCard 
                   subModel={result.item as any}
                   compact={viewMode === 'list'}
@@ -359,7 +359,7 @@ export function SearchResults({
           </h3>
           <div className="space-y-4">
             {groupedResults.highlights.map((result) => (
-              <div key={result.item.readwiseId} onClick={() => onResultClick?.(result)}>
+              <div key={(result.item as any).readwiseId} onClick={() => onResultClick?.(result)}>
                 <HighlightBlock 
                   highlight={result.item as any}
                   variant="card"

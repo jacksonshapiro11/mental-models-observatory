@@ -77,12 +77,21 @@
     @apply bg-transparent text-neutral-700 hover:bg-neutral-100 focus-visible:ring-foundational-500;
   }
 
+  .btn-white {
+    @apply bg-white text-foundational-600 hover:bg-neutral-50 focus-visible:ring-foundational-500;
+    @apply shadow-gentle hover:shadow-medium;
+  }
+
   .btn-sm {
     @apply px-md py-xs text-caption;
   }
 
   .btn-lg {
     @apply px-xl py-md text-body;
+  }
+
+  .btn-xl {
+    @apply px-2xl py-lg text-body-large font-semibold;
   }
 
   /* CARD SYSTEM */

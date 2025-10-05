@@ -2,7 +2,7 @@ export interface UserProfile {
   experience: 'new' | 'some' | 'experienced';
   interests: string[];
   goals: 'learning' | 'work' | 'curiosity' | 'teaching';
-  timeAvailable: '5min' | '15min' | '30min';
+  timeAvailable: '5min' | '15min' | '30min' | '60min';
   preferredDifficulty: 'beginner' | 'intermediate' | 'advanced' | 'mixed';
   createdAt: number;
   lastActive: number;

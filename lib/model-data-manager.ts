@@ -108,7 +108,7 @@ class ModelDataManager {
     
     while ((match = regex.exec(content)) !== null) {
       try {
-        const jsonData = JSON.parse(match[1]);
+        const jsonData = JSON.parse(match[1] || '{}');
         jsonBlocks.push(jsonData);
       } catch (error) {
         console.warn('Failed to parse JSON block:', error);
@@ -605,9 +605,12 @@ class ModelDataManager {
       if (!tierCoverage[domain.tier]) {
         tierCoverage[domain.tier] = { domains: 0, models: 0, highlights: 0 };
       }
-      tierCoverage[domain.tier].domains++;
-      tierCoverage[domain.tier].models += domain.subModels.length;
-      tierCoverage[domain.tier].highlights += domain.totalHighlights;
+      const tier = domain.tier;
+      if (tierCoverage[tier]) {
+        tierCoverage[tier].domains++;
+        tierCoverage[tier].models += domain.subModels.length;
+        tierCoverage[tier].highlights += domain.totalHighlights;
+      }
     });
 
     const gaps = domains

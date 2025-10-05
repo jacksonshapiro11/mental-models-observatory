@@ -1,7 +1,7 @@
 'use client';
 
 import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import InputComponents from '@/components/ui/Input';
 import {
     BookOpen,
     Brain,
@@ -71,6 +71,7 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
+    return undefined;
   }, [tierDropdownOpen]);
 
   const isActive = (path: string) => {
@@ -98,18 +99,16 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center space-x-4">
-            <Link href="/" className="flex items-center space-x-2 group">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-foundational-500 to-accent-500 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Brain className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-xl font-bold text-neutral-800 hidden sm:block">
-                Mental Models Observatory
-              </span>
-              <span className="text-xl font-bold text-neutral-800 sm:hidden">
-                MMO
-              </span>
-            </Link>
+          <div className="flex items-center space-x-2">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-foundational-500 to-accent-500 flex items-center justify-center">
+              <Brain className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-xl font-bold text-neutral-800 hidden sm:block">
+              Guided Learning Experience
+            </span>
+            <span className="text-xl font-bold text-neutral-800 sm:hidden">
+              GLE
+            </span>
           </div>
 
           {/* Desktop Navigation */}
@@ -214,19 +213,26 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
             </Link>
           </div>
 
-          {/* Search and Mobile Menu */}
+          {/* Search, Home Button, and Mobile Menu */}
           <div className="flex items-center space-x-2">
+            {/* Home Button - Far Right */}
+            <Link
+              href="/"
+              className="flex items-center space-x-2 px-3 py-2 bg-foundational-500 text-white rounded-lg hover:bg-foundational-600 transition-colors font-medium"
+            >
+              <Home className="w-4 h-4" />
+              <span className="hidden sm:block">Home</span>
+            </Link>
             {/* Desktop Search */}
             <div className="hidden md:block">
               <form onSubmit={handleSearch} className="relative">
                 <div className={`flex items-center transition-all duration-300 ${
                   searchExpanded ? 'w-80' : 'w-64'
                 }`}>
-                  <Input
-                    type="search"
-                    placeholder="Search models, domains..."
-                    value={searchQuery}
-                    onChange={(value) => setSearchQuery(value)}
+                  <InputComponents.SearchInput
+                     placeholder="Search models, domains..."
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => setSearchExpanded(true)}
                     onBlur={() => setSearchExpanded(false)}
                     className="pl-10 pr-4"
@@ -274,11 +280,10 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
               <div className="px-3 py-2">
                 <form onSubmit={handleSearch}>
                   <div className="relative">
-                    <Input
-                      type="search"
-                      placeholder="Search..."
-                      value={searchQuery}
-                      onChange={(value) => setSearchQuery(value)}
+                     <InputComponents.SearchInput
+                       placeholder="Search..."
+                       value={searchQuery}
+                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10"
                     />
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />

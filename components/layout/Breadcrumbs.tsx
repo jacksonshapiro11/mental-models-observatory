@@ -46,7 +46,7 @@ export function Breadcrumbs({
 }: BreadcrumbsProps) {
   // Add home item if requested and not already present
   let breadcrumbItems = [...items];
-  if (showHome && (items.length === 0 || items[0].href !== '/')) {
+  if (showHome && (items.length === 0 || items[0]?.href !== '/')) {
     breadcrumbItems = [
       { label: 'Home', href: '/', current: false },
       ...items

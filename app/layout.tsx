@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import Link from 'next/link';
 import './globals.css';
-import Navigation from '@/components/layout/Navigation';
-import Footer from '@/components/layout/Footer';
-import { SkipToContent } from '@/components/ui/AccessibilityEnhanced';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -13,14 +11,14 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Mental Models Observatory',
-    template: '%s | Mental Models Observatory',
+    default: 'Guided Learning Experience',
+    template: '%s | Guided Learning Experience',
   },
   description: 'A comprehensive collection of mental models organized across 40 domains of knowledge with full source transparency.',
   keywords: ['mental models', 'thinking frameworks', 'decision making', 'problem solving', 'cognitive tools'],
-  authors: [{ name: 'Mental Models Observatory' }],
-  creator: 'Mental Models Observatory',
-  publisher: 'Mental Models Observatory',
+  authors: [{ name: 'Guided Learning Experience' }],
+  creator: 'Guided Learning Experience',
+  publisher: 'Guided Learning Experience',
   formatDetection: {
     email: false,
     address: false,
@@ -34,13 +32,13 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: '/',
-    title: 'Mental Models Observatory',
+    title: 'Guided Learning Experience',
     description: 'A comprehensive collection of mental models organized across 40 domains of knowledge.',
-    siteName: 'Mental Models Observatory',
+    siteName: 'Guided Learning Experience',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Mental Models Observatory',
+    title: 'Guided Learning Experience',
     description: 'A comprehensive collection of mental models organized across 40 domains of knowledge.',
   },
   robots: {
@@ -65,14 +63,20 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <body className={`${inter.className} h-full bg-neutral-25 text-neutral-800 antialiased`}>
         <div className="flex min-h-full flex-col">
-          <header className="p-4 bg-blue-600 text-white">
-            <h1>Mental Models Observatory</h1>
+          <header className="p-4 bg-blue-600 text-white flex justify-between items-center">
+            <h1>Guided Learning Experience</h1>
+            <Link 
+              href="/" 
+              className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors font-medium"
+            >
+              Home
+            </Link>
           </header>
           <main id="main-content" className="flex-1 p-4">
             {children}
           </main>
           <footer className="p-4 bg-gray-800 text-white">
-            <p>© 2024 Mental Models Observatory</p>
+            <p>© 2024 Guided Learning Experience</p>
           </footer>
         </div>
       </body>

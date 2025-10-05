@@ -1,29 +1,30 @@
-import React from 'react';
+'use client';
+
 import {
-  Button,
-  Card,
-  H1,
-  H2,
-  H3,
-  H4,
-  Text,
-  Code,
-  Quote,
-  TextInput,
-  SearchInput,
-  TextArea,
-  Container,
-  Grid,
-  Stack,
-  Cluster,
-  Section,
-  LoadingSpinner,
-  Alert,
-  Badge,
-  Progress,
-  Skeleton
+    Alert,
+    Badge,
+    Button,
+    Card,
+    Cluster,
+    Code,
+    Container,
+    Grid,
+    H1,
+    H2,
+    H3,
+    H4,
+    LoadingSpinner,
+    Progress,
+    Quote,
+    SearchInput,
+    Section,
+    Skeleton,
+    Stack,
+    Text,
+    TextArea,
+    TextInput
 } from '@/components/ui';
-import { ArrowRight, Search, Mail, User, Star } from 'lucide-react';
+import { ArrowRight, Search } from 'lucide-react';
 
 export default function UIShowcasePage() {
   return (

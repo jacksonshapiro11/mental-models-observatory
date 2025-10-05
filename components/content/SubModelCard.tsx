@@ -157,10 +157,10 @@ export function SubModelCard({
                   <h4 className="text-sm font-medium text-neutral-800 mb-2">Example</h4>
                   <div className="bg-white rounded p-3 border border-neutral-200">
                     <h5 className="text-sm font-medium text-neutral-800 mb-1">
-                      {subModel.examples[0].title}
+                      {subModel.examples[0]?.title}
                     </h5>
                     <p className="text-xs text-neutral-600">
-                      {subModel.examples[0].description}
+                      {subModel.examples[0]?.description}
                     </p>
                   </div>
                 </div>

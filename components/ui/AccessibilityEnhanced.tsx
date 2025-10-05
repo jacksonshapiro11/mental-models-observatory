@@ -23,7 +23,7 @@ interface AccessibleHeadingProps {
 }
 
 export function AccessibleHeading({ level, children, className = '', id }: AccessibleHeadingProps) {
-  const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+  const Tag = `h${level}` as keyof React.JSX.IntrinsicElements;
   
   return (
     <Tag className={className} id={id}>
@@ -221,7 +221,7 @@ export function AccessibleField({
         )}
       </label>
       
-      {React.cloneElement(children, {
+      {React.cloneElement(children as React.ReactElement<any>, {
         id,
         'aria-describedby': describedBy,
         'aria-required': required,

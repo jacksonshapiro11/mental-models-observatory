@@ -119,7 +119,7 @@ export default function ProfileSetup({ onComplete, onSkip }: ProfileSetupProps) 
                       }`}
                     >
                       <div className="text-2xl mb-2">
-                        {Icon ? <Icon className="w-6 h-6 mx-auto" /> : interest.icon}
+                        {Icon ? <Icon className="w-6 h-6 mx-auto" /> : <span>{String(interest.icon)}</span>}
                       </div>
                       <div className="text-sm font-medium text-neutral-800">
                         {interest.label}

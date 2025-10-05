@@ -17,7 +17,7 @@ export default function GuidePage() {
   const filteredPaths = allPaths.filter(path =>
     path.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     path.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    path.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    path.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const getDifficultyColor = (difficulty: string) => {
@@ -150,7 +150,7 @@ export default function GuidePage() {
                 </div>
                 
                 <div className="mt-3 flex flex-wrap gap-1">
-                  {path.tags.slice(0, 3).map((tag) => (
+                  {path.tags.slice(0, 3).map((tag: string) => (
                     <span
                       key={tag}
                       className="px-2 py-1 bg-neutral-100 text-neutral-600 rounded-md text-xs"

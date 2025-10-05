@@ -97,7 +97,7 @@ export default function ModelPage({ params }: ModelPageProps) {
             <h2 className="text-2xl font-bold text-gray-900">Core Principles</h2>
           </div>
           <div className="space-y-4">
-            {model.principles.map((principle, index) => (
+            {model.principles.map((principle: string, index: number) => (
               <div key={index} className="flex items-start space-x-3">
                 <div className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
                   {index + 1}
@@ -115,7 +115,7 @@ export default function ModelPage({ params }: ModelPageProps) {
             <h2 className="text-2xl font-bold text-gray-900">Examples</h2>
           </div>
           <div className="grid grid-cols-1 gap-4">
-            {model.examples.map((example, index) => (
+            {model.examples.map((example: string, index: number) => (
               <div key={index} className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700">{example}</p>
               </div>
@@ -130,7 +130,7 @@ export default function ModelPage({ params }: ModelPageProps) {
             <h2 className="text-2xl font-bold text-gray-900">Applications</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {model.applications.map((application, index) => (
+            {model.applications.map((application: string, index: number) => (
               <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-green-800 font-medium">{application}</p>
               </div>
@@ -151,7 +151,7 @@ export default function ModelPage({ params }: ModelPageProps) {
         <section className="mb-12">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Related Topics</h3>
           <div className="flex flex-wrap gap-2">
-            {model.tags.map((tag) => (
+            {model.tags.map((tag: string) => (
               <span
                 key={tag}
                 className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"

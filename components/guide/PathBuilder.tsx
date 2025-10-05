@@ -45,8 +45,8 @@ export default function PathBuilder({ onPathCreated, onClose }: PathBuilderProps
     ).filter(Boolean);
 
     const estimatedTime = selectedModels.length * 5; // 5 minutes per model
-    const domains = [...new Set(selectedModelsData.map(model => model.domainSlug))];
-    const tags = [...new Set(selectedModelsData.flatMap(model => model.tags))];
+    const domains = [...new Set(selectedModelsData.map(model => model?.domainSlug).filter(Boolean))] as string[];
+    const tags = [...new Set(selectedModelsData.flatMap(model => model?.tags || []))];
 
     const newPath: LearningPath = {
       id: `custom-${Date.now()}`,

@@ -165,8 +165,8 @@ export class UserProfileManager {
       scoreB += bInterestMatch;
       
       // Goal alignment
-      if (profile.goals === 'business' && a.id === 'business-strategist') scoreA += 3;
-      if (profile.goals === 'business' && b.id === 'business-strategist') scoreB += 3;
+      if (profile.goals === 'work' && a.id === 'business-strategist') scoreA += 3;
+      if (profile.goals === 'work' && b.id === 'business-strategist') scoreB += 3;
       if (profile.goals === 'learning' && a.id === 'learner') scoreA += 3;
       if (profile.goals === 'learning' && b.id === 'learner') scoreB += 3;
       

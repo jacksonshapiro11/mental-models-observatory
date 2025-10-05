@@ -1,12 +1,12 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { getDomainBySlug, getModelsByDomain } from '@/lib/data';
 import { ArrowLeft, ArrowRight, BookOpen } from 'lucide-react';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
 interface DomainPageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 export default async function DomainPage({ params }: DomainPageProps) {
@@ -24,7 +24,7 @@ export default async function DomainPage({ params }: DomainPageProps) {
         {/* Breadcrumb */}
         <div className="mb-8">
           <Link
-            href="/domains"
+            href="/knowledge-domains"
             className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -36,14 +36,14 @@ export default async function DomainPage({ params }: DomainPageProps) {
         <div className="mb-12">
           <div className="flex items-center space-x-4 mb-6">
             <div 
-              className="h-16 w-16 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: domain.color }}
+              className={`h-16 w-16 rounded-xl ${
+                domain.tier === 1 ? 'bg-blue-900' :
+                domain.tier === 2 ? 'bg-orange-600' :
+                domain.tier === 3 ? 'bg-green-800' :
+                domain.tier === 4 ? 'bg-purple-400' :
+                'bg-gray-500'
+              }`}
             >
-              <span className="text-white font-bold text-2xl">
-                {domain.icon === 'puzzle' && '🧩'}
-                {domain.icon === 'target' && '🎯'}
-                {domain.icon === 'network' && '🌐'}
-              </span>
             </div>
             <div>
               <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl">

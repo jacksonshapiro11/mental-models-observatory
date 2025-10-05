@@ -62,12 +62,12 @@ import {
 /**
  * Mental models data from Readwise framework
  */
-export const SAMPLE_MODELS: MentalModel[] = READWISE_MODELS;
+export const SAMPLE_MODELS: MentalModel[] = READWISE_MODELS as MentalModel[];
 
 /**
  * Domains data from Readwise framework
  */
-export const SAMPLE_DOMAINS: Domain[] = READWISE_DOMAINS;
+export const SAMPLE_DOMAINS: Domain[] = READWISE_DOMAINS as Domain[];
 
 /**
  * Get all mental models

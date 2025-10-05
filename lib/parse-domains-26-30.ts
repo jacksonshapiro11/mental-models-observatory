@@ -35,7 +35,7 @@ export function parseDomains26to30File(): ModelHighlights[] {
       const section = sections[i];
       
       // Extract JSON blocks from each section
-      const jsonMatches = section.match(/```json\n([\s\S]*?)\n```/g);
+      const jsonMatches = section?.match(/```json\n([\s\S]*?)\n```/g);
       
       if (jsonMatches && jsonMatches.length > 0) {
         try {
