@@ -401,13 +401,13 @@ const MODEL_SLUG_MAPPINGS: { [key: string]: string } = {
   // Psychology & Human Behavior - FIXED (models 4-6)
   'kahneman-s-8-decision-making-questions': 'kahneman-decision-questions',
   'mental-accounting-reference-point-dependence': 'mental-accounting-reference-points',
-  'social-psychology-environmental-influence': 'social-environmental-influence',
+  'social-psychology-environmental-influence': '6e-social-psychology-environmental-influence',
   
   // Decision-Making Under Uncertainty - FIXED (#7)
   'decision-quality-vs-outcome-separation': 'decision-quality-outcome-separation',
   
   // Philosophy & Truth-Seeking - FIXED (models 8-9)
-  'the-ladder-vs-the-spectrum-thinking-about-thinking': 'ladder-vs-spectrum-thinking',
+  'the-ladder-vs-the-spectrum-thinking-about-thinking': '8c-ladder-vs-spectrum',
   'paradigm-shifts-transcendence': 'paradigm-shifts-transcendence',
   
   // Philosophy & Truth-Seeking - FIXED (#10)

@@ -1,440 +1,353 @@
-# 🧠 Guided Learning Experience
+# Mental Models Observatory 🧠
 
-A beautiful, comprehensive website showcasing a 40-domain mental models framework with **100% Readwise integration** - every model displays rich, curated insights from your knowledge base.
+A comprehensive Next.js application showcasing **119 mental models** across 40 knowledge domains, fully integrated with **1,132 curated Readwise highlights**.
 
-## 🎯 Project Overview
+---
 
-The **Guided Learning Experience** is a curated collection of **119 mental models** organized across 40 domains of knowledge. Each mental model includes:
+## 📊 Project Status
 
-- **Core Principles**: Fundamental concepts and rules
-- **Real-world Examples**: Practical applications and case studies
-- **🎯 Readwise Highlights**: 10+ curated insights per model with full source attribution
-- **Source Attribution**: Complete transparency through Readwise integration
-- **Related Models**: Connections to other frameworks
-- **Difficulty Levels**: Beginner, intermediate, and advanced classifications
+- ✅ **119 mental models** with complete data
+- ✅ **1,132 curated highlights** from Readwise (100% coverage)
+- ✅ **40 knowledge domains** with tier-based organization
+- ✅ **Production ready** - deployed on Vercel
 
-### 🏠 **Simplified Homepage Design**
-- **Clean hero section** with personalized guide button
-- **Direct navigation** to all models and domains
-- **Streamlined experience** - removed complex sections for better focus
-- **Two main actions**: "Explore All Models" and "Explore All Domains"
+---
 
-## 🚀 **NEW: Complete Readwise Integration**
+## 🚀 Quick Start
 
-**✅ 100% Success Rate**: All 119 models now display rich Readwise highlights!
+### Prerequisites
+- Node.js 18.0+
+- Readwise API token ([get yours here](https://readwise.io/access_token))
 
-- **10+ curated insights per model** on average
-- **Full author, book, and curator information**
-- **Quality and relevance scores** for each highlight
-- **Deep insights** from your curated knowledge base
-- **Conservative mapping approach** - only high-quality semantic matches
-
-## 🚀 Tech Stack
-
-- **Framework**: Next.js 14 with App Router
-- **Language**: TypeScript with strict configuration
-- **Styling**: Tailwind CSS with custom design system
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
-- **API Integration**: Readwise API for source management
-- **Deployment**: Vercel (optimized)
-
-## 📋 Prerequisites
-
-Before you begin, ensure you have:
-
-- [Node.js](https://nodejs.org/) 18.0 or later
-- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
-- [Git](https://git-scm.com/)
-- [Readwise account](https://readwise.io/) with API token
-- Your 40-domain mental models framework document
-
-## 🛠️ Installation & Setup
-
-### 1. Clone the Repository
+### Installation
 
 ```bash
+# Clone and install
 git clone https://github.com/yourusername/mental-models-observatory.git
 cd mental-models-observatory
-```
-
-### 2. Install Dependencies
-
-```bash
 npm install
-```
 
-### 3. Environment Configuration
-
-Copy the environment template and configure your variables:
-
-```bash
+# Configure environment
 cp .env.local.example .env.local
-```
+# Add your READWISE_API_TOKEN to .env.local
 
-Edit `.env.local` with your configuration:
-
-```env
-# Readwise API Configuration
-READWISE_API_TOKEN=your_readwise_api_token_here
-
-# Next.js Configuration
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_SITE_NAME="Guided Learning Experience"
-
-# Content Management
-NEXT_PUBLIC_CONTACT_EMAIL=your_email@example.com
-NEXT_PUBLIC_GITHUB_URL=https://github.com/yourusername/mental-models-observatory
-
-# Feature Flags
-NEXT_PUBLIC_ENABLE_SEARCH=true
-NEXT_PUBLIC_ENABLE_COMMENTS=false
-NEXT_PUBLIC_ENABLE_SOCIAL_SHARING=true
-```
-
-### 4. Get Your Readwise API Token
-
-1. Go to [Readwise](https://readwise.io/) and sign in
-2. Navigate to Settings → API Keys
-3. Generate a new API token
-4. Add it to your `.env.local` file
-
-### 5. Start Development Server
-
-```bash
+# Start development server
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to view the application.
 
+---
+
 ## 📁 Project Structure
 
 ```
 mental-models-observatory/
-├── app/                    # Next.js App Router pages
-│   ├── globals.css        # Global styles
-│   ├── layout.tsx         # Root layout (with Navigation & Footer)
-│   ├── page.tsx           # Homepage
-│   ├── search/            # Search functionality
-│   │   └── page.tsx       # Search page
-│   ├── api/               # API routes
-│   │   └── readwise/      # Readwise API integration
-│   ├── domains/           # Domain pages
-│   │   └── [slug]/        # Dynamic domain routes
-│   └── models/            # Model pages
-│       └── [slug]/        # Dynamic model routes
-├── components/            # React components
-│   ├── ui/               # Base UI components + responsive/accessibility
-│   │   ├── ResponsiveContainer.tsx
-│   │   ├── ResponsiveGrid.tsx
-│   │   ├── MobileOptimized.tsx
-│   │   ├── AccessibilityEnhanced.tsx
-│   │   └── index.ts      # All UI exports
-│   ├── layout/           # Navigation, headers, layout components
-│   │   ├── Navigation.tsx    # Mobile-optimized navigation
-│   │   ├── PageHeader.tsx    # Tier-aware page headers
-│   │   ├── ContentLayout.tsx # Flexible content layouts
-│   │   ├── Breadcrumbs.tsx   # Tier-colored breadcrumbs
-│   │   ├── TableOfContents.tsx
-│   │   ├── SearchInterface.tsx
-│   │   ├── Footer.tsx        # Comprehensive footer
-│   │   └── index.ts
-│   └── content/          # Domain & model specific components
-│       ├── DomainCard.tsx    # Tier-styled domain cards
-│       ├── SubModelCard.tsx  # Expandable model previews
-│       ├── HighlightBlock.tsx # Beautiful quote display
-│       ├── SourceAttribution.tsx # Book source info
-│       ├── RelatedModels.tsx # Connected models carousel
-│       ├── SearchResults.tsx # Advanced search results
-│       └── index.ts
-├── lib/                  # Utility libraries
-├── types/                # TypeScript type definitions
-├── data/                 # Static data files
-└── public/               # Static assets
+├── app/                          # Next.js App Router
+│   ├── page.tsx                 # Homepage
+│   ├── models/[slug]/           # Individual model pages
+│   ├── knowledge-domains/       # Domain browsing
+│   └── api/readwise/            # Readwise API integration
+│
+├── components/
+│   ├── content/                 # Content display components
+│   │   ├── ReadwiseHighlights.tsx   # Main highlights display
+│   │   ├── HighlightBlock.tsx       # Individual highlight card
+│   │   └── SourceAttribution.tsx    # Book/author metadata
+│   ├── layout/                  # Navigation, headers, footers
+│   └── ui/                      # Base UI components
+│
+├── lib/
+│   ├── readwise-data.ts         # SOURCE OF TRUTH - All 119 models
+│   ├── parse-all-domains.ts     # Highlight parsing + slug mappings
+│   ├── readwise-highlights.ts   # API integration & caching
+│   └── data.ts                  # Exports for components
+│
+├── Readwise website notes/      # Raw curated highlights (markdown/JSON)
+│   ├── mental_models_8c_6e.md
+│   ├── mental_models_curation_21-24.md
+│   └── [15+ other curation files]
+│
+├── scripts/
+│   ├── export-all-models-simple.js           # Generate MENTAL_MODELS_COMPLETE.md
+│   └── export-readwise-highlights-complete.js # Generate MENTAL_MODELS_READWISE_HIGHLIGHTS.md
+│
+└── docs/                        # Comprehensive documentation
+    ├── QUICK_REFERENCE.md
+    ├── DEVELOPMENT_GUIDE.md
+    ├── TECHNICAL_ARCHITECTURE.md
+    └── readwise-integration.md
 ```
 
-## ✅ Implementation Status
+---
 
-### 🎯 **Readwise Integration (100% Complete)**
-- ✅ **All 119 models working** - Complete highlight coverage
-- ✅ **Conservative mapping approach** - Only high-quality semantic matches applied
-- ✅ **Comprehensive slug mapping** - Fixed 55+ broken models with proper mappings
-- ✅ **Missing models resolved** - Added curated highlights for final 8 models
-- ✅ **API integration** - Robust caching, error handling, and rate limiting
-- ✅ **Source attribution** - Full author, book, curator information displayed
+## 🎯 Core Architecture
 
-### 🎨 Content Components (Phase 4A)
-- ✅ **DomainCard** - Tier-based styling, stats, hover effects, progress indicators
-- ✅ **SubModelCard** - Expandable previews, difficulty badges, related model hints
-- ✅ **HighlightBlock** - Beautiful typography, source attribution, copy/share features
-- ✅ **SourceAttribution** - Book covers, relevance scoring, reading progress
-- ✅ **RelatedModels** - Horizontal carousel, relationship types, cross-domain connections
-- ✅ **SearchResults** - Grouped results, advanced filtering, snippet highlighting
-- ✅ **ReadwiseHighlights** - NEW: Displays curated insights with full metadata
+### Data Flow
 
-### 🏗️ Layout Components (Phase 4B)
-- ✅ **Navigation** - Tier dropdowns, mobile hamburger, search integration, breadcrumbs
-- ✅ **PageHeader** - Hero sections, tier theming, stats display, action buttons
-- ✅ **ContentLayout** - Sidebar support, reading progress, mobile optimization
-- ✅ **Breadcrumbs** - Tier-aware styling, truncation, home navigation
-- ✅ **TableOfContents** - Auto-generation, scroll tracking, collapsible sections
-- ✅ **SearchInterface** - Autocomplete, suggestions, recent searches
-- ✅ **Footer** - Framework overview, tier navigation, newsletter signup
+```
+Readwise website notes/       →    lib/parse-all-domains.ts    →    components/
+(curated markdown/JSON)            (parsing + mapping)              (display)
+                                            ↓
+                                   lib/readwise-data.ts
+                                   (SOURCE OF TRUTH)
+```
 
-### 📱 Responsive & Accessibility Features
-- ✅ **Mobile-first design** - Touch optimization, gesture support
-- ✅ **Accessibility compliance** - ARIA support, keyboard navigation, screen readers
-- ✅ **Performance optimization** - Lazy loading, memoization, virtual scrolling ready
-- ✅ **Component library** - Fully typed, documented, reusable
+### Key Files
 
-## 🎨 Design System
+| File | Purpose | When to Edit |
+|------|---------|--------------|
+| `lib/readwise-data.ts` | **Source of truth** - all 119 models with principles, applications, examples | Adding/editing model content |
+| `lib/parse-all-domains.ts` | Slug mappings + highlight parsing logic | Fixing model ID mismatches |
+| `Readwise website notes/*.md` | Raw curated highlights from Readwise | Adding new highlights |
+| `components/content/ReadwiseHighlights.tsx` | Displays highlights on model pages | Changing highlight UI |
 
-### Tier-Based Color System
-- **Foundational (Tier 1)**: Blue tones - Core thinking frameworks
-- **Practical (Tier 2)**: Green tones - Applied decision tools  
-- **Specialized (Tier 3)**: Purple tones - Domain-specific models
-- **Accent**: Orange - Highlights and CTAs
-- **Neutral**: Gray scale - Supporting elements
+---
 
-### Typography
-- **Sans**: Inter - Primary text and UI
-- **Serif**: For quotes and highlights
-- **Mono**: JetBrains Mono - Code and technical content
+## ✏️ Making Changes
 
-### Component Features
-- Tier-aware color coding throughout
-- Smooth hover animations and transitions
-- Mobile-optimized touch targets (44px minimum)
-- Consistent spacing and layout patterns
-- Accessible focus states and keyboard navigation
+### Adding a New Model
+
+1. **Add to source of truth** (`lib/readwise-data.ts`):
+```typescript
+{
+  id: 'unique-model-id',
+  code: 'A1', // Optional domain code
+  name: 'Model Name',
+  slug: 'model-name-slug',
+  description: 'Clear description of the model',
+  domain: 'Domain Name',
+  domainSlug: 'domain-slug',
+  principles: ['Core principle 1', 'Core principle 2'],
+  applications: ['Real-world application 1', 'Application 2'],
+  examples: ['Example 1', 'Example 2'],
+  relatedModels: ['related-model-slug'],
+  sources: [],
+  tags: ['tag1', 'tag2'],
+  difficulty: 'beginner', // or 'intermediate', 'advanced'
+  createdAt: '2024-01-01',
+  updatedAt: '2024-01-01'
+}
+```
+
+2. **Add curated highlights** (create new file in `Readwise website notes/`):
+```markdown
+## Your Model
+
+\`\`\`json
+{
+  "modelId": "unique-model-id",
+  "modelTitle": "Model Name",
+  "modelDescription": "Description matching the model",
+  "curatedHighlights": [
+    {
+      "readwiseId": 123456789,
+      "book": {
+        "title": "Book Title",
+        "author": "Author Name"
+      },
+      "relevanceScore": 9.5,
+      "qualityScore": 9.2,
+      "insightType": "foundational_concept",
+      "curatorReason": "Why this highlight is relevant"
+    }
+  ]
+}
+\`\`\`
+```
+
+3. **Add slug mapping** (if model ID ≠ slug) in `lib/parse-all-domains.ts`:
+```typescript
+const MODEL_SLUG_MAPPINGS: { [key: string]: string } = {
+  'model-name-slug': 'unique-model-id',
+  // ... other mappings
+};
+```
+
+4. **Regenerate markdown documents**:
+```bash
+node scripts/export-all-models-simple.js
+node scripts/export-readwise-highlights-complete.js
+```
+
+5. **Test locally**:
+```bash
+npm run dev
+# Visit http://localhost:3000/models/model-name-slug
+```
+
+### Editing an Existing Model
+
+**Content changes** (principles, applications, examples):
+- Edit `lib/readwise-data.ts` directly
+- Regenerate: `node scripts/export-all-models-simple.js`
+
+**Highlight changes** (add/remove/edit highlights):
+- Edit the relevant file in `Readwise website notes/`
+- Regenerate: `node scripts/export-readwise-highlights-complete.js`
+
+**Slug mismatch** (model not showing highlights):
+- Check model slug vs. modelId in highlights
+- Add mapping to `MODEL_SLUG_MAPPINGS` in `lib/parse-all-domains.ts`
+- Regenerate: `node scripts/export-readwise-highlights-complete.js`
+
+### UI/Design Changes
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| Model page layout | `app/models/[slug]/page.tsx` | Overall page structure |
+| Highlight display | `components/content/ReadwiseHighlights.tsx` | Fetches and displays all highlights |
+| Individual highlight | `components/content/HighlightBlock.tsx` | Single highlight card design |
+| Navigation | `components/layout/Navigation.tsx` | Top navigation bar |
+| Homepage | `app/page.tsx` | Landing page |
+
+---
 
 ## 🔧 Development Commands
 
 ```bash
 # Development
-npm run dev              # Start development server
+npm run dev              # Start dev server with Turbopack
 npm run build            # Build for production
 npm run start            # Start production server
 
 # Code Quality
 npm run lint             # Run ESLint
-npm run lint:fix         # Fix ESLint errors
-npm run type-check       # TypeScript type checking
-npm run format           # Format code with Prettier
-npm run format:check     # Check code formatting
+npm run type-check       # TypeScript validation
 
-# Utilities
-npm run clean            # Clean build artifacts
-npm run analyze          # Analyze bundle size
+# Documentation
+node scripts/export-all-models-simple.js           # Generate MENTAL_MODELS_COMPLETE.md
+node scripts/export-readwise-highlights-complete.js # Generate MENTAL_MODELS_READWISE_HIGHLIGHTS.md
 ```
 
-## 📚 Adding Content
+---
 
-### 1. Mental Models
+## 🎨 Design System
 
-Add new mental models in `lib/data.ts`:
+### Tier-Based Organization
 
-```typescript
-{
-  id: 'your-model-id',
-  name: 'Your Model Name',
-  slug: 'your-model-slug',
-  description: 'Brief description of the model',
-  domain: 'Domain Name',
-  domainSlug: 'domain-slug',
-  principles: ['Principle 1', 'Principle 2'],
-  examples: ['Example 1', 'Example 2'],
-  applications: ['Application 1', 'Application 2'],
-  relatedModels: ['related-model-1', 'related-model-2'],
-  sources: [/* source objects */],
-  tags: ['tag1', 'tag2'],
-  difficulty: 'intermediate',
-  createdAt: '2024-01-01',
-  updatedAt: '2024-01-01'
-}
-```
+| Tier | Color | Purpose | Example Domains |
+|------|-------|---------|----------------|
+| **Tier 1** | Blue (`bg-blue-900`) | Foundational thinking frameworks | Philosophy, Logic |
+| **Tier 2** | Orange (`bg-orange-600`) | Practical decision tools | Business Strategy, Psychology |
+| **Tier 3** | Green (`bg-green-800`) | Domain-specific expertise | Evolution, Engineering |
+| **Tier 4** | Purple (`bg-purple-400`) | Advanced integration | Systems Thinking |
 
-### 2. Domains
+### Typography
+- **Primary**: Inter (sans-serif)
+- **Highlights**: Serif font for quotes
+- **Code**: JetBrains Mono
 
-Add new domains in `lib/data.ts`:
+### Key Features
+- Mobile-first responsive design
+- Accessibility (ARIA, keyboard navigation)
+- Smooth animations via Framer Motion
+- Optimized performance with caching
 
-```typescript
-{
-  id: 'domain-id',
-  name: 'Domain Name',
-  slug: 'domain-slug',
-  description: 'Domain description',
-  color: '#3B82F6',
-  icon: 'icon-name',
-  models: ['model-1', 'model-2'],
-  createdAt: '2024-01-01',
-  updatedAt: '2024-01-01'
-}
-```
-
-### 3. Readwise Integration
-
-**🎯 COMPLETE**: All 119 models now display rich Readwise highlights automatically!
-
-The project uses a comprehensive mapping system to connect model slugs with Readwise highlights:
-
-1. **Automatic highlight fetching** - No manual tagging required
-2. **Conservative mapping approach** - Only high-quality semantic matches
-3. **Comprehensive coverage** - 100% of models now working
-4. **Rich metadata display** - Author, book, curator, quality scores
-5. **Caching & performance** - Optimized API calls with 5-minute file cache
-
-**Key files:**
-- `lib/parse-all-domains.ts` - Main parsing logic with comprehensive slug mappings
-- `lib/readwise-highlights.ts` - API integration and caching
-- `components/content/ReadwiseHighlights.tsx` - Display component
-- `Readwise website notes/` - Curated highlight data
+---
 
 ## 🚀 Deployment
 
 ### Vercel (Recommended)
 
-1. ✅ **Code pushed to GitHub** - All changes committed and pushed
-2. Connect your repository to [Vercel](https://vercel.com)
-3. Add environment variables in Vercel dashboard:
-   - `READWISE_API_TOKEN` - Your Readwise API token
-   - `NEXT_PUBLIC_SITE_URL` - Your production URL
-   - `NEXT_PUBLIC_SITE_NAME` - "Guided Learning Experience"
-4. Deploy automatically on push
-
-**🎯 Ready for deployment** - All 119 models with Readwise highlights working!
-
-## 🏆 Major Achievements
-
-### 📊 **Readwise Integration Success**
-- **Started**: 64/119 models working (54% success rate)
-- **Achieved**: 119/119 models working (100% success rate)
-- **Fixed**: 55+ broken models with comprehensive slug mappings
-- **Added**: Curated highlights for 8 missing models
-- **Approach**: Conservative mapping - only high-quality semantic matches
-
-### 🔧 **Technical Improvements**
-- **Robust JSON parsing** - Handles corrupted files with syntax fixing
-- **Comprehensive caching** - 5-minute file cache, 1-hour API cache
-- **Error handling** - Graceful fallbacks for API failures
-- **Performance optimization** - Rate limiting and deduplication
-- **Conservative approach** - Avoided overfitted mappings
-
-### 📈 **User Experience**
-- **Rich highlights** - 10+ curated insights per model on average
-- **Full metadata** - Author, book, curator, quality scores
-- **Self-contained learning** - No external navigation required
-- **Mobile optimized** - Responsive design throughout
-- **Accessibility** - ARIA support and keyboard navigation
-
-### 🎨 **Homepage & Navigation Redesign**
-- **Simplified homepage** - Clean hero section with personalized guide button
-- **Updated branding** - Changed from "Mental Models Observatory" to "Guided Learning Experience"
-- **Streamlined navigation** - Direct access to models and domains
-- **Removed complexity** - Eliminated search/filter sections for better focus
-- **Two main actions** - "Explore All Models" and "Explore All Domains"
-
-### 🗺️ **Domain System Overhaul**
-- **Fixed routing issues** - Resolved `/domains` redirect problems by renaming to `/knowledge-domains`
-- **4-tier color system** - Implemented comprehensive tier-based color coding:
-  - **Tier 1 (Foundational)**: Dark blue (`bg-blue-900`) - Core thinking frameworks
-  - **Tier 2 (Practical)**: Burnt orange (`bg-orange-600`) - Applied decision tools
-  - **Tier 3 (Specialized)**: Forest green (`bg-green-800`) - Domain-specific models
-  - **Tier 4 (Advanced)**: Lavender (`bg-purple-400`) - Advanced integration
-- **Removed emojis** - Clean domain cards without book emojis
-- **Descriptive legends** - Full tier names in color legends
-
-### 🎯 **Personalized Learning System**
-- **Profile setup** - 4-step onboarding process with experience, interests, goals, and preferences
-- **Learning paths** - 6 predefined paths with difficulty levels and time estimates
-- **Results page** - Dedicated page showing personalized recommendations
-- **Behavioral tracking** - User behavior and learning pattern analysis
-- **Dynamic recommendations** - Content-based filtering and collaborative filtering
-
-### 🛠️ **Build & Deployment Fixes**
-- **TypeScript errors resolved** - Fixed all 50+ TypeScript compilation errors
-- **ESLint configuration** - Updated rules to allow successful builds
-- **Next.js 15 compatibility** - Resolved strict type checking issues
-- **Vercel deployment** - Successfully deployed with all features working
-- **Performance optimization** - Optimized bundle size and loading times
-
-### Manual Deployment
-
+1. **Push to GitHub**:
 ```bash
-npm run build
-npm run start
+git add .
+git commit -m "Your changes"
+git push origin main
 ```
 
-## 🤝 Contributing
+2. **Connect to Vercel**:
+   - Import repository at [vercel.com](https://vercel.com)
+   - Add environment variable: `READWISE_API_TOKEN`
+   - Deploy automatically on push
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. **Verify deployment**:
+   - Check `/api/readwise/debug` for system status
+   - Test a few model pages for highlight display
 
-## 📄 License
+### Environment Variables
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```env
+# Required
+READWISE_API_TOKEN=your_token_here
 
-## 🙏 Acknowledgments
-
-- [Readwise](https://readwise.io/) for source management
-- [Next.js](https://nextjs.org/) for the framework
-- [Tailwind CSS](https://tailwindcss.com/) for styling
-- [Framer Motion](https://www.framer.com/motion/) for animations
-- [Lucide](https://lucide.dev/) for icons
-
-## 📚 Complete Documentation Suite
-
-### Quick Start
-- **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** - Essential commands, common tasks, troubleshooting
-- **[DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** - Complete deployment instructions with validation
-
-### Technical Deep Dives  
-- **[DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md)** - Complete development process and organizational knowledge
-- **[TECHNICAL_ARCHITECTURE.md](docs/TECHNICAL_ARCHITECTURE.md)** - System architecture and slug mapping details
-- **[readwise-integration.md](docs/readwise-integration.md)** - Readwise API integration documentation
-
-### Key Resources
-- **System Health**: `/api/readwise/debug` endpoint for live status
-- **Model Testing**: `scripts/check-real-model-slugs.js` validates all 119 models
-- **Troubleshooting**: Comprehensive guides in each documentation file
-
-## 🚀 **Recent Major Updates (Latest Session)**
-
-### ✅ **Completed This Session**
-1. **Homepage Redesign** - Simplified layout with "Guided Learning Experience" branding
-2. **Domain System Fix** - Resolved `/domains` routing issues by creating `/knowledge-domains`
-3. **4-Tier Color System** - Implemented comprehensive tier-based color coding
-4. **Navigation Updates** - Added Home button, updated branding throughout
-5. **Personalized Learning** - Created results page and learning path system
-6. **Build Fixes** - Resolved all TypeScript errors for successful deployment
-7. **Vercel Deployment** - Successfully deployed with all features working
-
-### 🎯 **Current Status**
-- **✅ All 119 models working** with Readwise highlights
-- **✅ Homepage redesigned** with simplified, focused experience
-- **✅ Domain system working** with 4-tier color coding
-- **✅ Personalized learning** with profile setup and results page
-- **✅ Build system fixed** - All TypeScript errors resolved
-- **✅ Successfully deployed** to Vercel with all features
-
-### 🔄 **Next Steps for Enhancement**
-- **Advanced personalization** - Behavioral tracking and dynamic recommendations
-- **Learning analytics** - Progress tracking and knowledge mapping
-- **Content optimization** - A/B testing and user feedback integration
-- **Performance monitoring** - Analytics and user behavior insights
-
-## 📞 Support
-
-For questions or support:
-
-- **Documentation**: Complete guides in `/docs/` folder
-- **GitHub Issues**: [Create an issue](https://github.com/jacksonshapiro11/mental-models-observatory/issues)  
-- **System Status**: Check `/api/readwise/debug` for live system health
-- **Emergency**: Use rollback procedures in deployment guide
+# Optional
+NEXT_PUBLIC_SITE_URL=https://your-domain.com
+NEXT_PUBLIC_SITE_NAME="Mental Models Observatory"
+```
 
 ---
 
-**Built with ❤️ for the mental models community**
+## 📚 Generated Documentation
+
+The project includes auto-generated markdown references:
+
+| File | Content | Update Command |
+|------|---------|----------------|
+| `MENTAL_MODELS_COMPLETE.md` | All 119 models with principles, applications, examples | `node scripts/export-all-models-simple.js` |
+| `MENTAL_MODELS_READWISE_HIGHLIGHTS.md` | All 1,132 highlights with full metadata | `node scripts/export-readwise-highlights-complete.js` |
+
+---
+
+## 🔍 Troubleshooting
+
+### Model not showing highlights
+
+1. Check slug mapping in `lib/parse-all-domains.ts`
+2. Verify modelId in highlight file matches model's `id` or `slug`
+3. Regenerate highlights: `node scripts/export-readwise-highlights-complete.js`
+4. Check browser console for API errors
+
+### Build errors
+
+```bash
+# Clear cache and rebuild
+rm -rf .next
+npm run build
+```
+
+### API errors
+
+- Verify `READWISE_API_TOKEN` in `.env.local`
+- Check rate limits: `/api/readwise/debug`
+- Review logs in Vercel dashboard (production)
+
+---
+
+## 📖 Complete Documentation
+
+- **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** - Commands, common tasks, quick fixes
+- **[DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md)** - Detailed development workflow
+- **[TECHNICAL_ARCHITECTURE.md](docs/TECHNICAL_ARCHITECTURE.md)** - System architecture deep dive
+- **[readwise-integration.md](docs/readwise-integration.md)** - Readwise API documentation
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Animations**: Framer Motion
+- **Icons**: Lucide React
+- **API**: Readwise integration
+- **Deployment**: Vercel
+
+---
+
+## 🙏 Acknowledgments
+
+Built with data from [Readwise](https://readwise.io/) and powered by [Next.js](https://nextjs.org/).
+
+---
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/yourusername/mental-models-observatory/issues)
+- **System Status**: `/api/readwise/debug`
+- **Documentation**: `/docs/` folder
+
+---
+
+**Built for lifelong learners** 📚

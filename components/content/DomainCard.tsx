@@ -152,7 +152,7 @@ export function DomainCard({ domain, showStats = true, variant = 'grid', onClick
 
   if (!isClickable) {
     return (
-      <Link href={`/domains/${domain.slug}`} className="block">
+      <Link href={`/knowledge-domains/${domain.slug}`} className="block">
         {content}
       </Link>
     );

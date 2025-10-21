@@ -1,10 +1,37 @@
+'use client';
+
+import { getAllDomains, getAllModels } from '@/lib/data';
+import { ArrowRight, Search } from 'lucide-react';
 import Link from 'next/link';
-import { getAllModels, getAllDomains } from '@/lib/data';
-import { ArrowRight, Search, Filter } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 export default function ModelsPage() {
   const models = getAllModels();
   const domains = getAllDomains();
+  
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDomain, setSelectedDomain] = useState('');
+  const [selectedDifficulty, setSelectedDifficulty] = useState('');
+
+  // Filtered models
+  const filteredModels = useMemo(() => {
+    return models.filter(model => {
+      // Search filter
+      const matchesSearch = searchQuery === '' || 
+        model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        model.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        model.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      // Domain filter
+      const matchesDomain = selectedDomain === '' || model.domainSlug === selectedDomain;
+      
+      // Difficulty filter
+      const matchesDifficulty = selectedDifficulty === '' || model.difficulty === selectedDifficulty;
+      
+      return matchesSearch && matchesDomain && matchesDifficulty;
+    });
+  }, [models, searchQuery, selectedDomain, selectedDifficulty]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -28,13 +55,19 @@ export default function ModelsPage() {
               <input
                 type="text"
                 placeholder="Search mental models..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="input pl-10 w-full"
               />
             </div>
           </div>
           
           <div className="flex flex-wrap gap-4 justify-center">
-            <select className="input w-auto">
+            <select 
+              className="input w-auto"
+              value={selectedDomain}
+              onChange={(e) => setSelectedDomain(e.target.value)}
+            >
               <option value="">All Domains</option>
               {domains.map((domain) => (
                 <option key={domain.id} value={domain.slug}>
@@ -42,7 +75,11 @@ export default function ModelsPage() {
                 </option>
               ))}
             </select>
-            <select className="input w-auto">
+            <select 
+              className="input w-auto"
+              value={selectedDifficulty}
+              onChange={(e) => setSelectedDifficulty(e.target.value)}
+            >
               <option value="">All Levels</option>
               <option value="beginner">Beginner</option>
               <option value="intermediate">Intermediate</option>
@@ -51,60 +88,91 @@ export default function ModelsPage() {
           </div>
         </div>
 
+        {/* Results count */}
+        {(searchQuery || selectedDomain || selectedDifficulty) && (
+          <div className="text-center mb-6">
+            <p className="text-sm text-gray-600">
+              Showing {filteredModels.length} of {models.length} models
+            </p>
+          </div>
+        )}
+
         {/* Models Grid */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {models.map((model) => (
-            <Link
-              key={model.id}
-              href={`/models/${model.slug}`}
-              className="group card hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+        {filteredModels.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredModels.map((model) => (
+              <Link
+                key={model.id}
+                href={`/models/${model.slug}`}
+                className="group card hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="card-header">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="card-title text-lg group-hover:text-blue-600 transition-colors">
+                        {model.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {model.domain}
+                      </p>
+                    </div>
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      model.difficulty === 'beginner' ? 'bg-green-100 text-green-800' :
+                      model.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {model.difficulty}
+                    </div>
+                  </div>
+                </div>
+                <div className="card-content">
+                  <p className="text-gray-600 text-sm mb-4">
+                    {model.description}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {model.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {model.tags.length > 3 && (
+                      <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">
+                        +{model.tags.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center text-blue-600 group-hover:text-blue-700 transition-colors">
+                    <span className="text-sm font-medium">Learn more</span>
+                    <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+              <Search className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No models found</h3>
+            <p className="text-gray-600 mb-4">
+              Try adjusting your search or filters
+            </p>
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedDomain('');
+                setSelectedDifficulty('');
+              }}
+              className="btn btn-secondary"
             >
-              <div className="card-header">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="card-title text-lg group-hover:text-blue-600 transition-colors">
-                      {model.name}
-                    </h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {model.domain}
-                    </p>
-                  </div>
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    model.difficulty === 'beginner' ? 'bg-green-100 text-green-800' :
-                    model.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {model.difficulty}
-                  </div>
-                </div>
-              </div>
-              <div className="card-content">
-                <p className="text-gray-600 text-sm mb-4">
-                  {model.description}
-                </p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {model.tags.slice(0, 3).map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {model.tags.length > 3 && (
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">
-                      +{model.tags.length - 3} more
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center text-blue-600 group-hover:text-blue-700 transition-colors">
-                  <span className="text-sm font-medium">Learn more</span>
-                  <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+              Clear all filters
+            </button>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="mt-16 text-center">

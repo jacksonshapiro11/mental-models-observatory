@@ -54,9 +54,9 @@ export interface SearchResult {
 }
 
 // Import the parsed Readwise data
-import { 
-  READWISE_DOMAINS, 
-  READWISE_MODELS 
+import {
+    READWISE_DOMAINS,
+    READWISE_MODELS
 } from './readwise-data';
 
 /**
@@ -135,7 +135,7 @@ export function searchContent(query: string): SearchResult[] {
         id: domain.id,
         title: domain.name,
         description: domain.description,
-        url: `/domains/${domain.slug}`,
+        url: `/knowledge-domains/${domain.slug}`,
         relevance
       });
     }

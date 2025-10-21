@@ -109,19 +109,21 @@ export default function ModelPage({ params }: ModelPageProps) {
         </section>
 
         {/* Examples */}
-        <section className="mb-12">
-          <div className="flex items-center mb-6">
-            <Lightbulb className="h-6 w-6 text-yellow-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">Examples</h2>
-          </div>
-          <div className="grid grid-cols-1 gap-4">
-            {model.examples.map((example: string, index: number) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-700">{example}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        {model.examples && model.examples.length > 0 && (
+          <section className="mb-12">
+            <div className="flex items-center mb-6">
+              <Lightbulb className="h-6 w-6 text-yellow-600 mr-3" />
+              <h2 className="text-2xl font-bold text-gray-900">Examples</h2>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              {model.examples.map((example: string, index: number) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-gray-700">{example}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Applications */}
         <section className="mb-12">
