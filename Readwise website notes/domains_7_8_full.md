@@ -135,24 +135,7 @@
 ```
 
 ### 8C: The Ladder vs. The Spectrum
-```json
-{
-  "modelId": "8c-ladder-vs-spectrum",
-  "modelTitle": "The Ladder vs. The Spectrum",
-  "modelDescription": "Framework for evaluating thinking styles and truth-seeking rigor.",
-  "curatedHighlights": [
-    {
-      "readwiseId": 640200,
-      "book": {"title": "Scout Mindset", "author": "Julia Galef"},
-      "relevanceScore": 9.5,
-      "qualityScore": 9.2,
-      "insightType": "framework",
-      "curatorReason": "Contrasts scout vs soldier mindsets as spectrum vs ladder thinking."
-    }
-    // ...9 more highlights here...
-  ]
-}
-```
+(See mental_models_8c_6e.md for complete highlights)
 
 ### 8D: Signal vs. Noise
 ```json

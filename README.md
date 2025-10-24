@@ -70,7 +70,9 @@ mental-models-observatory/
 │
 ├── scripts/
 │   ├── export-all-models-simple.js           # Generate MENTAL_MODELS_COMPLETE.md
-│   └── export-readwise-highlights-complete.js # Generate MENTAL_MODELS_READWISE_HIGHLIGHTS.md
+│   ├── export-readwise-highlights-complete.js # Generate MENTAL_MODELS_READWISE_HIGHLIGHTS.md
+│   ├── test-all-models.js                     # Verify all models have complete data
+│   └── test-all-model-pages.js                # Test all model pages load successfully
 │
 └── docs/                        # Comprehensive documentation
     ├── QUICK_REFERENCE.md
@@ -211,6 +213,10 @@ npm run dev              # Start dev server with Turbopack
 npm run build            # Build for production
 npm run start            # Start production server
 
+# Testing
+node scripts/test-all-models.js        # Verify all 119 models have complete data
+node scripts/test-all-model-pages.js   # Test all model pages load successfully (requires dev server)
+
 # Code Quality
 npm run lint             # Run ESLint
 npm run type-check       # TypeScript validation
@@ -298,6 +304,22 @@ The project includes auto-generated markdown references:
 2. Verify modelId in highlight file matches model's `id` or `slug`
 3. Regenerate highlights: `node scripts/export-readwise-highlights-complete.js`
 4. Check browser console for API errors
+
+### Testing all models
+
+```bash
+# Verify data integrity
+node scripts/test-all-models.js
+
+# Test all pages load (requires dev server running)
+npm run dev  # In one terminal
+node scripts/test-all-model-pages.js  # In another terminal
+```
+
+**Expected output:**
+- ✅ All 119 models have complete data
+- ✅ All 119 pages return 200 status codes
+- ✅ No timeouts or errors
 
 ### Build errors
 
