@@ -51,17 +51,24 @@ export default function PathPage({ params }: PathPageProps) {
           
           if (foundDynamicPath) {
             // Convert dynamic path to LearningPath format
+            const modelsArray = Array.isArray(foundDynamicPath.models) && foundDynamicPath.models.length > 0;
+            const isStringArray = typeof foundDynamicPath.models[0] === 'string';
+            
+            const models = isStringArray
+              ? foundDynamicPath.models // Curated paths: already array of slugs
+              : foundDynamicPath.models.map((m: any) => m.model.slug); // Dynamic paths: need conversion
+            
             const convertedPath: LearningPath = {
               id: foundDynamicPath.id,
               title: foundDynamicPath.title,
               description: foundDynamicPath.description,
               difficulty: foundDynamicPath.difficulty === 'gentle' ? 'beginner' : 
                          foundDynamicPath.difficulty === 'moderate' ? 'intermediate' : 'advanced',
-              estimatedTime: foundDynamicPath.estimatedTotalTime,
-              models: foundDynamicPath.models.map((m: any) => m.model.slug),
-              domains: foundDynamicPath.models.map((m: any) => m.model.domainSlug).filter(Boolean),
-              tags: foundDynamicPath.pathType ? [foundDynamicPath.pathType] : [],
-              icon: '🎯'
+              estimatedTime: foundDynamicPath.estimatedTime || foundDynamicPath.estimatedTotalTime || '',
+              models,
+              domains: isStringArray ? (foundDynamicPath.domains || []) : foundDynamicPath.models.map((m: any) => m.model.domainSlug).filter(Boolean),
+              tags: foundDynamicPath.tags || (foundDynamicPath.pathType ? [foundDynamicPath.pathType] : []),
+              icon: foundDynamicPath.icon || '🎯'
             };
             setPath(convertedPath);
             return;
