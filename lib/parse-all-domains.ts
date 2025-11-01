@@ -506,7 +506,7 @@ export function getModelHighlightsFromAllDomains(modelSlug: string): ModelHighli
   const allModels = parseAllDomainFiles();
   
   // First try the mapped ID
-  let modelId = MODEL_SLUG_MAPPINGS[modelSlug] || modelSlug;
+  const modelId = MODEL_SLUG_MAPPINGS[modelSlug] || modelSlug;
   let result = allModels.find(model => model.modelId === modelId);
   
   // If not found, try the slug directly (some highlights may use the slug as modelId)
