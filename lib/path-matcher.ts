@@ -43,18 +43,18 @@ export class PathMatcher {
     let score = 0;
 
     // 1. Match experience level (30 points)
-    if (profile.experienceLevel === 'beginner' && path.level === 'beginner') {
+    const experienceLevel = profile.experience === 'new' ? 'beginner' :
+                           profile.experience === 'some' ? 'intermediate' : 'advanced';
+    if (experienceLevel === 'beginner' && path.level === 'beginner') {
       score += 30;
-    } else if (profile.experienceLevel === 'intermediate' && path.level === 'intermediate') {
+    } else if (experienceLevel === 'intermediate' && path.level === 'intermediate') {
       score += 30;
-    } else if (profile.experienceLevel === 'advanced' && path.level === 'advanced') {
+    } else if (experienceLevel === 'advanced' && path.level === 'advanced') {
       score += 30;
-    } else if (profile.experienceLevel === 'expert' && path.level === 'advanced') {
-      score += 25;
     }
 
-    // 2. Match primary interest (25 points)
-    const interest = profile.primaryInterest?.toLowerCase() || '';
+    // 2. Match interests (25 points)
+    const interest = profile.interests?.[0]?.toLowerCase() || '';
     const pathTags = path.tags.join(' ').toLowerCase();
     const pathTitle = path.title.toLowerCase();
     const pathCategory = path.category.toLowerCase();
@@ -84,24 +84,24 @@ export class PathMatcher {
     score += freshnessRatio * 15;
 
     // 5. Path length preference (10 points)
-    const timeCommitment = profile.timeCommitment || 'moderate';
+    const timeAvailable = profile.timeAvailable || '15min';
     const pathLength = path.modelSlugs.length;
 
-    if (timeCommitment === 'minimal' && pathLength <= 4) {
+    if (timeAvailable === '5min' && pathLength <= 4) {
       score += 10;
-    } else if (timeCommitment === 'moderate' && pathLength >= 4 && pathLength <= 7) {
+    } else if (timeAvailable === '15min' && pathLength >= 4 && pathLength <= 7) {
       score += 10;
-    } else if (timeCommitment === 'significant' && pathLength >= 6) {
+    } else if (timeAvailable === '30min' || timeAvailable === '60min') {
       score += 10;
     }
 
     // 6. Bonus for quick-win paths if user is busy (5 points)
-    if (timeCommitment === 'minimal' && path.category === 'quick-win') {
+    if (timeAvailable === '5min' && path.category === 'quick-win') {
       score += 5;
     }
 
     // 7. Bonus for cross-domain paths if user wants breadth (5 points)
-    if (profile.learningGoals?.includes('breadth') && path.category === 'cross-domain') {
+    if (profile.goals === 'learning' && path.category === 'cross-domain') {
       score += 5;
     }
 
