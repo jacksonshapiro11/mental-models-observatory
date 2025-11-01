@@ -1,7 +1,8 @@
 'use client';
 
-import { ExternalLink, Loader2, Quote, Star } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ProgressTracker } from '@/lib/progress-tracker';
+import { CheckCircle, ExternalLink, Loader2, Quote, Star } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 interface CuratedHighlight {
   readwiseId: number;
@@ -42,6 +43,22 @@ export default function ReadwiseHighlights({ modelSlug }: ReadwiseHighlightsProp
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewedHighlightIds, setViewedHighlightIds] = useState<Set<number>>(new Set());
+  const highlightRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  // Load viewed highlights from progress tracker
+  useEffect(() => {
+    const progress = ProgressTracker.getProgress();
+    const viewedIds = new Set<number>();
+    
+    // Check if this model has been viewed and extract viewed highlight IDs
+    const modelProgress = progress.modelsViewed.find(m => m.slug === modelSlug);
+    if (modelProgress && (modelProgress as any).viewedHighlights) {
+      (modelProgress as any).viewedHighlights.forEach((id: number) => viewedIds.add(id));
+    }
+    
+    setViewedHighlightIds(viewedIds);
+  }, [modelSlug]);
 
   useEffect(() => {
     const fetchHighlights = async () => {
@@ -67,6 +84,26 @@ export default function ReadwiseHighlights({ modelSlug }: ReadwiseHighlightsProp
 
     fetchHighlights();
   }, [modelSlug]);
+  
+  // Mark highlight as viewed when it's been visible for 3 seconds
+  const markHighlightViewed = (highlightId: number) => {
+    if (!viewedHighlightIds.has(highlightId)) {
+      setViewedHighlightIds(prev => new Set(prev).add(highlightId));
+      
+      // Store in progress tracker (extend the model's data)
+      const progress = ProgressTracker.getProgress();
+      const modelIndex = progress.modelsViewed.findIndex(m => m.slug === modelSlug);
+      
+      if (modelIndex >= 0) {
+        const model = progress.modelsViewed[modelIndex];
+        if (!(model as any).viewedHighlights) {
+          (model as any).viewedHighlights = [];
+        }
+        (model as any).viewedHighlights.push(highlightId);
+        ProgressTracker.updateProgress(progress);
+      }
+    }
+  };
 
   const getInsightTypeColor = (type: string) => {
     switch (type) {
@@ -114,9 +151,29 @@ export default function ReadwiseHighlights({ modelSlug }: ReadwiseHighlightsProp
           const actualHighlight = highlights.actualHighlights.find(
             h => h.id === curated.readwiseId
           );
+          const isViewed = viewedHighlightIds.has(curated.readwiseId);
           
           return (
-            <div key={curated.readwiseId} className="bg-white rounded-lg p-4 border border-specialized-200">
+            <div 
+              key={`${curated.readwiseId}-${index}`} 
+              ref={(el) => {
+                if (el) highlightRefs.current.set(curated.readwiseId, el);
+              }}
+              onClick={() => markHighlightViewed(curated.readwiseId)}
+              className={`rounded-lg p-4 border transition-all cursor-pointer ${
+                isViewed 
+                  ? 'bg-green-50 border-green-300 opacity-75' 
+                  : 'bg-white border-specialized-200 hover:border-specialized-300'
+              }`}
+            >
+              {/* Viewed Badge */}
+              {isViewed && (
+                <div className="flex items-center gap-2 mb-3 text-green-700 font-medium text-sm">
+                  <CheckCircle className="h-5 w-5" />
+                  <span>✓ You've read this highlight</span>
+                </div>
+              )}
+              
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">

@@ -2,6 +2,7 @@
 
 import ReadwiseHighlights from '@/components/content/ReadwiseHighlights';
 import { getModelBySlug, getRelatedModels } from '@/lib/data';
+import { ProgressTracker } from '@/lib/progress-tracker';
 import { ArrowLeft, ArrowRight, BookOpen, Lightbulb, Target, Users } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -17,6 +18,7 @@ export default function ModelPage({ params }: ModelPageProps) {
   const [model, setModel] = useState<any>(null);
   const [relatedModels, setRelatedModels] = useState<any[]>([]);
   const [slug, setSlug] = useState<string>('');
+  const [startTime] = useState(Date.now());
 
   useEffect(() => {
     const loadData = async () => {
@@ -31,10 +33,24 @@ export default function ModelPage({ params }: ModelPageProps) {
       setModel(modelData);
       setRelatedModels(relatedData);
       setSlug(resolvedParams.slug);
+      
+      // Track model view
+      ProgressTracker.trackModelView(resolvedParams.slug, 0, false);
     };
     
     loadData();
   }, [params]);
+  
+  // Track time spent when user leaves the page
+  useEffect(() => {
+    return () => {
+      if (slug) {
+        const timeSpent = Math.floor((Date.now() - startTime) / 1000); // in seconds
+        const completed = timeSpent > 60; // Consider completed if spent more than 1 minute
+        ProgressTracker.trackModelView(slug, timeSpent, completed);
+      }
+    };
+  }, [slug, startTime]);
 
   if (!model) {
     return (

@@ -288,6 +288,83 @@ node scripts/analyze-missing-models.js
 - **Test thoroughly**: Use scripts to validate mappings
 - **Conservative approach**: Only add high-confidence matches
 
+## 📝 Content Update Workflow
+
+### Overview
+The content update workflow allows you to update model descriptions, principles, and applications from updated text files in the `Mental Models Description/` folder. The update script matches models by their unique `code` (e.g., "14B") rather than name, allowing for name differences while ensuring content consistency.
+
+### Workflow Process
+
+1. **Prepare Updated Content**
+   - Update model descriptions in `Mental Models Description/` files
+   - Files can be `.md` or `.txt` format
+   - Format: `### CODE: Model Name` followed by `**Description:**`, `**Core Principles:**`, `**Key Applications:**`
+
+2. **Run Update Script**
+   ```bash
+   node scripts/simple-update-by-code.js
+   ```
+   - Matches models by unique `code` (e.g., "14B") from both sources
+   - Handles name mismatches automatically
+   - Compares substance (first 200 chars) to verify consistency
+   - Updates `description`, `principles`, and `applications` in `lib/readwise-data.ts`
+
+3. **Verify Substance Matches**
+   ```bash
+   node scripts/compare-substance.js
+   ```
+   - Compares OLD (from `MENTAL_MODELS_COMPLETE.md`) vs NEW (from description files)
+   - Calculates similarity scores to verify substance consistency
+   - Reports which models have matching substance vs different models
+
+4. **Regenerate Documentation**
+   ```bash
+   node scripts/export-all-models-simple.js
+   node scripts/export-readwise-highlights-complete.js
+   ```
+   - Regenerates `MENTAL_MODELS_COMPLETE.md` with updated content
+   - Updates `MENTAL_MODELS_READWISE_HIGHLIGHTS.md` if needed
+
+### Key Features
+
+- **Code-Based Matching**: Uses unique `code` (e.g., "14B") instead of name, handling name changes
+- **Substance Comparison**: Compares first 200 characters to verify content consistency
+- **Safe Updates**: Only updates `description`, `principles`, and `applications` fields
+- **Verification Tools**: Compare scripts to verify updates before committing
+
+### File Structure
+
+```
+Mental Models Description/
+├── mental_models_rewrite_1-7.txt    # Models 1-7
+├── mental_models_8_24.md            # Models 8-24
+├── mental_models_25_38.md          # Models 25-38
+└── mental_models_39_40.md          # Models 39-40
+```
+
+### Update Scripts
+
+- **`scripts/simple-update-by-code.js`**: Main update script (matches by code)
+- **`scripts/compare-substance.js`**: Verification script (compares OLD vs NEW)
+- **`scripts/substance-analysis.md`**: Analysis documentation
+
+### Common Scenarios
+
+**Scenario 1: Name Change, Same Substance**
+- Model name changed but content is the same
+- Script matches by code and updates content
+- Substance comparison confirms match
+
+**Scenario 2: Content Expansion**
+- Original content expanded with more detail
+- Script updates with expanded content
+- Substance comparison shows high similarity
+
+**Scenario 3: Different Model**
+- Model with same code but different content
+- Substance comparison shows low similarity
+- Manual investigation required
+
 ## 📚 Knowledge Base
 
 ### Lessons Learned

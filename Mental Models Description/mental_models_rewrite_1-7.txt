@@ -1,0 +1,951 @@
+# Mental Models Observatory - Complete Framework
+
+*A 40-domain intellectual framework with 119 mental models for understanding complex systems*
+
+---
+
+## Table of Contents
+
+### Tier 1: Foundational Knowledge
+1. [Time & Mortality Awareness](#domain-1-time--mortality-awareness) - 4 models
+2. [Physics & Fundamental Constraints](#domain-2-physics--fundamental-constraints) - 5 models
+3. [Energy & Resource Flows](#domain-3-energy--resource-flows) - 2 models
+4. [Systems Thinking & Complexity](#domain-4-systems-thinking--complexity) - 4 models
+5. [Mental Models & Cross-Disciplinary Thinking](#domain-5-mental-models--cross-disciplinary-thinking) - 5 models
+6. [Psychology & Human Behavior](#domain-6-psychology--human-behavior) - 5 models
+7. [Decision-Making Under Uncertainty](#domain-7-decision-making-under-uncertainty) - 4 models
+8. [Philosophy & Truth-Seeking](#domain-8-philosophy--truth-seeking) - 5 models
+
+### Tier 2: Practical Knowledge
+9. [Exponential Thinking & Compounding](#domain-9-exponential-thinking--compounding) - 5 models
+10. [Spatial-Geometric Thinking & Constraints](#domain-10-spatial-geometric-thinking--constraints) - 3 models
+11. [Temporal Dynamics & Flow States](#domain-11-temporal-dynamics--flow-states) - 2 models
+12. [Power Dynamics & Political Systems](#domain-12-power-dynamics--political-systems) - 3 models
+13. [Cultural Anthropology & Social Identity](#domain-13-cultural-anthropology--social-identity) - 2 models
+14. [Language & Communication Systems](#domain-14-language--communication-systems) - 2 models
+15. [Information Theory & Media Ecology](#domain-15-information-theory--media-ecology) - 3 models
+16. [Technology & Human-Computer Interaction](#domain-16-technology--human-computer-interaction) - 2 models
+17. [Organizational Design & Institutions](#domain-17-organizational-design--institutions) - 3 models
+18. [Relationships & Human Connection](#domain-18-relationships--human-connection) - 4 models
+19. [Health & Human Optimization](#domain-19-health--human-optimization) - 3 models
+20. [Mindfulness & Inner Work](#domain-20-mindfulness--inner-work) - 4 models
+
+### Tier 3: Specialized Knowledge
+21. [Investment & Capital Allocation](#domain-21-investment--capital-allocation) - 3 models
+22. [Learning & Skill Development](#domain-22-learning--skill-development) - 3 models
+23. [Business Strategy & Competition](#domain-23-business-strategy--competition) - 3 models
+24. [Incentives & Mechanism Design](#domain-24-incentives--mechanism-design) - 3 models
+25. [Evolution & Biology](#domain-25-evolution--biology) - 2 models
+26. [Creativity & Innovation](#domain-26-creativity--innovation) - 2 models
+27. [Mathematics & Logic](#domain-27-mathematics--logic) - 2 models
+28. [History & Institutional Evolution](#domain-28-history--institutional-evolution) - 2 models
+29. [Engineering & Design](#domain-29-engineering--design) - 2 models
+30. [Complex Adaptive Systems](#domain-30-complex-adaptive-systems) - 2 models
+31. [Statistics & Data Science](#domain-31-statistics--data-science) - 2 models
+32. [Neuroscience & Consciousness](#domain-32-neuroscience--consciousness) - 2 models
+33. [Game Theory & Strategic Interaction](#domain-33-game-theory--strategic-interaction) - 2 models
+34. [Habit Formation & Behavior Change](#domain-34-habit-formation--behavior-change) - 2 models
+35. [Economics & Market Dynamics](#domain-35-economics--market-dynamics) - 2 models
+36. [Practical Wisdom & Resourcefulness](#domain-36-practical-wisdom--resourcefulness) - 2 models
+37. [Ritual & Meaning-Making](#domain-37-ritual--meaning-making) - 2 models
+38. [Narrative & Identity](#domain-38-narrative--identity) - 4 models
+39. [Constraint Theory & Optimization](#domain-39-constraint-theory--optimization) - 3 models
+40. [Emergence & Levels of Abstraction](#domain-40-emergence--levels-of-abstraction) - 4 models
+
+---
+
+## Domain 1: Time & Mortality Awareness
+
+*Understanding finitude as the ultimate constraint that shapes all human choice and meaning*
+
+### 1a: Memento Mori & Death as Teacher
+
+**Description:**
+
+The practice of keeping mortality consciously present transforms how we live. Death isn't an abstraction to fear—it's the ultimate advisor that cuts through pettiness and forces authentic prioritization. Rather than paralyzing us, regular contemplation of mortality clarifies what matters and inspires action aligned with our deepest values.
+
+**Core Principles:**
+
+Death as companion means keeping mortality at arm's length where it can serve as counsel. The warrior walks with death watching, ready to tap at any moment. This awareness doesn't create morbidity—it eliminates the trivial complaints and ego-driven concerns that waste our finite days.
+
+The fear of death often exceeds its reality. We experience grief, not our own death. The anxiety we carry about mortality frequently causes more suffering than accepting finitude ever could. Death anxiety can restrict life through unconscious repression, making conscious awareness preferable to denial.
+
+Mortality meditation (Maranasati in Buddhist practice) helps overcome the death fear that blocks authentic living. Fear and love operate as opposites in our neurology—embracing mortality through contemplation removes the fear switch that prevents us from living and loving fully.
+
+Near-death experiences consistently transform priorities. People who face mortality directly report living with greater intention, expressing love more openly, seeking forgiveness quickly, and dropping grudges that once seemed important. The lesson is available without the crisis through deliberate practice.
+
+**Key Applications:**
+
+Use death as your advisor for major decisions. When choosing between comfort and growth, ask what your 80-year-old self would regret. The regret minimization framework turns abstract mortality into concrete decision criteria.
+
+Practice periodic mortality contemplation. Set aside time monthly or weekly to reflect on your finite existence. This isn't morbid—it's strategic clarity. What would you do differently if you had one year left? Why not do some of that now?
+
+Let mortality purify your commitments. The great renunciation means accepting death's inevitability with courage, turning away from unattainable dreams without regret, and cultivating inner control despite external limits we cannot change.
+
+Drop the fear through philosophical understanding. The Epicurean approach recognizes we won't be there to experience death—the fear is irrational. Our consciousness won't suffer non-existence because there won't be an "us" to suffer.
+
+**Related Models:** Finite Life Recognition & Atelic Activities, Regret vs. Mistakes Framework, Present-Moment Awareness & Non-Identification
+
+---
+
+### 1b: Regret vs. Mistakes Framework
+
+**Description:**
+
+Mistakes are actions you took and wish you could change. Regrets are actions you didn't take and wish you had. This distinction matters because the two require different responses—and at the end of life, regrets about what we failed to attempt hurt far more than mistakes we made while trying.
+
+**Core Principles:**
+
+Pure intent makes mistakes enriching rather than damaging. When you act with full commitment and things go wrong, you gain information and experience. When you hold back from fear and watch opportunities pass, you gain nothing except the growing weight of what might have been.
+
+The regret minimization framework provides a decision tool: imagine yourself at 80 looking back. Will you regret the safe choice or the attempt that might fail? The answer usually favors action, because our future selves rarely regret the trying—only the not trying.
+
+When death is the hunter, there's no room for regrets or doubts. Take full responsibility for choices knowing you may die at any moment. This urgency doesn't create recklessness—it eliminates the paralysis that comes from believing you have unlimited time to decide.
+
+Regret scales with age in ways mistakes don't. Looking back at 75 on a life of avoided chances is brutal. Looking back on a life of attempted ventures where some failed creates stories, wisdom, and satisfaction. The pain of trying and failing is temporary; the pain of not trying accumulates.
+
+**Key Applications:**
+
+Face major decisions by asking: "Will I regret not doing this?" rather than "What if it fails?" The first question accesses your values; the second accesses your fears. Values should drive choices.
+
+Own mistakes quickly, make amends, and move on. Guilt and regret kill many people before their time. You're the author of your life story—when one chapter goes badly, turn the page and write the next one better.
+
+Position yourself for opportunities rather than regretting missed chances. When something succeeds unexpectedly, do you have the next move ready? Planning prevents regret by ensuring preparation meets luck.
+
+Accept responsibility for choices under extreme pressure. Life-and-death decisions require moving forward despite incomplete information. The alternative—paralysis—guarantees the worst outcome.
+
+**Related Models:** Memento Mori & Death as Teacher, Finite Life Recognition & Atelic Activities, Decision Quality vs. Outcome Separation
+
+---
+
+### 1c: Finite Life Recognition & Atelic Activities
+
+**Description:**
+
+You have roughly 4,000 weeks if you live to 80. This isn't depressing—it's liberating. Accepting finitude lets you stop trying to "do it all" and instead choose what matters. Atelic activities—done for their own sake rather than to accomplish goals—restore meaning that productivity culture strips away.
+
+**Core Principles:**
+
+There's a limit to time assigned to you. If you don't use it to free yourself, it will be gone and never return. This urgency isn't about panic—it's about intentional deployment of your finite attention and energy.
+
+Atelic activities lack endpoints. Hiking, conversation, music, dance, and art are pursued for the experience itself, not to get somewhere or produce something. You can't do "enough" hiking—the point is the doing. This contrasts with goal-oriented (telic) activities where you're trying to finish or achieve.
+
+Life is finite, so you must focus on a few very important things and run toward them with intensity. The scarcity of time demands strategic concentration. Trying to do everything means doing nothing that matters.
+
+Time elasticity varies with engagement. When doing things you love, time slows and molds around you. In rote repetition, you can live a lifetime but experience only one day. The subjective quality of finite time matters as much as the quantity.
+
+**Key Applications:**
+
+Build atelic activities into your weekly routine. These aren't "breaks from productivity"—they're the point. An hour playing music or walking without destination isn't time away from life; it's life itself.
+
+Question productivity culture's assumption that life is about maximizing output. The goal isn't to do more things—it's to do the right things well and experience them fully. Finite time means choosing depth over breadth.
+
+Use finitude as a filter. When considering new commitments, ask: "Is this worth some of my remaining 4,000 weeks?" The answer eliminates trivial obligations and creates space for what actually matters.
+
+Contemplate mortality to avoid taking experiences for granted. Scientific evidence shows that thinking about scarcity enhances present-moment awareness. "I should enjoy this while it's happening" makes finite time feel fuller.
+
+**Related Models:** Memento Mori & Death as Teacher, Flow States & Optimal Experience, Present-Moment Awareness & Non-Identification
+
+---
+
+### 1d: Present-Moment Elasticity & Time Perception
+
+**Description:**
+
+Time is elastic within finitude. When deeply engaged in challenging activity, hours pass like minutes. In anxiety or boredom, minutes stretch into hours. This subjective malleability of time reveals that how we experience our finite existence matters as much as how long we live. Attention shapes temporal perception.
+
+**Core Principles:**
+
+Time transforms dramatically in flow states. Deep engagement with difficult tasks makes time either accelerate (losing track of hours) or decelerate (experiencing rich detail in seconds). The transformation depends on challenge-skill balance and complete absorption in activity.
+
+Physics supports subjective time perception. Relativity shows there's no single "present moment"—now on Earth is 15 minutes later on Mars. Each observer has their own personal measure of time depending on location and movement. Time is observer-dependent at every scale.
+
+Present-moment awareness creates temporal richness. Thinking about scarcity and paying attention to experience while it happens makes time feel fuller and more meaningful. Conversely, living on autopilot collapses weeks into blur—a lifetime can feel like one repeated day.
+
+Meditation offers internal escape from time pressure. You can get away from it all by going within. The world is always changing and time is constant flux, but present-moment consciousness transcends that flux momentarily.
+
+**Key Applications:**
+
+Seek activities that alter your time perception. When time slows during deep engagement, you're accessing the present moment in ways that expand subjective experience. These moments of temporal elasticity provide experiential richness.
+
+Practice recognizing temporal passage actively. Keep in mind how fast things pass and are gone. Active participation in noticing time's movement paradoxically helps you experience it more fully rather than watching it slip away unconsciously.
+
+Use relationships to affect time perception. Living with genuine care for others brings joy and lightness that changes how hours feel. Present-moment connection with people you love makes time expand subjectively.
+
+Remember that quality of experience matters more than duration. Two people living 80 years might have radically different amounts of lived experience based on presence, engagement, and attention to the elasticity of moments.
+
+**Related Models:** Flow States & Optimal Experience, Present-Moment Awareness & Non-Identification, Temporal Coordination & System Rhythm
+
+---
+
+## Domain 2: Physics & Fundamental Constraints
+
+*Understanding the basic laws that govern all physical reality and limit what's possible*
+
+### 2a: Thermodynamics & Energy Conservation
+
+**Description:**
+
+Energy cannot be created or destroyed, only transformed. This fundamental law underlies every decision, every system, and every action. When energy is utilized, some becomes useful work while some dissipates as unusable heat—creating entropy and disorder. Understanding energy flows and constraints is understanding reality's operating system.
+
+**Core Principles:**
+
+Energy underlies every decision and drives societal complexity forward. The entire arc of human history is increasingly efficient uses and transfers of energy. From muscle power to fossil fuels to nuclear reactions, each energy transition enables new levels of organization and capability.
+
+When energy is utilized, some is lost as unusable energy, creating chaos and uncertainty. The second law of thermodynamics guarantees entropy increases in closed systems. Order in one place requires creating disorder elsewhere—there's no free lunch.
+
+Energy exists at macro scales (measurable as temperature, pressure) and micro scales (unmeasurable except as averages). At their intersection, chaos creates information and knowledge. The interplay between ordered energy flow and disordered heat dissipation generates the complexity that enables life.
+
+Energy wants to flow toward more possible states. Hot tea cools because cold represents more molecular configurations than hot. This drive toward higher entropy connects thermodynamics to information theory—energy and information are fundamentally linked.
+
+**Key Applications:**
+
+Recognize organizational thermodynamics. Companies naturally converge toward room-temperature equilibrium—comfortable mediocrity. The best leaders are exothermic, continuously injecting heat and energy. Founders fight entropy by definition.
+
+Understand that all systems require energy input to maintain order. Whether biological, social, or technological, organized systems need continuous energy flow to prevent decay. The moment energy input stops, entropy begins winning.
+
+Apply energy thinking to biology. VO2 max—your body's energy processing capacity—affects mortality more than almost any other factor. Energy management isn't metaphorical; it's literally life and death.
+
+Remember that optimization often means managing energy trade-offs. Antifragile systems sometimes require metabolic stress that consumes energy short-term to build capacity long-term. The relationship between energy input and system strengthening is non-linear.
+
+**Related Models:** Metabolic Constraints & Biological Scaling, Entropy & Order-Disorder, Systems Thinking & Feedback Loops
+
+---
+
+### 2b: Information Theory & Physical Reality
+
+**Description:**
+
+Information is measured by the number of alternatives it eliminates. It's the fundamental currency connecting energy, matter, and consciousness. The physical world isn't just colliding atoms—it's a network of correlations and information exchanges between systems. Information is finite, observer-dependent, and inseparable from physical reality.
+
+**Core Principles:**
+
+Shannon's breakthrough: information resolves uncertainty. The less the recipient knows about what comes next, the more information is revealed when it arrives. "Will you marry me?" contains high information content despite few bits because it's surprising and consequential. A complex legal document might contain more bits but less information if it's predictable boilerplate.
+
+Information is measured by alternatives, not content. A system's information capacity sets an upper bound on what it can contain, but actual content often falls short. The distinction between channel capacity and message content explains why high-bandwidth systems sometimes carry low-information noise.
+
+The world is correlations between physical systems, not isolated objects. Reality emerges from networks of reciprocal information exchange. Things exist through their relationships and interactions, not in isolation.
+
+Information and entropy connect deeply. Energy flows toward more possible states (higher entropy), but at the intersection of macro and micro scales, information gets created and stored. Learning something new means canceling old information—knowledge accumulates through replacement, not pure addition.
+
+**Key Applications:**
+
+Focus on signal versus noise in communication. High information density comes from surprising, novel content. Expected or redundant messages carry little information regardless of their length. The art is maximizing information while minimizing bits.
+
+Understand that information processing has physical costs. Quantum mechanics shows you can't learn for free—gaining information requires energy and increases entropy elsewhere. There's a thermodynamic cost to knowledge.
+
+Recognize information as the basis for consciousness and life. The way to exist is managing correlation with the external environment. We live to manage information and energy flows—that's what life is.
+
+Apply information theory to increasing luck surface area. Increasing personal maximum entropy means increasing information processing capacity and connections. More possible states means more opportunities for valuable information to arrive.
+
+**Related Models:** Thermodynamics & Energy Conservation, Predictive Processing & Constructed Experience, Signal vs. Noise & Information Quality
+
+---
+
+### 2c: Quantum Mechanics & Measurement
+
+**Description:**
+
+Quantum systems don't have definite properties until measured. The act of observation collapses possibilities into actualities. This isn't philosophy—it's the foundation of physical reality at small scales. Understanding quantum mechanics means accepting that consciousness and measurement play roles in determining what exists.
+
+**Core Principles:**
+
+Quantum systems exist in superposition until observed. The Copenhagen interpretation accepts fundamental indeterminacy—particles don't have positions or velocities until measured. The many-worlds interpretation suggests the wave function never collapses; instead, observers become entangled with quantum systems, experiencing one branch while other branches continue independently.
+
+Measurement is interaction. When you observe a quantum system, you don't passively receive information—you interact with it, and that interaction determines outcomes probabilistically. Electrons don't exist with defined properties between interactions; they're completely undefined until something measures them.
+
+Reality is interrelation, not independent existence. Things only exist relative to other things. Physical variables don't have single values—they have matrices of values related probabilistically, suggesting multiplicity across parallel worlds. Quantum interference proves these parallel possibilities interact.
+
+**Key Applications:**
+
+Accept fundamental limits on knowledge. Heisenberg's uncertainty principle isn't about measurement error—it's about nature itself. You cannot simultaneously know position and momentum precisely because particles don't have both simultaneously.
+
+Understand quantum computing's power. The multiverse enables quantum computers to draw on computational power from different universes through superposition and entanglement. Quantum decoherence splits universes, making classical predictions intractable.
+
+Recognize that observation matters. In quantum systems, what you measure affects what exists. This isn't mysticism—it's physics. The observer isn't separate from the observed at quantum scales.
+
+Remember that probabilities are fundamental, not ignorance. Quantum mechanics doesn't say we don't know the particle's position—it says the particle doesn't have a position until measured. This is a profound shift from deterministic classical physics.
+
+**Related Models:** Relativity & Space-Time, Information Theory & Physical Reality, Consciousness & The Hard Problem
+
+---
+
+### 2d: Relativity & Space-Time
+
+**Description:**
+
+Space and time are unified into spacetime, and there's no absolute reference frame. Each observer has their own personal measure of time depending on location and velocity. What you experience as "now" isn't universal—simultaneity is relative. Understanding relativity means accepting that the universe doesn't have a privileged perspective.
+
+**Core Principles:**
+
+There is past and future, but the intermediate present exists only locally because light speed limits information travel. "Now" on Earth is 15 minutes later on Mars—no universal present moment exists. Everything is relative to the observer's frame of reference.
+
+The laws of physics remain constant across reference frames, but the speed of light is absolute. This leads to counterintuitive results: time moves differently for different observers, objects contract in their direction of motion, and simultaneity is observer-dependent.
+
+Space-time curvature causes gravitational effects. Energy and mass make space curve; more energy creates more curvature. Black holes represent extreme curvature where escape velocity exceeds light speed. This geometric understanding replaces Newton's instantaneous force-at-a-distance with Einstein's curved spacetime.
+
+In quantum gravity, time itself disappears. Time becomes an emergent property of quantum events happening independently from a universal clock. At Planck scales, space is grainy and rough—continuous spacetime is an approximation that breaks down at tiny distances.
+
+**Key Applications:**
+
+Remember that time isn't universal. Clocks run faster at higher altitudes due to weaker gravity. GPS satellites require relativistic corrections—ignoring relativity makes GPS errors accumulate to miles per day. Time dilation is real and measurable.
+
+Understand that physical location affects temporal experience. Astronauts age slightly slower than people on Earth. Near black holes, time dilation becomes extreme. These aren't science fiction—they're engineering constraints for space travel.
+
+Recognize many-worlds implications. In Everett's interpretation, worlds don't exist "in" space—space exists separately in each branch. The usual intuition about spatial location of parallel worlds is wrong; they're separated by quantum decoherence, not distance.
+
+Apply relativity thinking to perspective-taking. Just as there's no privileged reference frame in physics, there's no privileged perspective in complex systems. Different observers see different things, and all observations are valid within their frames.
+
+**Related Models:** Quantum Mechanics & Measurement, Temporal Dynamics & System Rhythm, Non-Linear Dynamics & Initial Conditions
+
+---
+
+### 2e: Non-Linear Dynamics & Initial Conditions
+
+**Description:**
+
+Small changes in initial conditions create vastly different outcomes in complex systems. This sensitive dependence—the butterfly effect—means long-term prediction is impossible even when rules are deterministic. The world is fundamentally non-linear, yet we study linear systems because they're mathematically tractable. This gap between our tools and reality has consequences.
+
+**Core Principles:**
+
+Simple systems give rise to complex behavior, and complex systems give rise to simple behavior. This duality is universal. Laws of complexity hold across scales—from weather to economics to population dynamics. The same geometric constants govern transitions from order to chaos.
+
+Chaotic systems are locally unpredictable but globally bounded. A waterwheel driven by flowing water never settles into a pattern, yet it moves within bounds creating a double spiral strange attractor. Order exists in the grand pattern despite local chaos.
+
+People want linear regularity, but we live non-linearly. Finding linear systems is the anomaly, yet we only study them because the math is tractable. This creates blindness to how the world actually works—most real systems are non-linear and adaptive.
+
+Non-linear systems show phase transitions where small additional changes flip the entire system. Traffic flowing smoothly with 100 cars stops completely when 10 more arrive. At critical thresholds, feedback loops reverse and system behavior transforms instantly.
+
+**Key Applications:**
+
+Expect the unexpected in complex systems. When cause-effect relationships are non-linear, small interventions sometimes produce huge effects while large efforts yield nothing. This makes systematic experimentation better than confident prediction.
+
+Understand that control is impossible but influence is available. You can't predict chaotic systems long-term, but you can understand their attractors and work with their dynamics rather than against them.
+
+Recognize self-organization at the edge of chaos. Wolfram's Level 4 cellular automaton rules—those that allow universal computation—exist at the transition between order and turbulence. Life itself operates at this boundary.
+
+Accept that reductionism has limits. You can't predict complex system behavior by understanding components. The interactions between parts matter more than the parts themselves. Emergence is real and irreducible.
+
+**Related Models:** Feedback Loops & System Dynamics, Emergence & Complex Adaptive Systems, Fractals & Self-Similarity Across Scales
+
+---
+
+## Domain 3: Energy & Resource Flows
+
+*Understanding energy as the fundamental currency that drives all systems and creates inevitable entropy*
+
+### 3a: Energy as Core Resource & Ultimate Constraint
+
+**Description:**
+
+Energy underlies every decision and enables all progress. From biological metabolism to economic growth to organizational dynamics, energy flow determines what's possible. The entire arc of human civilization is a story of accessing and deploying energy more efficiently. Understanding energy constraints means understanding the deepest limits on what systems can accomplish.
+
+**Core Principles:**
+
+Energy underlies every decision. The entire human history is increasingly efficient uses and transference of energy—from muscle power to animal labor to fossil fuels to nuclear reactions. Each energy transition enables new levels of complexity and capability. When we impose order anywhere, we necessarily create chaos elsewhere through entropy.
+
+Energy exists at macro scales (measurable as temperature, pressure, kinetic motion) and micro scales (unmeasurable except as statistical averages). At the intersection of these scales, chaos creates information and knowledge. Complex systems emerge where energy flows across scale boundaries.
+
+Organizational energy follows thermodynamic principles. Companies naturally converge toward room-temperature equilibrium—comfortable mediocrity where innovation dies. The best leaders are exothermic, continuously injecting heat into the system. Founders fight entropy by definition; when energy input stops, decay begins immediately.
+
+Energy and information are linked through physics. Energy wants to flow toward more possible states (higher entropy). Things can't randomly heat up because higher energy states have more information content, and you can't learn for free—gaining information requires energy expenditure somewhere.
+
+**Key Applications:**
+
+Recognize that all systems require continuous energy input to maintain order. Whether biological, organizational, or technological, structure decays without fresh energy. The moment you stop feeding energy into a system, entropy wins.
+
+Understand biological energy constraints. VO2 max—your body's capacity to process oxygen and generate energy—has the biggest effect on all-cause mortality of any measurable health metric. Energy processing capacity literally determines lifespan and quality of life.
+
+Apply energy thinking to focus and strategy. Life is finite, so focus on few very important things and run at them with concentrated intensity. Energy constraints demand strategic allocation, not diffuse effort across many priorities.
+
+Remember that stress can be energizing in complex systems. Antifragility requires stressors that consume energy short-term to build capacity long-term. The relationship between energy input and system strength is non-linear and context-dependent.
+
+**Related Models:** Thermodynamics & Energy Conservation, Metabolic Constraints & Biological Scaling, Systems Thinking & Feedback Loops
+
+---
+
+### 3b: Metabolic Constraints & Biological Scaling
+
+**Description:**
+
+Living systems obey strict scaling laws determined by metabolic energy requirements. Kleiber's Law shows that metabolic rate scales to the 3/4 power of body mass—a mouse's metabolism per unit mass is far higher than an elephant's. These constraints explain why animals have size limits, why cities scale differently than organisms, and why energy efficiency changes with scale.
+
+**Core Principles:**
+
+Energy cannot be created or destroyed, only transformed. When energy is utilized, some becomes useful work while the rest dissipates as unusable heat, increasing entropy. This fundamental constraint applies to all biological systems—no organism escapes thermodynamics.
+
+Energy exists at both macro and micro scales. At their intersection, chaos creates the information and complexity that enables life. Biological clocks, circadian rhythms, and metabolic cycles all emerge from energy flow dynamics across different temporal and spatial scales.
+
+Information and energy are inseparable in biology. Energy wants to flow toward more possible states (higher entropy), but organisms maintain low-entropy order by processing energy and information together. Tea cools because cold has more molecular configurations than hot—life swims upstream against this flow through continuous energy input.
+
+VO2 max—maximum oxygen uptake and energy processing capacity—affects mortality more than any other single factor. The bottom 20% in aerobic capacity face 4x the death risk of the top 20%. Energy management isn't metaphorical; it's survival.
+
+**Key Applications:**
+
+Train for energy processing capacity, not just strength or size. A well-rounded athletic portfolio that includes aerobic capacity, strength, and stability provides the metabolic foundation for healthy aging. You're training for what you want to do at 80, not just today.
+
+Understand that biological systems require metabolic stress to build resilience. Antifragility in living things comes from appropriate energy challenges—not too little (atrophy) or too much (injury), but in the zone that triggers adaptation.
+
+Recognize organizational metabolic patterns. Companies and teams have energy flows that follow predictable dynamics. Mode locking occurs when systems display similar behavior despite energy fluctuations—understanding systemic energy flows is crucial for leadership.
+
+Remember that auto-catalytic systems bootstrap through energy acceleration. The origin of life required simple molecules creating chain reactions that sparked increasingly complex metabolic processes. Energy flowing through the right structures creates self-reinforcing complexity.
+
+**Related Models:** Energy as Core Resource & Ultimate Constraint, Thermodynamics & Energy Conservation, Scaling Laws & Dimensional Analysis
+
+---
+
+## Domain 4: Systems Thinking & Complexity
+
+*Understanding how interconnected parts create behaviors that can't be predicted from components alone*
+
+### 4a: Stocks, Flows & System Structure
+
+**Description:**
+
+Systems consist of stocks (accumulations you can measure) and flows (rates of change). The structure of these relationships determines system behavior over time. While people focus on stocks—the amount of money in your account, books in a store, water in a reservoir—it's the flows that matter most. Understanding this distinction is foundational to systems thinking.
+
+**Core Principles:**
+
+Stocks are elements you can count, measure, or feel at any moment—books in a bookstore, water in a reservoir, knowledge in your mind, self-confidence in your psyche. Stocks represent the present memory of changing flows over time. They're the visible manifestation of accumulated dynamics.
+
+Flows are rates of change—the water entering and leaving the reservoir, customers arriving and departing, learning and forgetting. While people fixate on stocks, flows determine behavior. The structure of how stocks and flows connect creates the patterns that persist.
+
+System structure determines system behavior. If a system exhibits persistent behavior over time, there's likely a structural mechanism creating it—usually a feedback loop linking stocks and flows. The structure, not individual components, explains why systems behave as they do.
+
+Feedback can only affect future behavior, never past. Flows can't react instantly to stock changes—there's always delay. This constraint means system design must anticipate future needs based on current trends, not just respond to present states.
+
+**Key Applications:**
+
+Learn to see systems in terms of stocks and flows. Your bank account is a stock; income and expenses are flows. Your knowledge is a stock; learning and forgetting are flows. This framing clarifies how change happens over time.
+
+Design feedback systems that see signal through noise. If you adjust to one or two days of demand fluctuations, you might be reacting too fast—real patterns might only emerge after five to ten days. Smart systems match response time to actual dynamics.
+
+Understand that structure is hard to change post-design. Physical and organizational structure critically constrains what's possible, but isn't an effective leverage point after construction. Get the initial design right, then optimize within constraints.
+
+Remember that systems are more than sums of parts. Oil prices aren't simple supply-demand—they're complex functions of systems built in oil-consuming countries. Most important phenomena involve stocks and flows at multiple levels creating emergent behavior.
+
+**Related Models:** Feedback Loops & System Dynamics, Leverage Points & High-Impact Interventions, Emergence & Complex Adaptive Systems
+
+---
+
+### 4b: Feedback Loops & System Dynamics
+
+**Description:**
+
+Feedback loops are the fundamental mechanisms that create persistent system behavior. Reinforcing loops amplify change exponentially—more leads to more. Balancing loops resist change and seek equilibrium—deviation triggers correction. When one loop dominates, it determines the entire system's trajectory regardless of other forces present.
+
+**Core Principles:**
+
+When one feedback loop dominates another, it has outsized effect. You can have ten different loops in a system, but if one captures 99% of influence, it controls everything. Identifying the dominant loop is the key to understanding system behavior.
+
+Reinforcing loops are self-enhancing, leading to exponential growth or runaway collapse. Build more factories to sell more products to fund more factories. Population growth, compound interest, and viral spread all exemplify reinforcing dynamics. They're found wherever a stock has the capacity to reinforce or reproduce itself.
+
+Balancing loops seek equilibrium through negative feedback. A thermostat cooling a room, hunger driving you to eat, inventory adjustments matching supply to demand—all are balancing loops that resist change and maintain stability.
+
+Delays dramatically affect loop behavior. When response time doesn't match the rate of change, systems oscillate or overshoot. Too short causes over-reaction to noise; too long allows problems to grow before correction begins. The delay between action and consequence creates learning environments ranging from tight (chess) to wicked (strategy).
+
+**Key Applications:**
+
+Add information flows to create new feedback loops. Missing information prevents effective feedback. People shown their power consumption in real-time use less electricity. Visibility creates awareness, which creates new balancing loops that improve behavior.
+
+Strengthen balancing loops or weaken reinforcing loops to change behavior. When systems run away exponentially, either reduce the reinforcing gain or add stronger balancing mechanisms. Both work, but have different side effects.
+
+Match response time to system dynamics. If stock levels take weeks to adjust but you're reacting daily, you're chasing noise. If adjustment takes hours but you check monthly, problems compound. Align feedback timing with actual flow rates.
+
+Remember that information holds systems together. Many interconnections operate through information flow, not physical connections. The quality and timeliness of information determines how well feedback loops function.
+
+**Related Models:** Stocks, Flows & System Structure, Non-Linear Dynamics & Initial Conditions, Leverage Points & High-Impact Interventions
+
+---
+
+### 4c: Emergence & Complex Adaptive Systems
+
+**Description:**
+
+Complex adaptive systems create something greater than the sum of parts through interactions between components at multiple levels. Lower-level building blocks form higher-level organisms which themselves become building blocks for yet higher levels. The behavior that emerges can't be predicted from studying components in isolation—emergence is genuine and irreducible.
+
+**Core Principles:**
+
+Complex adaptive systems are perpetual novelty. They constantly learn, adapt, and evolve without reaching a final state or global maximum. This distinguishes them from complicated systems (like airplanes) which are intricate but don't learn or adapt.
+
+Systems organize in hierarchical levels where agents at one level serve as building blocks for the next. Molecules form cells, cells form organisms, organisms form societies, societies form civilizations. Each level has emergent properties absent from the level below.
+
+Life exists at the edge of chaos—the boundary between order and disorder where learning and evolution guide beings. This isn't metaphor; it's a precise phase transition point where systems can be spontaneous, adaptive, and alive simultaneously.
+
+Co-evolution means nothing happens in isolation. When one part of a system changes, others adapt in response. Cheetahs become faster to catch gazelles; gazelles become faster to escape cheetahs. Every change ripples through the web of relationships.
+
+**Key Applications:**
+
+Look for emergent properties that can't be reduced to components. When system behavior fundamentally differs from what components could produce individually, you've found genuine emergence. Network effects, consciousness, and market dynamics are all emergent.
+
+Understand that reductionism has limits. Knowing every atom in your body doesn't explain consciousness. Knowing every neuron's behavior doesn't predict what the brain will think. Some phenomena require system-level explanation.
+
+Recognize self-organization through simple rules. The genetic code uses only four letters but creates incredible diversity. Fractal patterns emerge from elementary iteration. Good rules plus variable information plus experimentation equals complex order.
+
+Accept that complex systems can't be controlled, only influenced. You can't predict specific outcomes, but you can understand attractors, create conditions favorable to desired emergence, and work with system dynamics rather than against them.
+
+**Related Models:** Simple Rules Generating Complex Behaviors, Network Effects & Emergent Behavior, Non-Linear Dynamics & Initial Conditions
+
+---
+
+### 4d: Leverage Points & High-Impact Interventions
+
+**Description:**
+
+Leverage points are places in a system where small changes produce large impacts. The highest leverage point is transcending paradigms—keeping yourself unattached to any single model so you can shift between frameworks fluidly. Understanding leverage means knowing where to intervene for maximum effect with minimum effort.
+
+**Core Principles:**
+
+The highest leverage point is transcending paradigms entirely. Keep yourself unattached to any single worldview, able to recognize that no paradigm is wholly correct. The flexibility to move between mental models as contexts demand provides ultimate adaptability.
+
+Cross-disciplinary thinking accesses high leverage. Defy disciplinary boundaries, learn from chemists and theologians without adopting their biases. Systems thinking naturally crosses traditional divisions because reality doesn't respect academic departments.
+
+First principles thinking provides leverage by letting you transcend current paradigms. Learn foundational principles deeply enough to think from there rather than from inherited assumptions. This gives the ability to see beyond current paradigms while understanding them from within.
+
+Information flows are high-leverage interventions. Adding missing information creates awareness of stocks and flows, enabling new feedback loops. Visible power meters reduce consumption; transparent pricing changes market dynamics. Information is cheap to add but fundamentally reshapes behavior.
+
+**Key Applications:**
+
+Question disciplinary boundaries when approaching problems. The most interesting challenges live between traditional fields. Building a latticework of mental models from multiple disciplines provides more leverage than deep expertise in one silo.
+
+Focus on changing system structure and rules rather than parameters. Adjusting numbers (parameters) is low leverage. Changing feedback loop structure is medium leverage. Changing who sets the rules or what paradigm governs the system is high leverage.
+
+Look for intervention points where small changes cascade. In complex systems with reinforcing feedback, timing matters enormously. The right nudge at the right moment can redirect entire trajectories.
+
+Remember that leverage works in both directions. High-leverage points can make things dramatically better or worse depending on intervention quality. The same mechanisms that enable positive change enable catastrophic mistakes.
+
+**Related Models:** Feedback Loops & System Dynamics, Paradigm Shifts & Transcendence, First Principles Reasoning & Ground-Up Construction
+
+---
+
+## Domain 5: Mental Models & Cross-Disciplinary Thinking
+
+*How we construct understanding through frameworks, and the importance of multiple models for seeing reality clearly*
+
+### 5a: Models as Mental Procedures & Operating Systems
+
+**Description:**
+
+Everything we think, know, or believe is a model—a simplified representation of reality inscribed in our nervous system. These mental models are huge, interlocking sets of operating procedures refined by experience. What's in our heads falls far short of fully representing the world, but models are the only tools we have for thinking. The map is never the territory.
+
+**Core Principles:**
+
+Mental models are the most complex of all models. Computers excel at digesting complexity; humans don't. We compress experience into simplified schemas—static snapshots or dynamic simulations—that let us navigate reality without drowning in detail.
+
+Intelligence is the organization of mental models. The brain provides raw material; experiences provide data storage units. But intelligence emerges from how these units connect in a lattice work. The organization of lower-level components creates higher-level capability.
+
+Knowledge lies in connections, not isolated facts. Your belief system is a web where some beliefs sit foundationally while others rest on top. Change a foundational belief and everything built on it must be reconstructed. This is why paradigm shifts are painful and rare.
+
+Mental models can be implicit or explicit. Experience creates subroutines and assemblies—patterns of thought that fire automatically. Expertise means having huge repertoires of patterns that activate unconsciously, freeing conscious attention for novelty.
+
+**Key Applications:**
+
+Build a latticework of mental models from multiple disciplines. No single model captures reality. Chemistry, psychology, mathematics, history—each provides tools that work in specific contexts. Having many models means knowing which to apply when.
+
+Expose your mental models to scrutiny. Models held unconsciously run your life by default. Bringing them into conscious awareness lets you examine whether they're serving you well or creating persistent problems.
+
+Understand that your mental models shape what you can perceive. Someone from an Amazon tribe without books in their experience doesn't "see" books—they see weird snake-like shapes. Neural connections don't fire without proper models.
+
+Remember paradigms are tools, not truths. Even if a paradigm isn't 100% right, it leads people down reasonable paths with partial truth. Discovery happens more readily through error within a framework than through total confusion without one.
+
+**Related Models:** Bias Inherent in Models & Hidden Assumptions, Paradigm Shifts & Transcendence, Cross-Disciplinary Synthesis & The Best Answer Problem
+
+---
+
+### 5b: Cross-Disciplinary Synthesis & The Best Answer Problem
+
+**Description:**
+
+The best answer to a problem often comes from a different field than where the problem originated. Real understanding requires synthesizing insights across domains because reality doesn't respect disciplinary boundaries. Building a latticework of mental models from diverse fields provides the raw material for creative problem-solving.
+
+**Core Principles:**
+
+The world is interconnected, so thinking frameworks should be too. A latticework of mental models from major disciplines—physics, biology, psychology, economics, mathematics—lets you see problems from multiple angles. The disciplinary boundary where you look determines what you can find.
+
+Many mental models from different fields point toward similar truths. Pattern recognition across scales (fractals), feedback dynamics (systems), evolutionary pressure (biology), and compound growth (mathematics) describe similar phenomena in different languages. The convergence validates the insight.
+
+Knowledge compounds when you connect ideas across domains. Working with the same people over years makes communication faster because shared context accumulates. Similarly, connecting concepts from chemistry to psychology to business creates mental shortcuts that accelerate understanding.
+
+The best answers often lie outside your domain expertise. When physicists solve biology problems or artists solve engineering challenges, they bring mental models the original field lacked. This explains why innovation clusters at interdisciplinary boundaries.
+
+**Key Applications:**
+
+Actively pursue knowledge from fields distant from your specialty. Read widely across science, arts, philosophy, and business. The goal isn't becoming an expert in everything—it's building enough literacy to recognize when a framework from another domain applies.
+
+Look for isomorphisms—similar structures in different contexts. Game theory applies to biology, economics, and warfare. Thermodynamics applies to information, organizations, and social systems. Recognizing these patterns multiplies your problem-solving toolkit.
+
+Seek collaboration across disciplines. Bell Labs succeeded by mixing physicists, engineers, mathematicians, and practical inventors. The conversations between different mental models generated insights none could achieve alone.
+
+Practice translating between disciplinary languages. The same phenomenon described by economists, biologists, and physicists might seem unrelated until you realize they're discussing identical dynamics in different vocabularies.
+
+**Related Models:** Models as Mental Procedures & Operating Systems, First Principles Reasoning & Ground-Up Construction, Leverage Points & High-Impact Interventions
+
+---
+
+### 5c: First Principles Reasoning & Ground-Up Construction
+
+**Description:**
+
+Building understanding from fundamental truths rather than by analogy or convention. First principles thinking breaks down complex problems to their basic elements, then constructs solutions from there. This approach is harder than reasoning by analogy but produces genuine innovation rather than incremental improvement.
+
+**Core Principles:**
+
+First principles are fundamental truths that serve as foundations for behavior and can be applied repeatedly in various contexts. They're the axioms you start from—the non-negotiable realities upon which everything else rests.
+
+Reasoning from first principles means breaking big things down to building blocks, understanding those blocks deeply, then constructing upward. This differs from reasoning by analogy (doing something because it's similar to what worked before) which produces incremental refinement, not breakthroughs.
+
+Learning principles deeply enables transcending paradigms. When you understand a system from within and without—its foundations and its limitations—you can think beyond its boundaries. Surface knowledge keeps you trapped in current frameworks.
+
+Questioning dogma and running experiments from scratch defines first principles thinking. Leonardo da Vinci pioneered the scientific method by testing everything empirically rather than accepting inherited wisdom. Direct observation beats received doctrine.
+
+**Key Applications:**
+
+When facing a problem, ask "What must be true?" rather than "What's usually done?" This simple reframe shifts from convention to foundation, opening space for novel solutions.
+
+Deconstruct complex challenges into irreducible components. For each component, ask whether it's truly necessary or just assumed. Many "requirements" are actually preferences inherited from past constraints that no longer apply.
+
+Study how great innovators approached first principles. They take simple, basic ideas seriously and go back to basics when others get lost in complexity. Simplicity rooted in deep understanding beats clever complexity.
+
+Use first principles to distinguish between problems and immutable situations. Some things genuinely can't be changed (physics, mathematics); others just seem unchangeable because no one's questioned them recently. First principles thinking reveals the difference.
+
+**Related Models:** Cross-Disciplinary Synthesis & The Best Answer Problem, Paradigm Shifts & Transcendence, Constraint Theory & Optimization
+
+---
+
+### 5d: Bias Inherent in Models & Hidden Assumptions
+
+**Description:**
+
+All models contain built-in assumptions and limitations that shape thinking in subtle ways. We apply paradigms—mental frameworks—to data before we're conscious of doing so. If the foundational assumptions are wrong, entire fields built on them rest on shaky ground. Recognizing this inherent bias is crucial for avoiding systematic errors.
+
+**Core Principles:**
+
+All experience is guided through theories and mental models that contain inherent human bias. We don't perceive reality directly—we perceive our models of reality. What we "know" shapes what we can see, and what we can see shapes what we "know" in a self-reinforcing loop.
+
+Knowledge creates perception rather than vice versa. The Amazon tribesman and the scholar looking at the same book "see" different things because they're applying different mental models. Neural patterns don't activate without the right models to organize perception.
+
+Paradigms act as transformation glasses determining what we perceive. Thomas Kuhn showed that scientists operating in different paradigms literally see different things when looking at the same phenomena. The model shapes the observation.
+
+Theory-induced blindness occurs once you accept a framework. Your judgments become biased by that model—alternative possibilities become literally unthinkable. This is why paradigm shifts require outsiders or crises to shock people into seeing anew.
+
+**Key Applications:**
+
+Question the primitives and assumptions underlying your models. Every framework starts from axioms that are assumed, not proven. If those foundational assumptions are wrong, everything built on them is suspect.
+
+Seek active disconfirmation of your mental models. The scout mindset asks "what would prove me wrong?" rather than "how can I prove myself right?" This counteracts theory-induced blindness.
+
+Study how you respond when reality contradicts your model. Do you update the model or rationalize why the data doesn't count? The latter indicates you're trapped by paradigm bias rather than using the model as a tool.
+
+Recognize that all models are wrong but some are useful. The goal isn't finding "correct" models—it's understanding which models work well in which contexts while remaining flexible enough to switch frameworks when circumstances change.
+
+**Related Models:** Models as Mental Procedures & Operating Systems, Paradigm Shifts & Transcendence, Model Testing & Refinement Through Criticism
+
+---
+
+### 5e: Model Testing & Refinement Through Criticism
+
+**Description:**
+
+Models improve through systematic exposure to criticism, not through confirmation. Popper's critical rationalism suggests we should seek to falsify beliefs rather than verify them. The scientific method—make bold conjectures, then ruthlessly try to disprove them—applies beyond science to all domains where we seek truth.
+
+**Core Principles:**
+
+Exposing mental models to criticism accelerates learning and creates mental flexibility. Thinking in Systems emphasizes practice in exposing your own mental models to light—making them explicit so they can be examined and improved.
+
+Seek to criticize and falsify beliefs rather than confirm them. The scientific method is conscious application of critical methodology: make bold conjectures about how the world works, then actively try to disprove them through experiment and observation.
+
+Good theories are specific, hard to vary, and testable. Bad theories are general, easily adjusted to fit any observation, and unfalsifiable. Testability—Popper's criterion of demarcation—distinguishes science from pseudoscience.
+
+Reasonableness means readiness to listen to criticism. Closed-mindedness isn't stupidity—it's the refusal to expose beliefs to critical examination. The mark of an educated mind is entertaining thoughts without accepting them.
+
+**Key Applications:**
+
+Create systematic processes for testing your models. Write down predictions, then check them against outcomes. When predictions fail, ask what the model missed rather than explaining away the discrepancy.
+
+Build criticism into your thinking through pre-mortems and red teams. Before committing to important decisions, explicitly try to destroy your own reasoning. What assumptions, if wrong, would invalidate your conclusion?
+
+Practice the scientific method in everyday thinking: observe, hypothesize, predict, test, update. This doesn't require laboratories—it requires intellectual honesty and systematic record-keeping.
+
+Seek out people who disagree and understand their reasoning. Charlie Munger's principle: find the smartest people who think you're wrong and understand why they believe that. This creates higher-quality criticism than echo chambers provide.
+
+**Related Models:** Critical Approach & Fallibilism, Good Explanations vs. Prophecy, Scout Mindset & Truth-Seeking
+
+---
+
+## Domain 6: Psychology & Human Behavior
+
+*Understanding the systematic patterns in how humans think, decide, and act under various conditions*
+
+### 6a: System 1 vs System 2 Thinking
+
+**Description:**
+
+The mind operates through two distinct systems. System 1 runs automatically and effortlessly—instant pattern recognition, emotional responses, and intuitive judgments. System 2 requires conscious effort—deliberate analysis, logical reasoning, and complex calculations. Most of life runs on System 1; System 2 steps in only when needed or surprised.
+
+**Core Principles:**
+
+System 1 is fast, automatic, and emotional. It handles perception, recognition of familiar patterns, simple math like 2+2, and driving on empty roads. It operates continuously, generating impressions and feelings that become beliefs when System 2 endorses them.
+
+System 2 is slow, effortful, and logical. It handles complex calculations, conscious choices, deliberate behavior monitoring, and anything that requires attention. It's lazy by design—activating only when necessary because it consumes scarce cognitive energy.
+
+Intelligence is controlling attention—deploying System 2 when needed despite its metabolic cost. System 1 generates suggestions continuously, but System 2 decides whether to endorse them. This gatekeeping function is what we mean by "thinking carefully."
+
+System 1 can't be turned off. It generates impressions even about things you don't understand. The key is recognizing when to override automatic responses with deliberate analysis rather than accepting every intuition as valid.
+
+**Key Applications:**
+
+Recognize which system is operating. Feeling instant certainty? That's System 1. If you can't explain your reasoning, you're relying on intuition. This doesn't mean you're wrong—but know what you're doing.
+
+Save System 2 for high-stakes decisions. It's expensive, so don't waste it on trivia. Create rules and habits that handle routine choices automatically, preserving effortful thinking for what matters.
+
+Question System 1 responses in unfamiliar domains. Your intuitions are excellent where you have experience but dangerously overconfident in novel situations. Expertise means knowing when your gut is reliable.
+
+Understand that System 2 has limits. It fatigues with use, leading to decision fatigue and ego depletion. Structure your day to make important decisions when cognitively fresh, not after hours of mental effort.
+
+**Related Models:** Decision Fatigue & Cognitive Resource Management, Cognitive Biases & Systematic Errors, Probabilistic Thinking & Base Rate Neglect
+
+---
+
+### 6b: Cognitive Biases & Systematic Errors
+
+**Description:**
+
+Human judgment follows predictable patterns that produce systematic errors. These aren't random mistakes—they're built into how System 1 processes information. Availability bias makes us overweight vivid examples. Confirmation bias makes us seek evidence that supports existing beliefs. Understanding these patterns helps recognize when intuition leads astray.
+
+**Core Principles:**
+
+Availability bias distorts probability perception based on how easily examples come to mind. Media coverage of rare events makes them feel common. Dramatic incidents (plane crashes, terrorism) loom large while common dangers (heart disease, car accidents) fade into background.
+
+What you see is all there is (WYSIATI). System 1 constructs the most coherent story possible from available information, not considering missing data. This creates overconfidence—we don't know what we don't know, so we're certain about incomplete pictures.
+
+Confirmation bias seeks evidence supporting existing beliefs while ignoring contradictions. We're much better at spotting flaws in arguments we disagree with than in our own reasoning. This creates self-reinforcing echo chambers.
+
+Personalized algorithms amplify biases in the digital age. Filter bubbles and recommendation engines show us what we already agree with, creating stronger availability cascades and confirmation loops than ever existed before.
+
+**Key Applications:**
+
+Check for availability bias by asking "am I overweighting this because it's vivid or recent?" The dramatic example that comes to mind easily might be the rare exception, not the typical case.
+
+Combat confirmation bias with active disconfirmation. Don't ask "what confirms my belief?" Ask "what would prove me wrong?" Seek out smart people who disagree and understand their reasoning.
+
+Be suspicious of strong intuitions in domains with poor feedback. You might feel certain about investing, parenting, or strategy, but these involve delayed, noisy feedback where biases flourish unchecked.
+
+Remember that base rates usually matter more than specific details. The story feels compelling, but statistics are typically more reliable. Your intuition focuses on the narrative; good decisions focus on frequencies.
+
+**Related Models:** Probabilistic Thinking & Base Rate Neglect, Mental Accounting & Reference Point Dependence, Availability Cascades & Information Spread
+
+---
+
+### 6c: Mental Accounting & Reference Point Dependence
+
+**Description:**
+
+We treat identical amounts of money differently depending on mental categories—found money feels different than earned money, even though both have equal value. We evaluate outcomes relative to reference points rather than absolute terms—gaining $10 from $0 feels different than gaining $10 from $100. These mental accounting quirks create predictable irrationalities.
+
+**Core Principles:**
+
+Mental accounting explains why we view things differently based on reference points. A $20 found on the street feels different than $20 in your paycheck, even though both are equally spendable. We create arbitrary mental budgets that affect choices independently of actual financial situation.
+
+Reference points determine whether we perceive gains or losses. Losing $100 hurts more than gaining $100 feels good—roughly twice as much. This loss aversion, combined with reference point dependence, explains why we reject objectively good gambles and cling to objectively bad investments.
+
+The endowment effect makes us overvalue what we own. Objects become worth more the moment we possess them, even if nothing changed except ownership. This explains why sellers demand more than buyers will pay—different reference points create different valuations.
+
+Certainty effects and possibility effects show how reference points skew preferences. We overvalue certainty in gains (preferring guaranteed $900 over 90% chance of $1000) but seek risk in losses (preferring 90% chance of losing $1000 over certain loss of $900).
+
+**Key Applications:**
+
+Recognize mental accounting in financial decisions. Segregating money into artificial categories ("vacation fund" vs "emergency fund") can help discipline but also creates irrational constraints. Money is fungible—treat it that way.
+
+Understand how reference points affect negotiations. The starting offer sets the anchor. Whether you frame an outcome as a gain or loss relative to that anchor dramatically affects acceptability, even though the objective result stays the same.
+
+Question your attachment to possessions and investments. The endowment effect makes you overvalue what you own. Would you buy this asset at current price? If not, why are you holding it?
+
+Be aware that prospect theory beats expected utility theory for predicting actual behavior. People don't maximize expected value—they maximize value relative to reference points while overweighting small probabilities and underweighting large ones.
+
+**Related Models:** Loss Aversion & Risk Asymmetry, Behavioral Economics & Market Psychology, Decision Quality vs. Outcome Separation
+
+---
+
+### 6d: Social Psychology & Environmental Influence
+
+**Description:**
+
+We're shaped by social context far more than we realize. Priming—subtle environmental cues—affects behavior before conscious awareness. Stereotypes activate automatically and bias judgment. The physical environment influences thinking and decision quality. Understanding these forces helps design better environments and resist manipulation.
+
+**Core Principles:**
+
+Priming happens unconsciously through environmental cues. Words suggesting old age make people walk slower. Reminders of money make people more selfish. Physical warmth increases interpersonal trust. These effects occur before conscious processing—System 1 responds to context automatically.
+
+Stereotypes are mental shortcuts that fire automatically upon categorizing people. Even people who consciously reject prejudice show implicit bias under time pressure when System 2 can't intervene. The activation is universal; what differs is whether we let stereotypes guide behavior.
+
+Broken windows theory suggests environmental signals cascade. Visible disorder (broken windows, graffiti, litter) signals that rules don't matter, increasing rule-breaking behavior. Conversely, visible order reinforces compliance. The physical environment shapes the social environment.
+
+We imitate three groups: the close (family, friends), the many (cultural norms), and the powerful (status figures). This mimetic desire means we'd often rather be wrong with the group than right alone—social conformity is a powerful default.
+
+**Key Applications:**
+
+Design your environment deliberately. What's visible shapes behavior unconsciously. Want to read more? Place books prominently and hide the remote. Want better posture? Change your desk setup. Environmental design beats willpower.
+
+Recognize when you're being primed. Advertising, architecture, music, and lighting all create subtle influences. Awareness doesn't eliminate the effect but reduces susceptibility to manipulation.
+
+Understand that adolescence shows peak malleability to social influence. Teenagers are maximally prone to peer pressure while their prefrontal cortex develops. This explains both high-risk behavior and rapid learning during this period.
+
+Create accountability mechanisms that counter implicit bias. Awareness of stereotypes doesn't eliminate them—structured processes do. Checklists, blind evaluation, and diverse perspectives reduce bias more than good intentions.
+
+**Related Models:** Identity Formation Through Narrative, Cultural Transmission & Memetic Evolution, Habits & Environmental Design
+
+---
+
+### 6e: Kahneman's 8 Decision-Making Questions
+
+**Description:**
+
+Daniel Kahneman distilled decades of research into 8 questions that improve judgment by forcing conscious analysis of decisions. These questions create a systematic framework for engaging System 2 when it matters most—moving from automatic intuition to deliberate reasoning for high-stakes choices.
+
+**Core Principles:**
+
+The framework consists of eight questions that force critical examination: Is this a decision I should think fast or slow about? Am I too stressed or tired to make this well? Am I considering alternative views? Can I see how my conclusion might be wrong? Is there anything I'm not seeing? Would I make the same decision if presented differently? Am I being influenced by anchoring or recent events? What data would change my mind?
+
+Different types of decisions require different approaches. Jeff Bezos's framework distinguishes one-way doors (irreversible, requiring slow thinking) from two-way doors (reversible, can move fast). Recognizing decision type determines appropriate cognitive resources.
+
+The questions help overcome systematic biases. Asking "am I being influenced by recent events?" counters availability bias. "Would I decide differently if presented another way?" addresses framing effects. "What would change my mind?" fights confirmation bias.
+
+High-stakes situations magnify the importance of systematic questioning. When mistakes are costly—hiring key people, major investments, strategic pivots—the framework prevents System 1's overconfidence from dominating. The questions slow you down deliberately.
+
+Context affects decision quality independent of thinking. Physical environment (room color, lighting, noise), physiological state (hunger, fatigue, stress), and emotional state (mood, recent experiences) all influence judgment. The questions help recognize when context compromises quality.
+
+**Key Applications:**
+
+Before important decisions, explicitly run through the eight questions. Write down your reasoning and which questions revealed gaps in your thinking. This creates accountability and improves calibration over time.
+
+Recognize when you're in a compromised state. Question two—"Am I too stressed or tired?"—might be most important. If yes, delay the decision if possible. Simple awareness of depletion prevents predictable mistakes.
+
+Practice with medium-stakes decisions to build the habit. You won't remember the framework under pressure unless it's automatic. Regular practice on moderately important choices makes it available when stakes are highest.
+
+Share the framework with decision-making partners. Teams using systematic questioning make better collective choices by surfacing assumptions and biases that individuals miss. The questions create productive friction.
+
+**Related Models:** System 1 vs System 2 Thinking, Decision Quality vs. Outcome Separation, Probabilistic Thinking & Base Rate Neglect
+
+---
+
+## Domain 7: Decision-Making Under Uncertainty
+
+*How to make good choices when the future is unknown and outcomes depend on probability*
+
+### 7a: Probabilistic Thinking & Base Rate Neglect
+
+**Description:**
+
+Most decisions require thinking in probabilities rather than certainties. Base rates—statistical information about how things generally work—provide crucial context, yet we systematically ignore them in favor of vivid stories or intuitions about our specific situation. This creates predictable errors in judgment that compound over time.
+
+**Core Principles:**
+
+The inside view reflects our intuition about a specific situation, while the outside view shows how similar situations typically unfold. When a team estimates their project will take two years based on their skills and optimism, but similar teams typically take seven to ten years with a 40% failure rate, the inside view has missed the unknown unknowns that derail plans.
+
+We suffer from the planning fallacy because we assume the best case rather than the expected value. Media coverage distorts our probability perception through availability bias—we overestimate risks we see on the news while underestimating quiet dangers. The solution is thinking in shades of gray: assigning percentages instead of treating everything as 100% certain or impossible.
+
+Small sample sizes produce extreme outcomes that mislead us. Rural towns with the lowest kidney cancer rates share the same characteristics as towns with the highest rates—small populations create statistical noise, not genuine patterns.
+
+**Key Applications:**
+
+Start with base rates from a good reference class, then adjust based on specific evidence. A shy person is more likely to be a social scientist than a computer scientist when social scientists outnumber computer scientists ten to one, even though shyness feels more representative of programmers.
+
+Separate decision quality from outcomes. Judge decisions by process, not results, and mind the sample size when learning from experience. In a bull market, everyone looks like a genius.
+
+Practice probabilistic calibration by assigning percentages to beliefs and asking "what would make me say I'm wrong?" Getting comfortable with uncertainty—"I'm 70% confident"—improves judgment more than false precision.
+
+**Related Models:** Expected Value & Asymmetric Payoffs, System 1 vs System 2 Thinking, Statistical Inference & Sample Size Awareness
+
+---
+
+### 7b: Expected Value & Asymmetric Payoffs
+
+**Description:**
+
+Expected value—probability multiplied by magnitude across all possible outcomes—provides the right framework for decisions under uncertainty. The best opportunities have asymmetric payoff structures: limited downside with unlimited or disproportionate upside. Understanding this distinction transforms how you allocate resources and take risks.
+
+**Core Principles:**
+
+Expected value thinking requires calculating probability times magnitude for every potential outcome, then summing them. A 10% chance of earning $1 million has the same expected value as a 100% chance of earning $100,000, but the risk profiles differ dramatically.
+
+Asymmetric payoffs are the holy grail: situations where you can't lose much but could gain enormously. Venture capital, entrepreneurship, and certain types of creative work offer this structure. The art dealer who buys many pieces knowing most will fail, but one masterpiece creates 10x returns, understands power law distributions intuitively.
+
+Loss aversion—feeling losses roughly twice as strongly as equivalent gains—causes us to reject positive expected value bets. We turn down a 50/50 chance to win $200 or lose $100, even though the math favors taking the bet.
+
+Risk and uncertainty are different. Risk has known probabilities (casino games); uncertainty has unknown probabilities (entrepreneurship). Expected value works for both, but requires different approaches to estimation.
+
+**Key Applications:**
+
+Seek asymmetric bets in career, relationships, and investments. Limited downside, unlimited upside opportunities compound over time. The intern who asks for mentorship risks a "no" but could gain a career-changing relationship.
+
+Make uncorrelated, balanced bets to achieve superior risk-adjusted returns. Don't put all resources into one outcome, even if the expected value looks good—volatility matters.
+
+Calculate expected value explicitly for major decisions: list outcomes, assign probabilities, multiply by magnitude. The discipline of quantifying hunches exposes flawed thinking.
+
+Judge by decision quality, not single outcomes. Good decisions with positive expected value sometimes produce bad results. Play the long game.
+
+**Related Models:** Probabilistic Thinking & Base Rate Neglect, Power Laws & Superlinear Returns, Risk Management & Margin of Safety
+
+---
+
+### 7c: Decision Quality vs. Outcome Separation
+
+**Description:**
+
+Results are determined by decision quality plus luck. Conflating the two—working backward from outcomes to judge decisions—creates a vicious cycle where you learn the wrong lessons. The solution is evaluating decisions by process and information available at decision time, not by results that include randomness.
+
+**Core Principles:**
+
+Resulting is the cognitive trap of judging decisions by outcomes rather than process. A drunk driver who makes it home safely didn't make a good decision. A well-researched investment that loses money wasn't necessarily wrong—variance exists in all probabilistic systems.
+
+Decision quality depends on three factors: the information available, the decision-making process, and whether you're optimizing for the right outcome. You can score perfectly on all three and still get bad results.
+
+Sample size determines what you can learn from outcomes. One poker hand teaches little about strategy; a thousand hands reveal skill differences. Confusing signal with noise—overweighting recent results—prevents accurate updating.
+
+The best learning environments provide rapid, unambiguous feedback. Surgery and chess allow tight feedback loops. Strategy and parenting involve delayed, noisy feedback where outcomes take years to materialize and countless variables confound analysis.
+
+**Key Applications:**
+
+Before making decisions, write down your reasoning, the information you're relying on, and your probability estimates. This creates a record you can later review without hindsight bias contaminating the analysis.
+
+After outcomes occur, ask: "Given what I knew then, would I make the same decision?" not "Was I right?" Focus on whether your process was sound, not whether luck broke your way.
+
+Build decision-making frameworks you can evaluate. Track decisions systematically across months or years, looking for patterns in your process, not just tallying wins and losses.
+
+Separate luck from skill by understanding base rates and sample sizes. If success requires you to be both good and lucky, the first few successes tell you little about your skill level.
+
+**Related Models:** Probabilistic Thinking & Base Rate Neglect, Expected Value & Asymmetric Payoffs, Learning by Doing & Experience Curves
+
+---
+
+### 7d: Decision Fatigue & Cognitive Resource Management
+
+**Description:**
+
+Mental energy is a finite resource. Every decision—from what to eat for breakfast to whether to fire an employee—depletes the same cognitive reserves. Decision fatigue degrades judgment quality progressively throughout the day, causing us to avoid decisions entirely or make impulsive choices. Managing this constraint is as important as improving decision-making skill.
+
+**Core Principles:**
+
+System 2 thinking—effortful, deliberate analysis—consumes scarce cognitive resources. Unlike System 1's automatic responses, conscious reasoning tires quickly. This explains why judges grant parole more frequently after lunch and why you can resist dessert at dinner but raid the kitchen at midnight.
+
+Decision fatigue manifests in three ways: decision avoidance (defaulting to status quo), impulsive choices (taking the path of least resistance), or decision paralysis (endless deliberation without action). All three degrade outcomes.
+
+Ego depletion compounds across domains. Resisting temptation at work leaves less willpower for exercise or healthy eating. The psychological effort of self-control draws from a shared pool, regardless of the specific task.
+
+Cognitive load isn't just about quantity—complexity matters. Choosing between two similar options is harder than choosing between obviously different ones. Ambiguous decisions with unclear trade-offs drain energy faster than clear-cut choices.
+
+**Key Applications:**
+
+Front-load important decisions to morning hours when mental energy peaks. Schedule strategic thinking, hiring decisions, and creative work for when you're cognitively fresh, not after a day of meetings.
+
+Batch routine decisions to preserve mental energy for what matters. Wear the same outfit daily, eat similar meals, create defaults for low-stakes choices. This isn't about rigidity—it's about resource allocation.
+
+Create decision rules and systems that eliminate repeated deliberation. "I don't drink on weekdays" is easier to maintain than deciding each evening whether tonight is different. Pre-commitment eliminates the decision entirely.
+
+Recognize when you're depleted. If you're irritable, impatient, or defaulting to whatever's easiest, your judgment is compromised. Delay important decisions until you've recovered. Simple awareness prevents costly mistakes made in a depleted state.
+
+**Related Models:** System 1 vs System 2 Thinking, Habits & Behavior Change, Energy as Core Resource & Ultimate Constraint
+
+---
+
+*[Continuing with remaining domains in next artifact due to length...]*

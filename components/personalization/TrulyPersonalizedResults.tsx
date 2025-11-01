@@ -1,9 +1,12 @@
 'use client';
 
+import { CuratedPath } from '@/lib/curated-learning-paths';
 import { getAllModels } from '@/lib/data';
 import { DynamicLearningPath, DynamicPathGenerator } from '@/lib/dynamic-path-generator';
+import { PathMatcher } from '@/lib/path-matcher';
+import { ProgressTracker } from '@/lib/progress-tracker';
 import { UserProfile } from '@/types/user';
-import { ArrowRight, Brain, CheckCircle, Clock, Lightbulb, Play, Star, Target, Zap } from 'lucide-react';
+import { ArrowRight, Brain, CheckCircle, Clock, Lightbulb, Play, Sparkles, Star, Target, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -12,8 +15,12 @@ interface TrulyPersonalizedResultsProps {
 }
 
 export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedResultsProps) {
-  const [personalizedPaths, setPersonalizedPaths] = useState<DynamicLearningPath[]>([]);
+  const [curatedPaths, setCuratedPaths] = useState<CuratedPath[]>([]);
+  const [dynamicPaths, setDynamicPaths] = useState<DynamicLearningPath[]>([]);
+  const [showDynamic, setShowDynamic] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [viewedModelSlugs, setViewedModelSlugs] = useState<string[]>([]);
+  const [completedPathIds, setCompletedPathIds] = useState<string[]>([]);
 
   useEffect(() => {
     generateTrulyPersonalizedPaths();
@@ -22,29 +29,86 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
   const generateTrulyPersonalizedPaths = () => {
     const allModels = getAllModels();
     
+    // Get user progress
+    const progress = ProgressTracker.getProgress();
+    const viewed = progress.modelsViewed.map(m => m.slug);
+    const completed = progress.pathsStarted.filter(p => p.completed).map(p => p.pathId);
+    
+    setViewedModelSlugs(viewed);
+    setCompletedPathIds(completed);
+    
     console.log('Generating paths for profile:', profile);
-    console.log('Continuation type:', profile.personalContext?.continuationType);
+    console.log(`Progress: ${viewed.length} viewed models, ${completed.length} completed paths`);
     
-    // Generate dynamic paths but map them to existing path IDs for proper linking
-    const dynamicPaths = DynamicPathGenerator.generateDynamicPaths(allModels, profile);
+    // 1. Get 2-3 curated paths (always shown)
+    const bestCuratedPaths = PathMatcher.getBestMatches(profile, viewed, completed);
+    setCuratedPaths(bestCuratedPaths);
+    console.log('Curated paths:', bestCuratedPaths.map(p => p.title));
     
-    console.log('Generated dynamic paths:', dynamicPaths);
+    // 2. Check if user has completed enough to unlock dynamic paths
+    const hasCompletedEnough = completed.length >= 2 || viewed.length >= 15;
+    setShowDynamic(hasCompletedEnough);
     
-    // Map dynamic paths to existing path IDs so they link properly
-    const mappedPaths = dynamicPaths.map((path, index) => {
-      const existingIds = ['decision-maker', 'business-strategist', 'creative-thinker', 'system-thinker', 'psychology-expert', 'learning-optimizer'];
-      return {
-        ...path,
-        id: existingIds[index] || 'decision-maker' // Fallback to first ID
-      };
-    });
+    if (hasCompletedEnough) {
+      // Generate 3 dynamic paths for exploration
+      const dynamicPathsGenerated = DynamicPathGenerator.generateDynamicPaths(
+        allModels,
+        profile,
+        viewed,
+        completed
+      );
+      
+      // Take only top 3 and ensure they're different from curated
+      const curatedModelSets = bestCuratedPaths.map(p => new Set(p.modelSlugs));
+      const uniqueDynamic = dynamicPathsGenerated.filter(dynPath => {
+        const dynModels = new Set(dynPath.models.map(m => m.model.slug));
+        // Check if >50% overlap with any curated path
+        const hasOverlap = curatedModelSets.some(curatedSet => {
+          const intersection = [...dynModels].filter(slug => curatedSet.has(slug)).length;
+          return intersection / dynModels.size > 0.5;
+        });
+        return !hasOverlap;
+      }).slice(0, 3);
+      
+      setDynamicPaths(uniqueDynamic);
+      console.log('Dynamic paths:', uniqueDynamic.map(p => p.title));
+      
+      // Store all paths in sessionStorage
+      const allPaths = [
+        ...bestCuratedPaths.map(cp => ({
+          id: cp.id,
+          title: cp.title,
+          description: cp.description,
+          difficulty: cp.level === 'beginner' ? 'gentle' : cp.level === 'intermediate' ? 'moderate' : 'challenging',
+          estimatedTime: cp.estimatedTime,
+          models: cp.modelSlugs,
+          domains: [],
+          tags: cp.tags,
+          icon: cp.icon,
+          pathType: cp.category
+        })),
+        ...uniqueDynamic
+      ];
+      
+      sessionStorage.setItem('dynamic_paths', JSON.stringify(allPaths));
+    } else {
+      // Store only curated paths
+      const curatedOnly = bestCuratedPaths.map(cp => ({
+        id: cp.id,
+        title: cp.title,
+        description: cp.description,
+        difficulty: cp.level === 'beginner' ? 'gentle' : cp.level === 'intermediate' ? 'moderate' : 'challenging',
+        estimatedTime: cp.estimatedTime,
+        models: cp.modelSlugs,
+        domains: [],
+        tags: cp.tags,
+        icon: cp.icon,
+        pathType: cp.category
+      }));
+      
+      sessionStorage.setItem('dynamic_paths', JSON.stringify(curatedOnly));
+    }
     
-    console.log('Mapped paths:', mappedPaths);
-    
-    // Store dynamic paths in sessionStorage so the path page can access them
-    sessionStorage.setItem('dynamic_paths', JSON.stringify(mappedPaths));
-    
-    setPersonalizedPaths(mappedPaths);
     setLoading(false);
   };
 
@@ -201,39 +265,67 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
           </div>
         </div>
 
-        {/* Dynamic Learning Paths */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-neutral-800 mb-2 text-center">Your Learning Paths</h2>
+        {/* Progress Summary */}
+        {viewedModelSlugs.length > 0 && (
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 mb-8 border-2 border-green-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-green-800 mb-2">Your Learning Progress</h3>
+                <p className="text-green-700">
+                  You've explored <span className="font-bold text-2xl">{viewedModelSlugs.length}</span> mental models so far!
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-green-600">{completedPathIds.length}</div>
+                <div className="text-sm text-green-700">Paths Completed</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Curated Learning Paths */}
+        <div className="mb-12">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <Star className="h-8 w-8 text-yellow-500" />
+            <h2 className="text-3xl font-bold text-neutral-800">Recommended For You</h2>
+            <Star className="h-8 w-8 text-yellow-500" />
+          </div>
           <p className="text-center text-neutral-600 mb-8">
-            {personalizedPaths.length} paths dynamically generated for your specific situation
+            {curatedPaths.length} expertly curated paths matched to your goals
+            {viewedModelSlugs.length > 0 && (
+              <span className="block mt-2 text-sm text-green-600 font-medium">
+                ✓ Models you've already viewed are marked with green checkmarks
+              </span>
+            )}
           </p>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {personalizedPaths.map((path, index) => (
-              <div key={path.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+            {curatedPaths.map((path, index) => {
+              const viewedCount = path.modelSlugs.filter(slug => viewedModelSlugs.includes(slug)).length;
+              const totalCount = path.modelSlugs.length;
+              const progressPercent = (viewedCount / totalCount) * 100;
+              const isCompleted = viewedCount === totalCount && totalCount > 0;
+              
+              return (
+              <div key={path.id} className={`bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow ${isCompleted ? 'ring-4 ring-green-400' : ''}`}>
+                {/* Completed Badge */}
+                {isCompleted && (
+                  <div className="bg-green-500 text-white text-center py-2 px-4 font-bold flex items-center justify-center gap-2">
+                    <CheckCircle className="h-5 w-5" />
+                    PATH COMPLETED ✓
+                  </div>
+                )}
+                
                 {/* Path Header */}
-                <div className={`p-6 ${getPathColor(path.pathType)} text-white`}>
+                <div className={`p-6 ${getPathColor(path.category)} text-white`}>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-lg font-bold">{path.title}</h3>
-                    <div className="flex items-center space-x-1">
-                      {getPathIcon(path.pathType)}
-                      <span className="text-xs font-medium">{getPathTypeLabel(path.pathType)}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{path.icon}</span>
+                      <h3 className="text-lg font-bold">{path.title}</h3>
                     </div>
+                    <span className="text-xs font-medium px-2 py-1 bg-white/20 rounded-full">{path.level}</span>
                   </div>
                   <p className="text-white/90 text-sm">{path.description}</p>
-                </div>
-
-                {/* Why This Path */}
-                <div className="p-4 bg-foundational-50 border-b">
-                  <div className="flex items-start space-x-3">
-                    <div className="p-1 rounded bg-foundational-100">
-                      <Lightbulb className="h-4 w-4 text-foundational-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foundational-800 mb-1">Why this path?</p>
-                      <p className="text-sm text-foundational-700">{path.personalizedReason}</p>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Path Details */}
@@ -241,67 +333,205 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-2 text-sm text-neutral-500">
                       <Clock className="h-4 w-4" />
-                      <span>{path.estimatedTotalTime}</span>
+                      <span>{path.estimatedTime}</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-neutral-500">
                       <Brain className="h-4 w-4" />
-                      <span>{path.models.length} models</span>
+                      <span>{path.modelSlugs.length} models</span>
                     </div>
                   </div>
 
                   {/* Model Preview */}
-                  <div className="space-y-2 mb-6">
-                    {path.models.slice(0, 2).map((pathModel, modelIndex) => (
-                      <div key={modelIndex} className="flex items-center space-x-3 p-3 bg-neutral-50 rounded-lg">
-                        <div className="h-6 w-6 rounded-full bg-foundational-100 flex items-center justify-center text-foundational-600 font-semibold text-xs">
-                          {modelIndex + 1}
+                  <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
+                    {path.modelSlugs.slice(0, 5).map((slug, modelIndex) => {
+                      const isViewed = viewedModelSlugs.includes(slug);
+                      const model = getAllModels().find(m => m.slug === slug);
+                      return (
+                        <div key={modelIndex} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isViewed ? 'bg-green-50 border border-green-200' : 'bg-neutral-50 hover:bg-neutral-100'}`}>
+                          <div className={`h-6 w-6 rounded-full flex items-center justify-center font-semibold text-xs flex-shrink-0 ${isViewed ? 'bg-green-500 text-white' : 'bg-foundational-100 text-foundational-600'}`}>
+                            {isViewed ? <CheckCircle className="h-4 w-4" /> : modelIndex + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium text-sm truncate ${isViewed ? 'text-green-800 line-through' : 'text-neutral-800'}`}>
+                              {model?.name || slug}
+                              {isViewed && <span className="ml-2 text-xs text-green-600 font-bold no-underline">✓ DONE</span>}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-neutral-800 text-sm">{pathModel.model.name}</p>
-                          <p className="text-xs text-neutral-600">{pathModel.reasoning}</p>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {path.models.length > 2 && (
-                      <div className="text-center py-2">
-                        <span className="text-sm text-neutral-500">
-                          +{path.models.length - 2} more models
-                        </span>
-                      </div>
+                      );
+                    })}
+                    {path.modelSlugs.length > 5 && (
+                      <p className="text-xs text-neutral-500 text-center">+{path.modelSlugs.length - 5} more models</p>
                     )}
                   </div>
 
-                  {/* Difficulty & Features */}
-                  <div className="mb-6 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-neutral-600">Difficulty:</span>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getDifficultyColor(path.difficulty)}`}>
-                        {path.difficulty}
-                      </span>
-                    </div>
-                    
-                    {path.adaptiveFeatures.branchingPoints.length > 0 && (
-                      <div className="text-xs text-accent-600">
-                        ✨ Adaptive branching based on your progress
+                  {/* Progress Bar */}
+                  {viewedCount > 0 && (
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span className="text-neutral-600">Your Progress:</span>
+                        <span className="font-medium text-green-600">{viewedCount}/{totalCount} models</span>
                       </div>
-                    )}
-                  </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Action Button */}
-                  <Link 
+                  <Link
                     href={`/guide/path/${path.id}`}
-                    className="w-full btn btn-primary group flex items-center justify-center"
+                    className={`w-full btn group flex items-center justify-center ${isCompleted ? 'btn-outline' : 'btn-primary'}`}
                   >
-                    <Play className="mr-2 h-4 w-4" />
-                    Start This Path
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    {isCompleted ? (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Review Path
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      </>
+                    ) : (
+                      <>
+                        <Play className="mr-2 h-4 w-4" />
+                        {viewedCount > 0 ? 'Continue Path' : 'Start This Path'}
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      </>
+                    )}
                   </Link>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
+
+        {/* Dynamic Paths (Unlocked after progress) */}
+        {showDynamic && dynamicPaths.length > 0 && (
+          <div className="mb-12">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Sparkles className="h-8 w-8 text-purple-500" />
+              <h2 className="text-3xl font-bold text-neutral-800">Explore Further</h2>
+              <Sparkles className="h-8 w-8 text-purple-500" />
+            </div>
+            <p className="text-center text-neutral-600 mb-2">
+              🎉 Unlocked! {dynamicPaths.length} dynamic paths generated based on your progress
+            </p>
+            <p className="text-center text-sm text-neutral-500 mb-8">
+              These paths adapt to what you've already learned
+            </p>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {dynamicPaths.map((path, index) => {
+                const viewedCount = path.models.filter(m => viewedModelSlugs.includes(m.model.slug)).length;
+                const totalCount = path.models.length;
+                const progressPercent = (viewedCount / totalCount) * 100;
+                const isCompleted = viewedCount === totalCount && totalCount > 0;
+                
+                return (
+                  <div key={path.id} className={`bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow ${isCompleted ? 'ring-4 ring-green-400' : ''}`}>
+                    {isCompleted && (
+                      <div className="bg-green-500 text-white text-center py-2 px-4 font-bold flex items-center justify-center gap-2">
+                        <CheckCircle className="h-5 w-5" />
+                        PATH COMPLETED ✓
+                      </div>
+                    )}
+                    
+                    <div className={`p-6 ${getPathColor(path.pathType)} text-white`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-lg font-bold">{path.title}</h3>
+                        <span className="text-xs font-medium px-2 py-1 bg-white/20 rounded-full">{path.difficulty}</span>
+                      </div>
+                      <p className="text-white/90 text-sm">{path.description}</p>
+                    </div>
+
+                    <div className="p-4 bg-foundational-50 border-b">
+                      <div className="flex items-start space-x-3">
+                        <div className="p-1 rounded bg-foundational-100">
+                          <Lightbulb className="h-4 w-4 text-foundational-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foundational-800 mb-1">Why this path?</p>
+                          <p className="text-sm text-foundational-700">{path.personalizedReason}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2 text-sm text-neutral-500">
+                          <Clock className="h-4 w-4" />
+                          <span>{path.estimatedTotalTime}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-sm text-neutral-500">
+                          <Brain className="h-4 w-4" />
+                          <span>{path.models.length} models</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
+                        {path.models.slice(0, 5).map((pathModel, modelIndex) => {
+                          const isViewed = viewedModelSlugs.includes(pathModel.model.slug);
+                          return (
+                            <div key={modelIndex} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isViewed ? 'bg-green-50 border border-green-200' : 'bg-neutral-50 hover:bg-neutral-100'}`}>
+                              <div className={`h-6 w-6 rounded-full flex items-center justify-center font-semibold text-xs flex-shrink-0 ${isViewed ? 'bg-green-500 text-white' : 'bg-foundational-100 text-foundational-600'}`}>
+                                {isViewed ? <CheckCircle className="h-4 w-4" /> : modelIndex + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`font-medium text-sm truncate ${isViewed ? 'text-green-800 line-through' : 'text-neutral-800'}`}>
+                                  {pathModel.model.name}
+                                  {isViewed && <span className="ml-2 text-xs text-green-600 font-bold no-underline">✓ DONE</span>}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {path.models.length > 5 && (
+                          <p className="text-xs text-neutral-500 text-center">+{path.models.length - 5} more models</p>
+                        )}
+                      </div>
+
+                      {viewedCount > 0 && (
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between text-sm mb-2">
+                            <span className="text-neutral-600">Your Progress:</span>
+                            <span className="font-medium text-green-600">{viewedCount}/{totalCount} models</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${progressPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <Link 
+                        href={`/guide/path/${path.id}`}
+                        className={`w-full btn group flex items-center justify-center ${isCompleted ? 'btn-outline' : 'btn-primary'}`}
+                      >
+                        {isCompleted ? (
+                          <>
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Review Path
+                            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                          </>
+                        ) : (
+                          <>
+                            <Play className="mr-2 h-4 w-4" />
+                            {viewedCount > 0 ? 'Continue Path' : 'Start This Path'}
+                            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                          </>
+                        )}
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Success Tracking */}
         <div className="bg-white rounded-xl shadow-lg p-8 mb-8">

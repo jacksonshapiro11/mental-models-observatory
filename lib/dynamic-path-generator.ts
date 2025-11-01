@@ -32,29 +32,38 @@ export class DynamicPathGenerator {
    */
   static generateDynamicPaths(
     allModels: MentalModel[], 
-    profile: UserProfile & { personalContext: any }
+    profile: UserProfile & { personalContext: any },
+    viewedModelSlugs: string[] = [],
+    completedPathIds: string[] = []
   ): DynamicLearningPath[] {
     const context = profile.personalContext;
     const paths: DynamicLearningPath[] = [];
+    
+    // Filter out already viewed models (but keep some for reinforcement if needed)
+    const unseenModels = allModels.filter(m => !viewedModelSlugs.includes(m.slug));
+    const modelsToUse = unseenModels.length >= 10 ? unseenModels : allModels; // Fallback to all if too few unseen
+    
+    console.log(`Generating paths: ${unseenModels.length} unseen models out of ${allModels.length} total`);
     
     // Check if this is a continuation from a completed path
     const continuationType = context.continuationType;
     console.log('Generating paths with continuation type:', continuationType);
     
     // ALWAYS generate all path types, but PRIORITIZE based on continuation type
-    const immediatePath = this.generateImmediateSolutionPath(allModels, context);
-    const skillPaths = this.generateSkillBuildingPaths(allModels, context);
-    const masteryPath = this.generateDeepMasteryPath(allModels, context);
-    const crossDomainPaths = this.generateCrossDomainPaths(allModels, context);
-    const weaknessPaths = this.generateWeaknessTargetedPaths(allModels, context);
+    // Use filtered models for path generation
+    const immediatePath = this.generateImmediateSolutionPath(modelsToUse, context);
+    const skillPaths = this.generateSkillBuildingPaths(modelsToUse, context);
+    const masteryPath = this.generateDeepMasteryPath(modelsToUse, context);
+    const crossDomainPaths = this.generateCrossDomainPaths(modelsToUse, context);
+    const weaknessPaths = this.generateWeaknessTargetedPaths(modelsToUse, context);
     
     // Additional specialized paths
-    const advancedPaths = this.generateAdvancedPaths(allModels, context);
-    const relatedPaths = this.generateRelatedPaths(allModels, context);
-    const newDomainPaths = this.generateNewDomainPaths(allModels, context);
-    const explorationPaths = this.generateExplorationPaths(allModels, context);
-    const applicationPaths = this.generateApplicationPaths(allModels, context);
-    const practicalPaths = this.generatePracticalPaths(allModels, context);
+    const advancedPaths = this.generateAdvancedPaths(modelsToUse, context);
+    const relatedPaths = this.generateRelatedPaths(modelsToUse, context);
+    const newDomainPaths = this.generateNewDomainPaths(modelsToUse, context);
+    const explorationPaths = this.generateExplorationPaths(modelsToUse, context);
+    const applicationPaths = this.generateApplicationPaths(modelsToUse, context);
+    const practicalPaths = this.generatePracticalPaths(modelsToUse, context);
     
     // Add all paths
     if (immediatePath) paths.push(immediatePath);
@@ -71,8 +80,12 @@ export class DynamicPathGenerator {
     
     console.log('Total paths generated before filtering:', paths.length);
     
+    // Filter out completed paths
+    const uncompletedPaths = paths.filter(p => !completedPathIds.includes(p.id));
+    console.log(`Filtered paths: ${uncompletedPaths.length} uncompleted out of ${paths.length} total`);
+    
     // Sort by continuation type priority, then by relevance
-    return this.rankAndFilterPaths(paths, context, continuationType);
+    return this.rankAndFilterPaths(uncompletedPaths, context, continuationType, viewedModelSlugs);
   }
   
   /**
@@ -625,20 +638,61 @@ export class DynamicPathGenerator {
   // Additional helper methods would continue here...
   // (I'll implement the remaining methods if you want to see them)
   
-  private static rankAndFilterPaths(paths: DynamicLearningPath[], context: any, continuationType?: string): DynamicLearningPath[] {
+  private static rankAndFilterPaths(paths: DynamicLearningPath[], context: any, continuationType?: string, viewedModelSlugs: string[] = []): DynamicLearningPath[] {
     // Score paths based on relevance to user context AND continuation type
     const scoredPaths = paths.map(path => ({
       path,
-      score: this.calculatePathRelevance(path, context, continuationType)
+      score: this.calculatePathRelevance(path, context, continuationType),
+      freshness: this.calculatePathFreshness(path, viewedModelSlugs)
     }));
     
-    console.log('Scored paths:', scoredPaths.map(p => ({ title: p.path.title, score: p.score, type: p.path.pathType })));
+    console.log('Scored paths:', scoredPaths.map(p => ({ title: p.path.title, score: p.score, freshness: p.freshness, type: p.path.pathType })));
     
-    // Sort by relevance and return top 5-7 paths
-    return scoredPaths
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 7)
-      .map(item => item.path);
+    // Sort by relevance and freshness (prioritize paths with more unseen models)
+    const sortedPaths = scoredPaths.sort((a, b) => {
+      // First by freshness (more unseen models = better)
+      if (Math.abs(a.freshness - b.freshness) > 0.2) {
+        return b.freshness - a.freshness;
+      }
+      // Then by score
+      return b.score - a.score;
+    });
+    
+    // Deduplicate paths with >50% model overlap
+    const uniquePaths: typeof scoredPaths = [];
+    const usedModelSets: Set<string>[] = [];
+    
+    for (const scoredPath of sortedPaths) {
+      const pathModelSlugs = new Set(scoredPath.path.models.map(m => m.model.slug));
+      
+      // Check if this path has >50% overlap with any existing path
+      const hasTooMuchOverlap = usedModelSets.some(existingSet => {
+        const intersection = [...pathModelSlugs].filter(slug => existingSet.has(slug)).length;
+        const overlapPercent = intersection / pathModelSlugs.size;
+        return overlapPercent > 0.5;
+      });
+      
+      if (!hasTooMuchOverlap) {
+        uniquePaths.push(scoredPath);
+        usedModelSets.push(pathModelSlugs);
+      }
+      
+      if (uniquePaths.length >= 7) break;
+    }
+    
+    console.log(`Deduplicated: ${uniquePaths.length} unique paths from ${sortedPaths.length} total`);
+    
+    return uniquePaths.map(item => item.path);
+  }
+  
+  /**
+   * Calculate how "fresh" a path is (percentage of unseen models)
+   */
+  private static calculatePathFreshness(path: DynamicLearningPath, viewedModelSlugs: string[]): number {
+    if (path.models.length === 0) return 0;
+    
+    const unseenCount = path.models.filter(m => !viewedModelSlugs.includes(m.model.slug)).length;
+    return unseenCount / path.models.length;
   }
   
   private static calculatePathRelevance(path: DynamicLearningPath, context: any, continuationType?: string): number {

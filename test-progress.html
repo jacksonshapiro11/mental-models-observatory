@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test Progress Tracking</title></head>
+<body>
+<h1>Progress Tracking Test</h1>
+<pre id="output"></pre>
+<script>
+// Check what's in localStorage
+const progress = localStorage.getItem('learning_progress');
+const output = document.getElementById('output');
+if (progress) {
+  const parsed = JSON.parse(progress);
+  output.textContent = JSON.stringify(parsed, null, 2);
+} else {
+  output.textContent = 'No progress data found in localStorage';
+}
+</script>
+</body>
+</html>

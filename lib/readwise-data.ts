@@ -1454,51 +1454,33 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.308Z",
     "updatedAt": "2025-08-25T18:25:18.308Z"
   },
-  {
+    {
     "id": "mental-models-cross-disciplinary-thinking-5b",
     "code": "5B",
-    "name": "Cross-Disciplinary Synthesis & the Best Answer Problem",
-    "description": "Using models from different fields to solve problems and see patterns",
+    "name": "Cross-Disciplinary Synthesis & The Best Answer Problem",
+    "description": "The best answer to a problem often comes from a different field than where the problem originated. Real understanding requires synthesizing insights across domains because reality doesn't respect disciplinary boundaries. Building a latticework of mental models from diverse fields provides the raw material for creative problem-solving.",
     "slug": "cross-disciplinary-synthesis-the-best-answer-problem",
     "domain": "Mental Models & Cross-Disciplinary Thinking",
     "domainSlug": "mental-models-cross-disciplinary-thinking",
     "principles": [
-      "The best answer often comes out of a different field. Don't get siloed. Systems lead across traditional boundaries. In biology it's more about finding the question and the answers will come on physics it's more about knowing the questions and digging for the answer. Need cross disciplinary connectedness in education. Latticework of models."
+      "The world is interconnected, so thinking frameworks should be too. A latticework of mental models from major disciplines—physics, biology, psychology, economics, mathematics—lets you see problems from multiple angles. The disciplinary boundary where you look determines what you can find.",
+      "Many mental models from different fields point toward similar truths. Pattern recognition across scales (fractals), feedback dynamics (systems), evolutionary pressure (biology), and compound growth (mathematics) describe similar phenomena in different languages. The convergence validates the insight.",
+      "Knowledge compounds when you connect ideas across domains. Working with the same people over years makes communication faster because shared context accumulates. Similarly, connecting concepts from chemistry to psychology to business creates mental shortcuts that accelerate understanding.",
+      "The best answers often lie outside your domain expertise. When physicists solve biology problems or artists solve engineering challenges, they bring mental models the original field lacked. This explains why innovation clusters at interdisciplinary boundaries."
     ],
     "examples": [],
     "applications": [
-      "Drawing insights from multiple disciplines",
-      "avoiding man-with-hammer syndrome",
-      "recognizing structural similarities across domains",
-      "building interdisciplinary understanding",
-      "seeing patterns that specialists miss",
-      "creating latticework of models."
+      "Actively pursue knowledge from fields distant from your specialty. Read widely across science, arts, philosophy, and business. The goal isn't becoming an expert in everything—it's building enough literacy to recognize when a framework from another domain applies.",
+      "Look for isomorphisms—similar structures in different contexts. Game theory applies to biology, economics, and warfare. Thermodynamics applies to information, organizations, and social systems. Recognizing these patterns multiplies your problem-solving toolkit.",
+      "Seek collaboration across disciplines. Bell Labs succeeded by mixing physicists, engineers, mathematicians, and practical inventors. The conversations between different mental models generated insights none could achieve alone.",
+      "Practice translating between disciplinary languages. The same phenomenon described by economists, biologists, and physicists might seem unrelated until you realize they're discussing identical dynamics in different vocabularies."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "thinking-in-systems--donella-meadows-",
-        "title": "Thinking in Systems",
-        "author": "Donella Meadows",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.308Z"
-      },
-      {
-        "id": "poor-charlie-s-almanack--charlie-munger-",
-        "title": "Poor Charlie's Almanack",
-        "author": "Charlie Munger",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.308Z"
-      }
-    ],
+    "sources": [],
     "tags": [],
-    "difficulty": "advanced",
-    "createdAt": "2025-08-25T18:25:18.308Z",
-    "updatedAt": "2025-08-25T18:25:18.308Z"
+    "difficulty": "intermediate",
+    "createdAt": "2025-11-01T16:40:30.615Z",
+    "updatedAt": "2025-11-01T16:40:30.615Z"
   },
   {
     "id": "mental-models-cross-disciplinary-thinking-5c",
@@ -2852,210 +2834,145 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.309Z",
     "updatedAt": "2025-08-25T18:25:18.309Z"
   },
-  {
+    {
     "id": "cultural-anthropology-social-identity-13a",
     "code": "13A",
-    "name": "Cultural Transmission & Memetic Evolution",
-    "description": "How ideas, behaviors, and values spread through societies",
+    "name": "Cultural Evolution & Memetic Theory",
+    "description": "Ideas spread and evolve like genes—through variation, selection, and replication. Richard Dawkins coined \"memes\" to describe units of cultural information that propagate from mind to mind. Understanding memetic evolution explains how cultures change, why some ideas spread while others die, and how to design messages that stick.",
     "slug": "cultural-transmission-memetic-evolution",
     "domain": "Cultural Anthropology & Social Identity",
     "domainSlug": "cultural-anthropology-social-identity",
     "principles": [
-      "Memes spread like a virus to dawkins evolving and changing and are discrete things and words like cat pictures. Memetic theory is imitating for the sake of copying a model not a behavior. Models are most powerful and influential when people think they come from inside and are their own so desire needs to be modeled organically."
+      "Memes are self-replicating patterns of information that use humans as copying machinery. Like genes, successful memes aren't necessarily \"good\" for their hosts—they're just good at spreading. Chain letters, conspiracy theories, and viral dances succeed because they're optimized for transmission, not truth or utility.",
+      "Cultural evolution happens faster than biological evolution because memes can spread horizontally (peer to peer) and across generations simultaneously. A child can teach a parent a meme the same day they learned it. This rapid transmission means cultures transform in years or decades, not millennia.",
+      "Static societies propagate anti-rational memes that inhibit progress while dynamic societies thrive on memes that enable knowledge creation. The difference isn't genetics—it's memetic. Whether a culture encourages questioning authority or punishes it determines trajectory more than natural resources or geography.",
+      "Social proof and authority drive memetic spread. We're more likely to adopt beliefs and behaviors when we see others doing it (social proof) or when prestigious individuals endorse them (authority). This creates information cascades where early adopters influence everyone downstream."
     ],
     "examples": [],
     "applications": [
-      "Understanding how ideas spread through cultures",
-      "recognizing memetic evolution in real-time",
-      "designing cultural interventions",
-      "appreciating how meaning-making shapes behavior",
-      "creating organic influence rather than forced persuasion."
+      "Design messages for memetic fitness if you want ideas to spread. Make them simple, emotionally resonant, easy to share, and compatible with existing belief structures. The best memes aren't necessarily the truest—they're the stickiest.",
+      "Recognize anti-rational memes in your culture and thinking. Ideas that resist criticism (\"don't question this\"), punish dissent (\"heresy\"), or privilege tradition over truth (\"we've always done it this way\") are memetic parasites that prevent knowledge growth.",
+      "Build dynamic rather than static cultures by rewarding error correction and knowledge creation. Make it safe to question, easy to experiment, and prestigious to admit mistakes. These meta-memes enable all other forms of progress.",
+      "Understand that your worldview is largely memetic inheritance, not independent reasoning. Most beliefs came from parents, peers, and culture—not first-principles analysis. This humility enables updating beliefs when better memes arrive."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "wanting--luke-burgis-",
-        "title": "Wanting",
-        "author": "Luke Burgis",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
-    "tags": [
-      "behavior"
-    ],
+    "sources": [],
+    "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:40:30.601Z",
+    "updatedAt": "2025-11-01T16:40:30.601Z"
   },
-  {
+    {
     "id": "cultural-anthropology-social-identity-13b",
     "code": "13B",
     "name": "Social Reality Construction & Collective Belief",
-    "description": "How group membership shapes individual behavior and thinking",
+    "description": "Social institutions like parliaments, currencies, and corporations are simultaneously as real as mountains and as fragile as collective dreams. They exist only because we collectively agree they exist, yet this shared belief makes them powerfully real in shaping behavior and organizing society. When enough people stop believing, these seemingly permanent structures can crumble overnight—think of the Soviet Union dissolving or a currency collapsing.",
     "slug": "social-reality-construction-collective-belief",
     "domain": "Cultural Anthropology & Social Identity",
     "domainSlug": "cultural-anthropology-social-identity",
     "principles": [
-      "We have concepts like parliament which are real but also aren't they're only real because we believe it's real. If we all stopped believing at a societal level it would be reduced to a useless idea. Social institutions are as real as mountains but also can crumble - this is the idea of societal paradigms that dictate every interaction but can be completely upended in one second."
+      "We live in a dual reality where physical objects and socially constructed institutions coexist with equal force. Paradigms—the shared ideas about how systems work—create the invisible scaffolding that structures everything from scientific research to economic markets. These paradigms dictate what questions we ask, what solutions we consider, and what behaviors seem normal or deviant. Yet precisely because they're constructed through collective belief, they can shift rapidly when new paradigms gain traction.",
+      "Scientific revolutions demonstrate how paradigms create local optimization traps. Once a community commits to a particular way of seeing the world, it becomes difficult to perceive alternatives—not because the alternatives are logically impossible, but because the current paradigm shapes perception itself. Sapiens describes this as humans living in dual reality: the objective reality of rivers and trees alongside an imagined reality of nations and gods that comes to dominate objective reality.",
+      "Mass movements reveal the power of collective belief to override individual judgment. When groups synchronize around shared fictions, individual members experience these fictions as more real than physical reality. The true believer doesn't see himself as following a constructed narrative—he experiences it as obvious truth. High modernism and institutional power amplify this effect by embedding social constructions into physical infrastructure and legal systems.",
+      "Understanding social reality construction requires recognizing that \"the market,\" \"human rights,\" \"corporate personhood,\" and similar concepts are real because we act as if they're real. Free speech and open idea markets become essential for healthy social reality construction precisely because they allow paradigms to be questioned and updated rather than ossifying into dogma."
     ],
     "examples": [],
     "applications": [
-      "Understanding how social reality is constructed",
-      "recognizing the power of collective belief",
-      "designing institutions that align with human nature",
-      "appreciating how identity shapes behavior",
-      "working with rather than against social construction."
+      "Start by identifying which aspects of your environment are socially constructed versus physically constrained. Money has value because we believe it does; gravity works regardless of belief. This distinction reveals leverage points—social constructions can be changed through coordinated belief shifts, while physical constraints require technological solutions. Don't waste effort trying to socially construct your way around thermodynamics.",
+      "When attempting institutional change, recognize that you're competing against established paradigms that filter perception and structure incentives. The most powerful interventions shift the underlying paradigm rather than fighting symptoms. This is why successful reform movements focus on changing collective understanding—what counts as legitimate, what seems possible, what feels inevitable—rather than just changing rules. The rules flow from shared understanding.",
+      "Study how cultures persist across millennia through shared practices and beliefs that survive individual deaths. This cultural heritability means institutions can outlast their original purpose or founding members. Design new institutions by explicitly encoding the beliefs and practices that should persist, rather than hoping good intentions will naturally propagate. Write the cultural DNA into founding documents, rituals, and stories.",
+      "Practice deconstructing social categories you take for granted. When you notice yourself saying \"everyone knows\" or \"obviously we should,\" pause and ask: is this physical reality or social construction? Physical reality constrains choices; social construction creates opportunities for redesign. The map is not the territory, but we often confuse socially agreed-upon maps for the actual terrain."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "the-frontiers-of-knowledge--a-c--grayling-",
-        "title": "The Frontiers of Knowledge",
-        "author": "A.C. Grayling",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
-    "tags": [
-      "thinking",
-      "behavior"
-    ],
+    "sources": [],
+    "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:24:51.565Z",
+    "updatedAt": "2025-11-01T16:24:51.568Z"
   },
-  {
+    {
     "id": "language-communication-systems-14a",
     "code": "14A",
-    "name": "Language as Mental Model & Reverse Compression",
-    "description": "How language shapes thought and reality construction",
+    "name": "Language as Thought Constraint",
+    "description": "Language doesn't just express thought—it constrains what thoughts are thinkable. The Sapir-Whorf hypothesis suggests language shapes cognition. While strong versions are disputed, evidence shows language influences memory, perception, and reasoning. This matters because the vocabulary and grammar available determine which concepts come naturally versus which require mental gymnastics.",
     "slug": "language-as-mental-model-reverse-compression",
     "domain": "Language & Communication Systems",
     "domainSlug": "language-communication-systems",
     "principles": [
-      "Language is a reverse compression algorithm to understand peoples mental models. Takes mental representation and tries to formalize it through finite words. Language is just a comprehension model so just because you know how to use chair in a sentence you don't really understand what it is other than a word. Language is a tool to convey meaning."
+      "Languages carve up reality differently. Some languages have dozens of snow words; others have one. Some languages grammatically encode whether information is direct observation or hearsay. These aren't just naming differences—they're differences in what speakers naturally attend to and remember.",
+      "Semantic framing determines how issues are perceived. \"Death tax\" versus \"estate tax,\" \"climate change\" versus \"global warming,\" \"pro-life\" versus \"anti-choice\"—same policy, different language, different emotional and cognitive response. Whoever controls framing controls the debate.",
+      "Active interpretation versus passive reception shows we create meaning through language and theories, not just receive information. The meaning isn't in the words—it's in how minds process those words through existing conceptual frameworks. Different people reading the same text extract different meanings.",
+      "Jargon serves both legitimate and illegitimate purposes. Specialized terminology enables precise communication among experts but also creates barriers to entry and hides simple ideas behind complexity. The question is always: does this jargon enable precision or obscure clarity?"
     ],
     "examples": [],
     "applications": [
-      "Understanding how language shapes thought",
-      "recognizing the difference between description and understanding",
-      "appreciating language as compression of mental models",
-      "being aware of linguistic limitations",
-      "designing clear communication systems."
+      "Expand your vocabulary in domains you want to think more clearly about. More words mean more conceptual distinctions, which means more nuanced thinking. This is why experts have specialized vocabulary—it enables thoughts laypeople can't easily form.",
+      "Pay attention to framing and reframe issues when useful. If someone frames an argument in language that biases toward their position, reframe it in neutral or opposing terms. Controlling language controls thought, so fight for fair framing.",
+      "Be suspicious of unnecessarily complex language—it's often hiding simple ideas to make them seem more profound or to exclude outsiders. If you can't explain something simply, you probably don't understand it deeply.",
+      "Recognize that translation between languages involves conceptual translation, not just word substitution. Some concepts exist in one language but not others. Some poetry survives translation; some doesn't. This reveals language's role in shaping thought."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "the-creativity-code--marcus-du-sautoy-",
-        "title": "The Creativity Code",
-        "author": "Marcus du Sautoy",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      },
-      {
-        "id": "the-history-of-philosophy--a-c--grayling-",
-        "title": "The History of Philosophy",
-        "author": "A.C. Grayling",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
+    "sources": [],
     "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:40:30.602Z",
+    "updatedAt": "2025-11-01T16:40:30.602Z"
   },
-  {
+    {
     "id": "language-communication-systems-14b",
     "code": "14B",
     "name": "Semantics vs. Meaning & Deep Understanding",
-    "description": "The distinction between word definitions and experiential understanding",
+    "description": "Language functions as a reverse compression algorithm—words point to objects and experiences, but describing something isn't the same as understanding it. A computer can know the definition of \"chair\" without comprehending chairness; a person can recite textbook definitions without experiential knowledge. This gap between semantic knowledge and genuine understanding shapes everything from education to artificial intelligence.",
     "slug": "semantics-vs-meaning-deep-understanding",
     "domain": "Language & Communication Systems",
     "domainSlug": "language-communication-systems",
     "principles": [
-      "There's the word and the object language is just a comprehension model. Description isn't understanding. What a computer sees as a chair isn't the full understanding of chair. Language is a mental model for communication but description isn't understanding. Semantics vs meaning."
+      "Frege distinguished between reference and meaning: the morning star and evening star reference the same planet (Venus), but mean different things based on how we encounter them. This captures why two descriptions can be semantically equivalent yet convey different understanding. Wittgenstein extended this insight by showing that many philosophical problems stem from mistaking language games for reality—we confuse the map for the territory, the definition for the thing itself.",
+      "Shannon's information theory reveals this distinction technically: information theory measures uncertainty reduction, not meaning. The sentence \"will you marry me?\" contains far less information than a complex legal document in Shannon's framework, yet carries infinitely more meaning in context. High information density doesn't equal high meaning; semantic content doesn't guarantee experiential understanding.",
+      "Everyone starts with preconceptions about words like \"good\" or \"just,\" but these mental models vary wildly between individuals. We actively interpret rather than passively receive information, constructing meaning through stories and theories that go beyond semantic content. Two people can hear identical definitions yet develop completely different understandings based on their existing mental models and lived experience.",
+      "Domain dependence demonstrates this gap: the same word means different things in different contexts. \"Lifting\" in weightlifting versus \"lifting\" restrictions involves semantically similar words with entirely different meanings. Understanding emerges from hierarchical rule systems and mental structures that go far beyond lexical definitions."
     ],
     "examples": [],
     "applications": [
-      "Distinguishing between knowing definitions and true understanding",
-      "recognizing when language obscures rather than clarifies",
-      "designing communication that conveys meaning not just information",
-      "building experiential rather than just semantic knowledge."
+      "When learning new domains, distinguish between collecting definitions and building experiential understanding. You don't truly understand \"network effects\" from reading a definition—you need to observe real networks growing, analyze cases, and internalize the dynamics. Read case studies and work examples rather than memorizing glossaries. Seek mentors who can share pattern recognition developed through experience, not just textbook knowledge.",
+      "In communication, recognize that you're compressing your mental models into lossy language that the listener must decompress into their own mental models. This double compression means meaning always degrades in transmission. Compensate by using multiple angles: definitions plus examples plus analogies plus visuals. Check understanding by having people explain back in their own words, revealing whether they grasped semantic form or deeper meaning.",
+      "Design educational systems around building experiential understanding rather than semantic recall. Students should construct chairs, write compilers, or run simulated businesses—not just memorize definitions of furniture, programming, or management. Testing should evaluate whether students can apply understanding in novel contexts, not whether they can regurgitate definitions on command.",
+      "When evaluating others' understanding—including AI systems—test whether they've learned patterns versus memorized tokens. Can they transfer knowledge to new domains? Generate novel applications? Recognize edge cases? Semantic fluency without comprehension produces confident-sounding nonsense that fails under pressure."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "the-creativity-code--marcus-du-sautoy-",
-        "title": "The Creativity Code",
-        "author": "Marcus du Sautoy",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
+    "sources": [],
     "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:24:51.569Z",
+    "updatedAt": "2025-11-01T16:24:51.569Z"
   },
-  {
+    {
     "id": "information-theory-media-ecology-15a",
     "code": "15A",
-    "name": "Signal vs. Noise & Information Quality",
-    "description": "Distinguishing meaningful information from irrelevant data",
+    "name": "Signal vs. Noise & Information Filtering",
+    "description": "Information systems face fundamental signal-to-noise problems. Signal is meaningful information; noise is irrelevant or misleading data. As information volume explodes, filtering becomes more important than access. The question isn't \"how do I get more information?\" but \"how do I filter for signal amid overwhelming noise?\"",
     "slug": "signal-vs-noise-information-quality",
     "domain": "Information Theory & Media Ecology",
     "domainSlug": "information-theory-media-ecology",
     "principles": [
-      "A smart and important part of system design is seeing the signal through the noise. The person who creates better information flows gets better thoughts. Almost every idea that you have is downstream from what you consume. Understanding system design and response is vital when you decide to change input and outputs of a system."
+      "Information overload degrades decision quality. More information doesn't equal better decisions—it equals harder decisions because cognitive capacity is limited. Beyond a threshold, additional information adds noise without improving accuracy. The art is finding the minimum information needed for good decisions.",
+      "Curation and filtering are increasingly valuable skills. When everyone can publish, gatekeeping shifts from access control to attention direction. Curators who reliably separate signal from noise become invaluable. This explains the rise of aggregators, newsletters, and trusted filters in the internet age.",
+      "Information cascades create herding behavior where people follow others rather than processing information independently. If early adopters buy a product, others interpret this as signal about quality and buy too, even if the early adopters were mistaken. This creates bandwagons and bubbles.",
+      "Adversarial information environments require active filtering. When bad actors can generate unlimited noise (spam, disinformation, propaganda), passive consumption guarantees noise domination. You need active filters: trusted sources, verification habits, and skepticism toward viral content."
     ],
     "examples": [],
     "applications": [
-      "Filtering information sources for quality",
-      "understanding appropriate response times to signals",
-      "designing systems that amplify signal over noise",
-      "curating information diet for better thinking",
-      "recognizing information as input to thinking."
+      "Build personal information filters based on source quality, not content popularity. Subscribe to a few excellent sources rather than following hundreds of mediocre ones. Let trusted curators do first-pass filtering rather than drinking from the firehose.",
+      "Recognize when you're drowning in noise and step back. More research won't help if it's all low-quality. Better to think clearly with less information than think poorly with more. There's a point where additional input degrades output.",
+      "Develop heuristics for quick signal-noise classification. High-quality signals have specific details, acknowledge trade-offs, cite sources, and admit uncertainty. Noise is vague, one-sided, unsourced, and overconfident. These patterns enable rapid filtering.",
+      "Understand that information cascades can mislead entire populations. Just because everyone believes something doesn't make it true—it might just mean early movers were wrong and everyone copied them. Think independently before joining crowds."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "thinking-in-systems--donella-meadows-",
-        "title": "Thinking in Systems",
-        "author": "Donella Meadows",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      },
-      {
-        "id": "the-tim-ferriss-show",
-        "title": "The Tim Ferriss Show",
-        "author": "Unknown",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
-    "tags": [
-      "information",
-      "data"
-    ],
+    "sources": [],
+    "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:40:30.602Z",
+    "updatedAt": "2025-11-01T16:40:30.602Z"
   },
   {
     "id": "information-theory-media-ecology-15b",
@@ -3107,42 +3024,33 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.309Z",
     "updatedAt": "2025-08-25T18:25:18.309Z"
   },
-  {
+    {
     "id": "information-theory-media-ecology-15c",
     "code": "15C",
     "name": "Predictive Processing & Constructed Experience",
-    "description": "How the mind constructs reality from information",
+    "description": "We don't experience the world as it is, but as we predict it to be. The brain constructs conscious experience from scratch using layered predictions built from past experiences, then updates these predictions when sensory input contradicts expectations. What feels like direct perception is actually sophisticated prediction that happens too quickly to notice.",
     "slug": "predictive-processing-constructed-experience",
     "domain": "Information Theory & Media Ecology",
     "domainSlug": "information-theory-media-ecology",
     "principles": [
-      "Predictive processing says that we don't experience the world as it is, but as we predict it to be. Our conscious experience is a construction of layered mental habits acquired through past experiences. We don't see the world through our eye sockets; these all feed information into our brains, which conjure our experience of the world from scratch."
+      "Predictive processing theory says consciousness emerges from hierarchical prediction systems where each level predicts activity in the level below. Meditation affects these predictive hierarchies by adjusting precision weighting—how much we trust predictions versus incoming sensory data. In normal waking consciousness, we heavily weight predictions, which is why we \"see\" what we expect to see. Meditation temporarily increases trust in raw sensory data, allowing direct experience to pierce through predictive models.",
+      "Thomas Kuhn's paradigms function as high-level predictive models that transform how we see evidence. Paradigms aren't neutral lenses but active predictors that shape perception—we literally see what our conceptual frameworks teach us to expect. This explains why scientific revolutions feel like gestalt shifts: the same data suddenly means something completely different when predictive models change.",
+      "Our knowledge exists as connectionist webs of beliefs where each node's meaning depends on its connections to other nodes. Sleep cycles function as information processing stages where the brain updates its predictive models—reception during waking, reflection and integration during sleep. Dreams may be the brain testing updated predictions in simulated environments before deploying them in waking life.",
+      "Different belief templates create different meanings from identical experiences. Two people can encounter the same event yet have completely different conscious experiences because their predictive models generate different predictions. The traffic jam is \"annoying delay\" to one person and \"unexpected thinking time\" to another—not because they're choosing different interpretations, but because their brains are generating different experiential predictions from the start."
     ],
     "examples": [],
     "applications": [
-      "Understanding that experience is constructed not directly perceived",
-      "recognizing how past conditioning shapes present experience",
-      "using meditation to deconstruct automatic mental habits",
-      "seeing through the illusion of direct perception."
+      "Recognize that your immediate experience is prediction, not perception. When you feel certain about what someone \"obviously meant\" or what's \"clearly happening,\" pause and notice you're experiencing your brain's best guess, not unfiltered reality. Meditation traditions developed techniques to deconstruct automatic predictive processing, allowing temporary experience of consciousness without predictive filtering. Practice catching yourself in predictive mode by noticing when expectations don't match incoming data.",
+      "When learning new fields, expect your early experiences to be heavily filtered by inaccurate predictions. Experts literally see different things than novices when examining the same data—not metaphorically, but through different predictive processing. Speed up learning by explicitly updating your predictive models: after each exposure to new domain, reflect on what surprised you and what confirmed predictions, then adjust internal models accordingly.",
+      "In communication and conflict, remember that different people genuinely experience different realities from the same inputs. They're not being difficult or irrational—their brains generate different predictions based on different prior experiences. Bridge this gap by making predictions explicit: \"I expected X because Y\" helps others understand why your experience differs from theirs.",
+      "Design systems and environments to provide rapid feedback that challenges inaccurate predictions. Predictive models improve through prediction errors—the gap between expected and actual. Environments that hide consequences or delay feedback allow inaccurate models to persist unchallenged. Real-time dashboards, immediate testing, and fast iteration cycles accelerate prediction updating."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "how-meditation-deconstructs-your-mind--oshan-jarow-",
-        "title": "How Meditation Deconstructs Your Mind",
-        "author": "Oshan Jarow",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
-    "tags": [
-      "information"
-    ],
+    "sources": [],
+    "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:24:51.570Z",
+    "updatedAt": "2025-11-01T16:24:51.570Z"
   },
   {
     "id": "technology-human-computer-interaction-16a",
@@ -3361,41 +3269,33 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.309Z",
     "updatedAt": "2025-08-25T18:25:18.309Z"
   },
-  {
+    {
     "id": "relationships-human-connection-18a",
     "code": "18A",
     "name": "Love as Nuclear Fuel & Life Foundation",
-    "description": "Understanding deep human bonds beyond mere emotion",
+    "description": "Love functions as the nuclear fuel that powers happiness—love and fear are opposites, with love as the fundamental driver that makes life worth living. Longitudinal research tracking people into their eighties and nineties consistently finds that the happiest individuals cultivated real love relationships throughout their lives. This isn't romantic sentiment but empirical fact about what sustains human wellbeing.",
     "slug": "love-as-nuclear-fuel-life-foundation",
     "domain": "Relationships & Human Connection",
     "domainSlug": "relationships-human-connection",
     "principles": [
-      "Love and fear are opposites. Love and hatred are not opposites. Hatred is downstream from fear. Love is the nuclear fuel that runs happiness. If you want to know one thing about how to be happy, happiness is love full stop. People who are in their 80s and 90s who are really happy, what they all have in common is drawing relationships that they were cultivating and working on, real love relationships."
+      "Love is not a feeling but a decision and commitment—Thomas Aquinas defined it as \"to will the good of the other as other.\" This reframes love from passive emotion to active practice. You don't wait to feel love; you choose to act lovingly, which generates the feeling as a byproduct. The distinction between fear-driven scarcity thinking and genuine care for others and yourself shapes every life choice. Fear closes down possibility; love opens it up.",
+      "True love is unconditional and arises from presence rather than ego attachment. If your \"love\" has an opposite—if it can turn to hate or disappear under certain conditions—it wasn't love but ego-based attachment. Conditional \"love\" that depends on the other person meeting your needs or behaving certain ways is actually a transaction. Simple but profound wisdom: in the tension of opposites and wrestling match of life, love wins, love always wins.",
+      "The good life is inspired by love and guided by knowledge, but this must be built at the societal level through dedicated commitment. Love isn't just personal—it's the foundation of functional communities and civilizations. Family, friends, and being loved by those you want to love you represent invaluable relationships that must be actively protected. These bonds don't maintain themselves; they require continuous investment and care.",
+      "Sincere friendship through connection proves many times more powerful than hierarchical overlordship based on supremacy. Power over others pales compared to power with others. This applies to relationships, organizations, and political systems—cooperation rooted in love creates strength that domination can never match."
     ],
     "examples": [],
     "applications": [
-      "Prioritizing relationship building and maintenance",
-      "understanding love as choice and commitment rather than just feeling",
-      "recognizing fear as the enemy of connection",
-      "investing time and energy in deep relationships",
-      "designing life around relational foundation."
+      "Prioritize relationship building and maintenance as your highest-return activity. Old people who are happy all have one thing in common: they worked on real love relationships throughout their lives. This isn't optional nice-to-have but the core requirement for life satisfaction. Schedule relationship time like you schedule work—because relationships compound like investments, and neglect compounds like debt.",
+      "Practice love as active commitment rather than waiting for feelings. When you don't feel loving, choose loving actions anyway. Show up for people when it's inconvenient. Listen when you'd rather talk. Help when you're tired. The feeling follows the action more reliably than action follows feeling. Make love a discipline, not a mood.",
+      "Conduct a fear audit in your life: which decisions and behaviors are driven by fear versus love? Career choices made from fear of scarcity differ from those made from love of craft. Relationships maintained from fear of loneliness differ from those built on genuine care. When fear drives behavior, you're operating in scarcity mode that breeds resentment and burnout. Shift to love-driven decision-making by asking: \"What would I do if I weren't afraid?\"",
+      "Distinguish between attachment and love by examining conditionality. If you \"love\" someone but that love depends on them making you happy, meeting your needs, or behaving certain ways, you're attached not loving. True love wants the other person's good even when it costs you. Practice loving people while releasing need to control outcomes or extract value from the relationship."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "the-science-of-happiness--arthur-brooks-via-peter-attia-",
-        "title": "The Science of Happiness",
-        "author": "Arthur Brooks via Peter Attia",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
+    "sources": [],
     "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:24:51.571Z",
+    "updatedAt": "2025-11-01T16:24:51.571Z"
   },
   {
     "id": "relationships-human-connection-18b",
@@ -3491,88 +3391,61 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.309Z",
     "updatedAt": "2025-08-25T18:25:18.309Z"
   },
-  {
+    {
     "id": "relationships-human-connection-18d",
     "code": "18D",
     "name": "Compounding Human Connections",
-    "description": "How relationships build on each other over time",
+    "description": "Working with the same people over decades creates compounding knowledge where everything you've learned about each other makes communication faster and collaboration more effective. Like compound interest in finance, repeated interactions build shared context, shorthand, and trust that amplify future interactions. The returns to long-term relationships are exponential, not linear.",
     "slug": "compounding-human-connections",
     "domain": "Relationships & Human Connection",
     "domainSlug": "relationships-human-connection",
     "principles": [
-      "Working with the same people over decades - all the knowledge we have working with each other it compounds and that compounding makes it easier for us to communicate and work faster. The best questions make the person asked just as curious about the answer as you are. People want to show themselves and open up you just need to knock right."
+      "Compounding works through accumulated knowledge and shared mental models. High-trust environments where people feel safe making mistakes and moving on accelerate this compounding—treating teams as families rather than transactional work groups. When you don't have to constantly re-establish trust or explain basic context, more energy goes toward actual creation and problem-solving.",
+      "The best questions make the person asked just as curious about the answer as you are—people want to show themselves and open up when you knock right. This creates positive feedback loops where genuine curiosity elicits genuine openness, which enables deeper understanding, which enables better questions, which elicits more openness. Each conversation builds on previous ones, making subsequent interactions richer.",
+      "Humans are constantly trying to scale trust beyond personal relationships. Dunbar's number suggests brain-based limits to intimate connections—roughly 5 extremely close, 15 close friends, 50 friends, 150 acquaintances. But technology and social structures can extend relationship compounding by maintaining context across time and space. Portable social graphs and digital tools help relationships compound even when physically distant.",
+      "People we love or dislike have larger effects on us than average people—choose these high-impact relationships wisely. Never hire good people; one great person equals ten good people, and A's hire A's while B's hire C's. The quality of close connections matters more than quantity. Once part of a meaningful shared experience, you're teammates for life—intense experiences create bonds that endure because shared history compounds."
     ],
     "examples": [],
     "applications": [
-      "Building long-term relationships that compound",
-      "asking questions that create mutual curiosity",
-      "understanding the value of stable collaborative relationships",
-      "creating environments where people can open up authentically."
+      "Invest in long-term relationships over transactional interactions whenever possible. Work with the same collaborators, suppliers, clients repeatedly rather than constantly switching. The efficiency gains from accumulated understanding often outweigh short-term price or convenience benefits. Build a stable core team that works together for years—the compounding returns dwarf the costs of occasional mismatch.",
+      "Develop genuine curiosity about people you want long-term relationships with. Ask questions that make both of you curious about the answer. Listen to understand their mental models, not to prepare your response. Create safe spaces where people can open up without judgment. Early investment in understanding someone deeply pays exponential dividends over decades of interaction.",
+      "Design organizational culture around compounding relationships rather than transactional exchanges. Give people freedom to make mistakes and move on without fear. Treat teams as families—people who'll support each other through ups and downs—rather than mercenaries hired for specific tasks. High trust enables the psychological safety needed for creative risk-taking and authentic communication.",
+      "Practice mentorship and take chances on people—altruistic investment in others compounds over time. The young people you help today become peers and collaborators tomorrow, creating network effects where everyone's success reinforces everyone else's. View relationships as creating mutual benefit rather than extracting value. Share knowledge generously; it compounds when others build on it and share back."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "steven-spielberg--founders-",
-        "title": "Steven Spielberg",
-        "author": "Founders",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      },
-      {
-        "id": "cal-fussman--art-of-investing-",
-        "title": "Cal Fussman",
-        "author": "Art of Investing",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
-    "tags": [
-      "time"
-    ],
+    "sources": [],
+    "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:24:51.571Z",
+    "updatedAt": "2025-11-01T16:24:51.571Z"
   },
-  {
+    {
     "id": "health-human-optimization-19a",
     "code": "19A",
-    "name": "Physical Foundations as Life Infrastructure",
-    "description": "The biological basis for all mental and cognitive performance",
+    "name": "Mind-Body Integration & Physiological Intelligence",
+    "description": "The mind-body connection isn't metaphor—it's physiology. Your left ear (non-dominant) is the emotional ear; your right ear (dominant) is the logic ear. Focus on the inner energy field of your body to achieve present-moment clarity. Fear neutralizes love and can turn off other feelings like a switch through physiological mechanisms, not just psychological ones.",
     "slug": "physical-foundations-as-life-infrastructure",
     "domain": "Health & Human Optimization",
     "domainSlug": "health-human-optimization",
     "principles": [
-      "Vo2 max has a bigger effect on all cause mortality than anything else. The bottom 20% are at 4x the risk and the middle 40-60 are at 2x the risk vs the top people. Muscle mass is also vital and strength could be more predictive than vo2 max. We shouldn't optimize for 1 area but have a well rounded athletic portfolio. Do more now and train for what you want to be able to do later in life."
+      "Mind as malleable as body—we try to change external world while neglecting our physiological and mental states. The body keeps the score of all experiences. Trauma, stress, and emotion store in tissues and nervous system, not just memory. You can't think your way out of physiological states; you must work through the body.",
+      "Success comes from subordinating will to intelligence—knowledge purifies will and enables good decisions. But intelligence includes somatic intelligence, not just cognitive. Your gut feelings are vagus nerve signals. Your intuition is pattern recognition below conscious awareness. Listen to body wisdom.",
+      "Give 100% concentration and listen without judgment using therapist model that requires physiological presence. This isn't just mental focus—it's whole-body listening. Your nervous system detects microexpressions and vocal patterns your conscious mind misses. Trust somatic responses.",
+      "The power of now requires being connected to inner body to achieve clarity. Eckhart Tolle's core insight is that present-moment awareness lives in body sensation, not thought. Thinking pulls you into past or future; sensing keeps you present."
     ],
     "examples": [],
     "applications": [
-      "Building cardiovascular and strength capacity as foundation for all activities",
-      "taking a systems approach to health rather than optimizing single metrics",
-      "training for future capabilities not just present performance",
-      "understanding health as infrastructure for everything else."
+      "Develop somatic awareness through practices like body scans, breathwork, or mindful movement. Notice where emotions manifest physically. Anxiety tightens chest. Anger heats face. Sadness weighs limbs. These aren't just symptoms—they're the emotion itself at physiological level.",
+      "Use breath as bridge between conscious and unconscious systems. Breathing is automatic yet controllable—the only autonomic function with this property. Slow breathing activates parasympathetic nervous system, enabling rest and digest. Fast breathing activates sympathetic, enabling fight or flight. Choose your state.",
+      "Trust gut feelings but verify them. Somatic intelligence provides rapid pattern-matching based on subconscious processing. It's often right but not infallible. Use it as input to conscious decision-making, not replacement for thinking. Body wisdom plus cognitive analysis beats either alone.",
+      "Build mind-body integration practices into daily routine. Morning movement, midday breathing, evening reflection. Don't treat body as vehicle for head—treat it as integrated system where everything affects everything. Physical health enables mental health enables emotional health in continuous feedback loop."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "outlive--peter-attia-",
-        "title": "Outlive",
-        "author": "Peter Attia",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
-    "tags": [
-      "logic"
-    ],
+    "sources": [],
+    "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:40:30.606Z",
+    "updatedAt": "2025-11-01T16:40:30.606Z"
   },
   {
     "id": "health-human-optimization-19b",
@@ -3614,52 +3487,33 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.309Z",
     "updatedAt": "2025-08-25T18:25:18.309Z"
   },
-  {
+    {
     "id": "health-human-optimization-19c",
     "code": "19C",
     "name": "Physiological States & Decision Quality",
-    "description": "How physical state affects mental performance",
+    "description": "Our physiology restricts our mental state—stress cuts off blood flow to the brain, and sympathetic nervous system activation makes us myopic and survival-focused. Emotions emerge from the limbic system with a 74-millisecond response time that affects decision-making before conscious awareness kicks in. Physical and physiological conditions shape the quality of thinking and choosing far more than most people realize.",
     "slug": "physiological-states-decision-quality",
     "domain": "Health & Human Optimization",
     "domainSlug": "health-human-optimization",
     "principles": [
-      "Our physiology restricts our mental state. Stress cuts off blood flow to your brain. If you are in a highly sympathetic state, you're much more likely to be myopic. You're in a survival state. Gain control over your mind by controlling your heart. Prefrontal cortex is the most vulnerable to overload from too much cognitive load."
+      "When in highly sympathetic state, you're operating in survival mode with restricted access to prefrontal cortex functions like long-term planning, creativity, and nuanced judgment. Stress literally reduces blood flow to brain regions responsible for executive function. This isn't metaphorical—the physiology directly constrains what mental states are accessible. You can't think your way out of a physiological state that prevents thinking clearly.",
+      "Morning physical optimization through exercise and spiritual practice sets physiological foundation for the entire day. Exercise optimizes dopamine delivery to the prefrontal cortex, enhancing creativity and focus. This isn't about discipline or virtue signaling—it's mechanical cause and effect. Physical preparation enables mental performance by establishing baseline physiological conditions that support higher-order cognitive functions.",
+      "Mind-body integration through practices like connecting to the inner energy field of the body enables present-moment clarity. Fear can neurologically switch off love and other positive emotions—it's not willpower failure but physiological mechanism. Understanding this removes moral judgment from physiological limitations. You're not weak for making poor decisions under stress; you're experiencing predictable cognitive impairment from physiological state.",
+      "Giving complete concentration and listening without judgment requires physiological presence, not just mental intention. Success comes from subordinating will to intelligence—knowledge purifies will and improves decision quality. But you can't access knowledge or intelligence when physiological state restricts cognitive access. The mind is as malleable as the body, yet we focus on changing external world while neglecting internal physiological and mental states."
     ],
     "examples": [],
     "applications": [
-      "Managing physiological state to optimize decision-making",
-      "using breathing techniques to control mental state",
-      "understanding how stress affects cognitive function",
-      "creating rituals to center yourself",
-      "recognizing mind-body integration in performance."
+      "Establish morning rituals that optimize physiological state before making important decisions. Exercise to prime dopamine systems. Practice meditation or breathing techniques to establish autonomic nervous system baseline. Eat to stabilize blood sugar. These aren't optional wellness activities but prerequisites for quality thinking. Schedule important decisions for when you're physiologically optimized, not when you're stressed, tired, or depleted.",
+      "Recognize when you're in sympathetic activation and defer non-urgent decisions. If you notice fight-or-flight physiology—rapid heartbeat, shallow breathing, narrow focus—you're likely making myopic decisions that prioritize immediate survival over long-term optimization. Use breathing techniques, movement, or brief pause to shift physiological state before choosing. The decision will still be there after you've restored access to prefrontal cortex.",
+      "Prepare for chaos by maintaining physiological resilience through consistent practice. Don't wait until crisis to develop stress management capacity. Regular exposure to manageable physical challenges—cold exposure, challenging workouts, fasting—trains physiological systems to handle acute stress without completely shutting down cognitive function. Build reserve capacity during calm times to access it during storms.",
+      "Practice embodied awareness by regularly connecting to physical sensations rather than staying entirely in abstract thought. Check in with breath, posture, muscular tension, heart rate throughout the day. This isn't mindfulness aesthetics but practical monitoring of the physiological state driving your decisions. When you notice degraded state, you can intervene before making consequential choices from impaired baseline."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "dr--leah-lagos-and-joe-mazzulla--knowledge-project-",
-        "title": "Dr. Leah Lagos and Joe Mazzulla",
-        "author": "Knowledge Project",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      },
-      {
-        "id": "behave--robert-sapolsky-",
-        "title": "Behave",
-        "author": "Robert Sapolsky",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
-    "tags": [
-      "logic"
-    ],
+    "sources": [],
+    "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:24:51.571Z",
+    "updatedAt": "2025-11-01T16:24:51.571Z"
   },
   {
     "id": "mindfulness-inner-work-20a",
@@ -3710,115 +3564,89 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.309Z",
     "updatedAt": "2025-08-25T18:25:18.309Z"
   },
-  {
+    {
     "id": "mindfulness-inner-work-20b",
     "code": "20B",
     "name": "Mind-Body Integration & Embodied Presence",
-    "description": "Understanding the connection between physical and mental states",
+    "description": "We shouldn't escape our bodies to achieve enlightenment but become one with the body—using the inner energy field of the body as an anchor to the present moment. Physiology restricts mental state, so gaining control over mind requires controlling physiological state through practices like heart rate variability training. The mind-body split is a conceptual fiction; in practice they're inseparable aspects of unified system.",
     "slug": "mind-body-integration-embodied-presence",
     "domain": "Mindfulness & Inner Work",
     "domainSlug": "mindfulness-inner-work",
     "principles": [
-      "Focus on being take your mind away from thinking focus on the inner energy field of the body. Feel the energy in your body. We shouldn't escape our bodies but become one with the body in order to achieve enlightenment. Be permanently connected to inner body. Go into the now by going into the body."
+      "Focusing on the inner energy field—physical sensations, breath, subtle bodily awareness—provides direct access to present-moment consciousness. Unlike mental objects that exist in past or future, the body exists only now. By directing attention to bodily sensation, you ground awareness in the present rather than getting lost in thought. Morning practice that optimizes both body through exercise and soul through spiritual practice creates centered foundation for the day.",
+      "The mind proves as malleable as the body, yet we habitually try changing external circumstances while neglecting internal physiological and mental states. Physical health functions as infrastructure for mental performance—VO2 max and muscle mass correlate with cognitive function and all-cause mortality. This isn't dualism where body serves mind; it's recognition that \"mind\" and \"body\" are labels for different aspects of the same system.",
+      "Even ears demonstrate mind-body integration: left ear processes emotional content, right ear processes logical content. Emotions are produced by limbic system creating physical sensations—feelings are evidence not essence, information not identity. You don't have anger; your body generates anger physiology that consciousness experiences. This shift from \"being\" emotions to \"experiencing\" emotional physiology creates space for response rather than reaction.",
+      "Love and fear are neurological opposites—fear can literally switch off love through brain mechanisms. Everything is ultimately material; mind and body are the same stuff. Pleasure is absence of pain in body and trouble in mind—both physiological states of the unified system."
     ],
     "examples": [],
     "applications": [
-      "Using body awareness as anchor for present moment",
-      "integrating physical and mental practices",
-      "listening to body signals and intuition",
-      "using breath and physical sensation for grounding",
-      "achieving mind-body unity."
+      "Use body awareness as primary anchor for present-moment attention. When you notice mind spiraling into thought loops about past or future, redirect attention to physical sensation—breath, weight of body in chair, subtle energy sensations. This isn't suppressing thought but using body as ground that keeps consciousness from getting lost in mental abstraction. Practice this throughout the day, not just formal meditation.",
+      "Design daily routine to optimize both physical and mental foundations at the start. Exercise provides physiological baseline—cardiovascular conditioning, hormone optimization, nervous system regulation. Meditation or contemplative practice establishes mental baseline—attention control, emotional regulation, perspective. Neither alone suffices; both together create integrated optimization. Morning is ideal because it sets conditions for entire day.",
+      "Practice reframing emotions as information rather than identity. Instead of \"I am angry,\" notice \"my body is generating anger physiology as signal about perceived threat or violation.\" This creates space between conscious awareness and automatic response. You can acknowledge the signal, investigate its validity, and choose response based on deliberation rather than being hijacked by physiology. The feeling is real but temporary; it's data not destiny.",
+      "Invest as much in internal optimization—fitness, nutrition, sleep, stress management—as external achievement. Every external goal depends on the system pursuing that goal. Neglecting the system while pushing toward goals eventually breaks down—burnout, injury, illness. Maintain the system first; achievements flow from well-maintained foundation. When optimization conflicts seem to arise, the issue is usually poor system maintenance masquerading as external constraint."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "the-power-of-now--eckhart-tolle-",
-        "title": "The Power of Now",
-        "author": "Eckhart Tolle",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
+    "sources": [],
     "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:24:51.573Z",
+    "updatedAt": "2025-11-01T16:24:51.573Z"
   },
-  {
+    {
     "id": "mindfulness-inner-work-20c",
     "code": "20C",
     "name": "Deconstructing Mental Patterns & Pain Body",
-    "description": "Understanding how consciousness constructs experience and gets trapped in patterns",
+    "description": "The pain body is a thought pattern that can take you over; you must be mindful to avoid it and cast consciousness on it to kill it. Ninety percent of thoughts are repetitive—most running thoughts are anxiety-producing mental chatter we're addicted to. Understanding how consciousness gets trapped in automatic patterns enables using awareness to break free from conditioned responses.",
     "slug": "deconstructing-mental-patterns-pain-body",
     "domain": "Mindfulness & Inner Work",
     "domainSlug": "mindfulness-inner-work",
     "principles": [
-      "The pain body is a thought pattern that can take you over and you must be mindful to avoid this. The pain body perpetuates pain inside of you to grow it and feed itself be aware of these patterns to kill them. You need to be conscious of the pain body then break association with it to kill it. Watch it and cast a light on it light kills it."
+      "The pain body feeds itself by perpetuating pain and drama—it's a parasitic pattern that requires unconsciousness to survive. When you identify completely with this pattern, you become it; it uses you to create more of itself. But consciousness functions as light that dissolves darkness—simply observing the pattern without feeding it begins to weaken its hold. Ego creates all problems and drama by making demands about how reality should be rather than accepting what is.",
+      "The brain creates neural pathways through selective strengthening—synapses form subroutines and assemblies that become the physical basis of thought patterns. Every time you run a particular thought loop, you strengthen those neural connections, making the pattern more automatic and harder to override. Fear becomes a habit through this mechanism, and habits kill what's essential by replacing conscious choice with automatic reaction.",
+      "Strong doubt avoidance tendency makes us hate change and inconsistency—we rarely change our minds and actively avoid disconfirming information. Desires prove infinite while fulfillment remains limited, trapping us in hedonic treadmill patterns where realized desire develops new desire. These aren't moral failures but mechanical patterns running in consciousness without conscious oversight.",
+      "Humans function as meme replicators—we can either mindlessly copy behavioral patterns or use conjecture and criticism to evolve better explanatory frameworks. Life lies are false pretexts we manufacture to avoid life tasks—excuses that justify not growing or changing. Recognizing these patterns as patterns rather than truth is the first step to dissolution."
     ],
     "examples": [],
     "applications": [
-      "Recognizing repetitive mental patterns",
-      "understanding how past conditioning shapes present experience",
-      "using meditation to deconstruct automatic mental habits",
-      "breaking identification with pain patterns",
-      "transforming suffering through conscious awareness."
+      "When you notice repetitive negative thoughts or emotional patterns, practice observing them without identifying with them. Instead of \"I am anxious,\" notice \"there is anxiety happening.\" Instead of \"I'm so stupid,\" observe \"the stupid pattern is running.\" This subtle linguistic shift creates space between awareness and content of awareness. You're not the pattern; you're the consciousness noticing the pattern. Patterns observed lose power; patterns identified with strengthen.",
+      "Recognize ego drama as mechanical pattern rather than legitimate response. When you feel outraged, victimized, or righteously angry, ask: is this appropriate response to reality, or is pain body seeking fuel? The pattern creates drama because drama reinforces the pattern. People become addicted to their problems because problems provide identity and purpose. Breaking free requires seeing through the addiction, not solving the \"problems\" the pattern generates.",
+      "Interrupt automatic thought loops by inserting conscious awareness into the pattern. The loop runs: trigger → automatic thought → emotional response → behavior → trigger. Insert awareness anywhere in the chain to disrupt it. Notice the trigger without reacting. Observe the thought without believing it. Feel the emotion without acting on it. Each interruption weakens the neural pathway slightly; consistent interruption eventually breaks the automatic connection.",
+      "Inventory your life lies—the stories you tell yourself about why you can't, shouldn't, or won't do things you actually could do. These are often elaborate rationalizations protecting you from trying and possibly failing. \"I'm not creative\" keeps you from creating. \"I'm bad at math\" excuses not learning math. \"I can't change\" justifies staying stuck. Once you see these as protective patterns rather than truth about reality, you can choose whether to keep them or dissolve them through action contrary to the story."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "the-power-of-now--eckhart-tolle-",
-        "title": "The Power of Now",
-        "author": "Eckhart Tolle",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
-    "tags": [
-      "consciousness"
-    ],
+    "sources": [],
+    "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:24:51.574Z",
+    "updatedAt": "2025-11-01T16:24:51.574Z"
   },
-  {
+    {
     "id": "mindfulness-inner-work-20d",
     "code": "20D",
     "name": "Transcending Ego & Two-Selves Integration",
-    "description": "Moving beyond ego identification to authentic being",
+    "description": "Enlightenment means rising above thought—liberating yourself from identification with thinking so you can use mind as tool rather than being used by it. The happiest people have transcendental understanding of life bigger than themselves, integrating the \"I self\" that looks outward with the \"me self\" that looks inward. Moving beyond ego identification to authentic being requires integrating thinking and being modes of consciousness.",
     "slug": "transcending-ego-two-selves-integration",
     "domain": "Mindfulness & Inner Work",
     "domainSlug": "mindfulness-inner-work",
     "principles": [
-      "Liberate yourself from thinking non identification with thoughts this creates separateness. You let your mind use you when you think aimlessly. Enlightenment means rising above thought and you think for practical purposes but lose the negative internal dialogue. 90% of thoughts are repetitive don't become addicted to thinking."
+      "Most people let their minds use them through aimless thinking—they're addicted to thinking even though ninety percent of thoughts are repetitive and useless. Enlightenment doesn't mean never thinking but using thought intentionally for practical purposes while losing the negative internal dialogue that runs constantly. You think when thinking serves a purpose, then return to presence when thinking isn't needed. Humans have two selves: authentic essence and social mask that limits ability to explore experiences outside norms.",
+      "Happiness emerges from total insignificance of self—accepting that we're insignificant bacteria in a universe that doesn't conform to our desires. This sounds bleak but proves liberating: when you stop demanding universe validate your ego, you can engage with reality as it is rather than fighting what isn't. The highest expression is treating life as art, living creatively as autonomous individuals who reject conventional morality in favor of authentic self-expression.",
+      "Man is most free when giving agency to world while repressing ego demands—heroism reflects transcending terror of death through courageous self-transcendence. Two paths: animal path of doing what feels good versus divine path of disciplining will to love others and treat life like meaningful project. The divine path requires ego transcendence—prioritizing service and creation over ego gratification.",
+      "Mind identification creates mental image you're projecting but not truly living or being. You become your story about yourself rather than the consciousness underneath the story. True freedom requires giving up need for external validation—she wanted to be free but hasn't freed her smallest toe because freedom demands releasing ego's grip."
     ],
     "examples": [],
     "applications": [
-      "Developing awareness of ego patterns",
-      "learning to use mind as tool rather than being used by it",
-      "transcending repetitive thought loops",
-      "integrating thinking and being modes",
-      "achieving enlightenment through non-identification."
+      "Practice distinguishing between using mind as tool versus being used by mind. Notice when you're thinking productively toward a goal versus when you're running repetitive loops. When thinking isn't serving a purpose, practice dropping it and returning to simple presence. This doesn't mean never planning or analyzing but doing so intentionally rather than compulsively. Most people are so addicted to thinking they can't stop even when it's causing suffering.",
+      "Develop transcendent perspective by regularly contemplating your insignificance in the cosmos. This isn't nihilism but proper context—you're a brief pattern in a vast universe, which means your ego concerns are genuinely tiny. This realization liberates rather than depresses because it removes the weight of taking yourself too seriously. When ego says \"this is crucial to my identity,\" cosmos says \"you're temporary bacteria.\" Both are true; keeping both in view creates balance.",
+      "Conduct regular identity audits: which aspects of your personality serve authentic self-expression versus conforming to external expectations? Social conditioning creates mask we mistake for identity. The mask serves survival by fitting in, but authentic growth requires occasionally removing it. Try behaviors outside your \"personality\"—the socially-constructed identity often proves more rigid than necessary. You contain multitudes; ego creates illusion of fixed self.",
+      "Frame life as meaningful project requiring discipline rather than hedonic optimization requiring indulgence. The animal path seeks pleasure; the divine path seeks contribution. Neither is wrong, but they lead different places. Clarify which you're choosing and align behaviors accordingly. Most suffering comes from wanting divine path outcomes while following animal path behaviors. Pick one and commit, or consciously balance both rather than unconsciously oscillating."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "the-power-of-now--eckhart-tolle-",
-        "title": "The Power of Now",
-        "author": "Eckhart Tolle",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.309Z"
-      }
-    ],
+    "sources": [],
     "tags": [],
     "difficulty": "intermediate",
-    "createdAt": "2025-08-25T18:25:18.309Z",
-    "updatedAt": "2025-08-25T18:25:18.309Z"
+    "createdAt": "2025-11-01T16:24:51.574Z",
+    "updatedAt": "2025-11-01T16:24:51.574Z"
   },
   {
     "id": "investment-capital-allocation-21a",
@@ -5023,106 +4851,61 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.310Z",
     "updatedAt": "2025-08-25T18:25:18.310Z"
   },
-  {
+    {
     "id": "neuroscience-consciousness-32a",
     "code": "32A",
-    "name": "Neural Networks & Executive Function",
-    "description": "How the physical brain creates mental experience",
+    "name": "Neuroplasticity & Brain Architecture",
+    "description": "The brain physically changes in response to experience. Learning creates and strengthens neural connections while disuse weakens them. Understanding neuroplasticity reveals why practice matters, how habits form, and what makes changing behavior so difficult yet ultimately possible.",
     "slug": "neural-networks-executive-function",
     "domain": "Neuroscience & Consciousness",
     "domainSlug": "neuroscience-consciousness",
     "principles": [
-      "Prefrontal cortex does the harder thing when it's the right thing to do. This mediates executive action considering info choosing bits of info to focus on then making a decision. Self control is finite resource pfc is the most vulnerable to overload from too much cognitive load. Intelligence is the control of attention and efficiency in performing tasks."
+      "Every skill and habit corresponds to physical brain structure. When you practice something repeatedly, you're literally building neural architecture dedicated to that activity. Neurons that fire together wire together, strengthening synaptic connections that make patterns automatic. This is why elite performers develop specialized brain regions enlarged through years of deliberate practice—their brains physically adapted to their craft.",
+      "The brain treats physical and imagined practice similarly. Visualization activates neural circuits nearly as effectively as actual performance. Mental rehearsal builds the same connections, explaining why athletes and performers use imagery to enhance skill. The boundary between thinking about doing and actually doing is neurologically blurrier than it feels subjectively.",
+      "Neuroplasticity operates across the lifespan but declines with age. Young brains are maximally plastic, forming and pruning connections rapidly. Adult brains retain plasticity but require more repetition and focused attention to create new patterns. This explains both why skills learned young feel effortless and why adult learning demands more deliberate effort. The good news: neuroplasticity never completely stops—the brain can change at any age given sufficient stimulus.",
+      "Stress and emotion shape plasticity. High stress or strong emotion creates conditions for rapid learning—the brain prioritizes encoding information during these states. This serves survival by ensuring important experiences create lasting changes. The downside: traumatic experiences or chronic stress can wire in maladaptive patterns that persist without intervention."
     ],
     "examples": [],
     "applications": [
-      "Understanding the biological basis of decision-making",
-      "recognizing cognitive load limitations",
-      "appreciating the relationship between brain structure and mental function",
-      "designing environments that support optimal brain function",
-      "managing attention as scarce resource."
+      "Design learning systems around neuroplasticity principles. Spaced repetition works because it exploits how memory consolidation happens. Deliberate practice works because it targets specific neural circuits with focused attention. Varied practice works because it forces the brain to generalize rather than memorizing specific contexts. Understanding the mechanism lets you optimize the method.",
+      "Use mental rehearsal as a practice supplement. Before important performances, visualize success in detail. Before learning new skills, mentally walk through the process. The brain building these patterns during imagery makes actual execution smoother. This isn't wishful thinking—it's leveraging how neural circuits respond to imagined as well as real experience.",
+      "Accept that changing established patterns requires consistent effort over time. You're not fighting lack of willpower—you're fighting existing neural architecture built through years of repetition. New behaviors require building new circuits while old circuits remain available as default. This explains why relapse is common and why lasting change demands sustained practice. The old patterns don't disappear; you're creating competing patterns that eventually dominate.",
+      "Leverage emotional salience for important learning. Information encoded during strong emotion sticks better because the brain tags it as significant. This is why stories work better than facts for teaching—narrative creates emotional engagement that enhances retention. When you need something to stick, connect it to meaning, emotion, or immediate relevance."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "behave--robert-sapolsky-",
-        "title": "Behave",
-        "author": "Robert Sapolsky",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      },
-      {
-        "id": "thinking",
-        "title": "Thinking",
-        "author": "Unknown",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      },
-      {
-        "id": "fast-and-slow--daniel-kahneman-",
-        "title": "Fast and Slow",
-        "author": "Daniel Kahneman",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      }
-    ],
+    "sources": [],
     "tags": [],
-    "difficulty": "beginner",
-    "createdAt": "2025-08-25T18:25:18.310Z",
-    "updatedAt": "2025-08-25T18:25:18.310Z"
+    "difficulty": "intermediate",
+    "createdAt": "2025-11-01T16:40:30.573Z",
+    "updatedAt": "2025-11-01T16:40:30.586Z"
   },
-  {
+    {
     "id": "neuroscience-consciousness-32b",
     "code": "32B",
-    "name": "The Hard Problem & Consciousness Integration",
-    "description": "Understanding how subjective experience arises from physical processes",
+    "name": "Consciousness & Neural Correlates",
+    "description": "Consciousness emerges from neural dynamics in ways we don't fully understand. The hard problem—explaining how physical processes produce subjective experience—remains unsolved. Yet neuroscience reveals correlates between brain states and conscious experience, showing that consciousness depends on specific neural patterns and architectures.",
     "slug": "the-hard-problem-consciousness-integration",
     "domain": "Neuroscience & Consciousness",
     "domainSlug": "neuroscience-consciousness",
     "principles": [
-      "Consciousness is the integration of information through different neural circuits interconnecting. Our brains are probabilistic machines taking input from the outside world making predictions then adjusting. There is this gap that exists between physical and psychological that we haven't solved yet. We can know a brain perceives red but until we actually see red a part of our understanding is lost."
+      "Consciousness appears to emerge from information integration across brain regions. Global workspace theory suggests consciousness arises when information becomes available to multiple cognitive systems simultaneously. Localized processing happens unconsciously; when that processing broadcasts widely through neural networks, conscious awareness emerges. This explains why attention and consciousness correlate—attention determines what information gets amplified into global workspace.",
+      "The neural binding problem asks how the brain unifies disparate processes into coherent experience. Visual processing happens in separate areas for color, motion, and shape, yet you experience a unified object. Temporal synchrony—neurons firing in coordinated patterns—may solve binding by linking related features. Consciousness might be what integrated information feels like from inside.",
+      "Altered states reveal consciousness structure by changing normal neural dynamics. Psychedelics disrupt default mode network activity, producing ego dissolution and novel thought patterns. Meditation strengthens attention networks while quieting default mode, creating calm focused awareness. Sleep cycles through different consciousness states as neural activity patterns shift. These variations show consciousness isn't binary but exists along multiple dimensions.",
+      "The relationship between consciousness and unconscious processing remains mysterious. Most mental activity happens unconsciously—your brain processes vastly more information than reaches awareness. Conscious thought seems to be a small fraction of total cognitive activity, possibly serving integration and planning functions while unconscious processes handle routine operations. This suggests consciousness evolved for specific purposes rather than being necessary for all information processing."
     ],
     "examples": [],
     "applications": [
-      "Recognizing the mystery of subjective experience",
-      "understanding the relationship between information integration and consciousness",
-      "appreciating the predictive nature of brain function",
-      "grappling with mind-body questions",
-      "designing AI systems that consider consciousness."
+      "Recognize that conscious access is limited and selective. You only become aware of information that reaches threshold for global broadcast. Most decision-making happens unconsciously with consciousness observing results. This means conscious introspection reveals post-hoc explanations rather than actual causes. Be humble about knowing why you think or feel as you do.",
+      "Use attention deliberately to shape conscious experience. Since attention determines what reaches awareness, where you direct attention shapes your subjective reality. This isn't just metaphor—you're literally changing which neural patterns amplify into consciousness. Meditation practices that train attention are training what you become conscious of.",
+      "Understand that altered states provide genuine insights into consciousness structure. These aren't just distortions but reveal different modes of neural organization. The experiences during psychedelics, deep meditation, or flow states show possibilities for consciousness beyond default configurations. This knowledge can inform both personal development and understanding of mental function.",
+      "Accept the limits of current understanding about consciousness. We have correlates—brain states associated with conscious experience—but not explanations of how physical processes produce subjective experience. This doesn't mean dualism is correct, but it means humility about what neuroscience has actually explained. Use what's known to work without needing complete theoretical understanding."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "the-frontiers-of-knowledge--a-c--grayling-",
-        "title": "The Frontiers of Knowledge",
-        "author": "A.C. Grayling",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      },
-      {
-        "id": "the-history-of-philosophy--a-c--grayling-",
-        "title": "The History of Philosophy",
-        "author": "A.C. Grayling",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      }
-    ],
-    "tags": [
-      "consciousness"
-    ],
-    "difficulty": "beginner",
-    "createdAt": "2025-08-25T18:25:18.310Z",
-    "updatedAt": "2025-08-25T18:25:18.310Z"
+    "sources": [],
+    "tags": [],
+    "difficulty": "intermediate",
+    "createdAt": "2025-11-01T16:40:30.587Z",
+    "updatedAt": "2025-11-01T16:40:30.587Z"
   },
   {
     "id": "game-theory-strategic-interaction-33a",
@@ -5333,152 +5116,89 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.310Z",
     "updatedAt": "2025-08-25T18:25:18.310Z"
   },
-  {
+    {
     "id": "economics-market-dynamics-35b",
     "code": "35B",
-    "name": "Behavioral Economics & Psychological Market Forces",
-    "description": "How human psychology affects economic decisions",
+    "name": "Behavioral Economics & Market Psychology",
+    "description": "Real economic behavior deviates systematically from rational choice theory. We value things differently based on framing, overweight recent experience, and let emotions override analysis. Understanding these patterns explains market dynamics that purely rational models miss.",
     "slug": "behavioral-economics-psychological-market-forces",
     "domain": "Economics & Market Dynamics",
     "domainSlug": "economics-market-dynamics",
     "principles": [
-      "We reject the experiencing self for the remembering self. We often don't value something we can't remember. The duration of a life in stories doesn't matter as much as how happy it was. Mental accounting we view things differently based on a reference point."
+      "Prospect theory describes how real people make decisions versus expected utility theory. Thaler's work shows we're loss-averse (losses hurt more than equivalent gains please), we frame choices based on reference points rather than absolute values, and we treat different types of money differently through mental accounting. These patterns aren't random errors but systematic biases that affect everyone.",
+      "The experiencing self differs from the remembering self, and we optimize for memory rather than experience. We reject experiencing self utility for remembering self utility. Duration doesn't matter as much for remembered happiness as peak moments and endings. This explains seemingly irrational choices—we optimize for the stories we'll tell ourselves rather than actual experienced utility.",
+      "Early financial experiences shape views through path dependence. Housel explains everyone's financial perspective reflects their unique history. Someone who lived through the Great Depression views money differently than someone who grew up during the dot-com boom. These formative experiences create mental models that persist even when conditions change, making purely rational analysis insufficient.",
+      "People systematically misjudge their ability to handle market panic. Historical evidence shows that even sophisticated investors believe they'll stay rational during crises, then panic and sell at bottoms. The psychological tendency toward panic under stress isn't overcome by knowledge—it requires systematic preparation and structural safeguards against emotional decisions."
     ],
     "examples": [],
     "applications": [
-      "Understanding how psychological biases affect economic decisions",
-      "recognizing the difference between experiencing and remembering utility",
-      "designing economic systems that account for human psychology",
-      "appreciating identity effects on consumption."
+      "Account for framing effects in economic decision-making. The same choice presented differently generates different responses. Understand how you're framing options for yourself and others. Loss aversion means people fight harder to avoid losses than to achieve equivalent gains—this asymmetry drives everything from contract negotiation to product design to market behavior.",
+      "Recognize that mental accounting creates real effects even though money is fungible. People treat windfall gains differently from earned income, separate investment accounts from spending money, and react differently to paper losses versus realized losses. These categories lack logical justification but profoundly affect behavior. Use mental accounting productively by creating frameworks that encourage good choices.",
+      "Design for the remembering self when creating experiences. The peak and end matter more than duration. This principle applies beyond personal experience to product design, service delivery, and institutional interaction. Make the best moments great and end on a high note—these create lasting satisfaction more than consistent moderate quality.",
+      "Build structural safeguards against emotional decision-making. Don't rely on staying rational during crisis—you probably won't. Create rules, automatic rebalancing, or decision frameworks that operate regardless of emotional state. Pre-commitment devices and systematic processes protect against your own predictable irrationality."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "thinking",
-        "title": "Thinking",
-        "author": "Unknown",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      },
-      {
-        "id": "fast-and-slow--daniel-kahneman-",
-        "title": "Fast and Slow",
-        "author": "Daniel Kahneman",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      }
-    ],
-    "tags": [
-      "psychology",
-      "behavior",
-      "logic"
-    ],
-    "difficulty": "beginner",
-    "createdAt": "2025-08-25T18:25:18.310Z",
-    "updatedAt": "2025-08-25T18:25:18.310Z"
+    "sources": [],
+    "tags": [],
+    "difficulty": "intermediate",
+    "createdAt": "2025-11-01T16:40:30.590Z",
+    "updatedAt": "2025-11-01T16:40:30.590Z"
   },
-  {
+    {
     "id": "practical-wisdom-resourcefulness-36a",
     "code": "36A",
-    "name": "Resourcefulness & Constraint Navigation",
-    "description": "Making the most of available resources and constraints",
+    "name": "Metis & Local Knowledge",
+    "description": "Metis represents practical wisdom embedded in experience that resists formal codification. This knowledge looks arbitrary or unsystematic to outsiders but encodes solutions to problems formal systems don't even recognize. Traditional practices, evolved through generations of adaptation to local conditions, often embody more insight than designed alternatives.",
     "slug": "resourcefulness-constraint-navigation",
     "domain": "Practical Wisdom & Resourcefulness",
     "domainSlug": "practical-wisdom-resourcefulness",
     "principles": [
-      "Only the boneheaded venture far on personal opinion. No one owns ideas everyone learns from someone. Success comes through efficiency waste leads to failure. We learn by copying doing something hard ensures you have much less competition. Relentlessly resourceful."
+      "Seeing Like a State provides the canonical framing: systems designed by outsiders for legibility often destroyed local knowledge that looked chaotic but worked brilliantly. Traditional farming practices appeared inefficient to modern planners but incorporated generations of adaptation to specific soil, weather, and ecological conditions. High modernist assumptions about rational design missed the nuanced complexity that metis captured through iterative learning over time.",
+      "Metis develops through direct, prolonged engagement with specific contexts. It can't be learned from books or lectures—it emerges from doing the work, making mistakes, and adjusting based on feedback. A skilled carpenter develops intuition about wood that no manual captures. An experienced manager develops sense for organizational dynamics that can't be formalized into procedures. This knowledge is embodied and situated rather than abstract and universal.",
+      "The legibility trap explains why formal systems often fail. States, corporations, and institutions crave legibility—standardized measures, clear categories, simplified processes that enable central management. But reality resists simplification. When systems optimize for legibility, they destroy the metis that makes things actually work. The ordered forest plantation eliminates the biodiversity that sustained the natural forest. The regularized city plan eliminates the informal networks that made neighborhoods function.",
+      "Practical wisdom requires humility about what can be formalized. Some problems genuinely resist systematic solution—they require judgment, context-sensitivity, and adaptive responses that rules can't capture. Trying to replace metis with procedures creates brittle systems that work well in predicted scenarios but fail catastrophically when reality deviates from the model."
     ],
     "examples": [],
     "applications": [
-      "Learning from others rather than reinventing",
-      "focusing on efficiency over ego",
-      "understanding that practical success comes from systematic execution",
-      "building on existing knowledge",
-      "choosing hard problems to reduce competition."
+      "Preserve local knowledge when implementing changes. Before standardizing or optimizing, understand what current practices accomplish. The inefficiency you see might be crucial adaptation you don't understand. Interview people doing the work, observe how things actually function, and investigate why seemingly odd practices persist. Change with humility about what you don't know.",
+      "Value experience and apprenticeship for developing metis. Some knowledge only comes from doing. Create pathways for people to gain direct experience rather than just theoretical instruction. Pair novices with experts not just to transfer explicit knowledge but to enable tacit learning through observation and practice. The master-apprentice relationship develops metis in ways classroom education can't.",
+      "Design systems that allow flexibility for local adaptation. Rather than imposing one-size-fits-all solutions, create frameworks that enable customization based on context. Central control works for problems with universal solutions; distributed autonomy works for problems requiring local knowledge. Match governance structure to problem type.",
+      "Recognize the limits of your own expertise. When entering unfamiliar domains, assume locals know things you don't. Their practices may look strange because you don't understand the constraints they're navigating. Ask questions, observe patterns, and look for hidden order before concluding that local approaches are simply wrong."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "claude-hopkins--founders-",
-        "title": "Claude Hopkins",
-        "author": "Founders",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      },
-      {
-        "id": "henry-singleton--founders-",
-        "title": "Henry Singleton",
-        "author": "Founders",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      },
-      {
-        "id": "paypal--founders-",
-        "title": "PayPal",
-        "author": "Founders",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      }
-    ],
+    "sources": [],
     "tags": [],
-    "difficulty": "beginner",
-    "createdAt": "2025-08-25T18:25:18.310Z",
-    "updatedAt": "2025-08-25T18:25:18.310Z"
+    "difficulty": "intermediate",
+    "createdAt": "2025-11-01T16:40:30.591Z",
+    "updatedAt": "2025-11-01T16:40:30.591Z"
   },
-  {
+    {
     "id": "practical-wisdom-resourcefulness-36b",
     "code": "36B",
-    "name": "Execution & Implementation Mastery",
-    "description": "Turning ideas into reality through systematic action",
+    "name": "Bricolage & Making Do",
+    "description": "Bricolage means making do with whatever is at hand rather than waiting for ideal resources. It's resourcefulness applied to problem-solving—using available materials creatively rather than being blocked by missing perfect tools. This mindset enables action despite constraints that would paralyze planning-oriented approaches.",
     "slug": "execution-implementation-mastery",
     "domain": "Practical Wisdom & Resourcefulness",
     "domainSlug": "practical-wisdom-resourcefulness",
     "principles": [
-      "True knowledge is only uncovered through hard work and innovation. There's a difference between creative projection and life illusion. We need to understand the difference between actions taken and opportunities missed. Experience taught me how invaluable it is to reflect on and write down my decision-making criteria."
+      "The bricoleur works with a diverse, limited set of tools and materials, making do with what's available rather than what would be optimal. This differs fundamentally from the engineer's approach of specifying ideal inputs then acquiring them. Bricolage embraces constraint as creative catalyst—limited resources force inventive solutions that abundant resources would never inspire. Necessity genuinely breeds innovation when you can't fall back on conventional approaches.",
+      "Constraints make you resourceful by eliminating easy options. When you can't buy your way out of problems, you must think creatively about what you have. This explains why resource-constrained startups often beat well-funded competitors—they develop lean, efficient solutions while rich companies throw money at problems. The constraint itself becomes an advantage by forcing genuine innovation rather than incremental improvement.",
+      "Practical execution beats perfect planning when uncertainty is high. Bricolage favors action over analysis—start with what you have, learn by doing, and adjust based on feedback. This works better than comprehensive planning when situations change faster than plans can be updated. Military strategy captures this: \"no plan survives contact with the enemy.\" Bricolage accepts this reality and optimizes for adaptability rather than perfect foresight.",
+      "Frugality and cost-consciousness create unique solutions that compound over time. Daniel Ludwig's principle: constraints breed innovation, being cost-conscious creates differentiation. Small expenses compound, so frugality isn't just about saving money—it's about building capabilities others can't match. The discipline of working within constraints develops skills that abundant resources would atrophy."
     ],
     "examples": [],
     "applications": [
-      "Understanding that knowledge comes through doing",
-      "distinguishing between productive action and wishful thinking",
-      "focusing on implementation rather than just planning",
-      "learning through systematic practice and refinement",
-      "maintaining decision journals."
+      "Start with what you have rather than waiting for ideal conditions. Most people delay action because they lack some resource they think is essential. The bricolage mindset asks: what can I do right now with what I actually have? Usually the answer is: more than you think. Begin, learn, and acquire missing pieces as you go rather than before you start.",
+      "Use constraints deliberately to drive creativity. When facing a problem, try solving it with artificially limited resources first. This forces you away from obvious expensive solutions toward innovative efficient ones. The constraint becomes a feature rather than a bug—it pushes you toward solutions others won't find because they never needed to.",
+      "Build organizational cultures that reward resourcefulness. Systems that require perfect resources before acting create learned helplessness—people wait for permission, budget, or ideal conditions rather than making progress with what's available. Celebrate making do, validate scrappy solutions, and show that resourcefulness is valued more than polish.",
+      "Develop general skills that work across contexts. Bricoleurs need broad capabilities rather than narrow specialization. Learn enough about many things to improvise solutions when specialists aren't available. Generalist knowledge enables recombination—you can connect disparate tools and ideas because you understand multiple domains moderately well."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "claude-hopkins--founders-",
-        "title": "Claude Hopkins",
-        "author": "Founders",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      },
-      {
-        "id": "principles--ray-dalio-",
-        "title": "Principles",
-        "author": "Ray Dalio",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      }
-    ],
+    "sources": [],
     "tags": [],
-    "difficulty": "beginner",
-    "createdAt": "2025-08-25T18:25:18.310Z",
-    "updatedAt": "2025-08-25T18:25:18.310Z"
+    "difficulty": "intermediate",
+    "createdAt": "2025-11-01T16:40:30.591Z",
+    "updatedAt": "2025-11-01T16:40:30.591Z"
   },
   {
     "id": "ritual-meaning-making-37a",
@@ -5699,41 +5419,33 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.310Z",
     "updatedAt": "2025-08-25T18:25:18.310Z"
   },
-  {
+    {
     "id": "narrative-identity-38d",
     "code": "38D",
-    "name": "Identity Affirmation & Conscious Self-Creation",
-    "description": "Actively shaping identity through deliberate practice",
+    "name": "Affirmations & Identity Reinforcement",
+    "description": "Repeated self-statements shape identity by reinforcing neural patterns and creating external feedback loops. Affirmations work not through magic but through attention direction, pattern reinforcement, and behavioral consistency. You can brute-force identity construction through systematic self-dialogue.",
     "slug": "identity-affirmation-conscious-self-creation",
     "domain": "Narrative & Identity",
     "domainSlug": "narrative-identity",
     "principles": [
-      "I used to wake up every day and my alarm was a recording of myself telling myself who I am. A series of affirmations of who I am and what I am doing and what I am creating in the world. So much of it was aspirational. And guess what? I became that. You can brute force your identity. Life is about creating yourself."
+      "Affirmations function as identity votes through neuroplastic reinforcement. Every time you assert something about yourself, you strengthen the neural pathways associated with that identity. This isn't wishful thinking—it's deliberate use of neuroplasticity principles. Clear's insight: every action is a vote for who you want to be. Affirmations extend this to self-talk—every statement is a vote. Accumulated votes eventually create the identity through sheer repetition.",
+      "Arnold Schwarzenegger's method demonstrates systematic identity construction through aspirational self-statements. \"I am what I am doing and creating\" even when aspirational, not delusional. Much of it was future-focused: what he intended to become rather than what he was. The repeated assertion created pattern that behavior followed. Eventually, he became what he'd been affirming—not through mystical manifestation but through consistent action aligned with affirmed identity.",
+      "External feedback loops validate or challenge identity claims. When you affirm an identity, your behavior adjusts to match, which affects how others perceive you, which reinforces or undermines the identity. If you claim writer identity but never write, subconscious recognizes incongruence and resists. But consistent writing makes writer identity credible to yourself through behavioral evidence, creating virtuous cycle.",
+      "Balance aspiration with authenticity to avoid delusional affirmations. You can't successfully affirm being something completely disconnected from reality—subconscious rejects obviously false claims. But within believable range, aspir ational affirmations work by creating forward-pulling identity. The key is stretching toward possible future self rather than denying present reality or claiming impossible transformations."
     ],
     "examples": [],
     "applications": [
-      "Using affirmations to shape identity",
-      "understanding how repeated self-statements create reality",
-      "balancing aspiration with authenticity",
-      "leveraging subconscious recognition of authentic vs. false identity claims",
-      "creating feedback loops between identity and external reactions."
+      "Create explicit affirmations for desired identity that balance aspiration with credibility. Write statements in present tense (\"I am...\") that describe who you're becoming. Make them specific enough to be meaningful, aspirational enough to be motivating, but believable enough your subconscious doesn't reject them. Repeat systematically—daily practice compounds through neuroplastic reinforcement.",
+      "Align behavior with affirmed identity to create external validation. Affirmations alone are insufficient—they must connect to action. Each time you act consistently with affirmed identity, you generate evidence supporting the claim. This closes loop between internal assertion and external reality, making identity feel increasingly authentic rather than aspirational.",
+      "Use affirmations to reframe limiting self-talk. Most people have negative default narratives (\"I'm not good at this,\" \"I always fail at that\"). Affirmations provide alternative self-dialogue to practice. This doesn't mean denying challenges but changing interpretive frame from fixed limitation to growth possibility. Replace \"I'm not a math person\" with \"I'm learning mathematical thinking.\"",
+      "Record and review affirmations in your own voice to leverage familiarity and authority. Written affirmations work, but recorded self-statements heard regularly create stronger neural patterns. Your voice carries authority your subconscious recognizes, making statements more credible than external sources. The repetition builds familiarity that makes affirmed identity feel increasingly natural."
     ],
     "relatedModels": [],
-    "sources": [
-      {
-        "id": "alfalfa-podcast",
-        "title": "Alfalfa Podcast",
-        "author": "Unknown",
-        "type": "book",
-        "url": "",
-        "highlights": [],
-        "accessedAt": "2025-08-25T18:25:18.310Z"
-      }
-    ],
+    "sources": [],
     "tags": [],
-    "difficulty": "beginner",
-    "createdAt": "2025-08-25T18:25:18.310Z",
-    "updatedAt": "2025-08-25T18:25:18.310Z"
+    "difficulty": "intermediate",
+    "createdAt": "2025-11-01T16:40:30.594Z",
+    "updatedAt": "2025-11-01T16:40:30.594Z"
   },
   {
     "id": "constraint-theory-optimization-39a",
@@ -6044,6 +5756,15 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.310Z",
     "updatedAt": "2025-08-25T18:25:18.310Z"
   }
+
+
+
+
+
+
+
+
+
 ];
 
 export function getReadwiseDomainBySlug(slug: string): Domain | undefined {

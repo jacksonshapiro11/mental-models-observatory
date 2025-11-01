@@ -614,6 +614,128 @@
 }
 ```
 
+### 3A: Energy as Core Resource & Ultimate Constraint
+
+```json
+{
+  "modelId": "energy-core-resource-ultimate-constraint",
+  "modelTitle": "Energy as Core Resource & Ultimate Constraint", 
+  "modelDescription": "Energy use drives all progress and constrains all possibilities - the key input for every decision with entropy as inevitable byproduct",
+  "curatedHighlights": [
+    {
+      "readwiseId": 518562856,
+      "book": {
+        "title": "Scale",
+        "author": "Geoffrey West"
+      },
+      "relevanceScore": 9.9,
+      "qualityScore": 9.8,
+      "insightType": "foundational_concept",
+      "curatorReason": "Perfect articulation - energy underlies every decision. Entire human history is increasingly efficient uses and transference of energy. When we impose order, we create chaos"
+    },
+    {
+      "readwiseId": 511968308,
+      "book": {
+        "title": "Chaos",
+        "author": "James Gleick"
+      },
+      "relevanceScore": 9.6,
+      "qualityScore": 9.4,
+      "insightType": "mechanism_insight",
+      "curatorReason": "Energy scales - exists in macro (measurable) and micro (unmeasurable except as averages). At intersection of these scales, chaos creates information and knowledge"
+    },
+    {
+      "readwiseId": 801886031,
+      "book": {
+        "title": "Tobi Lütke - Building Islands of Innovation",
+        "author": "Invest Like the Best with Patrick O'Shaughnessy"
+      },
+      "relevanceScore": 9.4,
+      "qualityScore": 9.1,
+      "insightType": "practical_application",
+      "curatorReason": "Organizational energy - companies converge on room temperature equilibrium. Best leaders are exothermic, injecting heat. Everyone allowed to conserve energy locally"
+    },
+    {
+      "readwiseId": 919729810,
+      "book": {
+        "title": "Reality Is Not What It Seems",
+        "author": "Carlo Rovelli"
+      },
+      "relevanceScore": 9.2,
+      "qualityScore": 8.9,
+      "insightType": "philosophical_insight",
+      "curatorReason": "Physics foundation - time is linked to energy. Way to exist is to manage correlation with external environment - we live to manage information and energy"
+    },
+    {
+      "readwiseId": 919729812,
+      "book": {
+        "title": "Reality Is Not What It Seems",
+        "author": "Carlo Rovelli"
+      },
+      "relevanceScore": 9.0,
+      "qualityScore": 8.8,
+      "insightType": "technical_implementation",
+      "curatorReason": "Energy-information link - energy wants to go towards more possible states. Things can't randomly heat up because higher energy has more information, and you can't learn for free"
+    },
+    {
+      "readwiseId": 546992143,
+      "book": {
+        "title": "Outlive",
+        "author": "Peter Attia"
+      },
+      "relevanceScore": 8.9,
+      "qualityScore": 8.7,
+      "insightType": "empirical_evidence",
+      "curatorReason": "Biological evidence - VO2 max has biggest effect on mortality. Energy processing capacity literally determines life span. Well-rounded athletic portfolio needed"
+    },
+    {
+      "readwiseId": 696411714,
+      "book": {
+        "title": "#342 the Lessons of History",
+        "author": "Founders"
+      },
+      "relevanceScore": 8.8,
+      "qualityScore": 8.6,
+      "insightType": "design_principles",
+      "curatorReason": "Strategic principle - life is finite so focus on few very important things and run like hell at them. Energy constraints demand focused intensity"
+    },
+    {
+      "readwiseId": 518567540,
+      "book": {
+        "title": "Antifragile",
+        "author": "nassim taleb"
+      },
+      "relevanceScore": 8.7,
+      "qualityScore": 8.4,
+      "insightType": "counterpoint",
+      "curatorReason": "Antifragile perspective - need stressors to build antifragility. In complex systems, energy stress can create strength rather than just dissipation"
+    },
+    {
+      "readwiseId": 511349941,
+      "book": {
+        "title": "Antifragile",
+        "author": "Nassim Nicholas Taleb"
+      },
+      "relevanceScore": 8.6,
+      "qualityScore": 8.3,
+      "insightType": "real_world_impact",
+      "curatorReason": "Extended disorder family - uncertainty, variability, entropy, chaos all manifestations of energy dissipation and thermodynamic principles in complex systems"
+    },
+    {
+      "readwiseId": 511968275,
+      "book": {
+        "title": "Chaos",
+        "author": "James Gleick"
+      },
+      "relevanceScore": 8.5,
+      "qualityScore": 8.5,
+      "insightType": "historical_perspective",
+      "curatorReason": "Biological systems - mode locking when dynamic systems display similar behavior despite energy changes. Understanding energy flows crucial for system stability"
+    }
+  ]
+}
+```
+
 ## Domain 4: Systems Thinking & Complexity
 
 ### 4A: Stocks, Flows & System Structure
@@ -1803,220 +1925,3 @@
   ]
 }
 ```
-
-## Domain 3: Energy & Resource Flows
-
-### 3A: Energy as Core Resource & Ultimate Constraint
-
-```json
-{
-  "modelId": "energy-core-resource-ultimate-constraint",
-  "modelTitle": "Energy as Core Resource & Ultimate Constraint", 
-  "modelDescription": "Energy use drives all progress and constrains all possibilities - the key input for every decision with entropy as inevitable byproduct",
-  "curatedHighlights": [
-    {
-      "readwiseId": 518562856,
-      "book": {
-        "title": "Scale",
-        "author": "Geoffrey West"
-      },
-      "relevanceScore": 9.9,
-      "qualityScore": 9.8,
-      "insightType": "foundational_concept",
-      "curatorReason": "Perfect articulation - energy underlies every decision. Entire human history is increasingly efficient uses and transference of energy. When we impose order, we create chaos"
-    },
-    {
-      "readwiseId": 511968308,
-      "book": {
-        "title": "Chaos",
-        "author": "James Gleick"
-      },
-      "relevanceScore": 9.6,
-      "qualityScore": 9.4,
-      "insightType": "mechanism_insight",
-      "curatorReason": "Energy scales - exists in macro (measurable) and micro (unmeasurable except as averages). At intersection of these scales, chaos creates information and knowledge"
-    },
-    {
-      "readwiseId": 801886031,
-      "book": {
-        "title": "Tobi Lütke - Building Islands of Innovation",
-        "author": "Invest Like the Best with Patrick O'Shaughnessy"
-      },
-      "relevanceScore": 9.4,
-      "qualityScore": 9.1,
-      "insightType": "practical_application",
-      "curatorReason": "Organizational energy - companies converge on room temperature equilibrium. Best leaders are exothermic, injecting heat. Everyone allowed to conserve energy locally"
-    },
-    {
-      "readwiseId": 919729810,
-      "book": {
-        "title": "Reality Is Not What It Seems",
-        "author": "Carlo Rovelli"
-      },
-      "relevanceScore": 9.2,
-      "qualityScore": 8.9,
-      "insightType": "philosophical_insight",
-      "curatorReason": "Physics foundation - time is linked to energy. Way to exist is to manage correlation with external environment - we live to manage information and energy"
-    },
-    {
-      "readwiseId": 919729812,
-      "book": {
-        "title": "Reality Is Not What It Seems",
-        "author": "Carlo Rovelli"
-      },
-      "relevanceScore": 9.0,
-      "qualityScore": 8.8,
-      "insightType": "technical_implementation",
-      "curatorReason": "Energy-information link - energy wants to go towards more possible states. Things can't randomly heat up because higher energy has more information, and you can't learn for free"
-    },
-    {
-      "readwiseId": 546992143,
-      "book": {
-        "title": "Outlive",
-        "author": "Peter Attia"
-      },
-      "relevanceScore": 8.9,
-      "qualityScore": 8.7,
-      "insightType": "empirical_evidence",
-      "curatorReason": "Biological evidence - VO2 max has biggest effect on mortality. Energy processing capacity literally determines life span. Well-rounded athletic portfolio needed"
-    },
-    {
-      "readwiseId": 696411714,
-      "book": {
-        "title": "#342 the Lessons of History",
-        "author": "Founders"
-      },
-      "relevanceScore": 8.8,
-      "qualityScore": 8.6,
-      "insightType": "design_principles",
-      "curatorReason": "Strategic principle - life is finite so focus on few very important things and run like hell at them. Energy constraints demand focused intensity"
-    },
-    {
-      "readwiseId": 518567540,
-      "book": {
-        "title": "Antifragile",
-        "author": "nassim taleb"
-      },
-      "relevanceScore": 8.7,
-      "qualityScore": 8.4,
-      "insightType": "counterpoint",
-      "curatorReason": "Antifragile perspective - need stressors to build antifragility. In complex systems, energy stress can create strength rather than just dissipation"
-    },
-    {
-      "readwiseId": 511349941,
-      "book": {
-        "title": "Antifragile",
-        "author": "Nassim Nicholas Taleb"
-      },
-      "relevanceScore": 8.6,
-      "qualityScore": 8.3,
-      "insightType": "real_world_impact",
-      "curatorReason": "Extended disorder family - uncertainty, variability, entropy, chaos all manifestations of energy dissipation and thermodynamic principles in complex systems"
-    },
-    {
-      "readwiseId": 511968275,
-      "book": {
-        "title": "Chaos",
-        "author": "James Gleick"
-      },
-      "relevanceScore": 8.5,
-      "qualityScore": 8.5,
-      "insightType": "historical_perspective",
-      "curatorReason": "Biological systems - mode locking when dynamic systems display similar behavior despite energy changes. Understanding energy flows crucial for system stability"
-    }
-  ]
-}
-```
-
-### 3B: Metabolic Constraints & Biological Scaling
-
-```json
-{
-  "modelId": "metabolic-constraints-biological-scaling",
-  "modelTitle": "Metabolic Constraints & Biological Scaling", 
-  "modelDescription": "How biological systems manage energy at different scales - growth, death, and scaling driven by mass, temperature, and energy distribution",
-  "curatedHighlights": [
-    {
-      "readwiseId": 518562835,
-      "book": {
-        "title": "Scale",
-        "author": "Geoffrey West"
-      },
-      "relevanceScore": 9.9,
-      "qualityScore": 9.7,
-      "insightType": "foundational_concept",
-      "curatorReason": "Perfect biological scaling explanation - birth, growth, death driven by mass and temperature. Mammals can't scale smaller due to heart rate and circulation system constraints"
-    },
-    {
-      "readwiseId": 546992143,
-      "book": {
-        "title": "Outlive",
-        "author": "Peter Attia"
-      },
-      "relevanceScore": 9.6,
-      "qualityScore": 9.3,
-      "insightType": "empirical_evidence",
-      "curatorReason": "Metabolic evidence - VO2 max has bigger effect on all-cause mortality than anything else. Bottom 20% at 4x risk vs top performers. Energy processing determines longevity"
-    },
-    {
-      "readwiseId": 518562835,
-      "book": {
-        "title": "Scale",
-        "author": "Geoffrey West"
-      },
-      "relevanceScore": 9.4,
-      "qualityScore": 9.0,
-      "insightType": "mechanism_insight",
-      "curatorReason": "Network constraints - networks are space-filling with invariant terminal units, minimizing energy needed to pump fluid through system. Fractal limitations at small scales"
-    },
-    {
-      "readwiseId": 511968308,
-      "book": {
-        "title": "Chaos",
-        "author": "James Gleick"
-      },
-      "relevanceScore": 9.2,
-      "qualityScore": 8.9,
-      "insightType": "technical_implementation",
-      "curatorReason": "Energy scales in biology - macro measurable (classical mechanics) and micro unmeasurable except as averages (like temperature). Knowledge formed at their intersection"
-    },
-    {
-      "readwiseId": 518562835,
-      "book": {
-        "title": "Scale",
-        "author": "Geoffrey West"
-      },
-      "relevanceScore": 9.0,
-      "qualityScore": 8.8,
-      "insightType": "design_principles",
-      "curatorReason": "Emergent behavior principle - complex system creates something greater than sum of parts. Simple rules create complex outcomes, but underlying building blocks remain same with scaling"
-    },
-    {
-      "readwiseId": 511968275,
-      "book": {
-        "title": "Chaos",
-        "author": "James Gleick"
-      },
-      "relevanceScore": 8.9,
-      "qualityScore": 8.6,
-      "insightType": "practical_application",
-      "curatorReason": "Biological clock dynamics - mode locking when biological systems sync behavior. System response to changes creates fractal structures more responsive to change"
-    },
-    {
-      "readwiseId": 919729810,
-      "book": {
-        "title": "Reality Is Not What It Seems",
-        "author": "Carlo Rovelli"
-      },
-      "relevanceScore": 8.8,
-      "qualityScore": 8.5,
-      "insightType": "philosophical_insight",
-      "curatorReason": "Life principle - life reforms itself to remain itself. Way to exist is managing correlation with external environment better - that is information and energy management"
-    },
-    {
-      "readwiseId": 518567540,
-      "book": {
-        "title": "Antifragile",
-        "author": "nassim taleb"
-      },
-      

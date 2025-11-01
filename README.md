@@ -6,10 +6,25 @@ A comprehensive Next.js application showcasing **119 mental models** across 40 k
 
 ## 📊 Project Status
 
-- ✅ **119 mental models** with complete data
+- ✅ **119 mental models** with complete data (20 recently updated with expanded content)
 - ✅ **1,132 curated highlights** from Readwise (100% coverage)
 - ✅ **40 knowledge domains** with tier-based organization
 - ✅ **Production ready** - deployed on Vercel
+- ✅ **Progress tracking** - LocalStorage-based user progress with visual indicators
+- ✅ **Hybrid learning paths** - 100 curated paths + dynamic path generation
+
+---
+
+## 🆕 Recent Updates
+
+### November 2025 - Content Enhancement
+- ✅ **20 models updated** with expanded, publication-quality content:
+  - 9 models regenerated from scratch (13B, 14B, 15C, 18A, 18D, 19C, 20B, 20C, 20D)
+  - 11 models enhanced with detailed principles and applications (5B, 13A, 14A, 15A, 19A, 32A, 32B, 35B, 36A, 36B, 38D)
+- ✅ **Quick Start Guide** added with modal on homepage
+- ✅ **"What is this?"** button prominently displayed
+- ✅ **Visual progress indicators** throughout the app
+- ✅ **Hybrid learning path system** with curated and dynamic paths
 
 ---
 
@@ -68,11 +83,22 @@ mental-models-observatory/
 │   ├── mental_models_curation_21-24.md
 │   └── [15+ other curation files]
 │
+├── Mental Models Description/  # Updated text content (descriptions, principles, applications)
+│   ├── mental_models_rewrite_1-7.txt
+│   ├── mental_models_8_24.md
+│   ├── mental_models_25_38.md
+│   ├── mental_models_39_40.md
+│   └── regenerated_models_missing.md  # 9 regenerated models with publication-quality content
+│
 ├── scripts/
 │   ├── export-all-models-simple.js           # Generate MENTAL_MODELS_COMPLETE.md
 │   ├── export-readwise-highlights-complete.js # Generate MENTAL_MODELS_READWISE_HIGHLIGHTS.md
-│   ├── test-all-models.js                     # Verify all models have complete data
-│   └── test-all-model-pages.js                # Test all model pages load successfully
+│   ├── simple-update-by-code.js              # Update lib/readwise-data.ts from description files (by code)
+│   ├── update-remaining-models.js            # Update models with case-insensitive code matching
+│   ├── replace-old-models-content.js         # Replace content in existing models
+│   ├── compare-substance.js                  # Compare OLD vs NEW content for substance matching
+│   ├── test-all-models.js                    # Verify all models have complete data
+│   └── test-all-model-pages.js               # Test all model pages load successfully
 │
 └── docs/                        # Comprehensive documentation
     ├── QUICK_REFERENCE.md
@@ -100,6 +126,7 @@ Readwise website notes/       →    lib/parse-all-domains.ts    →    componen
 | File | Purpose | When to Edit |
 |------|---------|--------------|
 | `lib/readwise-data.ts` | **Source of truth** - all 119 models with principles, applications, examples | Adding/editing model content |
+| `Mental Models Description/*.md` | Updated text content (descriptions, principles, applications) | Updating model descriptions and principles |
 | `lib/parse-all-domains.ts` | Slug mappings + highlight parsing logic | Fixing model ID mismatches |
 | `Readwise website notes/*.md` | Raw curated highlights from Readwise | Adding new highlights |
 | `components/content/ReadwiseHighlights.tsx` | Displays highlights on model pages | Changing highlight UI |
@@ -180,9 +207,13 @@ npm run dev
 
 ### Editing an Existing Model
 
-**Content changes** (principles, applications, examples):
-- Edit `lib/readwise-data.ts` directly
-- Regenerate: `node scripts/export-all-models-simple.js`
+**Content changes** (descriptions, principles, applications):
+- **Option 1**: Edit `lib/readwise-data.ts` directly
+- **Option 2**: Update files in `Mental Models Description/` then run update script:
+  ```bash
+  node scripts/simple-update-by-code.js
+  ```
+  This script matches models by their unique `code` (e.g., "14B") and updates content even if names differ.
 
 **Highlight changes** (add/remove/edit highlights):
 - Edit the relevant file in `Readwise website notes/`
@@ -192,6 +223,12 @@ npm run dev
 - Check model slug vs. modelId in highlights
 - Add mapping to `MODEL_SLUG_MAPPINGS` in `lib/parse-all-domains.ts`
 - Regenerate: `node scripts/export-readwise-highlights-complete.js`
+
+**Comparing OLD vs NEW content** (to verify substance matches):
+```bash
+node scripts/compare-substance.js
+```
+This compares existing content in `lib/readwise-data.ts` with updated content in `Mental Models Description/` to verify substance consistency even when names differ.
 
 ### UI/Design Changes
 
@@ -224,6 +261,10 @@ npm run type-check       # TypeScript validation
 # Documentation
 node scripts/export-all-models-simple.js           # Generate MENTAL_MODELS_COMPLETE.md
 node scripts/export-readwise-highlights-complete.js # Generate MENTAL_MODELS_READWISE_HIGHLIGHTS.md
+
+# Content Updates
+node scripts/simple-update-by-code.js              # Update lib/readwise-data.ts from description files (by code)
+node scripts/compare-substance.js                  # Compare OLD vs NEW content for substance matching
 ```
 
 ---

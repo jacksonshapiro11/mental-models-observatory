@@ -1,9 +1,10 @@
 'use client';
 
 import { getAllDomains, getAllModels } from '@/lib/data';
-import { ArrowRight, Search } from 'lucide-react';
+import { ProgressTracker } from '@/lib/progress-tracker';
+import { ArrowRight, CheckCircle, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function ModelsPage() {
   const models = getAllModels();
@@ -13,6 +14,13 @@ export default function ModelsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDomain, setSelectedDomain] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('');
+  const [viewedModelSlugs, setViewedModelSlugs] = useState<string[]>([]);
+  
+  // Load viewed models from progress tracker
+  useEffect(() => {
+    const progress = ProgressTracker.getProgress();
+    setViewedModelSlugs(progress.modelsViewed.map(m => m.slug));
+  }, []);
 
   // Filtered models
   const filteredModels = useMemo(() => {
@@ -100,16 +108,29 @@ export default function ModelsPage() {
         {/* Models Grid */}
         {filteredModels.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredModels.map((model) => (
+            {filteredModels.map((model) => {
+              const isViewed = viewedModelSlugs.includes(model.slug);
+              
+              return (
               <Link
                 key={model.id}
                 href={`/models/${model.slug}`}
-                className="group card hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                className={`group card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 relative ${
+                  isViewed ? 'ring-2 ring-green-400' : ''
+                }`}
               >
-                <div className="card-header">
+                {/* Reviewed Badge */}
+                {isViewed && (
+                  <div className="absolute top-0 right-0 bg-green-500 text-white px-3 py-1 rounded-bl-lg rounded-tr-lg flex items-center gap-1 text-xs font-bold shadow-lg z-10">
+                    <CheckCircle className="h-3 w-3" />
+                    REVIEWED
+                  </div>
+                )}
+                
+                <div className={`card-header ${isViewed ? 'bg-green-50' : ''}`}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="card-title text-lg group-hover:text-blue-600 transition-colors">
+                      <h3 className={`card-title text-lg group-hover:text-blue-600 transition-colors ${isViewed ? 'text-green-800' : ''}`}>
                         {model.name}
                       </h3>
                       <p className="text-sm text-gray-500 mt-1">
@@ -145,12 +166,13 @@ export default function ModelsPage() {
                     )}
                   </div>
                   <div className="flex items-center text-blue-600 group-hover:text-blue-700 transition-colors">
-                    <span className="text-sm font-medium">Learn more</span>
+                    <span className="text-sm font-medium">{isViewed ? 'Review again' : 'Learn more'}</span>
                     <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </div>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12">

@@ -25,3 +25,4 @@ export default function DomainRedirect({ params }: PageProps) {
   );
 }
 
+

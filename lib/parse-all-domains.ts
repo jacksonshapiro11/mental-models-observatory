@@ -504,8 +504,23 @@ const MODEL_SLUG_MAPPINGS: { [key: string]: string } = {
 // Get highlights for a specific model slug
 export function getModelHighlightsFromAllDomains(modelSlug: string): ModelHighlights | null {
   const allModels = parseAllDomainFiles();
-  const modelId = MODEL_SLUG_MAPPINGS[modelSlug] || modelSlug;
-  return allModels.find(model => model.modelId === modelId) || null;
+  
+  // First try the mapped ID
+  let modelId = MODEL_SLUG_MAPPINGS[modelSlug] || modelSlug;
+  let result = allModels.find(model => model.modelId === modelId);
+  
+  // If not found, try the slug directly (some highlights may use the slug as modelId)
+  if (!result) {
+    result = allModels.find(model => model.modelId === modelSlug);
+  }
+  
+  // If still not found and modelSlug matches pattern "energy-as-core-resource-ultimate-constraint",
+  // try looking for "energy-core-resource-ultimate-constraint" (without "as")
+  if (!result && modelSlug === 'energy-as-core-resource-ultimate-constraint') {
+    result = allModels.find(model => model.modelId === 'energy-core-resource-ultimate-constraint');
+  }
+  
+  return result || null;
 }
 
 // Get all available model IDs (for debugging)

@@ -34,6 +34,19 @@ curl "http://localhost:3000/api/readwise/highlights/model-slug-here"
 curl "http://localhost:3000/api/readwise/debug"
 ```
 
+### Content Updates
+```bash
+# Update lib/readwise-data.ts from description files (matches by code, e.g., "14B")
+node scripts/simple-update-by-code.js
+
+# Compare OLD vs NEW content for substance matching (verifies updates)
+node scripts/compare-substance.js
+
+# Generate updated documentation
+node scripts/export-all-models-simple.js
+node scripts/export-readwise-highlights-complete.js
+```
+
 ## Critical Files
 
 ### Core System Files
@@ -44,7 +57,8 @@ curl "http://localhost:3000/api/readwise/debug"
 
 ### Data Sources
 - `Readwise website notes/` - 15+ domain files with highlight data
-- `lib/readwise-data.ts` - Static framework (119 models)
+- `lib/readwise-data.ts` - Static framework (119 models) - **SOURCE OF TRUTH**
+- `Mental Models Description/` - Updated text content (descriptions, principles, applications)
 
 ### Documentation
 - `docs/DEVELOPMENT_GUIDE.md` - Complete development process
@@ -87,6 +101,27 @@ const MODEL_SLUG_MAPPINGS: Record<string, string> = {
   // Add new mappings here
 };
 ```
+
+### Updating Model Content
+**Process**: Update files in `Mental Models Description/` → Run update script → Verify
+
+```bash
+# 1. Update description files in Mental Models Description/
+# 2. Run update script (matches by code, handles name differences)
+node scripts/simple-update-by-code.js
+
+# 3. Verify substance matches (comparing OLD vs NEW)
+node scripts/compare-substance.js
+
+# 4. Regenerate documentation
+node scripts/export-all-models-simple.js
+```
+
+**Key Points**:
+- Script matches by unique `code` (e.g., "14B") not name
+- Handles name mismatches automatically
+- Compares substance to verify consistency
+- Updates `description`, `principles`, `applications` fields
 
 ## Architecture Quick Reference
 
@@ -201,5 +236,5 @@ done
 
 ---
 
-**Last Updated**: Latest changes include 100% model success rate achievement
+**Last Updated**: Content update workflow added - update scripts and substance comparison tools
 **Status**: Production ready with comprehensive documentation

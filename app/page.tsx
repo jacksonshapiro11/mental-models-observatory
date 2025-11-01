@@ -1,10 +1,11 @@
 'use client';
 
 import IntelligentProfileSetup from '@/components/personalization/IntelligentProfileSetup';
+import QuickStartModal from '@/components/ui/QuickStartModal';
 import { getAllDomains, getAllModels } from '@/lib/data';
 import { UserProfileManager } from '@/lib/user-profile';
 import { UserProfile } from '@/types/user';
-import { ArrowRight, BookOpen, Brain, Compass, Target, Users } from 'lucide-react';
+import { ArrowRight, BookOpen, Brain, Compass, HelpCircle, Target, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -14,6 +15,7 @@ export default function HomePage() {
   
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showQuickStart, setShowQuickStart] = useState(false);
 
   const handleProfileComplete = (profile: UserProfile) => {
     UserProfileManager.setProfile(profile);
@@ -31,6 +33,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
+      {/* Quick Start Modal */}
+      <QuickStartModal isOpen={showQuickStart} onClose={() => setShowQuickStart(false)} />
+
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-foundational-50 via-neutral-25 to-accent-50 py-8 sm:py-16">
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
@@ -43,6 +48,18 @@ export default function HomePage() {
                <p className="mx-auto mt-6 max-w-2xl text-xl text-neutral-600 mb-8">
                  The cost of information has approached zero, but the core truths of humanity and the world remain the same. Now more than ever, we need a focused and curated start to our learning journey as we risk getting lost in the dark forest of infinite self-reinforcing content. We have compiled the big ideas from the big disciplines backed up by 5000 pages of hand curated sources to help you start wide and go deep with the society altering ideas that will fill your life with meaning, purpose, and direction while giving you an edge in any pursuit.
                </p>
+
+               {/* What is this button - centered and prominent */}
+               <div className="mb-6">
+                 <button
+                   onClick={() => setShowQuickStart(true)}
+                   className="btn btn-outline btn-lg group"
+                   aria-label="What is this?"
+                 >
+                   <HelpCircle className="h-5 w-5 mr-2" />
+                   What is this?
+                 </button>
+               </div>
                
                {/* Primary CTA - Always Personalization First */}
                <div className="mt-8 space-y-4">

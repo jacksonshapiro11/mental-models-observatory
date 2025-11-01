@@ -3,6 +3,7 @@
 import ReadwiseHighlights from '@/components/content/ReadwiseHighlights';
 import WhatsNextModal from '@/components/guide/WhatsNextModal';
 import { getAllModels } from '@/lib/data';
+import { ProgressTracker } from '@/lib/progress-tracker';
 import { DEFAULT_LEARNING_PATHS } from '@/lib/user-profile';
 import { LearningPath } from '@/types/user';
 import { ArrowLeft, ArrowRight, BookOpen, CheckCircle, Clock, Plus, Settings, Star, Target, X } from 'lucide-react';
@@ -23,6 +24,14 @@ export default function PathPage({ params }: PathPageProps) {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [customPath, setCustomPath] = useState<LearningPath | null>(null);
   const [showWhatsNext, setShowWhatsNext] = useState(false);
+  const [viewedModelSlugs, setViewedModelSlugs] = useState<string[]>([]);
+  
+  // Load viewed models on mount and when currentModelIndex changes
+  useEffect(() => {
+    const progress = ProgressTracker.getProgress();
+    const viewed = progress.modelsViewed.map(m => m.slug);
+    setViewedModelSlugs(viewed);
+  }, [currentModelIndex, path?.id]);
 
   useEffect(() => {
     const loadPath = async () => {
@@ -93,9 +102,10 @@ export default function PathPage({ params }: PathPageProps) {
   };
 
   const nextModel = () => {
-    // Auto-mark current model as complete when they hit next
     if (currentModel) {
       setCompletedModels(prev => new Set(prev).add(currentModel.slug));
+      ProgressTracker.trackModelView(currentModel.slug, 60, true);
+      ProgressTracker.trackPathProgress(path.id, currentModelIndex + 1, false);
     }
     
     if (currentModelIndex < pathModels.length - 1) {
@@ -104,14 +114,11 @@ export default function PathPage({ params }: PathPageProps) {
   };
   
   const finishPath = () => {
-    // Mark final model as complete
     if (currentModel) {
-      setCompletedModels(prev => {
-        const newSet = new Set(prev).add(currentModel.slug);
-        // Show What's Next modal after state update
-        setTimeout(() => setShowWhatsNext(true), 100);
-        return newSet;
-      });
+      setCompletedModels(prev => new Set(prev).add(currentModel.slug));
+      ProgressTracker.trackModelView(currentModel.slug, 60, true);
+      ProgressTracker.trackPathProgress(path.id, pathModels.length, true);
+      setTimeout(() => setShowWhatsNext(true), 100);
     }
   };
 
@@ -200,32 +207,58 @@ export default function PathPage({ params }: PathPageProps) {
               {/* Model Progress List */}
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold text-neutral-800 mb-3">Learning Path</h3>
-                {pathModels.filter((model): model is NonNullable<typeof model> => Boolean(model)).map((model, index) => (
+                {pathModels.filter((model): model is NonNullable<typeof model> => Boolean(model)).map((model, index) => {
+                  const isPreviouslyReviewed = viewedModelSlugs.includes(model.slug);
+                  
+                  // Debug first model
+                  if (index === 0) {
+                    console.log('DEBUG First Model:', {
+                      slug: model.slug,
+                      isPreviouslyReviewed,
+                      viewedSlugsCount: viewedModelSlugs.length,
+                      viewedSlugsFirst5: viewedModelSlugs.slice(0, 5)
+                    });
+                  }
+                  
+                  return (
                   <button
                     key={model.id}
                     onClick={() => setCurrentModelIndex(index)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all ${
+                    className={`w-full text-left p-3 rounded-lg border transition-all relative ${
                       index === currentModelIndex
                         ? 'border-foundational-300 bg-foundational-50'
+                        : isPreviouslyReviewed
+                        ? 'border-green-200 bg-green-50'
                         : 'border-neutral-200 hover:border-neutral-300'
                     }`}
                   >
+                    {/* Small reviewed indicator */}
+                    {isPreviouslyReviewed && index !== currentModelIndex && (
+                      <div className="absolute top-1 right-1 bg-green-500 text-white rounded-full p-0.5">
+                        <CheckCircle className="w-3 h-3" />
+                      </div>
+                    )}
+                    
                     <div className="flex items-center space-x-3">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
                         completedModels.has(model.slug)
                           ? 'bg-foundational-600 text-white'
+                          : isPreviouslyReviewed
+                          ? 'bg-green-500 text-white'
                           : index === currentModelIndex
                           ? 'bg-foundational-100 text-foundational-600'
                           : 'bg-neutral-100 text-neutral-400'
                       }`}>
                         {completedModels.has(model.slug) ? (
                           <CheckCircle className="w-4 h-4" />
+                        ) : isPreviouslyReviewed ? (
+                          <CheckCircle className="w-4 h-4" />
                         ) : (
                           <span className="text-xs font-medium">{index + 1}</span>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-neutral-800 truncate">
+                        <div className={`text-sm font-medium truncate ${isPreviouslyReviewed ? 'text-green-800' : 'text-neutral-800'}`}>
                           {model.name}
                         </div>
                         <div className="text-xs text-neutral-500">
@@ -234,7 +267,8 @@ export default function PathPage({ params }: PathPageProps) {
                       </div>
                     </div>
                   </button>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Path Customizer */}
@@ -316,7 +350,15 @@ export default function PathPage({ params }: PathPageProps) {
           {/* Main Content */}
           <div className="lg:col-span-2">
             {currentModel && (
-              <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-8">
+              <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-8 relative">
+                {/* REVIEWED Badge - Big and Prominent */}
+                {viewedModelSlugs.includes(currentModel.slug) && (
+                  <div className="absolute top-0 right-0 bg-green-500 text-white px-6 py-3 rounded-bl-xl rounded-tr-xl flex items-center gap-2 text-sm font-bold shadow-lg z-10">
+                    <CheckCircle className="h-5 w-5" />
+                    ✓ PREVIOUSLY REVIEWED
+                  </div>
+                )}
+                
                 <div className="flex items-start justify-between mb-6">
                   <div>
                     <div className="flex items-center space-x-2 mb-2">
@@ -330,7 +372,7 @@ export default function PathPage({ params }: PathPageProps) {
                         </span>
                       )}
                     </div>
-                    <h2 className="text-2xl font-bold text-neutral-800 mb-2">
+                    <h2 className={`text-2xl font-bold mb-2 ${viewedModelSlugs.includes(currentModel.slug) ? 'text-green-800' : 'text-neutral-800'}`}>
                       {currentModel.name}
                     </h2>
                     <p className="text-neutral-600">{currentModel.domain}</p>
