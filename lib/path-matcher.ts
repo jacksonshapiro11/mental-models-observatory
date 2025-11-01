@@ -70,8 +70,8 @@ export class PathMatcher {
     // 3. Match specific challenge (20 points)
     const challenge = profile.personalContext?.specificChallenge?.toLowerCase() || '';
     if (challenge) {
-      const challengeWords = challenge.split(' ').filter(w => w.length > 4);
-      challengeWords.forEach(word => {
+      const challengeWords = challenge.split(' ').filter((w: string) => w.length > 4);
+      challengeWords.forEach((word: string) => {
         if (pathTitle.includes(word) || path.description.toLowerCase().includes(word)) {
           score += 5;
         }
