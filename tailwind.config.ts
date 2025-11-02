@@ -6,6 +6,17 @@ const config: Config = {
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './lib/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  safelist: [
+    // Espresso-gold theme utilities
+    'text-[var(--espresso-h1)]',
+    'text-[var(--espresso-body)]',
+    'text-[var(--espresso-accent)]',
+    'bg-[var(--espresso-cta-bg)]',
+    'text-[var(--espresso-cta-text)]',
+    'border-[color:rgba(212,175,55,0.35)]',
+    'hover:bg-[#c49f2e]',
+    'hover:border-[color:rgba(212,175,55,0.5)]',
+  ],
   theme: {
     extend: {
       // DESIGN SYSTEM FOUNDATION

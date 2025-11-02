@@ -4,7 +4,7 @@ import Link from 'next/link';
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      {/* Header */}
+        {/* Header */}
       <div className="bg-gradient-to-r from-foundational-600 to-foundational-700 text-white py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3 mb-4">
@@ -27,7 +27,7 @@ export default function AboutPage() {
           <h2 className="text-3xl font-bold text-neutral-800 mb-4">What This Is</h2>
           <p className="text-lg text-neutral-600 leading-relaxed">
             A curated library of <strong>119 powerful mental models</strong> from the world's greatest thinkers—each one backed by <strong>curated insights from 1,000+ books</strong>. Think of it as your cognitive toolkit for better thinking, decision-making, and understanding reality.
-          </p>
+            </p>
         </section>
 
         {/* Why You Should Care */}
@@ -53,8 +53,8 @@ export default function AboutPage() {
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-lg bg-foundational-100 flex items-center justify-center flex-shrink-0 mt-1">
                   <Compass className="w-5 h-5 text-foundational-600" />
-                </div>
-                <div>
+              </div>
+              <div>
                   <h3 className="text-xl font-bold text-neutral-800 mb-2">1. 🎯 Start with Guided Paths (Recommended)</h3>
                   <p className="text-neutral-600 mb-3"><strong>Best for:</strong> First-time visitors or specific goals</p>
                   <ol className="list-decimal list-inside space-y-2 text-neutral-600 mb-4">
@@ -66,7 +66,7 @@ export default function AboutPage() {
                   <div className="bg-foundational-50 border border-foundational-200 rounded-lg p-3">
                     <p className="text-sm text-foundational-800">
                       <strong>Why this works:</strong> You learn models in sequence, each one building on the last.
-                    </p>
+                </p>
                   </div>
                 </div>
               </div>
@@ -77,8 +77,8 @@ export default function AboutPage() {
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0 mt-1">
                   <BookOpen className="w-5 h-5 text-neutral-600" />
-                </div>
-                <div>
+              </div>
+              <div>
                   <h3 className="text-xl font-bold text-neutral-800 mb-2">2. 📚 Browse by Domain</h3>
                   <p className="text-neutral-600 mb-3"><strong>Best for:</strong> Exploring a specific area</p>
                   <ol className="list-decimal list-inside space-y-2 text-neutral-600 mb-4">
@@ -89,7 +89,7 @@ export default function AboutPage() {
                   </ol>
                   <p className="text-sm text-neutral-600">
                     <strong>40 domains</strong> organized from foundational (Philosophy, Logic) to specialized (Neuroscience, Evolution).
-                  </p>
+                </p>
                 </div>
               </div>
             </div>
@@ -99,8 +99,8 @@ export default function AboutPage() {
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0 mt-1">
                   <Target className="w-5 h-5 text-neutral-600" />
-                </div>
-                <div>
+              </div>
+              <div>
                   <h3 className="text-xl font-bold text-neutral-800 mb-2">3. 🔍 Search for What You Need</h3>
                   <p className="text-neutral-600 mb-3"><strong>Best for:</strong> Specific problems or interests</p>
                   <ol className="list-decimal list-inside space-y-2 text-neutral-600">
@@ -158,8 +158,8 @@ export default function AboutPage() {
               <div>
                 <h3 className="font-semibold text-neutral-800 mb-1">Start Small</h3>
                 <p className="text-neutral-600">Focus on 1-2 models per week. Let them sink in through practice.</p>
-              </div>
-            </div>
+                  </div>
+                </div>
             <div className="flex items-start gap-3">
               <Lightbulb className="w-5 h-5 text-accent-600 flex-shrink-0 mt-1" />
               <div>
@@ -229,21 +229,21 @@ export default function AboutPage() {
         {/* CTA */}
         <section className="text-center py-8">
           <h2 className="text-3xl font-bold text-neutral-800 mb-4">Welcome to clearer thinking. Let's begin.</h2>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
               href="/"
-              className="btn btn-primary btn-lg group"
-            >
+                className="btn btn-primary btn-lg group"
+              >
               <Brain className="mr-2 h-5 w-5" />
               Start Your Journey
               <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </Link>
-            <Link
-              href="/models"
-              className="btn btn-outline btn-lg"
-            >
-              Browse All Models
-            </Link>
+              </Link>
+              <Link
+                href="/models"
+                className="btn btn-outline btn-lg"
+              >
+                Browse All Models
+              </Link>
           </div>
         </section>
       </div>

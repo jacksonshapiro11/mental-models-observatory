@@ -321,7 +321,7 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">{path.icon}</span>
-                      <h3 className="text-lg font-bold">{path.title}</h3>
+                    <h3 className="text-lg font-bold">{path.title}</h3>
                     </div>
                     <span className="text-xs font-medium px-2 py-1 bg-white/20 rounded-full">{path.level}</span>
                   </div>
@@ -446,29 +446,29 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                       <p className="text-white/90 text-sm">{path.description}</p>
                     </div>
 
-                    <div className="p-4 bg-foundational-50 border-b">
-                      <div className="flex items-start space-x-3">
-                        <div className="p-1 rounded bg-foundational-100">
-                          <Lightbulb className="h-4 w-4 text-foundational-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foundational-800 mb-1">Why this path?</p>
-                          <p className="text-sm text-foundational-700">{path.personalizedReason}</p>
-                        </div>
-                      </div>
+                <div className="p-4 bg-foundational-50 border-b">
+                  <div className="flex items-start space-x-3">
+                    <div className="p-1 rounded bg-foundational-100">
+                      <Lightbulb className="h-4 w-4 text-foundational-600" />
                     </div>
+                    <div>
+                      <p className="text-sm font-medium text-foundational-800 mb-1">Why this path?</p>
+                      <p className="text-sm text-foundational-700">{path.personalizedReason}</p>
+                    </div>
+                  </div>
+                </div>
 
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-2 text-sm text-neutral-500">
-                          <Clock className="h-4 w-4" />
-                          <span>{path.estimatedTotalTime}</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-sm text-neutral-500">
-                          <Brain className="h-4 w-4" />
-                          <span>{path.models.length} models</span>
-                        </div>
-                      </div>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-2 text-sm text-neutral-500">
+                      <Clock className="h-4 w-4" />
+                      <span>{path.estimatedTotalTime}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-neutral-500">
+                      <Brain className="h-4 w-4" />
+                      <span>{path.models.length} models</span>
+                    </div>
+                  </div>
 
                       <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
                         {path.models.slice(0, 5).map((pathModel, modelIndex) => {
@@ -477,14 +477,14 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                             <div key={modelIndex} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isViewed ? 'bg-green-50 border border-green-200' : 'bg-neutral-50 hover:bg-neutral-100'}`}>
                               <div className={`h-6 w-6 rounded-full flex items-center justify-center font-semibold text-xs flex-shrink-0 ${isViewed ? 'bg-green-500 text-white' : 'bg-foundational-100 text-foundational-600'}`}>
                                 {isViewed ? <CheckCircle className="h-4 w-4" /> : modelIndex + 1}
-                              </div>
+                        </div>
                               <div className="flex-1 min-w-0">
                                 <p className={`font-medium text-sm truncate ${isViewed ? 'text-green-800 line-through' : 'text-neutral-800'}`}>
                                   {pathModel.model.name}
                                   {isViewed && <span className="ml-2 text-xs text-green-600 font-bold no-underline">✓ DONE</span>}
                                 </p>
-                              </div>
-                            </div>
+                        </div>
+                      </div>
                           );
                         })}
                         {path.models.length > 5 && (
@@ -497,20 +497,20 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                           <div className="flex items-center justify-between text-sm mb-2">
                             <span className="text-neutral-600">Your Progress:</span>
                             <span className="font-medium text-green-600">{viewedCount}/{totalCount} models</span>
-                          </div>
+                  </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div 
                               className="bg-green-500 h-2 rounded-full transition-all duration-300"
                               style={{ width: `${progressPercent}%` }}
                             />
-                          </div>
-                        </div>
-                      )}
+                    </div>
+                      </div>
+                    )}
 
-                      <Link 
-                        href={`/guide/path/${path.id}`}
+                  <Link 
+                    href={`/guide/path/${path.id}`}
                         className={`w-full btn group flex items-center justify-center ${isCompleted ? 'btn-outline' : 'btn-primary'}`}
-                      >
+                  >
                         {isCompleted ? (
                           <>
                             <CheckCircle className="mr-2 h-4 w-4" />
@@ -519,14 +519,14 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                           </>
                         ) : (
                           <>
-                            <Play className="mr-2 h-4 w-4" />
+                    <Play className="mr-2 h-4 w-4" />
                             {viewedCount > 0 ? 'Continue Path' : 'Start This Path'}
-                            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                           </>
                         )}
-                      </Link>
-                    </div>
-                  </div>
+                  </Link>
+                </div>
+              </div>
                 );
               })}
             </div>

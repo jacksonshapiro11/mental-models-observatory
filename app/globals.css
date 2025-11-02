@@ -8,6 +8,15 @@
    ========================================================================== */
 
 @layer base {
+  /* ESPRESSO-GOLD PALETTE TOKENS */
+  :root {
+    --espresso-h1: #F5EDE3;
+    --espresso-body: #E5DACB;
+    --espresso-accent: #D4AF37;
+    --espresso-cta-bg: #D4AF37;
+    --espresso-cta-text: #1A1410;
+  }
+
   /* TYPOGRAPHY FOUNDATIONS */
   html {
     font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -371,5 +380,39 @@
 
   .cluster-lg {
     @apply flex flex-wrap gap-lg;
+  }
+
+  /* ESPRESSO-GOLD HERO BACKGROUND */
+  .bg-espresso-gold {
+    position: relative;
+    background: 
+      radial-gradient(1200px 600px at 20% -10%, #2a1a0f 0%, rgba(42,26,15,0) 45%),
+      linear-gradient(160deg, #0b0b0b 0%, #14110f 45%, #1c140f 85%);
+  }
+
+  .bg-espresso-gold::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+      repeating-linear-gradient(
+        0deg,
+        rgba(255, 255, 255, 0.03) 0px,
+        transparent 1px,
+        transparent 2px,
+        rgba(255, 255, 255, 0.03) 3px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 0px,
+        transparent 1px,
+        transparent 2px,
+        rgba(255, 255, 255, 0.03) 3px
+      );
+    opacity: 0.4;
+    pointer-events: none;
   }
 }
