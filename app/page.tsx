@@ -36,29 +36,42 @@ export default function HomePage() {
       {/* Quick Start Modal */}
       <QuickStartModal isOpen={showQuickStart} onClose={() => setShowQuickStart(false)} />
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-foundational-50 via-neutral-25 to-accent-50 py-8 sm:py-16">
-        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      {/* Hero Section - Espresso & Gold Theme */}
+      <section className="bg-espresso-gold min-h-[85vh] flex items-center justify-center py-8 sm:py-16">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-               <h1 className="mx-auto max-w-4xl text-5xl font-bold tracking-tight text-neutral-800 sm:text-6xl lg:text-7xl mb-6">
-                 Guided Learning{' '}
-                 <span className="gradient-text">Experience</span>
+               {/* Badge */}
+               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--espresso-accent)]/10 border border-[color:rgba(212,175,55,0.35)] mb-8">
+                 <div className="w-2 h-2 rounded-full bg-[var(--espresso-accent)]"></div>
+                 <span className="text-[var(--espresso-accent)] text-sm font-medium">Espresso & Gold</span>
+               </div>
+
+               <h1 className="mx-auto max-w-4xl text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl mb-6">
+                 <span className="text-[var(--espresso-h1)]">Guided Learning</span>{' '}
+                 <span className="text-[var(--espresso-accent)]">Experience</span>
                </h1>
-               <p className="mx-auto mt-6 max-w-2xl text-xl text-neutral-600 mb-8">
-                 The cost of information has approached zero, but the core truths of humanity and the world remain the same. Now more than ever, we need a focused and curated start to our learning journey as we risk getting lost in the dark forest of infinite self-reinforcing content. We have compiled the big ideas from the big disciplines backed up by 5000 pages of hand curated sources to help you start wide and go deep with the society altering ideas that will fill your life with meaning, purpose, and direction while giving you an edge in any pursuit.
+               <p className="mx-auto mt-6 max-w-2xl text-lg sm:text-xl text-[var(--espresso-body)] mb-8 leading-relaxed">
+                 Warm black → espresso brown with muted gold accents. Luxurious and editorial. We curated the big ideas across disciplines so you can start wide, go deep, and make deliberate progress without drowning in infinite content.
                </p>
 
-               {/* What is this button - centered and prominent */}
-               <div className="mb-6">
-                 <button
-                   onClick={() => setShowQuickStart(true)}
-                   className="btn btn-outline btn-lg group"
-                   aria-label="What is this?"
-                 >
-                   <HelpCircle className="h-5 w-5 mr-2" />
-                   What is this?
-                 </button>
+               {/* Color Legend */}
+               <div className="flex flex-wrap items-center justify-center gap-4 mb-8 text-sm">
+                 <div className="flex items-center gap-2">
+                   <div className="w-4 h-4 rounded-full bg-[var(--espresso-h1)]"></div>
+                   <span className="text-[var(--espresso-body)]">Heading <span className="text-[var(--espresso-accent)]">#F5EDE3</span></span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                   <div className="w-4 h-4 rounded-full bg-[var(--espresso-body)]"></div>
+                   <span className="text-[var(--espresso-body)]">Body <span className="text-[var(--espresso-accent)]">#E5DACB</span></span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                   <div className="w-4 h-4 rounded-full bg-[var(--espresso-accent)]"></div>
+                   <span className="text-[var(--espresso-body)]">Accent <span className="text-[var(--espresso-accent)]">#D4AF37</span></span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                   <div className="w-4 h-4 rounded-full bg-gradient-to-br from-[#0b0b0b] to-[#1c140f]"></div>
+                   <span className="text-[var(--espresso-body)]">Background <span className="text-[var(--espresso-accent)]">gradient</span></span>
+                 </div>
                </div>
                
                {/* Primary CTA - Always Personalization First */}
@@ -66,32 +79,43 @@ export default function HomePage() {
                  <div className="mb-6">
                    <button
                      onClick={() => setShowOnboarding(true)}
-                     className="btn btn-primary btn-xl group mb-3"
+                     className="inline-flex items-center gap-2 px-8 py-4 text-lg font-semibold rounded-large
+                              bg-[var(--espresso-cta-bg)] text-[var(--espresso-cta-text)]
+                              hover:bg-[#c49f2e] transition-all duration-300
+                              shadow-strong hover:shadow-emphasis hover:scale-105
+                              border border-[color:rgba(212,175,55,0.35)] hover:border-[color:rgba(212,175,55,0.5)]
+                              group mb-3"
                    >
-                     <Compass className="mr-2 h-6 w-6" />
+                     <Compass className="h-6 w-6" />
                      Get My Personalized Guide
-                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                     <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                    </button>
-                   <p className="text-sm text-neutral-500">Answer 5 questions • Get tailored learning paths • No signup required</p>
+                   <p className="text-sm text-[var(--espresso-body)]">Answer 5 questions • Get tailored learning paths • No signup required</p>
                  </div>
                  
                  {/* Secondary Options */}
                  <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
                    <Link
                      href="/knowledge-domains"
-                     className="btn btn-outline btn-lg"
+                     className="inline-flex items-center gap-2 px-6 py-3 text-base font-semibold rounded-large
+                              bg-transparent text-[var(--espresso-body)]
+                              hover:bg-white/10 transition-all duration-300
+                              border border-[color:rgba(212,175,55,0.35)] hover:border-[color:rgba(212,175,55,0.5)]"
                    >
                      Explore All Domains
                    </Link>
                    
-                   <span className="text-neutral-400 hidden sm:block">or</span>
+                   <span className="text-[var(--espresso-accent)]/50 hidden sm:block">or</span>
                    
-                   <Link
-                     href="/models"
-                     className="btn btn-ghost btn-lg"
+                   <button
+                     onClick={() => setShowQuickStart(true)}
+                     className="inline-flex items-center gap-2 px-6 py-3 text-base font-medium rounded-large
+                              text-[var(--espresso-body)] hover:text-[var(--espresso-h1)]
+                              hover:bg-white/5 transition-all duration-300"
                    >
-                     Browse All Models
-                   </Link>
+                     <HelpCircle className="h-5 w-5" />
+                     What is this?
+                   </button>
                  </div>
                </div>
           </div>
