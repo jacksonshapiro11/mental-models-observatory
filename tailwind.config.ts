@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
+  darkMode: 'class',
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -13,9 +14,19 @@ const config: Config = {
     'text-[var(--espresso-accent)]',
     'bg-[var(--espresso-cta-bg)]',
     'text-[var(--espresso-cta-text)]',
+    'bg-[var(--espresso-surface)]',
+    'bg-[var(--espresso-bg-dark)]',
+    'bg-[var(--espresso-bg-medium)]',
+    'bg-[var(--espresso-bg-light)]',
     'border-[color:rgba(212,175,55,0.35)]',
+    'border-[var(--espresso-accent)]/20',
+    'border-[var(--espresso-accent)]/30',
+    'border-[var(--espresso-accent)]/40',
     'hover:bg-[#c49f2e]',
     'hover:border-[color:rgba(212,175,55,0.5)]',
+    'hover:bg-[var(--espresso-surface)]/40',
+    'hover:bg-[var(--espresso-surface)]/80',
+    'hover:border-[var(--espresso-accent)]/40',
   ],
   theme: {
     extend: {

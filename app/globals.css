@@ -15,6 +15,10 @@
     --espresso-accent: #D4AF37;
     --espresso-cta-bg: #D4AF37;
     --espresso-cta-text: #1A1410;
+    --espresso-bg-dark: #0b0b0b;
+    --espresso-bg-medium: #14110f;
+    --espresso-bg-light: #1c140f;
+    --espresso-surface: #2a1a0f;
   }
 
   /* TYPOGRAPHY FOUNDATIONS */
@@ -30,6 +34,17 @@
 
   body {
     @apply bg-neutral-25 text-neutral-800 selection:bg-foundational-100 selection:text-foundational-900;
+    transition: background-color 300ms ease, color 300ms ease;
+  }
+
+  /* DARK MODE - ESPRESSO-GOLD THEME */
+  .dark body {
+    background: linear-gradient(160deg, var(--espresso-bg-dark) 0%, var(--espresso-bg-medium) 45%, var(--espresso-bg-light) 85%);
+    @apply text-[var(--espresso-body)] selection:bg-[var(--espresso-accent)]/30 selection:text-[var(--espresso-h1)];
+  }
+
+  .dark {
+    color-scheme: dark;
   }
 
   /* ACCESSIBILITY-FIRST FOCUS STATES */
@@ -73,22 +88,42 @@
     @apply shadow-gentle hover:shadow-medium;
   }
 
+  .dark .btn-primary {
+    @apply bg-[var(--espresso-accent)] text-[var(--espresso-cta-text)] hover:bg-[#c49f2e] focus-visible:ring-[var(--espresso-accent)];
+  }
+
   .btn-secondary {
     @apply bg-neutral-0 text-neutral-800 border border-neutral-300 hover:bg-neutral-50 focus-visible:ring-foundational-500;
     @apply shadow-subtle hover:shadow-gentle;
+  }
+
+  .dark .btn-secondary {
+    @apply bg-[var(--espresso-surface)]/60 text-[var(--espresso-body)] border-[var(--espresso-accent)]/30 hover:bg-[var(--espresso-surface)]/80 focus-visible:ring-[var(--espresso-accent)];
   }
 
   .btn-outline {
     @apply bg-transparent text-foundational-600 border border-foundational-600 hover:bg-foundational-50 focus-visible:ring-foundational-500;
   }
 
+  .dark .btn-outline {
+    @apply text-[var(--espresso-accent)] border-[var(--espresso-accent)] hover:bg-[var(--espresso-accent)]/10 focus-visible:ring-[var(--espresso-accent)];
+  }
+
   .btn-ghost {
     @apply bg-transparent text-neutral-700 hover:bg-neutral-100 focus-visible:ring-foundational-500;
+  }
+
+  .dark .btn-ghost {
+    @apply text-[var(--espresso-body)] hover:bg-[var(--espresso-surface)]/40 focus-visible:ring-[var(--espresso-accent)];
   }
 
   .btn-white {
     @apply bg-white text-foundational-600 hover:bg-neutral-50 focus-visible:ring-foundational-500;
     @apply shadow-gentle hover:shadow-medium;
+  }
+
+  .dark .btn-white {
+    @apply bg-[var(--espresso-accent)] text-[var(--espresso-cta-text)] hover:bg-[#c49f2e] focus-visible:ring-[var(--espresso-accent)];
   }
 
   .btn-sm {
@@ -109,8 +144,17 @@
     @apply hover:shadow-medium hover:border-neutral-300;
   }
 
+  .dark .card {
+    @apply bg-[var(--espresso-surface)]/40 border-[var(--espresso-accent)]/20 backdrop-blur-sm;
+    @apply hover:border-[var(--espresso-accent)]/40;
+  }
+
   .card-header {
     @apply p-lg border-b border-neutral-200;
+  }
+
+  .dark .card-header {
+    @apply border-[var(--espresso-accent)]/20;
   }
 
   .card-content {
@@ -121,12 +165,24 @@
     @apply p-lg border-t border-neutral-200 bg-neutral-50;
   }
 
+  .dark .card-footer {
+    @apply border-[var(--espresso-accent)]/20 bg-[var(--espresso-surface)]/20;
+  }
+
   .card-title {
     @apply text-h3 font-semibold text-neutral-900 mb-xs;
   }
 
+  .dark .card-title {
+    @apply text-[var(--espresso-h1)];
+  }
+
   .card-description {
     @apply text-body-small text-neutral-600;
+  }
+
+  .dark .card-description {
+    @apply text-[var(--espresso-body)];
   }
 
   /* TIER-BASED STYLING */

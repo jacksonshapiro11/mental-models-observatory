@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Link from 'next/link';
 import './globals.css';
+import { ThemeProvider } from '@/lib/theme-context';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -62,23 +64,28 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className={`${inter.className} h-full bg-neutral-25 text-neutral-800 antialiased`}>
-        <div className="flex min-h-full flex-col">
-          <header className="p-4 bg-blue-600 text-white flex justify-between items-center">
-            <h1>Guided Learning Experience</h1>
-            <Link 
-              href="/" 
-              className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors font-medium"
-            >
-              Home
-            </Link>
-          </header>
-          <main id="main-content" className="flex-1 p-4">
-            {children}
-          </main>
-          <footer className="p-4 bg-gray-800 text-white">
-            <p>© 2024 Guided Learning Experience</p>
-          </footer>
-        </div>
+        <ThemeProvider>
+          <div className="flex min-h-full flex-col">
+            <header className="p-4 bg-blue-600 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)] flex justify-between items-center transition-colors duration-300">
+              <h1>Guided Learning Experience</h1>
+              <div className="flex items-center gap-4">
+                <ThemeToggle />
+                <Link 
+                  href="/" 
+                  className="bg-white dark:bg-[var(--espresso-surface)] text-blue-600 dark:text-[var(--espresso-accent)] px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--espresso-surface)]/80 transition-colors font-medium"
+                >
+                  Home
+                </Link>
+              </div>
+            </header>
+            <main id="main-content" className="flex-1 p-4">
+              {children}
+            </main>
+            <footer className="p-4 bg-gray-800 dark:bg-[var(--espresso-bg-dark)] text-white dark:text-[var(--espresso-body)] transition-colors duration-300">
+              <p>© 2024 Guided Learning Experience</p>
+            </footer>
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );

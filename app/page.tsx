@@ -37,76 +37,61 @@ export default function HomePage() {
       <QuickStartModal isOpen={showQuickStart} onClose={() => setShowQuickStart(false)} />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-espresso-gold py-8 sm:py-16">
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden bg-gradient-to-br from-foundational-50 via-neutral-25 to-accent-50 dark:from-[var(--espresso-bg-dark)] dark:via-[var(--espresso-bg-medium)] dark:to-[var(--espresso-bg-light)] py-8 sm:py-16 transition-colors duration-300">
+        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-               {/* Espresso & Gold badge */}
-               <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--espresso-cta-bg)]/20 border border-[color:rgba(212,175,55,0.35)]">
-                 <div className="w-2 h-2 rounded-full bg-[var(--espresso-accent)]"></div>
-                 <span className="text-[var(--espresso-accent)] text-sm font-medium">Espresso & Gold</span>
-               </div>
-
-               <h1 className="mx-auto max-w-4xl text-5xl font-bold tracking-tight text-[var(--espresso-h1)] sm:text-6xl lg:text-7xl mb-6">
+               <h1 className="mx-auto max-w-4xl text-5xl font-bold tracking-tight text-neutral-800 dark:text-[var(--espresso-h1)] sm:text-6xl lg:text-7xl mb-6 transition-colors duration-300">
                  Guided Learning{' '}
-                 <span className="text-[var(--espresso-accent)]">Experience</span>
+                 <span className="gradient-text dark:text-[var(--espresso-accent)]">Experience</span>
                </h1>
-               <p className="mx-auto mt-6 max-w-2xl text-xl text-[var(--espresso-body)] mb-8">
+               <p className="mx-auto mt-6 max-w-2xl text-xl text-neutral-600 dark:text-[var(--espresso-body)] mb-8 transition-colors duration-300">
                  The cost of information has approached zero, but the core truths of humanity and the world remain the same. Now more than ever, we need a focused and curated start to our learning journey as we risk getting lost in the dark forest of infinite self-reinforcing content. We have compiled the big ideas from the big disciplines backed up by 5000 pages of hand curated sources to help you start wide and go deep with the society altering ideas that will fill your life with meaning, purpose, and direction while giving you an edge in any pursuit.
                </p>
 
+               {/* What is this button - centered and prominent */}
+               <div className="mb-6">
+                 <button
+                   onClick={() => setShowQuickStart(true)}
+                   className="btn btn-outline btn-lg group"
+                   aria-label="What is this?"
+                 >
+                   <HelpCircle className="h-5 w-5 mr-2" />
+                   What is this?
+                 </button>
+               </div>
+               
                {/* Primary CTA - Always Personalization First */}
                <div className="mt-8 space-y-4">
                  <div className="mb-6">
                    <button
                      onClick={() => setShowOnboarding(true)}
-                     className="inline-flex items-center gap-2 px-8 py-4 text-lg font-semibold rounded-xl
-                              bg-[var(--espresso-cta-bg)] text-[var(--espresso-cta-text)]
-                              hover:bg-[#c49f2e] transition-all duration-300
-                              shadow-strong hover:shadow-emphasis hover:scale-105
-                              border border-[color:rgba(212,175,55,0.35)] hover:border-[color:rgba(212,175,55,0.5)]
-                              group mb-3"
+                     className="btn btn-primary btn-xl group mb-3"
                    >
                      <Compass className="mr-2 h-6 w-6" />
-                     Get My Personalized Guide →
+                     Get My Personalized Guide
+                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                    </button>
-                   <p className="text-sm text-[var(--espresso-body)]/80">Answer 5 questions • Get tailored learning paths • No signup required</p>
+                   <p className="text-sm text-neutral-500 dark:text-[var(--espresso-body)]/70">Answer 5 questions • Get tailored learning paths • No signup required</p>
                  </div>
                  
                  {/* Secondary Options */}
                  <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
                    <Link
                      href="/knowledge-domains"
-                     className="inline-flex items-center gap-2 px-6 py-3 text-base font-semibold rounded-xl
-                              bg-transparent text-[var(--espresso-body)]
-                              hover:bg-white/10 transition-all duration-300
-                              border border-[color:rgba(212,175,55,0.35)] hover:border-[color:rgba(212,175,55,0.5)]"
+                     className="btn btn-outline btn-lg"
                    >
                      Explore All Domains
                    </Link>
-                 </div>
-               </div>
-
-               {/* Color indicators */}
-               <div className="mt-12 flex flex-wrap gap-4 justify-center items-center">
-                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/20 backdrop-blur-sm border border-[color:rgba(245,237,227,0.2)]">
-                   <div className="w-3 h-3 rounded-full bg-[var(--espresso-h1)]"></div>
-                   <span className="text-[var(--espresso-body)] text-sm">Heading</span>
-                   <span className="text-[var(--espresso-body)]/60 text-xs font-mono">#F5EDE3</span>
-                 </div>
-                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/20 backdrop-blur-sm border border-[color:rgba(229,218,203,0.2)]">
-                   <div className="w-3 h-3 rounded-full bg-[var(--espresso-body)]"></div>
-                   <span className="text-[var(--espresso-body)] text-sm">Body</span>
-                   <span className="text-[var(--espresso-body)]/60 text-xs font-mono">#E5DACB</span>
-                 </div>
-                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/20 backdrop-blur-sm border border-[color:rgba(212,175,55,0.35)]">
-                   <div className="w-3 h-3 rounded-full bg-[var(--espresso-accent)]"></div>
-                   <span className="text-[var(--espresso-accent)] text-sm">Accent</span>
-                   <span className="text-[var(--espresso-body)]/60 text-xs font-mono">#D4AF37</span>
-                 </div>
-                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/20 backdrop-blur-sm border border-[color:rgba(212,175,55,0.35)]">
-                   <div className="w-3 h-3 rounded-full" style={{ background: 'radial-gradient(1200px 600px at 20% -10%, #2a1a0f 0%, rgba(42,26,15,0) 45%), linear-gradient(160deg, #0b0b0b 0%, #14110f 45%, #1c140f 85%)' }}></div>
-                   <span className="text-[var(--espresso-body)] text-sm">Background</span>
-                   <span className="text-[var(--espresso-body)]/60 text-xs">gradient</span>
+                   
+                   <span className="text-neutral-400 hidden sm:block">or</span>
+                   
+                   <Link
+                     href="/models"
+                     className="btn btn-ghost btn-lg"
+                   >
+                     Browse All Models
+                   </Link>
                  </div>
                </div>
           </div>
@@ -114,36 +99,36 @@ export default function HomePage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-neutral-50">
+      <section className="py-16 bg-neutral-50 dark:bg-[var(--espresso-surface)]/20 transition-colors duration-300">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <div className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-foundational-100">
-                <Brain className="h-6 w-6 text-foundational-600" />
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-foundational-100 dark:bg-[var(--espresso-accent)]/20">
+                <Brain className="h-6 w-6 text-foundational-600 dark:text-[var(--espresso-accent)]" />
               </div>
-              <div className="text-3xl font-bold text-neutral-800">{allModels.length}</div>
-              <div className="text-sm text-neutral-600">Mental Models</div>
+              <div className="text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">{allModels.length}</div>
+              <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Mental Models</div>
             </div>
             <div className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-specialized-100">
-                <Target className="h-6 w-6 text-specialized-600" />
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-specialized-100 dark:bg-[var(--espresso-accent)]/20">
+                <Target className="h-6 w-6 text-specialized-600 dark:text-[var(--espresso-accent)]" />
               </div>
-              <div className="text-3xl font-bold text-neutral-800">{allDomains.length}</div>
-              <div className="text-sm text-neutral-600">Knowledge Domains</div>
+              <div className="text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">{allDomains.length}</div>
+              <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Knowledge Domains</div>
             </div>
             <div className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-practical-100">
-                <BookOpen className="h-6 w-6 text-practical-600" />
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-practical-100 dark:bg-[var(--espresso-accent)]/20">
+                <BookOpen className="h-6 w-6 text-practical-600 dark:text-[var(--espresso-accent)]" />
               </div>
-              <div className="text-3xl font-bold text-neutral-800">100+</div>
-              <div className="text-sm text-neutral-600">Source References</div>
+              <div className="text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">100+</div>
+              <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Source References</div>
             </div>
             <div className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-accent-100">
-                <Users className="h-6 w-6 text-accent-600" />
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-accent-100 dark:bg-[var(--espresso-accent)]/20">
+                <Users className="h-6 w-6 text-accent-600 dark:text-[var(--espresso-accent)]" />
               </div>
-              <div className="text-3xl font-bold text-neutral-800">Growing</div>
-              <div className="text-sm text-neutral-600">Community</div>
+              <div className="text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">Growing</div>
+              <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Community</div>
             </div>
           </div>
         </div>
