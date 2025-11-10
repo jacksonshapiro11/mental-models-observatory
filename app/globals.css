@@ -179,21 +179,35 @@
   }
 
   /* DARK MODE - READWISE HIGHLIGHTS STYLING */
-  .dark .bg-green-100,
-  .dark .bg-orange-100,
-  .dark .bg-purple-100,
-  .dark .bg-yellow-100,
-  .dark .bg-pink-100,
-  .dark .bg-gray-100 {
+  /* Exclude rounded badges (difficulty tags) from these overrides */
+  .dark .bg-green-100:not(.rounded-full):not(.rounded-medium),
+  .dark .bg-orange-100:not(.rounded-full):not(.rounded-medium),
+  .dark .bg-purple-100:not(.rounded-full):not(.rounded-medium),
+  .dark .bg-yellow-100:not(.rounded-full):not(.rounded-medium),
+  .dark .bg-pink-100:not(.rounded-full):not(.rounded-medium),
+  .dark .bg-gray-100:not(.rounded-full):not(.rounded-medium),
+  .dark .bg-success-100:not(.rounded-full):not(.rounded-medium),
+  .dark .bg-warning-100:not(.rounded-full):not(.rounded-medium),
+  .dark .bg-error-100:not(.rounded-full):not(.rounded-medium),
+  .dark .bg-practical-100:not(.rounded-full):not(.rounded-medium),
+  .dark .bg-specialized-100:not(.rounded-full):not(.rounded-medium),
+  .dark .bg-accent-100:not(.rounded-full):not(.rounded-medium) {
     background-color: transparent !important;
   }
 
-  .dark .text-green-800,
-  .dark .text-orange-800,
-  .dark .text-purple-800,
-  .dark .text-yellow-800,
-  .dark .text-pink-800,
-  .dark .text-gray-800 {
+  /* Override text colors, but exclude rounded badges (difficulty tags) */
+  .dark .text-green-800:not(.rounded-full):not(.rounded-medium),
+  .dark .text-orange-800:not(.rounded-full):not(.rounded-medium),
+  .dark .text-purple-800:not(.rounded-full):not(.rounded-medium),
+  .dark .text-yellow-800:not(.rounded-full):not(.rounded-medium),
+  .dark .text-pink-800:not(.rounded-full):not(.rounded-medium),
+  .dark .text-gray-800:not(.rounded-full):not(.rounded-medium),
+  .dark .text-success-800:not(.rounded-full):not(.rounded-medium),
+  .dark .text-warning-800:not(.rounded-full):not(.rounded-medium),
+  .dark .text-error-800:not(.rounded-full):not(.rounded-medium),
+  .dark .text-practical-800:not(.rounded-full):not(.rounded-medium),
+  .dark .text-specialized-800:not(.rounded-full):not(.rounded-medium),
+  .dark .text-accent-800:not(.rounded-full):not(.rounded-medium) {
     color: var(--espresso-accent) !important;
   }
 
@@ -241,11 +255,8 @@
     color: var(--espresso-h1) !important;
   }
 
-  /* Override ALL green backgrounds and borders */
-  .dark [class*="bg-green"] {
-    background-color: transparent !important;
-    background-image: none !important;
-  }
+  /* Note: Green backgrounds for non-badge elements are handled above */
+  /* Difficulty tags with rounded corners are handled in the section below */
 
   /* Override green gradients specifically */
   .dark [class*="from-green"],
@@ -275,12 +286,10 @@
     background-color: var(--espresso-accent) !important;
   }
 
-  .dark [class*="border-green"] {
+  /* Border and text overrides for non-badge elements */
+  .dark .border-green-200:not(.rounded-full):not(.rounded-medium),
+  .dark .border-green-300:not(.rounded-full):not(.rounded-medium) {
     border-color: rgba(212, 175, 55, 0.25) !important;
-  }
-
-  .dark [class*="text-green"] {
-    color: var(--espresso-body) !important;
   }
 
   /* Override red/orange colors (for "How to Apply This") */
@@ -289,14 +298,255 @@
     background-color: transparent !important;
   }
 
-  .dark .text-red-800,
-  .dark .text-orange-800 {
+  /* Override red/orange text, but allow dark mode classes to override */
+  .dark .text-red-800:not([class*="dark:text-"]),
+  .dark .text-orange-800:not([class*="dark:text-"]) {
     color: var(--espresso-body) !important;
   }
 
   .dark .border-red-200,
   .dark .border-orange-200 {
     border-color: rgba(212, 175, 55, 0.25) !important;
+  }
+
+  /* DIFFICULTY TAGS - Use data attribute for reliable targeting */
+  /* This ensures difficulty badges maintain their colors in dark mode */
+  
+  /* Beginner difficulty tags */
+  .dark [data-difficulty="beginner"] {
+    background-color: #3d4a2a !important;
+    color: #a8c97f !important;
+    border-color: #5a6a3f !important;
+    background-image: none !important;
+  }
+  
+  /* Intermediate difficulty tags */
+  .dark [data-difficulty="intermediate"] {
+    background-color: rgba(212, 175, 55, 0.2) !important;
+    color: var(--espresso-accent) !important;
+    border-color: rgba(212, 175, 55, 0.4) !important;
+    background-image: none !important;
+  }
+  
+  /* Advanced difficulty tags */
+  .dark [data-difficulty="advanced"] {
+    background-color: #5a2a2a !important;
+    color: #d4a3a3 !important;
+    border-color: #7a3a3a !important;
+    background-image: none !important;
+  }
+  
+  /* Also target rounded badges that have difficulty color classes */
+  /* This covers cases where data-difficulty isn't set but classes indicate difficulty */
+  .dark .rounded-full.bg-success-100,
+  .dark .rounded-medium.bg-success-100,
+  .dark .rounded-full.bg-green-100,
+  .dark .rounded-medium.bg-green-100,
+  .dark .rounded-full.bg-specialized-100,
+  .dark .rounded-medium.bg-specialized-100 {
+    background-color: #3d4a2a !important;
+    background-image: none !important;
+  }
+  
+  .dark .rounded-full.bg-warning-100,
+  .dark .rounded-medium.bg-warning-100,
+  .dark .rounded-full.bg-yellow-100,
+  .dark .rounded-medium.bg-yellow-100,
+  .dark .rounded-full.bg-accent-100,
+  .dark .rounded-medium.bg-accent-100 {
+    background-color: rgba(212, 175, 55, 0.2) !important;
+    background-image: none !important;
+  }
+  
+  .dark .rounded-full.bg-error-100,
+  .dark .rounded-medium.bg-error-100,
+  .dark .rounded-full.bg-red-100,
+  .dark .rounded-medium.bg-red-100,
+  .dark .rounded-full.bg-practical-100,
+  .dark .rounded-medium.bg-practical-100 {
+    background-color: #5a2a2a !important;
+    background-image: none !important;
+  }
+  
+  .dark .rounded-full.text-success-800,
+  .dark .rounded-medium.text-success-800,
+  .dark .rounded-full.text-green-800,
+  .dark .rounded-medium.text-green-800,
+  .dark .rounded-full.text-specialized-800,
+  .dark .rounded-medium.text-specialized-800 {
+    color: #a8c97f !important;
+  }
+  
+  .dark .rounded-full.text-warning-800,
+  .dark .rounded-medium.text-warning-800,
+  .dark .rounded-full.text-yellow-800,
+  .dark .rounded-medium.text-yellow-800,
+  .dark .rounded-full.text-accent-800,
+  .dark .rounded-medium.text-accent-800 {
+    color: var(--espresso-accent) !important;
+  }
+  
+  .dark .rounded-full.text-error-800,
+  .dark .rounded-medium.text-error-800,
+  .dark .rounded-full.text-red-800,
+  .dark .rounded-medium.text-red-800,
+  .dark .rounded-full.text-practical-800,
+  .dark .rounded-medium.text-practical-800 {
+    color: #d4a3a3 !important;
+  }
+  
+  .dark .rounded-full.border-success-200,
+  .dark .rounded-medium.border-success-200,
+  .dark .rounded-full.border-green-200,
+  .dark .rounded-medium.border-green-200 {
+    border-color: #5a6a3f !important;
+  }
+  
+  .dark .rounded-full.border-warning-200,
+  .dark .rounded-medium.border-warning-200,
+  .dark .rounded-full.border-yellow-200,
+  .dark .rounded-medium.border-yellow-200 {
+    border-color: rgba(212, 175, 55, 0.4) !important;
+  }
+  
+  .dark .rounded-full.border-error-200,
+  .dark .rounded-medium.border-error-200,
+  .dark .rounded-full.border-red-200,
+  .dark .rounded-medium.border-red-200 {
+    border-color: #7a3a3a !important;
+  }
+
+  /* READWISE HIGHLIGHT INSIGHT TYPE BADGES - Ensure good contrast */
+  /* Use data attribute for more reliable targeting */
+  
+  /* Orange badges (Practical/Application/Impact) - Better contrast for "Real World Impact" */
+  /* High specificity targeting with data attribute and class combinations */
+  .dark .insight-type-badge.rounded-full[data-insight-type*="impact"],
+  .dark .insight-type-badge.rounded-full[data-insight-type*="real world"],
+  .dark .insight-type-badge.rounded-full[data-insight-type*="practical"],
+  .dark .insight-type-badge.rounded-full[data-insight-type*="application"],
+  .dark .insight-type-badge.rounded-full.bg-orange-100,
+  .dark .insight-type-badge.rounded-full[class*="bg-orange"] {
+    background-color: rgba(234, 88, 12, 0.55) !important; /* Even stronger orange background */
+    border-color: rgba(234, 88, 12, 0.75) !important; /* Stronger border */
+  }
+  
+  .dark .insight-type-badge.rounded-full[data-insight-type*="impact"],
+  .dark .insight-type-badge.rounded-full[data-insight-type*="real world"],
+  .dark .insight-type-badge.rounded-full[data-insight-type*="practical"],
+  .dark .insight-type-badge.rounded-full[data-insight-type*="application"],
+  .dark .insight-type-badge.rounded-full.text-orange-800,
+  .dark .insight-type-badge.rounded-full.text-orange-200,
+  .dark .insight-type-badge.rounded-full[class*="text-orange"] {
+    color: #ffffff !important; /* Pure white text for maximum contrast and readability */
+    font-weight: 700 !important; /* Bolder font for better readability */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important; /* Subtle text shadow for depth */
+  }
+  
+  .dark .insight-type-badge.rounded-full[class*="border-orange"] {
+    border-color: rgba(234, 88, 12, 0.75) !important;
+  }
+
+  /* Blue badges (Foundational/Definition) */
+  .dark .rounded-full.bg-blue-100,
+  .dark .rounded-full.bg-blue-900\/30 {
+    background-color: rgba(30, 64, 175, 0.35) !important;
+    border-color: rgba(96, 165, 250, 0.4) !important;
+  }
+
+  .dark .rounded-full.text-blue-800,
+  .dark .rounded-full.text-blue-300 {
+    color: #bfdbfe !important;
+    font-weight: 600 !important;
+  }
+
+  /* Green badges (Mechanism/Process) */
+  .dark .rounded-full.bg-green-100,
+  .dark .rounded-full.bg-green-900\/30 {
+    background-color: rgba(20, 83, 45, 0.35) !important;
+    border-color: rgba(74, 222, 128, 0.4) !important;
+  }
+
+  .dark .rounded-full.text-green-800,
+  .dark .rounded-full.text-green-300 {
+    color: #bbf7d0 !important;
+    font-weight: 600 !important;
+  }
+
+  /* Purple badges (Philosophical) */
+  .dark .rounded-full.bg-purple-100,
+  .dark .rounded-full.bg-purple-900\/30 {
+    background-color: rgba(88, 28, 135, 0.35) !important;
+    border-color: rgba(192, 132, 252, 0.4) !important;
+  }
+
+  .dark .rounded-full.text-purple-800,
+  .dark .rounded-full.text-purple-300 {
+    color: #e9d5ff !important;
+    font-weight: 600 !important;
+  }
+
+  /* Yellow badges (Empirical/Evidence) */
+  .dark .rounded-full.bg-yellow-100,
+  .dark .rounded-full.bg-yellow-900\/30 {
+    background-color: rgba(113, 63, 18, 0.35) !important;
+    border-color: rgba(253, 224, 71, 0.4) !important;
+  }
+
+  .dark .rounded-full.text-yellow-800,
+  .dark .rounded-full.text-yellow-300 {
+    color: #fef08a !important;
+    font-weight: 600 !important;
+  }
+
+  /* Pink badges (Design/Principles) */
+  .dark .rounded-full.bg-pink-100,
+  .dark .rounded-full.bg-pink-900\/30 {
+    background-color: rgba(131, 24, 67, 0.35) !important;
+    border-color: rgba(251, 113, 133, 0.4) !important;
+  }
+
+  .dark .rounded-full.text-pink-800,
+  .dark .rounded-full.text-pink-300 {
+    color: #fce7f3 !important;
+    font-weight: 600 !important;
+  }
+
+  /* Red badges (Warning/Counterpoint) */
+  .dark .rounded-full.bg-red-100,
+  .dark .rounded-full.bg-red-900\/30 {
+    background-color: rgba(127, 29, 29, 0.35) !important;
+    border-color: rgba(248, 113, 113, 0.4) !important;
+  }
+
+  .dark .rounded-full.text-red-800,
+  .dark .rounded-full.text-red-300 {
+    color: #fecaca !important;
+    font-weight: 600 !important;
+  }
+
+  /* Teal badges (Historical/Perspective) */
+  .dark .rounded-full.bg-teal-100,
+  .dark .rounded-full.bg-teal-900\/30 {
+    background-color: rgba(19, 78, 74, 0.35) !important;
+    border-color: rgba(94, 234, 212, 0.4) !important;
+  }
+
+  .dark .rounded-full.text-teal-800,
+  .dark .rounded-full.text-teal-300 {
+    color: #ccfbf1 !important;
+    font-weight: 600 !important;
+  }
+
+  /* Gray badges (Default) - Improved contrast */
+  .dark .rounded-full.bg-gray-100 {
+    background-color: rgba(90, 58, 34, 0.5) !important; /* Use espresso surface color */
+    border-color: rgba(212, 175, 55, 0.3) !important;
+  }
+
+  .dark .rounded-full.text-gray-800 {
+    color: var(--espresso-body) !important;
+    font-weight: 600 !important;
   }
 
   /* ACCESSIBILITY-FIRST FOCUS STATES */

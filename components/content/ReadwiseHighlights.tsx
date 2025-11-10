@@ -105,22 +105,120 @@ export default function ReadwiseHighlights({ modelSlug }: ReadwiseHighlightsProp
     }
   };
 
+  // Format insight type for display: normalize underscores/spaces and capitalize words
+  const formatInsightType = (type: string): string => {
+    if (!type) return 'Insight';
+    
+    // Normalize: replace underscores and multiple spaces with single space
+    const normalized = type
+      .replace(/_/g, ' ')  // Replace all underscores with spaces
+      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .trim();
+    
+    // Capitalize each word
+    return normalized
+      .split(' ')
+      .map(word => {
+        // Handle special cases like "vs", "AI", etc.
+        if (word.toLowerCase() === 'vs' || word.toLowerCase() === 'vs.') return word.toLowerCase();
+        if (word.toUpperCase() === word && word.length <= 3) return word; // Preserve acronyms like "AI"
+        
+        // Capitalize first letter, lowercase the rest
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(' ');
+  };
+
+  // Get color based on insight type, using pattern matching for better coverage
   const getInsightTypeColor = (type: string) => {
-    switch (type) {
-      case 'foundational_concept': return 'bg-blue-100 text-blue-800';
-      case 'mechanism_insight': return 'bg-green-100 text-green-800';
-      case 'practical_application': return 'bg-orange-100 text-orange-800';
-      case 'philosophical_insight': return 'bg-purple-100 text-purple-800';
-      case 'empirical_evidence': return 'bg-yellow-100 text-yellow-800';
-      case 'design_principles': return 'bg-pink-100 text-pink-800';
-      default: return 'bg-gray-100 text-gray-800';
+    if (!type) return 'bg-gray-100 text-gray-800 dark:bg-[var(--espresso-surface)]/40 dark:text-[var(--espresso-body)]';
+    
+    const normalizedType = type.toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ');
+    
+    // Foundational/Definition/Core concepts - Blue
+    if (normalizedType.includes('foundational') || 
+        normalizedType.includes('definition') || 
+        normalizedType.includes('core') ||
+        normalizedType === 'insight' ||
+        normalizedType.includes('epistemological')) {
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
     }
+    
+    // Mechanism/Process/How it works - Green
+    if (normalizedType.includes('mechanism') || 
+        normalizedType.includes('process') ||
+        normalizedType.includes('how') ||
+        normalizedType.includes('method') ||
+        normalizedType.includes('framework') ||
+        normalizedType.includes('system')) {
+      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+    }
+    
+    // Practical/Application/Implementation/Impact - Orange
+    if (normalizedType.includes('practical') || 
+        normalizedType.includes('application') ||
+        normalizedType.includes('implementation') ||
+        normalizedType.includes('practice') ||
+        normalizedType.includes('example') ||
+        normalizedType.includes('case study') ||
+        normalizedType.includes('use case') ||
+        normalizedType.includes('impact') ||
+        normalizedType.includes('real world')) {
+      return 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200 dark:border-orange-700/30';
+    }
+    
+    // Philosophical/Philosophy/Wisdom - Purple
+    if (normalizedType.includes('philosophical') || 
+        normalizedType.includes('philosophy') ||
+        normalizedType.includes('wisdom') ||
+        normalizedType.includes('transcendence') ||
+        normalizedType.includes('existential') ||
+        normalizedType.includes('meaning')) {
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
+    }
+    
+    // Empirical/Evidence/Data - Yellow
+    if (normalizedType.includes('empirical') || 
+        normalizedType.includes('evidence') ||
+        normalizedType.includes('data') ||
+        normalizedType.includes('research') ||
+        normalizedType.includes('scientific') ||
+        normalizedType.includes('study')) {
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+    }
+    
+    // Design/Principles/Patterns - Pink
+    if (normalizedType.includes('design') || 
+        normalizedType.includes('principle') ||
+        normalizedType.includes('pattern') ||
+        normalizedType.includes('rule')) {
+      return 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300';
+    }
+    
+    // Warning/Counterpoint/Caution - Red
+    if (normalizedType.includes('warning') || 
+        normalizedType.includes('counterpoint') ||
+        normalizedType.includes('caution') ||
+        normalizedType.includes('risk')) {
+      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+    }
+    
+    // Historical/Perspective/Context - Teal
+    if (normalizedType.includes('historical') || 
+        normalizedType.includes('perspective') ||
+        normalizedType.includes('context') ||
+        normalizedType.includes('development')) {
+      return 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300';
+    }
+    
+    // Default - Gray (improved contrast for readability)
+    return 'bg-gray-100 text-gray-800 dark:bg-[var(--espresso-surface)]/60 dark:text-[var(--espresso-body)] dark:border-[var(--espresso-accent)]/20';
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 9.0) return 'text-green-600';
-    if (score >= 8.0) return 'text-yellow-600';
-    return 'text-gray-600';
+    if (score >= 9.0) return 'text-green-600 dark:text-green-400';
+    if (score >= 8.0) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-gray-600 dark:text-gray-400';
   };
 
   if (loading) {
@@ -168,7 +266,7 @@ export default function ReadwiseHighlights({ modelSlug }: ReadwiseHighlightsProp
             >
               {/* Viewed Badge */}
               {isViewed && (
-                <div className="flex items-center gap-2 mb-3 text-green-700 font-medium text-sm">
+                <div className="flex items-center gap-2 mb-3 text-green-700 dark:text-green-400 font-medium text-sm">
                   <CheckCircle className="h-5 w-5" />
                   <span>✓ You've read this highlight</span>
                 </div>
@@ -177,46 +275,49 @@ export default function ReadwiseHighlights({ modelSlug }: ReadwiseHighlightsProp
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getInsightTypeColor(curated.insightType)}`}>
-                      {curated.insightType.replace('_', ' ')}
+                    <span 
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border insight-type-badge ${getInsightTypeColor(curated.insightType)}`}
+                      data-insight-type={curated.insightType.toLowerCase()}
+                    >
+                      {formatInsightType(curated.insightType)}
                     </span>
-                    <div className="flex items-center space-x-1 text-xs text-neutral-500">
+                    <div className="flex items-center space-x-1 text-xs text-neutral-500 dark:text-[var(--espresso-body)]/70">
                       <Star className="w-3 h-3" />
                       <span className={getScoreColor(curated.relevanceScore)}>
                         {curated.relevanceScore}/10
                       </span>
                     </div>
-                    <div className="flex items-center space-x-1 text-xs text-neutral-500">
+                    <div className="flex items-center space-x-1 text-xs text-neutral-500 dark:text-[var(--espresso-body)]/70">
                       <span className={getScoreColor(curated.qualityScore)}>
                         Quality: {curated.qualityScore}/10
                       </span>
                     </div>
                   </div>
                   
-                  <div className="text-sm text-neutral-600 mb-2">
+                  <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)] mb-2">
                     <strong>Why this matters:</strong> {curated.curatorReason}
                   </div>
                 </div>
               </div>
 
               {actualHighlight && (
-                <div className="border-l-2 border-specialized-300 pl-4 mb-3">
+                <div className="border-l-2 border-specialized-300 dark:border-[var(--espresso-accent)]/30 pl-4 mb-3">
                   <div className="flex items-start space-x-2">
-                    <Quote className="w-4 h-4 text-specialized-500 mt-1 flex-shrink-0" />
-                    <blockquote className="text-sm text-neutral-700 italic">
+                    <Quote className="w-4 h-4 text-specialized-500 dark:text-[var(--espresso-accent)] mt-1 flex-shrink-0" />
+                    <blockquote className="text-sm text-neutral-700 dark:text-[var(--espresso-body)] italic">
                       "{actualHighlight.text}"
                     </blockquote>
                   </div>
                   
                   {actualHighlight.note && (
-                    <div className="mt-2 text-xs text-neutral-600">
+                    <div className="mt-2 text-xs text-neutral-600 dark:text-[var(--espresso-body)]/80">
                       <strong>Note:</strong> {actualHighlight.note}
                     </div>
                   )}
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-xs text-neutral-500">
+              <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-[var(--espresso-body)]/70">
                 <div className="flex items-center space-x-2">
                   <span className="font-medium">{curated.book.title}</span>
                   <span>by {curated.book.author}</span>
@@ -226,7 +327,7 @@ export default function ReadwiseHighlights({ modelSlug }: ReadwiseHighlightsProp
                     href={actualHighlight.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center space-x-1 text-specialized-600 hover:text-specialized-800"
+                    className="flex items-center space-x-1 text-specialized-600 dark:text-[var(--espresso-accent)] hover:text-specialized-800 dark:hover:text-[var(--espresso-accent)]/80"
                   >
                     <ExternalLink className="w-3 h-3" />
                     <span>View in Readwise</span>

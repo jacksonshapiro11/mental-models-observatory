@@ -47,14 +47,15 @@ const Badge = forwardRef<HTMLDivElement, BadgeProps>(
     };
 
     const difficultyClasses = {
-      'beginner': 'bg-success-100 text-success-800 border-success-200',
-      'intermediate': 'bg-warning-100 text-warning-800 border-warning-200',
-      'advanced': 'bg-error-100 text-error-800 border-error-200'
+      'beginner': 'bg-success-100 text-success-800 border-success-200 dark:bg-[#3d4a2a] dark:text-[#a8c97f] dark:border-[#5a6a3f]',
+      'intermediate': 'bg-warning-100 text-warning-800 border-warning-200 dark:bg-[var(--espresso-accent)]/20 dark:text-[var(--espresso-accent)] dark:border-[var(--espresso-accent)]/40',
+      'advanced': 'bg-error-100 text-error-800 border-error-200 dark:bg-[#5a2a2a] dark:text-[#d4a3a3] dark:border-[#7a3a3a]'
     };
 
     return (
       <div
         ref={ref}
+        data-difficulty={difficulty || undefined}
         className={cn(
           'inline-flex items-center font-medium border rounded-medium',
           sizeClasses[size],

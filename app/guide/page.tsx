@@ -22,10 +22,10 @@ export default function GuidePage() {
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'beginner': return 'bg-specialized-100 text-specialized-800';
-      case 'intermediate': return 'bg-accent-100 text-accent-800';
-      case 'advanced': return 'bg-practical-100 text-practical-800';
-      default: return 'bg-neutral-100 text-neutral-800';
+      case 'beginner': return 'bg-specialized-100 text-specialized-800 dark:bg-[#3d4a2a] dark:text-[#a8c97f]';
+      case 'intermediate': return 'bg-accent-100 text-accent-800 dark:bg-[var(--espresso-accent)]/20 dark:text-[var(--espresso-accent)]';
+      case 'advanced': return 'bg-practical-100 text-practical-800 dark:bg-[#5a2a2a] dark:text-[#d4a3a3]';
+      default: return 'bg-neutral-100 text-neutral-800 dark:bg-[var(--espresso-surface)]/40 dark:text-[var(--espresso-body)]';
     }
   };
 
@@ -125,7 +125,10 @@ export default function GuidePage() {
                       <h3 className="text-lg font-semibold text-neutral-800 dark:text-[var(--espresso-h1)] group-hover:text-foundational-600 dark:group-hover:text-[var(--espresso-accent)] transition-colors">
                         {path.title}
                       </h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(path.difficulty)} dark:bg-[var(--espresso-accent)]/20 dark:text-[var(--espresso-accent)]`}>
+                      <span 
+                        data-difficulty={path.difficulty}
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(path.difficulty)}`}
+                      >
                         {path.difficulty}
                       </span>
                     </div>

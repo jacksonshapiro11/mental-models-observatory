@@ -65,10 +65,10 @@ export default function PathBuilder({ onPathCreated, onClose }: PathBuilderProps
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'beginner': return 'bg-specialized-100 text-specialized-800';
-      case 'intermediate': return 'bg-accent-100 text-accent-800';
-      case 'advanced': return 'bg-practical-100 text-practical-800';
-      default: return 'bg-neutral-100 text-neutral-800';
+      case 'beginner': return 'bg-specialized-100 text-specialized-800 dark:bg-[#3d4a2a] dark:text-[#a8c97f]';
+      case 'intermediate': return 'bg-accent-100 text-accent-800 dark:bg-[var(--espresso-accent)]/20 dark:text-[var(--espresso-accent)]';
+      case 'advanced': return 'bg-practical-100 text-practical-800 dark:bg-[#5a2a2a] dark:text-[#d4a3a3]';
+      default: return 'bg-neutral-100 text-neutral-800 dark:bg-[var(--espresso-surface)]/40 dark:text-[var(--espresso-body)]';
     }
   };
 

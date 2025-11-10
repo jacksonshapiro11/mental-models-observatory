@@ -184,7 +184,10 @@ export default function PathPage({ params }: PathPageProps) {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-neutral-800">{path.title}</h1>
-                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(path.difficulty)}`}>
+                  <span 
+                    data-difficulty={path.difficulty}
+                    className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(path.difficulty)}`}
+                  >
                     {path.difficulty}
                   </span>
                 </div>
@@ -386,7 +389,10 @@ export default function PathPage({ params }: PathPageProps) {
                   </div>
                   
                   <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(currentModel.difficulty)}`}>
+                    <span 
+                      data-difficulty={currentModel.difficulty}
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(currentModel.difficulty)}`}
+                    >
                       {currentModel.difficulty}
                     </span>
                   </div>

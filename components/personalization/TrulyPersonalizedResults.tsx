@@ -331,7 +331,12 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                       <span className="text-2xl">{path.icon}</span>
                     <h3 className="text-lg font-bold">{path.title}</h3>
                     </div>
-                    <span className="text-xs font-medium px-2 py-1 bg-white/20 rounded-full">{path.level}</span>
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full backdrop-blur-sm ${
+                      path.level === 'beginner' ? 'bg-green-500/30 text-white' : 
+                      path.level === 'intermediate' ? 'bg-[var(--espresso-accent)]/40 text-white' : 
+                      path.level === 'advanced' ? 'bg-red-500/30 text-white' : 
+                      'bg-white/20 text-white'
+                    }`}>{path.level}</span>
                   </div>
                   <p className="text-white/90 text-sm">{path.description}</p>
                 </div>
@@ -449,7 +454,9 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                     <div className={`p-6 ${getPathColor(path.pathType)} text-white`}>
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-lg font-bold">{path.title}</h3>
-                        <span className="text-xs font-medium px-2 py-1 bg-white/20 rounded-full">{path.difficulty}</span>
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full backdrop-blur-sm ${path.difficulty === 'gentle' ? 'bg-green-500/30 text-white' : path.difficulty === 'moderate' ? 'bg-[var(--espresso-accent)]/40 text-white' : path.difficulty === 'challenging' ? 'bg-red-500/30 text-white' : 'bg-white/20 text-white'}`}>
+                          {path.difficulty}
+                        </span>
                       </div>
                       <p className="text-white/90 text-sm">{path.description}</p>
                     </div>
@@ -634,12 +641,12 @@ function getPathTypeLabel(pathType: string): string {
 function getDifficultyColor(difficulty: string): string {
   switch (difficulty) {
     case 'gentle':
-      return 'bg-green-100 text-green-800';
+      return 'bg-green-100 text-green-800 dark:bg-[#3d4a2a] dark:text-[#a8c97f]';
     case 'moderate':
-      return 'bg-yellow-100 text-yellow-800';
+      return 'bg-yellow-100 text-yellow-800 dark:bg-[var(--espresso-accent)]/20 dark:text-[var(--espresso-accent)]';
     case 'challenging':
-      return 'bg-red-100 text-red-800';
+      return 'bg-red-100 text-red-800 dark:bg-[#5a2a2a] dark:text-[#d4a3a3]';
     default:
-      return 'bg-neutral-100 text-neutral-800';
+      return 'bg-neutral-100 text-neutral-800 dark:bg-[var(--espresso-surface)]/40 dark:text-[var(--espresso-body)]';
   }
 }

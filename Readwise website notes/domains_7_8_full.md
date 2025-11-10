@@ -107,9 +107,80 @@
       "relevanceScore": 9.5,
       "qualityScore": 9.2,
       "insightType": "foundational_principle",
-      "curatorReason": "Popper’s articulation of fallibilism as the foundation of progress."
+      "curatorReason": "Perfect articulation of fallibilism's core principles and Popper's critical rationalism"
+    },
+    {
+      "readwiseId": 525344160,
+      "book": {"title": "Conjectures and Refutations", "author": "Karl Popper"},
+      "relevanceScore": 9.3,
+      "qualityScore": 8.9,
+      "insightType": "philosophical_framework",
+      "curatorReason": "Demonstrates the connection between fallibilism and human freedom, rejecting authority-based knowledge"
+    },
+    {
+      "readwiseId": 515352542,
+      "book": {"title": "The Beginning of Infinity", "author": "David Deutsch"},
+      "relevanceScore": 9.4,
+      "qualityScore": 8.8,
+      "insightType": "definition",
+      "curatorReason": "Clear definition of fallibilism vs justificationism with practical implications"
+    },
+    {
+      "readwiseId": 511085889,
+      "book": {"title": "The Beginning of Infinity", "author": "David Deutsch"},
+      "relevanceScore": 9.2,
+      "qualityScore": 8.7,
+      "insightType": "key_insight",
+      "curatorReason": "Connects fallibilism directly to unlimited knowledge growth and progress"
+    },
+    {
+      "readwiseId": 806741301,
+      "book": {"title": "The Frontiers of Knowledge", "author": "A. C. Grayling"},
+      "relevanceScore": 9.1,
+      "qualityScore": 8.6,
+      "insightType": "epistemological_foundation",
+      "curatorReason": "Demonstrates the fundamental uncertainty of all knowledge while maintaining its value"
+    },
+    {
+      "readwiseId": 525338834,
+      "book": {"title": "Conjectures and Refutations", "author": "Karl Popper"},
+      "relevanceScore": 9.0,
+      "qualityScore": 8.9,
+      "insightType": "methodology",
+      "curatorReason": "Shows how criticism drives progress and the counterintuitive nature of knowledge growth"
+    },
+    {
+      "readwiseId": 735079811,
+      "book": {"title": "The History of Philosophy", "author": "A. C. Grayling"},
+      "relevanceScore": 8.8,
+      "qualityScore": 8.5,
+      "insightType": "philosophical_position",
+      "curatorReason": "Shows skepticism's relationship to fallibilism and probabilistic thinking"
+    },
+    {
+      "readwiseId": 521154693,
+      "book": {"title": "The Idea Factory", "author": "John Gertner"},
+      "relevanceScore": 8.9,
+      "qualityScore": 8.8,
+      "insightType": "foundational_principle",
+      "curatorReason": "Captures the essence of fallibilist approach to scientific inquiry"
+    },
+    {
+      "readwiseId": 806741246,
+      "book": {"title": "The Frontiers of Knowledge", "author": "A. C. Grayling"},
+      "relevanceScore": 8.7,
+      "qualityScore": 8.4,
+      "insightType": "methodological_insight",
+      "curatorReason": "Explains how falsification works as correction rather than destruction"
+    },
+    {
+      "readwiseId": 691604263,
+      "book": {"title": "A History of Western Philosophy", "author": "Bertrand Russell"},
+      "relevanceScore": 8.6,
+      "qualityScore": 8.3,
+      "insightType": "historical_development",
+      "curatorReason": "Shows historical development of holding beliefs lightly and emphasis on reason"
     }
-    // ...9 more highlights here...
   ]
 }
 ```
@@ -122,14 +193,85 @@
   "modelDescription": "Distinguishing between explanatory theories and mere predictive claims.",
   "curatedHighlights": [
     {
-      "readwiseId": 630200,
+      "readwiseId": 518576640,
       "book": {"title": "The Fabric of Reality", "author": "David Deutsch"},
-      "relevanceScore": 9.6,
+      "relevanceScore": 9.5,
       "qualityScore": 9.3,
-      "insightType": "foundational_concept",
-      "curatorReason": "Good theories explain mechanisms; prophecies only predict without understanding."
+      "insightType": "foundational_insight",
+      "curatorReason": "Perfectly demonstrates why explanations must come before predictions and why inductivism fails"
+    },
+    {
+      "readwiseId": 511085891,
+      "book": {"title": "The Beginning of Infinity", "author": "David Deutsch"},
+      "relevanceScore": 9.4,
+      "qualityScore": 9.1,
+      "insightType": "foundational_principle",
+      "curatorReason": "Establishes good explanations as the central principle of rational inquiry"
+    },
+    {
+      "readwiseId": 511085893,
+      "book": {"title": "The Beginning of Infinity", "author": "David Deutsch"},
+      "relevanceScore": 9.3,
+      "qualityScore": 8.9,
+      "insightType": "methodological_principle",
+      "curatorReason": "Directly challenges prediction-focused view of science in favor of explanation"
+    },
+    {
+      "readwiseId": 518576645,
+      "book": {"title": "The Fabric of Reality", "author": "David Deutsch"},
+      "relevanceScore": 9.2,
+      "qualityScore": 8.8,
+      "insightType": "contrast_explanation",
+      "curatorReason": "Clearly contrasts inductivism with explanation-centered approach to science"
+    },
+    {
+      "readwiseId": 515351982,
+      "book": {"title": "The Beginning of Infinity", "author": "David Deutsch"},
+      "relevanceScore": 9.1,
+      "qualityScore": 8.7,
+      "insightType": "distinction",
+      "curatorReason": "Clearly distinguishes prediction from prophecy and shows limitations of prediction"
+    },
+    {
+      "readwiseId": 511968230,
+      "book": {"title": "Complexity", "author": "M. Mitchell Waldrop"},
+      "relevanceScore": 9.0,
+      "qualityScore": 8.9,
+      "insightType": "core_principle",
+      "curatorReason": "Directly states that essence of science is good explanations, not prediction"
+    },
+    {
+      "readwiseId": 518576756,
+      "book": {"title": "The Fabric of Reality", "author": "David Deutsch"},
+      "relevanceScore": 8.9,
+      "qualityScore": 8.6,
+      "insightType": "understanding_vs_prediction",
+      "curatorReason": "Shows the difference between understanding through explanation vs mere predictive formulas"
+    },
+    {
+      "readwiseId": 515352222,
+      "book": {"title": "The Beginning of Infinity", "author": "David Deutsch"},
+      "relevanceScore": 8.8,
+      "qualityScore": 8.5,
+      "insightType": "creativity_of_explanations",
+      "curatorReason": "Shows how explanations are creative acts that enable new possibilities"
+    },
+    {
+      "readwiseId": 525343286,
+      "book": {"title": "Conjectures and Refutations", "author": "Karl Popper"},
+      "relevanceScore": 8.7,
+      "qualityScore": 8.4,
+      "insightType": "theory_evaluation",
+      "curatorReason": "Shows criteria for good explanatory theories - specificity and hard to vary"
+    },
+    {
+      "readwiseId": 511349714,
+      "book": {"title": "The Fabric of Reality", "author": "David Deutsch"},
+      "relevanceScore": 8.6,
+      "qualityScore": 8.3,
+      "insightType": "understanding_principle",
+      "curatorReason": "Clearly states that understanding comes through explanation, not memorization or prediction"
     }
-    // ...9 more highlights here...
   ]
 }
 ```

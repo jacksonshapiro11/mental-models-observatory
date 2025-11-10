@@ -75,13 +75,13 @@ const getTierColors = (tier?: number) => {
 const getDifficultyColor = (difficulty?: string) => {
   switch (difficulty) {
     case 'beginner':
-      return 'bg-green-100 text-green-800 border-green-200';
+      return 'bg-green-100 text-green-800 border-green-200 dark:bg-[#3d4a2a] dark:text-[#a8c97f] dark:border-[#5a6a3f]';
     case 'intermediate':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-[var(--espresso-accent)]/20 dark:text-[var(--espresso-accent)] dark:border-[var(--espresso-accent)]/40';
     case 'advanced':
-      return 'bg-red-100 text-red-800 border-red-200';
+      return 'bg-red-100 text-red-800 border-red-200 dark:bg-[#5a2a2a] dark:text-[#d4a3a3] dark:border-[#7a3a3a]';
     default:
-      return 'bg-neutral-100 text-neutral-800 border-neutral-200';
+      return 'bg-neutral-100 text-neutral-800 border-neutral-200 dark:bg-[var(--espresso-surface)]/40 dark:text-[var(--espresso-body)] dark:border-[var(--espresso-accent)]/20';
   }
 };
 
