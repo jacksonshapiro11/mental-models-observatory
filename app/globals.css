@@ -15,10 +15,10 @@
     --espresso-accent: #D4AF37;
     --espresso-cta-bg: #D4AF37;
     --espresso-cta-text: #1A1410;
-    --espresso-bg-dark: #0b0b0b;
-    --espresso-bg-medium: #14110f;
-    --espresso-bg-light: #1c140f;
-    --espresso-surface: #2a1a0f;
+    --espresso-bg-dark: #2a1a0f;
+    --espresso-bg-medium: #3d2815;
+    --espresso-bg-light: #4a2f1a;
+    --espresso-surface: #5a3a22;
   }
 
   /* TYPOGRAPHY FOUNDATIONS */
@@ -33,18 +33,270 @@
   }
 
   body {
-    @apply bg-neutral-25 text-neutral-800 selection:bg-foundational-100 selection:text-foundational-900;
+    @apply bg-neutral-25 text-neutral-800;
     transition: background-color 300ms ease, color 300ms ease;
+  }
+
+  body::selection {
+    @apply bg-foundational-100 text-foundational-900;
+  }
+
+  body ::-moz-selection {
+    @apply bg-foundational-100 text-foundational-900;
   }
 
   /* DARK MODE - ESPRESSO-GOLD THEME */
   .dark body {
-    background: linear-gradient(160deg, var(--espresso-bg-dark) 0%, var(--espresso-bg-medium) 45%, var(--espresso-bg-light) 85%);
-    @apply text-[var(--espresso-body)] selection:bg-[var(--espresso-accent)]/30 selection:text-[var(--espresso-h1)];
+    background-color: var(--espresso-bg-dark);
+    color: var(--espresso-body);
+  }
+
+  .dark body::selection {
+    background-color: rgba(212, 175, 55, 0.3);
+    color: var(--espresso-h1);
+  }
+
+  .dark body ::-moz-selection {
+    background-color: rgba(212, 175, 55, 0.3);
+    color: var(--espresso-h1);
   }
 
   .dark {
     color-scheme: dark;
+  }
+
+  /* DARK MODE - REMOVE ALL WHITE BACKGROUNDS */
+  .dark .bg-white,
+  .dark .bg-neutral-0,
+  .dark .bg-neutral-25,
+  .dark .bg-neutral-50,
+  .dark .bg-neutral-100 {
+    background-color: transparent !important;
+  }
+
+  .dark .text-neutral-800,
+  .dark .text-neutral-900 {
+    color: var(--espresso-h1) !important;
+  }
+
+  .dark .text-neutral-600,
+  .dark .text-neutral-700 {
+    color: var(--espresso-body) !important;
+  }
+
+  .dark .text-neutral-500,
+  .dark .text-neutral-400 {
+    color: rgba(229, 218, 203, 0.7) !important;
+  }
+
+  .dark .border-neutral-200,
+  .dark .border-neutral-300,
+  .dark .border-neutral-400 {
+    border-color: rgba(212, 175, 55, 0.2) !important;
+  }
+
+  /* Override gradient backgrounds in dark mode */
+  .dark .bg-gradient-to-br {
+    background-color: var(--espresso-bg-dark) !important;
+  }
+
+  /* Override foundational colors in dark mode */
+  .dark .bg-foundational-50,
+  .dark .bg-foundational-100 {
+    background-color: transparent !important;
+  }
+
+  .dark .text-foundational-600,
+  .dark .text-foundational-700,
+  .dark .text-foundational-800 {
+    color: var(--espresso-accent) !important;
+  }
+
+  .dark .bg-blue-600 {
+    background-color: var(--espresso-accent) !important;
+  }
+
+  .dark .text-blue-600 {
+    color: var(--espresso-accent) !important;
+  }
+
+  /* DARK MODE - MODEL PAGE SPECIFIC FIXES */
+  .dark .text-gray-900 {
+    color: var(--espresso-h1) !important;
+  }
+
+  .dark .text-gray-700,
+  .dark .text-gray-800 {
+    color: var(--espresso-body) !important;
+  }
+
+  .dark .text-gray-600 {
+    color: rgba(229, 218, 203, 0.85) !important;
+  }
+
+  .dark .bg-gray-50 {
+    background-color: transparent !important;
+    border: 1px solid rgba(212, 175, 55, 0.15);
+  }
+
+  .dark .bg-blue-100 {
+    background-color: transparent !important;
+  }
+
+  .dark .text-blue-800 {
+    color: var(--espresso-accent) !important;
+  }
+
+  .dark .bg-green-50 {
+    background-color: transparent !important;
+  }
+
+  .dark .border-green-200 {
+    border-color: rgba(212, 175, 55, 0.2) !important;
+  }
+
+  .dark .text-green-800 {
+    color: var(--espresso-h1) !important;
+  }
+
+  .dark .text-green-600 {
+    color: var(--espresso-accent) !important;
+  }
+
+  .dark .text-yellow-600 {
+    color: var(--espresso-accent) !important;
+  }
+
+  .dark .text-purple-600 {
+    color: var(--espresso-accent) !important;
+  }
+
+  /* Better contrast for numbered bullets */
+  .dark .bg-blue-100.text-blue-600 {
+    background-color: rgba(212, 175, 55, 0.2) !important;
+    color: var(--espresso-accent) !important;
+    font-weight: 600;
+  }
+
+  /* DARK MODE - READWISE HIGHLIGHTS STYLING */
+  .dark .bg-green-100,
+  .dark .bg-orange-100,
+  .dark .bg-purple-100,
+  .dark .bg-yellow-100,
+  .dark .bg-pink-100,
+  .dark .bg-gray-100 {
+    background-color: transparent !important;
+  }
+
+  .dark .text-green-800,
+  .dark .text-orange-800,
+  .dark .text-purple-800,
+  .dark .text-yellow-800,
+  .dark .text-pink-800,
+  .dark .text-gray-800 {
+    color: var(--espresso-accent) !important;
+  }
+
+  .dark .text-green-700 {
+    color: var(--espresso-h1) !important;
+  }
+
+  .dark .border-specialized-200,
+  .dark .border-specialized-300 {
+    border-color: rgba(212, 175, 55, 0.25) !important;
+  }
+
+  .dark .text-specialized-500,
+  .dark .text-specialized-600 {
+    color: var(--espresso-accent) !important;
+  }
+
+  .dark .border-green-300 {
+    border-color: rgba(212, 175, 55, 0.4) !important;
+  }
+
+  /* Quote border */
+  .dark .border-l-2 {
+    border-left-color: rgba(212, 175, 55, 0.4) !important;
+  }
+
+  /* DARK MODE - FIX "HOW TO APPLY THIS" SECTION (Applications) */
+  .dark .bg-green-50.border-green-200 {
+    background-color: transparent !important;
+    border-color: rgba(212, 175, 55, 0.25) !important;
+  }
+
+  .dark .text-green-800.font-medium {
+    color: var(--espresso-body) !important;
+    font-weight: 400 !important;
+  }
+
+  /* DARK MODE - FIX "CURATED INSIGHTS" SECTION */
+  .dark .bg-green-50.border-green-300 {
+    background-color: transparent !important;
+    border-color: rgba(212, 175, 55, 0.3) !important;
+  }
+
+  .dark .text-green-700 {
+    color: var(--espresso-h1) !important;
+  }
+
+  /* Override ALL green backgrounds and borders */
+  .dark [class*="bg-green"] {
+    background-color: transparent !important;
+    background-image: none !important;
+  }
+
+  /* Override green gradients specifically */
+  .dark [class*="from-green"],
+  .dark [class*="to-emerald"],
+  .dark [class*="via-emerald"] {
+    background-image: none !important;
+    background-color: transparent !important;
+  }
+
+  /* Override foundational and accent gradients */
+  .dark [class*="from-foundational"],
+  .dark [class*="to-foundational"],
+  .dark [class*="to-accent"],
+  .dark [class*="via-neutral"] {
+    background-image: none !important;
+    background-color: transparent !important;
+  }
+
+  /* Force gradients with foundational colors to use solid background in dark mode */
+  .dark [class*="bg-gradient"][class*="from-foundational"] {
+    background-image: none !important;
+  }
+
+  /* Header on about page - force gold background in dark mode */
+  .dark .about-header {
+    background-image: none !important;
+    background-color: var(--espresso-accent) !important;
+  }
+
+  .dark [class*="border-green"] {
+    border-color: rgba(212, 175, 55, 0.25) !important;
+  }
+
+  .dark [class*="text-green"] {
+    color: var(--espresso-body) !important;
+  }
+
+  /* Override red/orange colors (for "How to Apply This") */
+  .dark .bg-red-50,
+  .dark .bg-orange-50 {
+    background-color: transparent !important;
+  }
+
+  .dark .text-red-800,
+  .dark .text-orange-800 {
+    color: var(--espresso-body) !important;
+  }
+
+  .dark .border-red-200,
+  .dark .border-orange-200 {
+    border-color: rgba(212, 175, 55, 0.25) !important;
   }
 
   /* ACCESSIBILITY-FIRST FOCUS STATES */
@@ -89,7 +341,16 @@
   }
 
   .dark .btn-primary {
-    @apply bg-[var(--espresso-accent)] text-[var(--espresso-cta-text)] hover:bg-[#c49f2e] focus-visible:ring-[var(--espresso-accent)];
+    background-color: var(--espresso-accent);
+    color: var(--espresso-cta-text);
+  }
+
+  .dark .btn-primary:hover {
+    background-color: #c49f2e;
+  }
+
+  .dark .btn-primary:focus-visible {
+    --tw-ring-color: var(--espresso-accent);
   }
 
   .btn-secondary {
@@ -98,7 +359,17 @@
   }
 
   .dark .btn-secondary {
-    @apply bg-[var(--espresso-surface)]/60 text-[var(--espresso-body)] border-[var(--espresso-accent)]/30 hover:bg-[var(--espresso-surface)]/80 focus-visible:ring-[var(--espresso-accent)];
+    background-color: rgba(42, 26, 15, 0.6);
+    color: var(--espresso-body);
+    border-color: rgba(212, 175, 55, 0.3);
+  }
+
+  .dark .btn-secondary:hover {
+    background-color: rgba(42, 26, 15, 0.8);
+  }
+
+  .dark .btn-secondary:focus-visible {
+    --tw-ring-color: var(--espresso-accent);
   }
 
   .btn-outline {
@@ -106,7 +377,16 @@
   }
 
   .dark .btn-outline {
-    @apply text-[var(--espresso-accent)] border-[var(--espresso-accent)] hover:bg-[var(--espresso-accent)]/10 focus-visible:ring-[var(--espresso-accent)];
+    color: var(--espresso-accent);
+    border-color: var(--espresso-accent);
+  }
+
+  .dark .btn-outline:hover {
+    background-color: rgba(212, 175, 55, 0.1);
+  }
+
+  .dark .btn-outline:focus-visible {
+    --tw-ring-color: var(--espresso-accent);
   }
 
   .btn-ghost {
@@ -114,7 +394,15 @@
   }
 
   .dark .btn-ghost {
-    @apply text-[var(--espresso-body)] hover:bg-[var(--espresso-surface)]/40 focus-visible:ring-[var(--espresso-accent)];
+    color: var(--espresso-body);
+  }
+
+  .dark .btn-ghost:hover {
+    background-color: rgba(42, 26, 15, 0.4);
+  }
+
+  .dark .btn-ghost:focus-visible {
+    --tw-ring-color: var(--espresso-accent);
   }
 
   .btn-white {
@@ -123,7 +411,16 @@
   }
 
   .dark .btn-white {
-    @apply bg-[var(--espresso-accent)] text-[var(--espresso-cta-text)] hover:bg-[#c49f2e] focus-visible:ring-[var(--espresso-accent)];
+    background-color: var(--espresso-accent);
+    color: var(--espresso-cta-text);
+  }
+
+  .dark .btn-white:hover {
+    background-color: #c49f2e;
+  }
+
+  .dark .btn-white:focus-visible {
+    --tw-ring-color: var(--espresso-accent);
   }
 
   .btn-sm {
@@ -145,8 +442,14 @@
   }
 
   .dark .card {
-    @apply bg-[var(--espresso-surface)]/40 border-[var(--espresso-accent)]/20 backdrop-blur-sm;
-    @apply hover:border-[var(--espresso-accent)]/40;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-color: rgba(212, 175, 55, 0.25);
+    backdrop-filter: blur(8px);
+  }
+
+  .dark .card:hover {
+    border-color: rgba(212, 175, 55, 0.5);
+    background-color: rgba(0, 0, 0, 0.3);
   }
 
   .card-header {
@@ -154,7 +457,7 @@
   }
 
   .dark .card-header {
-    @apply border-[var(--espresso-accent)]/20;
+    border-bottom-color: rgba(212, 175, 55, 0.2);
   }
 
   .card-content {
@@ -166,7 +469,8 @@
   }
 
   .dark .card-footer {
-    @apply border-[var(--espresso-accent)]/20 bg-[var(--espresso-surface)]/20;
+    border-top-color: rgba(212, 175, 55, 0.2);
+    background-color: rgba(42, 26, 15, 0.2);
   }
 
   .card-title {
@@ -174,7 +478,7 @@
   }
 
   .dark .card-title {
-    @apply text-[var(--espresso-h1)];
+    color: var(--espresso-h1);
   }
 
   .card-description {
@@ -182,7 +486,7 @@
   }
 
   .dark .card-description {
-    @apply text-[var(--espresso-body)];
+    color: var(--espresso-body);
   }
 
   /* TIER-BASED STYLING */
@@ -442,8 +746,8 @@
   .bg-espresso-gold {
     position: relative;
     background: 
-      radial-gradient(1200px 600px at 20% -10%, #2a1a0f 0%, rgba(42,26,15,0) 45%),
-      linear-gradient(160deg, #0b0b0b 0%, #14110f 45%, #1c140f 85%);
+      radial-gradient(1200px 600px at 20% -10%, #3d2815 0%, rgba(61,40,21,0) 45%),
+      linear-gradient(160deg, #2a1a0f 0%, #3d2815 45%, #4a2f1a 85%);
   }
 
   .bg-espresso-gold::before {
@@ -468,7 +772,36 @@
         transparent 2px,
         rgba(255, 255, 255, 0.03) 3px
       );
-    opacity: 0.4;
-    pointer-events: none;
-  }
+      opacity: 0.4;
+      pointer-events: none;
+    }
+}
+
+/* Ensure Home button is black in dark mode */
+.dark header a[href="/"],
+.dark nav a[href="/"] {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.dark header a[href="/"]:hover,
+.dark nav a[href="/"]:hover {
+  background-color: #1a1a1a !important;
+}
+
+/* Ensure QuickStartModal is opaque in dark mode */
+.dark .quickstart-modal {
+  background-color: var(--espresso-bg-medium) !important;
+}
+
+.dark .quickstart-modal > * {
+  background-color: var(--espresso-bg-medium) !important;
+}
+
+.dark .quickstart-modal .bg-white {
+  background-color: var(--espresso-bg-medium) !important;
+}
+
+.dark .quickstart-modal .bg-neutral-50 {
+  background-color: var(--espresso-bg-medium) !important;
 }

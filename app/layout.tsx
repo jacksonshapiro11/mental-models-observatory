@@ -72,7 +72,7 @@ export default function RootLayout({
                 <ThemeToggle />
                 <Link 
                   href="/" 
-                  className="bg-white dark:bg-[var(--espresso-surface)] text-blue-600 dark:text-[var(--espresso-accent)] px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--espresso-surface)]/80 transition-colors font-medium"
+                  className="bg-white dark:bg-black text-blue-600 dark:text-white px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors font-medium shadow-md dark:shadow-lg"
                 >
                   Home
                 </Link>

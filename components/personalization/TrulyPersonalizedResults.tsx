@@ -27,23 +27,24 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
   }, [profile]);
 
   const generateTrulyPersonalizedPaths = () => {
-    const allModels = getAllModels();
-    
-    // Get user progress
-    const progress = ProgressTracker.getProgress();
-    const viewed = progress.modelsViewed.map(m => m.slug);
-    const completed = progress.pathsStarted.filter(p => p.completed).map(p => p.pathId);
-    
-    setViewedModelSlugs(viewed);
-    setCompletedPathIds(completed);
-    
-    console.log('Generating paths for profile:', profile);
-    console.log(`Progress: ${viewed.length} viewed models, ${completed.length} completed paths`);
-    
-    // 1. Get 2-3 curated paths (always shown)
-    const bestCuratedPaths = PathMatcher.getBestMatches(profile, viewed, completed);
-    setCuratedPaths(bestCuratedPaths);
-    console.log('Curated paths:', bestCuratedPaths.map(p => p.title));
+    try {
+      const allModels = getAllModels();
+      
+      // Get user progress
+      const progress = ProgressTracker.getProgress();
+      const viewed = progress.modelsViewed.map(m => m.slug);
+      const completed = progress.pathsStarted.filter(p => p.completed).map(p => p.pathId);
+      
+      setViewedModelSlugs(viewed);
+      setCompletedPathIds(completed);
+      
+      console.log('Generating paths for profile:', profile);
+      console.log(`Progress: ${viewed.length} viewed models, ${completed.length} completed paths`);
+      
+      // 1. Get 2-3 curated paths (always shown)
+      const bestCuratedPaths = PathMatcher.getBestMatches(profile, viewed, completed);
+      setCuratedPaths(bestCuratedPaths);
+      console.log('Curated paths:', bestCuratedPaths.map(p => p.title));
     
     // 2. Check if user has completed enough to unlock dynamic paths
     const hasCompletedEnough = completed.length >= 2 || viewed.length >= 15;
@@ -110,6 +111,13 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
     }
     
     setLoading(false);
+    } catch (error) {
+      console.error('Error generating paths:', error);
+      setLoading(false);
+      // Set empty arrays so the page still renders
+      setCuratedPaths([]);
+      setDynamicPaths([]);
+    }
   };
 
   const findRelevantModels = (allModels: any[], context: any) => {
@@ -217,12 +225,12 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-foundational-50 via-neutral-25 to-accent-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-foundational-50 via-neutral-25 to-accent-50 dark:from-[var(--espresso-bg-dark)] dark:via-[var(--espresso-bg-medium)] dark:to-[var(--espresso-bg-light)] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-foundational-500 mx-auto mb-6"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-foundational-500 dark:border-[var(--espresso-accent)] mx-auto mb-6"></div>
           <div className="space-y-2">
-            <p className="text-lg font-medium text-neutral-700">Analyzing your specific situation...</p>
-            <p className="text-sm text-neutral-600">Finding the mental models that will help you most</p>
+            <p className="text-lg font-medium text-neutral-700 dark:text-[var(--espresso-h1)]">Analyzing your specific situation...</p>
+            <p className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Finding the mental models that will help you most</p>
           </div>
         </div>
       </div>
@@ -230,16 +238,16 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-foundational-50 via-neutral-25 to-accent-50">
+    <div className="min-h-screen bg-gradient-to-br from-foundational-50 via-neutral-25 to-accent-50 dark:from-[var(--espresso-bg-dark)] dark:via-[var(--espresso-bg-medium)] dark:to-[var(--espresso-bg-light)]">
       <div className="container mx-auto px-4 py-8">
         {/* Personalized Welcome */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center space-x-2 bg-foundational-100 text-foundational-800 px-6 py-3 rounded-full text-sm font-medium mb-6">
+          <div className="inline-flex items-center space-x-2 bg-foundational-100 dark:bg-[var(--espresso-accent)]/20 text-foundational-800 dark:text-[var(--espresso-accent)] px-6 py-3 rounded-full text-sm font-medium mb-6">
             <Zap className="h-5 w-5" />
             <span>Your Personal Learning Plan</span>
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-bold text-neutral-800 mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)] mb-6">
             Here's How to{' '}
             <span className="gradient-text">
               {profile.personalContext.specificChallenge ? 'Solve This' : 'Think Better'}
@@ -247,16 +255,16 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
           </h1>
           
           <div className="max-w-3xl mx-auto">
-            <div className="bg-white rounded-xl p-6 shadow-lg mb-6">
+            <div className="bg-white dark:bg-transparent rounded-xl p-6 shadow-lg dark:shadow-none mb-6 border border-neutral-200 dark:border-[var(--espresso-accent)]/25">
               <div className="flex items-start space-x-4">
-                <div className="p-2 rounded-lg bg-foundational-100">
-                  <Target className="h-6 w-6 text-foundational-600" />
+                <div className="p-2 rounded-lg bg-foundational-100 dark:bg-[var(--espresso-accent)]/20">
+                  <Target className="h-6 w-6 text-foundational-600 dark:text-[var(--espresso-accent)]" />
                 </div>
                 <div className="text-left">
-                  <p className="text-lg text-neutral-700 mb-2">
+                  <p className="text-lg text-neutral-700 dark:text-[var(--espresso-body)] mb-2">
                     <strong>Your Challenge:</strong> "{profile.personalContext.specificChallenge}"
                   </p>
-                  <p className="text-neutral-600">
+                  <p className="text-neutral-600 dark:text-[var(--espresso-body)]">
                     {profile.personalContext.personalizedReason}
                   </p>
                 </div>
@@ -267,17 +275,17 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
 
         {/* Progress Summary */}
         {viewedModelSlugs.length > 0 && (
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 mb-8 border-2 border-green-200">
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:!bg-transparent rounded-xl p-6 mb-8 border-2 border-green-200 dark:border-[var(--espresso-accent)]/30">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-bold text-green-800 mb-2">Your Learning Progress</h3>
-                <p className="text-green-700">
-                  You've explored <span className="font-bold text-2xl">{viewedModelSlugs.length}</span> mental models so far!
+                <h3 className="text-xl font-bold text-green-800 dark:text-[var(--espresso-accent)] mb-2">Your Learning Progress</h3>
+                <p className="text-green-700 dark:text-[var(--espresso-body)]">
+                  You've explored <span className="font-bold text-2xl dark:text-[var(--espresso-accent)]">{viewedModelSlugs.length}</span> mental models so far!
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-bold text-green-600">{completedPathIds.length}</div>
-                <div className="text-sm text-green-700">Paths Completed</div>
+                <div className="text-3xl font-bold text-green-600 dark:text-[var(--espresso-accent)]">{completedPathIds.length}</div>
+                <div className="text-sm text-green-700 dark:text-[var(--espresso-body)]">Paths Completed</div>
               </div>
             </div>
           </div>
@@ -286,15 +294,15 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
         {/* Curated Learning Paths */}
         <div className="mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <Star className="h-8 w-8 text-yellow-500" />
-            <h2 className="text-3xl font-bold text-neutral-800">Recommended For You</h2>
-            <Star className="h-8 w-8 text-yellow-500" />
+            <Star className="h-8 w-8 text-yellow-500 dark:text-[var(--espresso-accent)]" />
+            <h2 className="text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">Recommended For You</h2>
+            <Star className="h-8 w-8 text-yellow-500 dark:text-[var(--espresso-accent)]" />
           </div>
-          <p className="text-center text-neutral-600 mb-8">
+          <p className="text-center text-neutral-600 dark:text-[var(--espresso-body)] mb-8">
             {curatedPaths.length} expertly curated paths matched to your goals
             {viewedModelSlugs.length > 0 && (
-              <span className="block mt-2 text-sm text-green-600 font-medium">
-                ✓ Models you've already viewed are marked with green checkmarks
+              <span className="block mt-2 text-sm text-green-600 dark:text-[var(--espresso-accent)] font-medium">
+                ✓ Models you've already viewed are marked with gold checkmarks
               </span>
             )}
           </p>
@@ -307,10 +315,10 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
               const isCompleted = viewedCount === totalCount && totalCount > 0;
               
               return (
-              <div key={path.id} className={`bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow ${isCompleted ? 'ring-4 ring-green-400' : ''}`}>
+              <div key={path.id} className={`bg-white dark:bg-transparent rounded-xl shadow-lg dark:shadow-none overflow-hidden hover:shadow-xl dark:hover:shadow-none transition-shadow border border-neutral-200 dark:border-[var(--espresso-accent)]/25 ${isCompleted ? 'ring-4 ring-green-400 dark:ring-[var(--espresso-accent)]' : ''}`}>
                 {/* Completed Badge */}
                 {isCompleted && (
-                  <div className="bg-green-500 text-white text-center py-2 px-4 font-bold flex items-center justify-center gap-2">
+                  <div className="bg-green-500 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)] text-center py-2 px-4 font-bold flex items-center justify-center gap-2">
                     <CheckCircle className="h-5 w-5" />
                     PATH COMPLETED ✓
                   </div>
@@ -331,11 +339,11 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                 {/* Path Details */}
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2 text-sm text-neutral-500">
+                    <div className="flex items-center space-x-2 text-sm text-neutral-500 dark:text-[var(--espresso-body)]/70">
                       <Clock className="h-4 w-4" />
                       <span>{path.estimatedTime}</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-neutral-500">
+                    <div className="flex items-center space-x-2 text-sm text-neutral-500 dark:text-[var(--espresso-body)]/70">
                       <Brain className="h-4 w-4" />
                       <span>{path.modelSlugs.length} models</span>
                     </div>
@@ -347,21 +355,21 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                       const isViewed = viewedModelSlugs.includes(slug);
                       const model = getAllModels().find(m => m.slug === slug);
                       return (
-                        <div key={modelIndex} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isViewed ? 'bg-green-50 border border-green-200' : 'bg-neutral-50 hover:bg-neutral-100'}`}>
-                          <div className={`h-6 w-6 rounded-full flex items-center justify-center font-semibold text-xs flex-shrink-0 ${isViewed ? 'bg-green-500 text-white' : 'bg-foundational-100 text-foundational-600'}`}>
+                        <div key={modelIndex} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isViewed ? 'bg-green-50 dark:bg-transparent border border-green-200 dark:border-[var(--espresso-accent)]/40' : 'bg-neutral-50 dark:bg-transparent hover:bg-neutral-100 dark:hover:bg-[var(--espresso-accent)]/10 border border-transparent dark:border-[var(--espresso-accent)]/20'}`}>
+                          <div className={`h-6 w-6 rounded-full flex items-center justify-center font-semibold text-xs flex-shrink-0 ${isViewed ? 'bg-green-500 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)]' : 'bg-foundational-100 dark:bg-[var(--espresso-accent)]/20 text-foundational-600 dark:text-[var(--espresso-accent)]'}`}>
                             {isViewed ? <CheckCircle className="h-4 w-4" /> : modelIndex + 1}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className={`font-medium text-sm truncate ${isViewed ? 'text-green-800 line-through' : 'text-neutral-800'}`}>
+                            <p className={`font-medium text-sm truncate ${isViewed ? 'text-green-800 dark:text-[var(--espresso-body)] line-through' : 'text-neutral-800 dark:text-[var(--espresso-h1)]'}`}>
                               {model?.name || slug}
-                              {isViewed && <span className="ml-2 text-xs text-green-600 font-bold no-underline">✓ DONE</span>}
+                              {isViewed && <span className="ml-2 text-xs text-green-600 dark:text-[var(--espresso-accent)] font-bold no-underline">✓ DONE</span>}
                             </p>
                           </div>
                         </div>
                       );
                     })}
                     {path.modelSlugs.length > 5 && (
-                      <p className="text-xs text-neutral-500 text-center">+{path.modelSlugs.length - 5} more models</p>
+                      <p className="text-xs text-neutral-500 dark:text-[var(--espresso-body)]/70 text-center">+{path.modelSlugs.length - 5} more models</p>
                     )}
                   </div>
 
@@ -369,12 +377,12 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                   {viewedCount > 0 && (
                     <div className="mb-4">
                       <div className="flex items-center justify-between text-sm mb-2">
-                        <span className="text-neutral-600">Your Progress:</span>
-                        <span className="font-medium text-green-600">{viewedCount}/{totalCount} models</span>
+                        <span className="text-neutral-600 dark:text-[var(--espresso-body)]">Your Progress:</span>
+                        <span className="font-medium text-green-600 dark:text-[var(--espresso-accent)]">{viewedCount}/{totalCount} models</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-gray-200 dark:bg-[var(--espresso-accent)]/20 rounded-full h-2">
                         <div 
-                          className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                          className="bg-green-500 dark:bg-[var(--espresso-accent)] h-2 rounded-full transition-all duration-300"
                           style={{ width: `${progressPercent}%` }}
                         />
                       </div>
@@ -411,14 +419,14 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
         {showDynamic && dynamicPaths.length > 0 && (
           <div className="mb-12">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <Sparkles className="h-8 w-8 text-purple-500" />
-              <h2 className="text-3xl font-bold text-neutral-800">Explore Further</h2>
-              <Sparkles className="h-8 w-8 text-purple-500" />
+              <Sparkles className="h-8 w-8 text-purple-500 dark:text-[var(--espresso-accent)]" />
+              <h2 className="text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">Explore Further</h2>
+              <Sparkles className="h-8 w-8 text-purple-500 dark:text-[var(--espresso-accent)]" />
             </div>
-            <p className="text-center text-neutral-600 mb-2">
+            <p className="text-center text-neutral-600 dark:text-[var(--espresso-body)] mb-2">
               🎉 Unlocked! {dynamicPaths.length} dynamic paths generated based on your progress
             </p>
-            <p className="text-center text-sm text-neutral-500 mb-8">
+            <p className="text-center text-sm text-neutral-500 dark:text-[var(--espresso-body)]/70 mb-8">
               These paths adapt to what you've already learned
             </p>
             
@@ -430,9 +438,9 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                 const isCompleted = viewedCount === totalCount && totalCount > 0;
                 
                 return (
-                  <div key={path.id} className={`bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow ${isCompleted ? 'ring-4 ring-green-400' : ''}`}>
+                  <div key={path.id} className={`bg-white dark:bg-transparent rounded-xl shadow-lg dark:shadow-none overflow-hidden hover:shadow-xl dark:hover:shadow-none transition-shadow border border-neutral-200 dark:border-[var(--espresso-accent)]/25 ${isCompleted ? 'ring-4 ring-green-400 dark:ring-[var(--espresso-accent)]' : ''}`}>
                     {isCompleted && (
-                      <div className="bg-green-500 text-white text-center py-2 px-4 font-bold flex items-center justify-center gap-2">
+                      <div className="bg-green-500 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)] text-center py-2 px-4 font-bold flex items-center justify-center gap-2">
                         <CheckCircle className="h-5 w-5" />
                         PATH COMPLETED ✓
                       </div>
@@ -446,25 +454,25 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                       <p className="text-white/90 text-sm">{path.description}</p>
                     </div>
 
-                <div className="p-4 bg-foundational-50 border-b">
+                <div className="p-4 bg-foundational-50 dark:bg-transparent border-b dark:border-[var(--espresso-accent)]/25">
                   <div className="flex items-start space-x-3">
-                    <div className="p-1 rounded bg-foundational-100">
-                      <Lightbulb className="h-4 w-4 text-foundational-600" />
+                    <div className="p-1 rounded bg-foundational-100 dark:bg-[var(--espresso-accent)]/20">
+                      <Lightbulb className="h-4 w-4 text-foundational-600 dark:text-[var(--espresso-accent)]" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-foundational-800 mb-1">Why this path?</p>
-                      <p className="text-sm text-foundational-700">{path.personalizedReason}</p>
+                      <p className="text-sm font-medium text-foundational-800 dark:text-[var(--espresso-h1)] mb-1">Why this path?</p>
+                      <p className="text-sm text-foundational-700 dark:text-[var(--espresso-body)]">{path.personalizedReason}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2 text-sm text-neutral-500">
+                    <div className="flex items-center space-x-2 text-sm text-neutral-500 dark:text-[var(--espresso-body)]/70">
                       <Clock className="h-4 w-4" />
                       <span>{path.estimatedTotalTime}</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-neutral-500">
+                    <div className="flex items-center space-x-2 text-sm text-neutral-500 dark:text-[var(--espresso-body)]/70">
                       <Brain className="h-4 w-4" />
                       <span>{path.models.length} models</span>
                     </div>
@@ -474,33 +482,33 @@ export default function TrulyPersonalizedResults({ profile }: TrulyPersonalizedR
                         {path.models.slice(0, 5).map((pathModel, modelIndex) => {
                           const isViewed = viewedModelSlugs.includes(pathModel.model.slug);
                           return (
-                            <div key={modelIndex} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isViewed ? 'bg-green-50 border border-green-200' : 'bg-neutral-50 hover:bg-neutral-100'}`}>
-                              <div className={`h-6 w-6 rounded-full flex items-center justify-center font-semibold text-xs flex-shrink-0 ${isViewed ? 'bg-green-500 text-white' : 'bg-foundational-100 text-foundational-600'}`}>
+                            <div key={modelIndex} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isViewed ? 'bg-green-50 dark:bg-transparent border border-green-200 dark:border-[var(--espresso-accent)]/40' : 'bg-neutral-50 dark:bg-transparent hover:bg-neutral-100 dark:hover:bg-[var(--espresso-accent)]/10 border border-transparent dark:border-[var(--espresso-accent)]/20'}`}>
+                              <div className={`h-6 w-6 rounded-full flex items-center justify-center font-semibold text-xs flex-shrink-0 ${isViewed ? 'bg-green-500 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)]' : 'bg-foundational-100 dark:bg-[var(--espresso-accent)]/20 text-foundational-600 dark:text-[var(--espresso-accent)]'}`}>
                                 {isViewed ? <CheckCircle className="h-4 w-4" /> : modelIndex + 1}
                         </div>
                               <div className="flex-1 min-w-0">
-                                <p className={`font-medium text-sm truncate ${isViewed ? 'text-green-800 line-through' : 'text-neutral-800'}`}>
+                                <p className={`font-medium text-sm truncate ${isViewed ? 'text-green-800 dark:text-[var(--espresso-body)] line-through' : 'text-neutral-800 dark:text-[var(--espresso-h1)]'}`}>
                                   {pathModel.model.name}
-                                  {isViewed && <span className="ml-2 text-xs text-green-600 font-bold no-underline">✓ DONE</span>}
+                                  {isViewed && <span className="ml-2 text-xs text-green-600 dark:text-[var(--espresso-accent)] font-bold no-underline">✓ DONE</span>}
                                 </p>
                         </div>
                       </div>
                           );
                         })}
                         {path.models.length > 5 && (
-                          <p className="text-xs text-neutral-500 text-center">+{path.models.length - 5} more models</p>
+                          <p className="text-xs text-neutral-500 dark:text-[var(--espresso-body)]/70 text-center">+{path.models.length - 5} more models</p>
                         )}
                       </div>
 
                       {viewedCount > 0 && (
                         <div className="mb-4">
                           <div className="flex items-center justify-between text-sm mb-2">
-                            <span className="text-neutral-600">Your Progress:</span>
-                            <span className="font-medium text-green-600">{viewedCount}/{totalCount} models</span>
+                            <span className="text-neutral-600 dark:text-[var(--espresso-body)]">Your Progress:</span>
+                            <span className="font-medium text-green-600 dark:text-[var(--espresso-accent)]">{viewedCount}/{totalCount} models</span>
                   </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="w-full bg-gray-200 dark:bg-[var(--espresso-accent)]/20 rounded-full h-2">
                             <div 
-                              className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                              className="bg-green-500 dark:bg-[var(--espresso-accent)] h-2 rounded-full transition-all duration-300"
                               style={{ width: `${progressPercent}%` }}
                             />
                     </div>

@@ -190,27 +190,27 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-foundational-50 via-neutral-25 to-accent-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-foundational-50 via-neutral-25 to-accent-50 dark:from-[var(--espresso-bg-dark)] dark:via-[var(--espresso-bg-medium)] dark:to-[var(--espresso-bg-light)] flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
-        <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="bg-white dark:bg-[var(--espresso-bg-medium)] rounded-xl shadow-lg dark:shadow-none p-8 border border-neutral-200 dark:border-[var(--espresso-accent)]/30">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center space-x-2 bg-foundational-100 text-foundational-800 px-4 py-2 rounded-full text-sm font-medium mb-4">
+            <div className="inline-flex items-center space-x-2 bg-foundational-100 dark:bg-[var(--espresso-accent)]/20 text-foundational-800 dark:text-[var(--espresso-accent)] px-4 py-2 rounded-full text-sm font-medium mb-4">
               <Brain className="h-4 w-4" />
               <span>Intelligent Setup - Step {step} of 5</span>
             </div>
-            <h2 className="text-3xl font-bold text-neutral-800 mb-2">
+            <h2 className="text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)] mb-2">
               Create Your Learning DNA
             </h2>
-            <p className="text-neutral-600">
+            <p className="text-neutral-600 dark:text-[var(--espresso-body)]">
               We'll analyze your responses to craft a truly personalized experience
             </p>
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full bg-neutral-200 rounded-full h-3 mb-8">
+          <div className="w-full bg-neutral-200 dark:bg-[var(--espresso-accent)]/20 rounded-full h-3 mb-8">
             <div 
-              className="bg-gradient-to-r from-foundational-500 to-foundational-600 h-3 rounded-full transition-all duration-500"
+              className="bg-gradient-to-r from-foundational-500 to-foundational-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)] h-3 rounded-full transition-all duration-500"
               style={{ width: `${(step / 5) * 100}%` }}
             />
           </div>
@@ -218,10 +218,10 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
           {/* Step 1: Learning Context */}
           {step === 1 && (
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-neutral-800">
+              <h3 className="text-xl font-semibold text-neutral-800 dark:text-[var(--espresso-h1)]">
                 What's driving your learning journey right now?
               </h3>
-              <p className="text-neutral-600">
+              <p className="text-neutral-600 dark:text-[var(--espresso-body)]">
                 This helps us understand your motivation and tailor the experience accordingly.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -260,19 +260,19 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
                         trackInteraction(`goal-${option.value}`);
                       }}
                       onMouseEnter={() => trackHesitation(`goal-${option.value}`)}
-                      className={`w-full text-left p-6 rounded-lg border-2 transition-all duration-200 hover:shadow-md ${
+                      className={`w-full text-left p-6 rounded-lg border-2 transition-all duration-200 hover:shadow-md dark:hover:shadow-none ${
                         profile.goals === option.value
-                          ? 'border-foundational-500 bg-foundational-50 shadow-md'
-                          : 'border-neutral-200 hover:border-neutral-300'
+                          ? 'border-foundational-500 dark:border-[var(--espresso-accent)] bg-foundational-50 dark:bg-transparent shadow-md dark:shadow-none'
+                          : 'border-neutral-200 dark:border-[var(--espresso-accent)]/25 hover:border-neutral-300 dark:hover:border-[var(--espresso-accent)]/40'
                       }`}
                     >
                       <div className="flex items-start space-x-4">
-                        <div className="p-2 rounded-lg bg-foundational-100">
-                          <Icon className="h-5 w-5 text-foundational-600" />
+                        <div className="p-2 rounded-lg bg-foundational-100 dark:bg-[var(--espresso-accent)]/20">
+                          <Icon className="h-5 w-5 text-foundational-600 dark:text-[var(--espresso-accent)]" />
                         </div>
                         <div>
-                          <div className="font-semibold text-neutral-800 mb-1">{option.label}</div>
-                          <div className="text-sm text-neutral-600">{option.desc}</div>
+                          <div className="font-semibold text-neutral-800 dark:text-[var(--espresso-h1)] mb-1">{option.label}</div>
+                          <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">{option.desc}</div>
                         </div>
                       </div>
                     </button>
@@ -285,10 +285,10 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
           {/* Step 2: Deep Interest Mapping */}
           {step === 2 && (
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-neutral-800">
+              <h3 className="text-xl font-semibold text-neutral-800 dark:text-[var(--espresso-h1)]">
                 Which areas spark your curiosity? (Select 2-4)
               </h3>
-              <p className="text-neutral-600">
+              <p className="text-neutral-600 dark:text-[var(--espresso-body)]">
                 We'll use this to find unexpected connections and personalized insights.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -308,26 +308,26 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
                         trackInteraction(`interest-${interest.id}-${isSelected ? 'remove' : 'add'}`);
                       }}
                       onMouseEnter={() => trackHesitation(`interest-${interest.id}`)}
-                      className={`p-6 rounded-lg border-2 transition-all duration-200 text-left hover:shadow-md ${
+                      className={`p-6 rounded-lg border-2 transition-all duration-200 text-left hover:shadow-md dark:hover:shadow-none ${
                         isSelected
-                          ? 'border-foundational-500 bg-foundational-50 shadow-md'
-                          : 'border-neutral-200 hover:border-neutral-300'
+                          ? 'border-foundational-500 dark:border-[var(--espresso-accent)] bg-foundational-50 dark:bg-transparent shadow-md dark:shadow-none'
+                          : 'border-neutral-200 dark:border-[var(--espresso-accent)]/25 hover:border-neutral-300 dark:hover:border-[var(--espresso-accent)]/40'
                       }`}
                     >
                       <div className="flex items-start space-x-4">
-                        <div className="p-2 rounded-lg bg-foundational-100">
-                          <Icon className="h-6 w-6 text-foundational-600" />
+                        <div className="p-2 rounded-lg bg-foundational-100 dark:bg-[var(--espresso-accent)]/20">
+                          <Icon className="h-6 w-6 text-foundational-600 dark:text-[var(--espresso-accent)]" />
                         </div>
                         <div className="flex-1">
-                          <div className="font-semibold text-neutral-800 mb-1">
+                          <div className="font-semibold text-neutral-800 dark:text-[var(--espresso-h1)] mb-1">
                             {interest.label}
                           </div>
-                          <div className="text-sm text-neutral-600 mb-2">
+                          <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)] mb-2">
                             {interest.description}
                           </div>
                           <div className="flex flex-wrap gap-1">
                             {interest.subCategories.map(sub => (
-                              <span key={sub} className="px-2 py-1 bg-neutral-100 text-neutral-600 text-xs rounded">
+                              <span key={sub} className="px-2 py-1 bg-neutral-100 dark:bg-[var(--espresso-accent)]/20 text-neutral-600 dark:text-[var(--espresso-body)] text-xs rounded">
                                 {sub}
                               </span>
                             ))}
@@ -344,10 +344,10 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
           {/* Step 3: Learning Style Detection */}
           {step === 3 && (
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-neutral-800">
+              <h3 className="text-xl font-semibold text-neutral-800 dark:text-[var(--espresso-h1)]">
                 How do you prefer to learn complex concepts?
               </h3>
-              <p className="text-neutral-600">
+              <p className="text-neutral-600 dark:text-[var(--espresso-body)]">
                 This helps us optimize the presentation and pacing for your learning style.
               </p>
               <div className="space-y-4">
@@ -388,14 +388,14 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
                       trackInteraction(`learning-style-${option.value}`);
                     }}
                     onMouseEnter={() => trackHesitation(`learning-style-${option.value}`)}
-                    className={`w-full text-left p-6 rounded-lg border-2 transition-all duration-200 hover:shadow-md ${
+                    className={`w-full text-left p-6 rounded-lg border-2 transition-all duration-200 hover:shadow-md dark:hover:shadow-none ${
                       intelligentFlags.learningPreference === option.value
-                        ? 'border-foundational-500 bg-foundational-50 shadow-md'
-                        : 'border-neutral-200 hover:border-neutral-300'
+                        ? 'border-foundational-500 dark:border-[var(--espresso-accent)] bg-foundational-50 dark:bg-transparent shadow-md dark:shadow-none'
+                        : 'border-neutral-200 dark:border-[var(--espresso-accent)]/25 hover:border-neutral-300 dark:hover:border-[var(--espresso-accent)]/40'
                     }`}
                   >
-                    <div className="font-semibold text-neutral-800 mb-1">{option.label}</div>
-                    <div className="text-sm text-neutral-600">{option.desc}</div>
+                    <div className="font-semibold text-neutral-800 dark:text-[var(--espresso-h1)] mb-1">{option.label}</div>
+                    <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">{option.desc}</div>
                   </button>
                 ))}
               </div>
@@ -406,7 +406,7 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
           {step === 4 && (
             <div className="space-y-8">
               <div className="space-y-6">
-                <h3 className="text-xl font-semibold text-neutral-800">
+                <h3 className="text-xl font-semibold text-neutral-800 dark:text-[var(--espresso-h1)]">
                   What's your experience with mental models and frameworks?
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -422,21 +422,21 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
                         setIntelligentFlags({ ...intelligentFlags, skillLevel: option.level });
                         trackInteraction(`experience-${option.value}`);
                       }}
-                      className={`p-6 rounded-lg border-2 transition-all duration-200 text-center hover:shadow-md ${
+                      className={`p-6 rounded-lg border-2 transition-all duration-200 text-center hover:shadow-md dark:hover:shadow-none ${
                         profile.experience === option.value
-                          ? 'border-foundational-500 bg-foundational-50 shadow-md'
-                          : 'border-neutral-200 hover:border-neutral-300'
+                          ? 'border-foundational-500 dark:border-[var(--espresso-accent)] bg-foundational-50 dark:bg-transparent shadow-md dark:shadow-none'
+                          : 'border-neutral-200 dark:border-[var(--espresso-accent)]/25 hover:border-neutral-300 dark:hover:border-[var(--espresso-accent)]/40'
                       }`}
                     >
-                      <div className="font-semibold text-neutral-800 mb-2">{option.label}</div>
-                      <div className="text-sm text-neutral-600">{option.desc}</div>
+                      <div className="font-semibold text-neutral-800 dark:text-[var(--espresso-h1)] mb-2">{option.label}</div>
+                      <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">{option.desc}</div>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-6">
-                <h3 className="text-xl font-semibold text-neutral-800">
+                <h3 className="text-xl font-semibold text-neutral-800 dark:text-[var(--espresso-h1)]">
                   How much time do you typically have for focused learning?
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -453,15 +453,15 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
                         setIntelligentFlags({ ...intelligentFlags, sessionIntensity: option.intensity });
                         trackInteraction(`time-${option.value}`);
                       }}
-                      className={`p-4 rounded-lg border-2 transition-all duration-200 text-center hover:shadow-md ${
+                      className={`p-4 rounded-lg border-2 transition-all duration-200 text-center hover:shadow-md dark:hover:shadow-none ${
                         profile.timeAvailable === option.value
-                          ? 'border-foundational-500 bg-foundational-50 shadow-md'
-                          : 'border-neutral-200 hover:border-neutral-300'
+                          ? 'border-foundational-500 dark:border-[var(--espresso-accent)] bg-foundational-50 dark:bg-transparent shadow-md dark:shadow-none'
+                          : 'border-neutral-200 dark:border-[var(--espresso-accent)]/25 hover:border-neutral-300 dark:hover:border-[var(--espresso-accent)]/40'
                       }`}
                     >
-                      <Clock className="w-6 h-6 mx-auto mb-2 text-foundational-600" />
-                      <div className="font-semibold text-neutral-800">{option.label}</div>
-                      <div className="text-xs text-neutral-600">{option.desc}</div>
+                      <Clock className="w-6 h-6 mx-auto mb-2 text-foundational-600 dark:text-[var(--espresso-accent)]" />
+                      <div className="font-semibold text-neutral-800 dark:text-[var(--espresso-h1)]">{option.label}</div>
+                      <div className="text-xs text-neutral-600 dark:text-[var(--espresso-body)]">{option.desc}</div>
                     </button>
                   ))}
                 </div>
@@ -472,10 +472,10 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
           {/* Step 5: Challenge Preference */}
           {step === 5 && (
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-neutral-800">
+              <h3 className="text-xl font-semibold text-neutral-800 dark:text-[var(--espresso-h1)]">
                 How do you like to be challenged?
               </h3>
-              <p className="text-neutral-600">
+              <p className="text-neutral-600 dark:text-[var(--espresso-body)]">
                 We'll use this to calibrate the difficulty progression in your learning paths.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -516,14 +516,14 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
                       });
                       trackInteraction(`challenge-${option.value}`);
                     }}
-                    className={`p-6 rounded-lg border-2 transition-all duration-200 text-left hover:shadow-md ${
+                    className={`p-6 rounded-lg border-2 transition-all duration-200 text-left hover:shadow-md dark:hover:shadow-none ${
                       intelligentFlags.challengePreference === option.value
-                        ? 'border-foundational-500 bg-foundational-50 shadow-md'
-                        : 'border-neutral-200 hover:border-neutral-300'
+                        ? 'border-foundational-500 dark:border-[var(--espresso-accent)] bg-foundational-50 dark:bg-transparent shadow-md dark:shadow-none'
+                        : 'border-neutral-200 dark:border-[var(--espresso-accent)]/25 hover:border-neutral-300 dark:hover:border-[var(--espresso-accent)]/40'
                     }`}
                   >
-                    <div className="font-semibold text-neutral-800 mb-1">{option.label}</div>
-                    <div className="text-sm text-neutral-600">{option.desc}</div>
+                    <div className="font-semibold text-neutral-800 dark:text-[var(--espresso-h1)] mb-1">{option.label}</div>
+                    <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">{option.desc}</div>
                   </button>
                 ))}
               </div>
@@ -534,7 +534,7 @@ export default function IntelligentProfileSetup({ onComplete, onSkip }: Intellig
           <div className="flex justify-between items-center mt-8">
             <button
               onClick={onSkip}
-              className="text-neutral-600 hover:text-neutral-800 font-medium transition-colors"
+              className="text-neutral-600 dark:text-[var(--espresso-body)] hover:text-neutral-800 dark:hover:text-[var(--espresso-h1)] font-medium transition-colors"
             >
               Skip for now
             </button>

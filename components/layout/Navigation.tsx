@@ -90,7 +90,7 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
     sticky top-0 z-50 w-full transition-all duration-300
     ${transparent 
       ? 'bg-transparent' 
-      : 'bg-white/95 backdrop-blur-sm border-b border-neutral-200'
+      : 'bg-white/95 dark:bg-[var(--espresso-accent)] backdrop-blur-sm border-b border-neutral-200 dark:border-[var(--espresso-accent)]/30'
     }
   `;
 
@@ -100,13 +100,13 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-foundational-500 to-accent-500 flex items-center justify-center">
-              <Brain className="h-4 w-4 text-white" />
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-foundational-500 to-accent-500 dark:from-[var(--espresso-cta-text)] dark:to-[var(--espresso-cta-text)] flex items-center justify-center">
+              <Brain className="h-4 w-4 text-white dark:text-[var(--espresso-accent)]" />
             </div>
-            <span className="text-xl font-bold text-neutral-800 hidden sm:block">
+            <span className="text-xl font-bold text-neutral-800 dark:text-[var(--espresso-cta-text)] hidden sm:block">
               Guided Learning Experience
             </span>
-            <span className="text-xl font-bold text-neutral-800 sm:hidden">
+            <span className="text-xl font-bold text-neutral-800 dark:text-[var(--espresso-cta-text)] sm:hidden">
               GLE
             </span>
           </div>
@@ -118,8 +118,8 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
               href="/"
               className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 isActive('/') && effectivePath === '/'
-                  ? 'text-foundational-600 bg-foundational-50'
-                  : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-50'
+                  ? 'text-foundational-600 dark:text-[var(--espresso-cta-text)] bg-foundational-50 dark:bg-[var(--espresso-cta-text)]/20'
+                  : 'text-neutral-600 dark:text-[var(--espresso-cta-text)] hover:text-neutral-800 dark:hover:text-[var(--espresso-cta-text)]/80 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-cta-text)]/10'
               }`}
             >
               <Home className="w-4 h-4 md:hidden" />
@@ -135,8 +135,8 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
                 }}
                 className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive('/domains')
-                    ? 'text-foundational-600 bg-foundational-50'
-                    : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-50'
+                    ? 'text-foundational-600 dark:text-[var(--espresso-cta-text)] bg-foundational-50 dark:bg-[var(--espresso-cta-text)]/20'
+                    : 'text-neutral-600 dark:text-[var(--espresso-cta-text)] hover:text-neutral-800 dark:hover:text-[var(--espresso-cta-text)]/80 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-cta-text)]/10'
                 }`}
               >
                 <span>Explore</span>
@@ -145,9 +145,9 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
 
               {/* Tier dropdown */}
               {tierDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50">
-                  <div className="px-3 py-2 border-b border-neutral-100">
-                    <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
+                <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-[var(--espresso-bg-medium)] rounded-lg shadow-lg border border-neutral-200 dark:border-[var(--espresso-accent)]/30 py-2 z-50">
+                  <div className="px-3 py-2 border-b border-neutral-100 dark:border-[var(--espresso-accent)]/20">
+                    <p className="text-xs font-medium text-neutral-500 dark:text-[var(--espresso-body)]/70 uppercase tracking-wide">
                       Browse by Tier
                     </p>
                   </div>
@@ -156,19 +156,19 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
                     <Link
                       key={item.tier}
                       href={item.href}
-                      className="block px-3 py-2 hover:bg-neutral-50 transition-colors"
+                      className="block px-3 py-2 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-accent)]/10 transition-colors"
                     >
                       <div className="flex items-center space-x-3">
                         <div className={`w-2 h-2 rounded-full bg-gradient-to-br ${
-                          item.tier === 1 ? 'from-foundational-400 to-foundational-600' :
-                          item.tier === 2 ? 'from-practical-400 to-practical-600' :
-                          'from-specialized-400 to-specialized-600'
+                          item.tier === 1 ? 'from-foundational-400 to-foundational-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)]' :
+                          item.tier === 2 ? 'from-practical-400 to-practical-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)]' :
+                          'from-specialized-400 to-specialized-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)]'
                         }`} />
                         <div>
-                          <p className={`text-sm font-medium ${item.color}`}>
+                          <p className={`text-sm font-medium ${item.color} dark:text-[var(--espresso-h1)]`}>
                             Tier {item.tier}: {item.label}
                           </p>
-                          <p className="text-xs text-neutral-500">
+                          <p className="text-xs text-neutral-500 dark:text-[var(--espresso-body)]/70">
                             {item.description}
                           </p>
                         </div>
@@ -176,10 +176,10 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
                     </Link>
                   ))}
                   
-                  <div className="border-t border-neutral-100 mt-2 pt-2">
+                  <div className="border-t border-neutral-100 dark:border-[var(--espresso-accent)]/20 mt-2 pt-2">
                     <Link
                       href="/domains"
-                      className="block px-3 py-2 text-sm text-foundational-600 hover:bg-foundational-50 transition-colors"
+                      className="block px-3 py-2 text-sm text-foundational-600 dark:text-[var(--espresso-accent)] hover:bg-foundational-50 dark:hover:bg-[var(--espresso-accent)]/10 transition-colors"
                     >
                       View All Domains →
                     </Link>
@@ -193,8 +193,8 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
               href="/models"
               className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 isActive('/models')
-                  ? 'text-foundational-600 bg-foundational-50'
-                  : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-50'
+                  ? 'text-foundational-600 dark:text-[var(--espresso-cta-text)] bg-foundational-50 dark:bg-[var(--espresso-cta-text)]/20'
+                  : 'text-neutral-600 dark:text-[var(--espresso-cta-text)] hover:text-neutral-800 dark:hover:text-[var(--espresso-cta-text)]/80 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-cta-text)]/10'
               }`}
             >
               Models
@@ -205,8 +205,8 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
               href="/about"
               className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 isActive('/about')
-                  ? 'text-foundational-600 bg-foundational-50'
-                  : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-50'
+                  ? 'text-foundational-600 dark:text-[var(--espresso-cta-text)] bg-foundational-50 dark:bg-[var(--espresso-cta-text)]/20'
+                  : 'text-neutral-600 dark:text-[var(--espresso-cta-text)] hover:text-neutral-800 dark:hover:text-[var(--espresso-cta-text)]/80 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-cta-text)]/10'
               }`}
             >
               About
@@ -218,7 +218,7 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
             {/* Home Button - Far Right */}
             <Link
               href="/"
-              className="flex items-center space-x-2 px-3 py-2 bg-foundational-500 text-white rounded-lg hover:bg-foundational-600 transition-colors font-medium"
+              className="flex items-center space-x-2 px-3 py-2 bg-foundational-500 dark:bg-black text-white rounded-lg hover:bg-foundational-600 dark:hover:bg-gray-900 transition-colors font-medium shadow-md dark:shadow-lg"
             >
               <Home className="w-4 h-4" />
               <span className="hidden sm:block">Home</span>
@@ -237,7 +237,7 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
                     onBlur={() => setSearchExpanded(false)}
                     className="pl-10 pr-4"
                   />
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-[var(--espresso-cta-text)]/70" />
                 </div>
               </form>
             </div>
@@ -252,7 +252,7 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
                 window.location.href = '/search';
               }}
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-4 h-4 dark:text-[var(--espresso-cta-text)]" />
             </Button>
 
             {/* Mobile menu button */}
@@ -264,9 +264,9 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
               aria-label="Toggle mobile menu"
             >
               {mobileMenuOpen ? (
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4 dark:text-[var(--espresso-cta-text)]" />
               ) : (
-                <Menu className="w-4 h-4" />
+                <Menu className="w-4 h-4 dark:text-[var(--espresso-cta-text)]" />
               )}
             </Button>
           </div>
@@ -274,7 +274,7 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-neutral-200 bg-white">
+          <div className="md:hidden border-t border-neutral-200 dark:border-[var(--espresso-accent)]/30 bg-white dark:bg-[var(--espresso-bg-medium)]">
             <div className="px-2 pt-2 pb-3 space-y-1">
               {/* Mobile search */}
               <div className="px-3 py-2">
@@ -286,7 +286,7 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
                        onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10"
                     />
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-[var(--espresso-body)]/70" />
                   </div>
                 </form>
               </div>
@@ -296,8 +296,8 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
                 href="/"
                 className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
                   isActive('/') && effectivePath === '/'
-                    ? 'text-foundational-600 bg-foundational-50'
-                    : 'text-neutral-600'
+                    ? 'text-foundational-600 dark:text-[var(--espresso-accent)] bg-foundational-50 dark:bg-[var(--espresso-accent)]/20'
+                    : 'text-neutral-600 dark:text-[var(--espresso-h1)]'
                 }`}
               >
                 <Home className="w-5 h-5" />
@@ -308,8 +308,8 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
                 href="/domains"
                 className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
                   isActive('/domains')
-                    ? 'text-foundational-600 bg-foundational-50'
-                    : 'text-neutral-600'
+                    ? 'text-foundational-600 dark:text-[var(--espresso-accent)] bg-foundational-50 dark:bg-[var(--espresso-accent)]/20'
+                    : 'text-neutral-600 dark:text-[var(--espresso-h1)]'
                 }`}
               >
                 <Target className="w-5 h-5" />
@@ -320,8 +320,8 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
                 href="/models"
                 className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
                   isActive('/models')
-                    ? 'text-foundational-600 bg-foundational-50'
-                    : 'text-neutral-600'
+                    ? 'text-foundational-600 dark:text-[var(--espresso-accent)] bg-foundational-50 dark:bg-[var(--espresso-accent)]/20'
+                    : 'text-neutral-600 dark:text-[var(--espresso-h1)]'
                 }`}
               >
                 <BookOpen className="w-5 h-5" />
@@ -332,8 +332,8 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
                 href="/about"
                 className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
                   isActive('/about')
-                    ? 'text-foundational-600 bg-foundational-50'
-                    : 'text-neutral-600'
+                    ? 'text-foundational-600 dark:text-[var(--espresso-accent)] bg-foundational-50 dark:bg-[var(--espresso-accent)]/20'
+                    : 'text-neutral-600 dark:text-[var(--espresso-h1)]'
                 }`}
               >
                 <Info className="w-5 h-5" />
@@ -341,9 +341,9 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
               </Link>
 
               {/* Mobile tier links */}
-              <div className="pt-4 border-t border-neutral-200 mt-4">
+              <div className="pt-4 border-t border-neutral-200 dark:border-[var(--espresso-accent)]/20 mt-4">
                 <div className="px-3 py-2">
-                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
+                  <p className="text-xs font-medium text-neutral-500 dark:text-[var(--espresso-body)]/70 uppercase tracking-wide">
                     Browse by Tier
                   </p>
                 </div>
@@ -354,15 +354,15 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
                     className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm"
                   >
                     <div className={`w-2 h-2 rounded-full bg-gradient-to-br ${
-                      item.tier === 1 ? 'from-foundational-400 to-foundational-600' :
-                      item.tier === 2 ? 'from-practical-400 to-practical-600' :
-                      'from-specialized-400 to-specialized-600'
+                      item.tier === 1 ? 'from-foundational-400 to-foundational-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)]' :
+                      item.tier === 2 ? 'from-practical-400 to-practical-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)]' :
+                      'from-specialized-400 to-specialized-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)]'
                     }`} />
                     <div>
-                      <p className={`font-medium ${item.color}`}>
+                      <p className={`font-medium ${item.color} dark:text-[var(--espresso-h1)]`}>
                         {item.label}
                       </p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs text-neutral-500 dark:text-[var(--espresso-body)]/70">
                         {item.description}
                       </p>
                     </div>
@@ -375,9 +375,9 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
       </div>
 
       {/* Progress indicator for framework exploration */}
-      <div className="h-1 bg-neutral-100">
+      <div className="h-1 bg-neutral-100 dark:bg-[var(--espresso-accent)]/20">
         <div 
-          className="h-full bg-gradient-to-r from-foundational-500 via-practical-500 to-specialized-500 transition-all duration-500"
+          className="h-full bg-gradient-to-r from-foundational-500 via-practical-500 to-specialized-500 dark:from-[var(--espresso-accent)] dark:via-[var(--espresso-accent)] dark:to-[var(--espresso-accent)] transition-all duration-500"
           style={{ width: '0%' }} // This would be calculated based on user progress
         />
       </div>

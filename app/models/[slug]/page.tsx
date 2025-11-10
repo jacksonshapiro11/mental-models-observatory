@@ -149,8 +149,8 @@ export default function ModelPage({ params }: ModelPageProps) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {model.applications.map((application: string, index: number) => (
-              <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-green-800 font-medium">{application}</p>
+              <div key={index} className="bg-neutral-50 dark:bg-transparent border border-neutral-200 dark:border-[var(--espresso-accent)]/25 rounded-lg p-4">
+                <p className="text-neutral-800 dark:text-[var(--espresso-body)] font-medium">{application}</p>
               </div>
             ))}
           </div>

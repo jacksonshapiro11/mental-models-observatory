@@ -233,28 +233,28 @@ export default function PathPage({ params }: PathPageProps) {
                     onClick={() => setCurrentModelIndex(index)}
                     className={`w-full text-left p-3 rounded-lg border transition-all relative ${
                       index === currentModelIndex
-                        ? 'border-foundational-300 bg-foundational-50'
+                        ? 'border-foundational-300 bg-foundational-50 dark:bg-transparent dark:border-[var(--espresso-accent)]'
                         : isPreviouslyReviewed
-                        ? 'border-green-200 bg-green-50'
-                        : 'border-neutral-200 hover:border-neutral-300'
+                        ? 'border-neutral-300 bg-neutral-50 dark:bg-transparent dark:border-[var(--espresso-accent)]/40'
+                        : 'border-neutral-200 hover:border-neutral-300 dark:border-[var(--espresso-accent)]/20 dark:hover:border-[var(--espresso-accent)]/30'
                     }`}
                   >
                     {/* Small reviewed indicator */}
                     {isPreviouslyReviewed && index !== currentModelIndex && (
-                      <div className="absolute top-1 right-1 bg-green-500 text-white rounded-full p-0.5">
+                      <div className="absolute top-1 right-1 bg-foundational-500 dark:bg-[var(--espresso-accent)] text-white rounded-full p-0.5">
                         <CheckCircle className="w-3 h-3" />
                       </div>
                     )}
-                    
+
                     <div className="flex items-center space-x-3">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
                         completedModels.has(model.slug)
-                          ? 'bg-foundational-600 text-white'
+                          ? 'bg-foundational-600 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)]'
                           : isPreviouslyReviewed
-                          ? 'bg-green-500 text-white'
+                          ? 'bg-foundational-500 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)]'
                           : index === currentModelIndex
-                          ? 'bg-foundational-100 text-foundational-600'
-                          : 'bg-neutral-100 text-neutral-400'
+                          ? 'bg-foundational-100 dark:bg-[var(--espresso-accent)]/20 text-foundational-600 dark:text-[var(--espresso-accent)]'
+                          : 'bg-neutral-100 dark:bg-transparent text-neutral-400 dark:text-[var(--espresso-body)]/50'
                       }`}>
                         {completedModels.has(model.slug) ? (
                           <CheckCircle className="w-4 h-4" />
@@ -265,7 +265,7 @@ export default function PathPage({ params }: PathPageProps) {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className={`text-sm font-medium truncate ${isPreviouslyReviewed ? 'text-green-800' : 'text-neutral-800'}`}>
+                        <div className={`text-sm font-medium truncate ${isPreviouslyReviewed ? 'text-foundational-700 dark:text-[var(--espresso-h1)]' : 'text-neutral-800 dark:text-[var(--espresso-body)]'}`}>
                           {model.name}
                         </div>
                         <div className="text-xs text-neutral-500">
@@ -360,7 +360,7 @@ export default function PathPage({ params }: PathPageProps) {
               <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-8 relative">
                 {/* REVIEWED Badge - Big and Prominent */}
                 {viewedModelSlugs.includes(currentModel.slug) && (
-                  <div className="absolute top-0 right-0 bg-green-500 text-white px-6 py-3 rounded-bl-xl rounded-tr-xl flex items-center gap-2 text-sm font-bold shadow-lg z-10">
+                  <div className="absolute top-0 right-0 bg-foundational-500 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)] px-6 py-3 rounded-bl-xl rounded-tr-xl flex items-center gap-2 text-sm font-bold shadow-lg z-10">
                     <CheckCircle className="h-5 w-5" />
                     ✓ PREVIOUSLY REVIEWED
                   </div>
@@ -379,7 +379,7 @@ export default function PathPage({ params }: PathPageProps) {
                         </span>
                       )}
                     </div>
-                    <h2 className={`text-2xl font-bold mb-2 ${viewedModelSlugs.includes(currentModel.slug) ? 'text-green-800' : 'text-neutral-800'}`}>
+                    <h2 className={`text-2xl font-bold mb-2 ${viewedModelSlugs.includes(currentModel.slug) ? 'text-foundational-700 dark:text-[var(--espresso-h1)]' : 'text-neutral-800 dark:text-[var(--espresso-h1)]'}`}>
                       {currentModel.name}
                     </h2>
                     <p className="text-neutral-600">{currentModel.domain}</p>
@@ -403,18 +403,18 @@ export default function PathPage({ params }: PathPageProps) {
                   
                   {/* Key Principles */}
                   {currentModel.principles && currentModel.principles.length > 0 && (
-                    <div className="bg-foundational-50 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-neutral-800 mb-4 flex items-center">
-                        <Star className="w-5 h-5 text-accent-500 mr-2" />
+                    <div className="bg-neutral-50 dark:bg-transparent rounded-lg p-6 border border-neutral-200 dark:border-[var(--espresso-accent)]/25">
+                      <h3 className="text-lg font-semibold text-neutral-800 dark:text-[var(--espresso-h1)] mb-4 flex items-center">
+                        <Star className="w-5 h-5 text-foundational-600 dark:text-[var(--espresso-accent)] mr-2" />
                         Key Principles
                       </h3>
                       <ul className="space-y-3">
                         {currentModel.principles.map((principle, index) => (
                           <li key={index} className="flex items-start space-x-3">
-                            <div className="w-6 h-6 bg-accent-100 text-accent-600 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 mt-0.5">
+                            <div className="w-6 h-6 bg-foundational-100 dark:bg-[var(--espresso-accent)]/20 text-foundational-600 dark:text-[var(--espresso-accent)] rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 mt-0.5">
                               {index + 1}
                             </div>
-                            <span className="text-neutral-700 leading-relaxed">{principle}</span>
+                            <span className="text-neutral-700 dark:text-[var(--espresso-body)] leading-relaxed">{principle}</span>
                           </li>
                         ))}
                       </ul>
@@ -423,19 +423,19 @@ export default function PathPage({ params }: PathPageProps) {
 
                   {/* Examples */}
                   {currentModel.examples && currentModel.examples.length > 0 && (
-                    <div className="bg-accent-50 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-neutral-800 mb-4 flex items-center">
-                        <BookOpen className="w-5 h-5 text-accent-600 mr-2" />
+                    <div className="bg-neutral-50 dark:bg-transparent rounded-lg p-6 border border-neutral-200 dark:border-[var(--espresso-accent)]/25">
+                      <h3 className="text-lg font-semibold text-neutral-800 dark:text-[var(--espresso-h1)] mb-4 flex items-center">
+                        <BookOpen className="w-5 h-5 text-foundational-600 dark:text-[var(--espresso-accent)] mr-2" />
                         Real-World Examples
                       </h3>
                       <div className="space-y-4">
                         {currentModel.examples.map((example, index) => (
-                          <div key={index} className="bg-white rounded-lg p-4 border border-accent-200">
+                          <div key={index} className="bg-white dark:bg-transparent rounded-lg p-4 border border-neutral-200 dark:border-[var(--espresso-accent)]/20">
                             <div className="flex items-start space-x-3">
-                              <div className="w-8 h-8 bg-accent-100 text-accent-600 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0">
+                              <div className="w-8 h-8 bg-foundational-100 dark:bg-[var(--espresso-accent)]/20 text-foundational-600 dark:text-[var(--espresso-accent)] rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0">
                                 {index + 1}
                               </div>
-                              <p className="text-neutral-700 leading-relaxed">{example}</p>
+                              <p className="text-neutral-700 dark:text-[var(--espresso-body)] leading-relaxed">{example}</p>
                             </div>
                           </div>
                         ))}
@@ -445,18 +445,18 @@ export default function PathPage({ params }: PathPageProps) {
 
                   {/* Applications */}
                   {currentModel.applications && currentModel.applications.length > 0 && (
-                    <div className="bg-practical-50 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-neutral-800 mb-4 flex items-center">
-                        <Target className="w-5 h-5 text-practical-600 mr-2" />
+                    <div className="bg-neutral-50 dark:bg-transparent rounded-lg p-6 border border-neutral-200 dark:border-[var(--espresso-accent)]/25">
+                      <h3 className="text-lg font-semibold text-neutral-800 dark:text-[var(--espresso-h1)] mb-4 flex items-center">
+                        <Target className="w-5 h-5 text-foundational-600 dark:text-[var(--espresso-accent)] mr-2" />
                         How to Apply This
                       </h3>
                       <ul className="space-y-3">
                         {currentModel.applications.map((application, index) => (
                           <li key={index} className="flex items-start space-x-3">
-                            <div className="w-6 h-6 bg-practical-100 text-practical-600 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 mt-0.5">
+                            <div className="w-6 h-6 bg-foundational-100 dark:bg-[var(--espresso-accent)]/20 text-foundational-600 dark:text-[var(--espresso-accent)] rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 mt-0.5">
                               {index + 1}
                             </div>
-                            <span className="text-neutral-700 leading-relaxed">{application}</span>
+                            <span className="text-neutral-700 dark:text-[var(--espresso-body)] leading-relaxed">{application}</span>
                           </li>
                         ))}
                       </ul>
@@ -464,9 +464,9 @@ export default function PathPage({ params }: PathPageProps) {
                   )}
 
                   {/* Curated Insights from Readwise */}
-                  <div className="bg-specialized-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-neutral-800 mb-4 flex items-center">
-                      <BookOpen className="w-5 h-5 text-specialized-600 mr-2" />
+                  <div className="bg-neutral-50 dark:bg-transparent rounded-lg p-6 border border-neutral-200 dark:border-[var(--espresso-accent)]/25">
+                    <h3 className="text-lg font-semibold text-neutral-800 dark:text-[var(--espresso-h1)] mb-4 flex items-center">
+                      <BookOpen className="w-5 h-5 text-foundational-600 dark:text-[var(--espresso-accent)] mr-2" />
                       Curated Insights from Readwise
                     </h3>
                     <ReadwiseHighlights modelSlug={currentModel.slug} />

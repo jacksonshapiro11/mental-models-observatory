@@ -17,6 +17,17 @@ A comprehensive Next.js application showcasing **119 mental models** across 40 k
 
 ## 🆕 Recent Updates
 
+### December 2025 - UI/UX Enhancements
+- ✅ **Espresso-Gold Dark Mode** - Sophisticated brown and gold color scheme
+  - Warm espresso backgrounds (`#2a1a0f`, `#3d2815`, `#4a2f1a`) instead of black
+  - Gold accents (`#D4AF37`) for highlights and interactive elements
+  - Theme toggle with persistent preference
+  - Fully opaque modals and components in dark mode
+- ✅ **Navigation Improvements**
+  - Black Home button with white text in dark mode for visibility
+  - Gold header with dark brown text and accents
+  - Consistent espresso-gold theme across all pages
+
 ### November 2025 - Content Enhancement
 - ✅ **20 models updated** with expanded, publication-quality content:
   - 9 models regenerated from scratch (13B, 14B, 15C, 18A, 18D, 19C, 20B, 20C, 20D)
@@ -71,6 +82,8 @@ mental-models-observatory/
 │   │   └── SourceAttribution.tsx    # Book/author metadata
 │   ├── layout/                  # Navigation, headers, footers
 │   └── ui/                      # Base UI components
+│       ├── ThemeToggle.tsx      # Dark/light mode toggle
+│       └── QuickStartModal.tsx   # "What is this?" modal
 │
 ├── lib/
 │   ├── readwise-data.ts         # SOURCE OF TRUTH - All 119 models
@@ -239,6 +252,9 @@ This compares existing content in `lib/readwise-data.ts` with updated content in
 | Individual highlight | `components/content/HighlightBlock.tsx` | Single highlight card design |
 | Navigation | `components/layout/Navigation.tsx` | Top navigation bar |
 | Homepage | `app/page.tsx` | Landing page |
+| Theme toggle | `components/ui/ThemeToggle.tsx` | Dark/light mode switcher |
+| Quick Start modal | `components/ui/QuickStartModal.tsx` | "What is this?" modal |
+| Color system | `app/globals.css` | Espresso-gold CSS variables and dark mode styles |
 
 ---
 
@@ -271,6 +287,33 @@ node scripts/compare-substance.js                  # Compare OLD vs NEW content 
 
 ## 🎨 Design System
 
+### Espresso-Gold Color Palette
+
+The application features a sophisticated espresso-gold color scheme with dark mode support:
+
+#### Light Mode
+- Clean white backgrounds with blue accents
+- Standard dark text on light backgrounds
+
+#### Dark Mode (Espresso-Gold Theme)
+- **Background Colors**:
+  - Dark: `#2a1a0f` (warm dark brown)
+  - Medium: `#3d2815` (espresso brown)
+  - Light: `#4a2f1a` (lighter brown)
+  - Surface: `#5a3a22` (lightest brown)
+- **Text Colors**:
+  - Headings: `#F5EDE3` (cream)
+  - Body: `#E5DACB` (light cream)
+- **Accents**:
+  - Gold: `#D4AF37` (gold highlights)
+  - CTA Text: `#1A1410` (dark brown)
+
+#### Theme Implementation
+- CSS custom properties in `app/globals.css`
+- Theme toggle with persistent localStorage preference
+- Fully opaque modals and components in dark mode
+- Consistent espresso-gold theme across all pages
+
 ### Tier-Based Organization
 
 | Tier | Color | Purpose | Example Domains |
@@ -290,6 +333,7 @@ node scripts/compare-substance.js                  # Compare OLD vs NEW content 
 - Accessibility (ARIA, keyboard navigation)
 - Smooth animations via Framer Motion
 - Optimized performance with caching
+- Dark mode with espresso-gold theme
 
 ---
 

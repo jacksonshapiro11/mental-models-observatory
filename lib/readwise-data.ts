@@ -1454,7 +1454,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.308Z",
     "updatedAt": "2025-08-25T18:25:18.308Z"
   },
-    {
+  {
     "id": "mental-models-cross-disciplinary-thinking-5b",
     "code": "5B",
     "name": "Cross-Disciplinary Synthesis & The Best Answer Problem",
@@ -2834,7 +2834,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.309Z",
     "updatedAt": "2025-08-25T18:25:18.309Z"
   },
-    {
+  {
     "id": "cultural-anthropology-social-identity-13a",
     "code": "13A",
     "name": "Cultural Evolution & Memetic Theory",
@@ -2862,7 +2862,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-11-01T16:40:30.601Z",
     "updatedAt": "2025-11-01T16:40:30.601Z"
   },
-    {
+  {
     "id": "cultural-anthropology-social-identity-13b",
     "code": "13B",
     "name": "Social Reality Construction & Collective Belief",
@@ -2890,7 +2890,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-11-01T16:24:51.565Z",
     "updatedAt": "2025-11-01T16:24:51.568Z"
   },
-    {
+  {
     "id": "language-communication-systems-14a",
     "code": "14A",
     "name": "Language as Thought Constraint",
@@ -2918,7 +2918,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-11-01T16:40:30.602Z",
     "updatedAt": "2025-11-01T16:40:30.602Z"
   },
-    {
+  {
     "id": "language-communication-systems-14b",
     "code": "14B",
     "name": "Semantics vs. Meaning & Deep Understanding",
@@ -2946,7 +2946,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-11-01T16:24:51.569Z",
     "updatedAt": "2025-11-01T16:24:51.569Z"
   },
-    {
+  {
     "id": "information-theory-media-ecology-15a",
     "code": "15A",
     "name": "Signal vs. Noise & Information Filtering",
@@ -3024,7 +3024,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.309Z",
     "updatedAt": "2025-08-25T18:25:18.309Z"
   },
-    {
+  {
     "id": "information-theory-media-ecology-15c",
     "code": "15C",
     "name": "Predictive Processing & Constructed Experience",
@@ -3269,7 +3269,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.309Z",
     "updatedAt": "2025-08-25T18:25:18.309Z"
   },
-    {
+  {
     "id": "relationships-human-connection-18a",
     "code": "18A",
     "name": "Love as Nuclear Fuel & Life Foundation",
@@ -3391,7 +3391,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.309Z",
     "updatedAt": "2025-08-25T18:25:18.309Z"
   },
-    {
+  {
     "id": "relationships-human-connection-18d",
     "code": "18D",
     "name": "Compounding Human Connections",
@@ -3419,7 +3419,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-11-01T16:24:51.571Z",
     "updatedAt": "2025-11-01T16:24:51.571Z"
   },
-    {
+  {
     "id": "health-human-optimization-19a",
     "code": "19A",
     "name": "Mind-Body Integration & Physiological Intelligence",
@@ -3487,7 +3487,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.309Z",
     "updatedAt": "2025-08-25T18:25:18.309Z"
   },
-    {
+  {
     "id": "health-human-optimization-19c",
     "code": "19C",
     "name": "Physiological States & Decision Quality",
@@ -3564,7 +3564,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.309Z",
     "updatedAt": "2025-08-25T18:25:18.309Z"
   },
-    {
+  {
     "id": "mindfulness-inner-work-20b",
     "code": "20B",
     "name": "Mind-Body Integration & Embodied Presence",
@@ -3592,7 +3592,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-11-01T16:24:51.573Z",
     "updatedAt": "2025-11-01T16:24:51.573Z"
   },
-    {
+  {
     "id": "mindfulness-inner-work-20c",
     "code": "20C",
     "name": "Deconstructing Mental Patterns & Pain Body",
@@ -3620,7 +3620,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-11-01T16:24:51.574Z",
     "updatedAt": "2025-11-01T16:24:51.574Z"
   },
-    {
+  {
     "id": "mindfulness-inner-work-20d",
     "code": "20D",
     "name": "Transcending Ego & Two-Selves Integration",
@@ -4851,7 +4851,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.310Z",
     "updatedAt": "2025-08-25T18:25:18.310Z"
   },
-    {
+  {
     "id": "neuroscience-consciousness-32a",
     "code": "32A",
     "name": "Neuroplasticity & Brain Architecture",
@@ -4879,7 +4879,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-11-01T16:40:30.573Z",
     "updatedAt": "2025-11-01T16:40:30.586Z"
   },
-    {
+  {
     "id": "neuroscience-consciousness-32b",
     "code": "32B",
     "name": "Consciousness & Neural Correlates",
@@ -5116,7 +5116,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.310Z",
     "updatedAt": "2025-08-25T18:25:18.310Z"
   },
-    {
+  {
     "id": "economics-market-dynamics-35b",
     "code": "35B",
     "name": "Behavioral Economics & Market Psychology",
@@ -5144,7 +5144,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-11-01T16:40:30.590Z",
     "updatedAt": "2025-11-01T16:40:30.590Z"
   },
-    {
+  {
     "id": "practical-wisdom-resourcefulness-36a",
     "code": "36A",
     "name": "Metis & Local Knowledge",
@@ -5172,7 +5172,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-11-01T16:40:30.591Z",
     "updatedAt": "2025-11-01T16:40:30.591Z"
   },
-    {
+  {
     "id": "practical-wisdom-resourcefulness-36b",
     "code": "36B",
     "name": "Bricolage & Making Do",
@@ -5419,7 +5419,7 @@ export const READWISE_MODELS: MentalModel[] = [
     "createdAt": "2025-08-25T18:25:18.310Z",
     "updatedAt": "2025-08-25T18:25:18.310Z"
   },
-    {
+  {
     "id": "narrative-identity-38d",
     "code": "38D",
     "name": "Affirmations & Identity Reinforcement",

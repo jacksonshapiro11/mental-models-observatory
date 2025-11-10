@@ -162,8 +162,8 @@ export default function ReadwiseHighlights({ modelSlug }: ReadwiseHighlightsProp
               onClick={() => markHighlightViewed(curated.readwiseId)}
               className={`rounded-lg p-4 border transition-all cursor-pointer ${
                 isViewed 
-                  ? 'bg-green-50 border-green-300 opacity-75' 
-                  : 'bg-white border-specialized-200 hover:border-specialized-300'
+                  ? 'bg-neutral-50 dark:bg-transparent border-green-300 dark:border-[var(--espresso-accent)]/40 opacity-75' 
+                  : 'bg-white dark:bg-transparent border-specialized-200 dark:border-[var(--espresso-accent)]/25 hover:border-specialized-300 dark:hover:border-[var(--espresso-accent)]/40'
               }`}
             >
               {/* Viewed Badge */}

@@ -44,28 +44,28 @@ export default function GuidePage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-neutral-50 dark:bg-[var(--espresso-bg-dark)]">
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200">
+      <div className="bg-white dark:bg-[var(--espresso-bg-medium)] border-b border-neutral-200 dark:border-[var(--espresso-accent)]/30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-neutral-800 mb-4">
+            <h1 className="text-4xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)] mb-4">
               Learning Paths
             </h1>
-            <p className="text-xl text-neutral-600 mb-8">
+            <p className="text-xl text-neutral-600 dark:text-[var(--espresso-body)] mb-8">
               Choose a learning path or ask the AI assistant for help
             </p>
             
             {/* Search and Conversational Interface Toggle */}
             <div className="max-w-2xl mx-auto space-y-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400 dark:text-[var(--espresso-body)]/70" />
                 <input
                   type="text"
                   placeholder="Search learning paths..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-foundational-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-neutral-200 dark:border-[var(--espresso-accent)]/30 rounded-lg focus:ring-2 focus:ring-foundational-500 dark:focus:ring-[var(--espresso-accent)] focus:border-transparent bg-white dark:bg-[var(--espresso-bg-medium)] text-neutral-800 dark:text-[var(--espresso-h1)] placeholder:text-neutral-400 dark:placeholder:text-[var(--espresso-body)]/50"
                 />
               </div>
               
@@ -112,30 +112,30 @@ export default function GuidePage() {
             <Link
               key={path.id}
               href={`/guide/path/${path.id}`}
-              className="group bg-white rounded-xl shadow-sm border border-neutral-200 hover:shadow-md hover:border-foundational-300 transition-all duration-200"
+              className="group bg-white dark:bg-transparent rounded-xl shadow-sm dark:shadow-none border border-neutral-200 dark:border-[var(--espresso-accent)]/25 hover:shadow-md dark:hover:shadow-none hover:border-foundational-300 dark:hover:border-[var(--espresso-accent)]/40 transition-all duration-200"
             >
               <div className="p-6">
                 <div className="flex items-start space-x-4 mb-4">
-                  <div className="w-12 h-12 bg-foundational-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-foundational-200 transition-colors">
+                  <div className="w-12 h-12 bg-foundational-100 dark:bg-[var(--espresso-accent)]/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-foundational-200 dark:group-hover:bg-[var(--espresso-accent)]/30 transition-colors">
                     {getPathIcon(path)}
                   </div>
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-lg font-semibold text-neutral-800 group-hover:text-foundational-600 transition-colors">
+                      <h3 className="text-lg font-semibold text-neutral-800 dark:text-[var(--espresso-h1)] group-hover:text-foundational-600 dark:group-hover:text-[var(--espresso-accent)] transition-colors">
                         {path.title}
                       </h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(path.difficulty)}`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(path.difficulty)} dark:bg-[var(--espresso-accent)]/20 dark:text-[var(--espresso-accent)]`}>
                         {path.difficulty}
                       </span>
                     </div>
-                    <p className="text-neutral-600 text-sm line-clamp-2">
+                    <p className="text-neutral-600 dark:text-[var(--espresso-body)] text-sm line-clamp-2">
                       {path.description}
                     </p>
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between text-sm text-neutral-500">
+                <div className="flex items-center justify-between text-sm text-neutral-500 dark:text-[var(--espresso-body)]/70">
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-1">
                       <Clock className="w-4 h-4" />
@@ -146,14 +146,14 @@ export default function GuidePage() {
                       <span>{path.models.length} models</span>
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-neutral-400 group-hover:text-foundational-600 group-hover:translate-x-1 transition-all" />
+                  <ArrowRight className="w-4 h-4 text-neutral-400 dark:text-[var(--espresso-body)]/70 group-hover:text-foundational-600 dark:group-hover:text-[var(--espresso-accent)] group-hover:translate-x-1 transition-all" />
                 </div>
                 
                 <div className="mt-3 flex flex-wrap gap-1">
                   {path.tags.slice(0, 3).map((tag: string) => (
                     <span
                       key={tag}
-                      className="px-2 py-1 bg-neutral-100 text-neutral-600 rounded-md text-xs"
+                      className="px-2 py-1 bg-neutral-100 dark:bg-[var(--espresso-accent)]/20 text-neutral-600 dark:text-[var(--espresso-body)] rounded-md text-xs"
                     >
                       {tag}
                     </span>
@@ -166,11 +166,11 @@ export default function GuidePage() {
 
         {filteredPaths.length === 0 && (
           <div className="text-center py-12">
-            <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="w-8 h-8 text-neutral-400" />
+            <div className="w-16 h-16 bg-neutral-100 dark:bg-[var(--espresso-accent)]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search className="w-8 h-8 text-neutral-400 dark:text-[var(--espresso-body)]/70" />
             </div>
-            <h3 className="text-lg font-semibold text-neutral-800 mb-2">No paths found</h3>
-            <p className="text-neutral-600">Try adjusting your search terms or browse all available paths.</p>
+            <h3 className="text-lg font-semibold text-neutral-800 dark:text-[var(--espresso-h1)] mb-2">No paths found</h3>
+            <p className="text-neutral-600 dark:text-[var(--espresso-body)]">Try adjusting your search terms or browse all available paths.</p>
           </div>
         )}
       </div>
