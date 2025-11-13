@@ -34,7 +34,11 @@
     "test-readwise-integration": "node scripts/test-readwise-integration.js",
     "standardize-domains": "node scripts/standardize-domains.js",
     "test-data": "node scripts/test-data-manager.js",
-    "setup": "./scripts/setup.sh"
+    "setup": "./scripts/setup.sh",
+    "generate-content": "node scripts/generate-marketing-content.js",
+    "schedule-content": "node scripts/auto-schedule-content.js",
+    "post-content": "node scripts/auto-post-content.js",
+    "post-content:dry-run": "node scripts/auto-post-content.js --dry-run"
   },
   "dependencies": {
     "@tailwindcss/forms": "^0.5.7",
