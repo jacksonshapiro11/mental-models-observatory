@@ -1,0 +1,33 @@
+name: Auto Post Scheduled Tweets
+
+on:
+  schedule:
+    # Run every 5 minutes to check for scheduled tweets
+    # GitHub Actions uses UTC time
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  post-tweets:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Check and post scheduled tweets
+        env:
+          TWITTER_CLIENT_ID: ${{ secrets.TWITTER_CLIENT_ID }}
+          TWITTER_CLIENT_SECRET: ${{ secrets.TWITTER_CLIENT_SECRET }}
+          TWITTER_OAUTH2_ACCESS_TOKEN: ${{ secrets.TWITTER_OAUTH2_ACCESS_TOKEN }}
+          TWITTER_OAUTH2_REFRESH_TOKEN: ${{ secrets.TWITTER_OAUTH2_REFRESH_TOKEN }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+        run: npm run schedule-tweets:once
