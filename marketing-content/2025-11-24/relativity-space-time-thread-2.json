@@ -1,0 +1,30 @@
+{
+  "model": "Relativity & Space-Time",
+  "slug": "relativity-space-time",
+  "url": "https://www.cosmictrex.xyz/models/relativity-space-time",
+  "thread": [
+    {
+      "number": 4,
+      "text": "Your GPS tells you to turn left. \n\nIt knows where you are within feet. Would be miles off without accounting for satellites experiencing time differently than you.\n\nRelativity & Space-Time.\n\nTime runs at different speeds depending on gravity and velocity...",
+      "charCount": 257,
+      "type": "scenario"
+    },
+    {
+      "number": 5,
+      "text": "From The Frontiers of Knowledge by A. C. Grayling:\n\n\"The laws of physics stay constant, but the speed of light is absolute. Time moves differently for different observers.\"\n\nGPS satellites literally age faster than you do.",
+      "charCount": 222,
+      "type": "quote"
+    },
+    {
+      "number": 6,
+      "text": "Signal gets buried under noise. I enjoy organizing ideas. This is what came out of it.\n\nhttps://www.cosmictrex.xyz/models/relativity-space-time",
+      "charCount": 143,
+      "type": "invitation"
+    }
+  ],
+  "threadNumber": 2,
+  "totalThreads": 3,
+  "scheduledDate": "2025-11-24",
+  "scheduledTime": "14:00",
+  "scheduledDateTime": "2025-11-24T14:00:00"
+}

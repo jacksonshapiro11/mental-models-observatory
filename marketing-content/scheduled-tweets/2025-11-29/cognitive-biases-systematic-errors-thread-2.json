@@ -1,0 +1,30 @@
+{
+  "model": "Cognitive Biases & Systematic Errors",
+  "slug": "cognitive-biases-systematic-errors",
+  "url": "https://www.cosmictrex.xyz/models/cognitive-biases-systematic-errors",
+  "thread": [
+    {
+      "number": 4,
+      "text": "Friend recommends a restaurant. You Google it.\n\nRead five reviews. Three are great, two are terrible. You focus on the two bad ones.\n\nCognitive Biases & Systematic Errors.\n\nInformation that's recent or emotionally charged weighs heavier in your mind than objective reality.",
+      "charCount": 273,
+      "type": "scenario"
+    },
+    {
+      "number": 5,
+      "text": "From Super Thinking by Gabriel Weinberg, Lauren McCann:\n\n\"Availability bias weights information by how easily it comes to mind. Recent or emotional events loom larger than objective reality.\"\n\nWhat's fresh in your memory feels more true.",
+      "charCount": 237,
+      "type": "quote"
+    },
+    {
+      "number": 6,
+      "text": "I read a lot. Wanted to remember what mattered. Built this to help me think clearer. Maybe it helps you.\n\nhttps://www.cosmictrex.xyz/models/cognitive-biases-systematic-errors",
+      "charCount": 174,
+      "type": "invitation"
+    }
+  ],
+  "threadNumber": 2,
+  "totalThreads": 3,
+  "scheduledDate": "2025-11-29",
+  "scheduledTime": "14:00",
+  "scheduledDateTime": "2025-11-29T14:00:00"
+}

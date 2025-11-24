@@ -1,0 +1,30 @@
+{
+  "model": "Relativity & Space-Time",
+  "slug": "relativity-space-time",
+  "url": "https://www.cosmictrex.xyz/models/relativity-space-time",
+  "thread": [
+    {
+      "number": 7,
+      "text": "Your watch shows 3pm. Your friend's watch across town shows 3pm.\n\nAn astronaut's clock on the space station shows something slightly different. Not broken. Actually different.\n\nRelativity & Space-Time.\n\n..",
+      "charCount": 205,
+      "type": "scenario"
+    },
+    {
+      "number": 8,
+      "text": "From A Brief History of Time by Stephen Hawking:\n\n\"There is no unique absolute time. Each person has their own measure of time depending on where they are and how they're moving.\"\n\nYour clock isn't everyone's clock.",
+      "charCount": 215,
+      "type": "quote"
+    },
+    {
+      "number": 9,
+      "text": "Information overload is real. Spent time filtering what I read. See if any of it resonates.\n\nhttps://www.cosmictrex.xyz/models/relativity-space-time",
+      "charCount": 148,
+      "type": "invitation"
+    }
+  ],
+  "threadNumber": 3,
+  "totalThreads": 3,
+  "scheduledDate": "2025-11-26",
+  "scheduledTime": "19:00",
+  "scheduledDateTime": "2025-11-26T19:00:00"
+}

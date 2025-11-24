@@ -1,0 +1,30 @@
+{
+  "model": "Kahneman's 8 Decision-Making Questions",
+  "slug": "kahneman-s-8-decision-making-questions",
+  "url": "https://www.cosmictrex.xyz/models/kahneman-s-8-decision-making-questions",
+  "thread": [
+    {
+      "number": 4,
+      "text": "About to propose. Can't undo it once you ask.\n\nChoosing a restaurant for dinner. Easy to try somewhere else next time.\n\nKahneman's 8 Decision-Making Questions.\n\nIrreversible decisions need slow, careful thinking. Reversible ones can move fast without much risk.",
+      "charCount": 261,
+      "type": "scenario"
+    },
+    {
+      "number": 5,
+      "text": "From Super Thinking by Gabriel Weinberg, Lauren McCann:\n\n\"Bezos asks: Is this a one-way door or a two-way door? Irreversible decisions need slow thinking. Reversible ones can move fast.\"\n\nKnow which type of decision you're making.",
+      "charCount": 230,
+      "type": "quote"
+    },
+    {
+      "number": 6,
+      "text": "Couldn't keep track of what I was learning. Built this to fix that. Use what helps.\n\nhttps://www.cosmictrex.xyz/models/kahneman-s-8-decision-making-questions",
+      "charCount": 157,
+      "type": "invitation"
+    }
+  ],
+  "threadNumber": 2,
+  "totalThreads": 3,
+  "scheduledDate": "2025-12-08",
+  "scheduledTime": "14:00",
+  "scheduledDateTime": "2025-12-08T14:00:00"
+}

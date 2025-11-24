@@ -11,9 +11,18 @@ class TwitterClient {
   constructor(config) {
     // Support both OAuth 1.0a and OAuth 2.0
     if (config.oauth2AccessToken) {
-      // OAuth 2.0
-      this.client = new TwitterApi(config.oauth2AccessToken);
-      this.rwClient = this.client.readWrite;
+      // OAuth 2.0 User Context
+      // Need to pass client ID with the access token for user context
+      if (config.clientId) {
+        this.client = new TwitterApi(config.oauth2AccessToken, {
+          clientId: config.clientId,
+        });
+      } else {
+        // Fallback: just use the token (though this may be app-only)
+        this.client = new TwitterApi(config.oauth2AccessToken);
+      }
+      this.isOAuth2 = true;
+      this.rwClient = this.client;
     } else if (config.apiKey && config.accessToken) {
       // OAuth 1.0a for posting tweets (user context required)
       this.client = new TwitterApi({
@@ -28,6 +37,7 @@ class TwitterClient {
         throw new Error('Failed to initialize read-write client. Check OAuth credentials.');
       }
       
+      this.isOAuth2 = false;
       this.rwClient = this.client.readWrite;
     } else {
       throw new Error('No valid OAuth credentials provided');
@@ -44,7 +54,7 @@ class TwitterClient {
       
       let response;
       
-      // Try v2 API first (works with Essential/Elevated tiers)
+      // Use v2 API (works with Essential/Elevated tiers and OAuth 2.0)
       if (replyToTweetId) {
         // Reply to previous tweet using v2
         response = await this.rwClient.v2.reply(tweetText, replyToTweetId);

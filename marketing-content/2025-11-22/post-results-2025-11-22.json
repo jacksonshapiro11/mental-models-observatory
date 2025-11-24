@@ -1,0 +1,28 @@
+{
+  "date": "2025-11-22",
+  "platform": "twitter",
+  "posts": [
+    {
+      "model": "Variation, Selection, and Heredity",
+      "thread": 1,
+      "tweets": 3,
+      "success": true,
+      "dryRun": true
+    },
+    {
+      "model": "Variation, Selection, and Heredity",
+      "thread": 2,
+      "tweets": 3,
+      "success": true,
+      "dryRun": true
+    },
+    {
+      "model": "Variation, Selection, and Heredity",
+      "thread": 3,
+      "tweets": 3,
+      "success": true,
+      "dryRun": true
+    }
+  ],
+  "errors": []
+}

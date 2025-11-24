@@ -1,0 +1,233 @@
+[
+  {
+    "date": "2025-12-01",
+    "time": "09:00",
+    "datetime": "2025-12-01T14:00:00",
+    "day": "Monday",
+    "model": "Relativity & Space-Time",
+    "slug": "relativity-space-time",
+    "thread": 1,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-01",
+    "time": "12:00",
+    "datetime": "2025-12-01T17:00:00",
+    "day": "Monday",
+    "model": "Relativity & Space-Time",
+    "slug": "relativity-space-time",
+    "thread": 2,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-01",
+    "time": "17:00",
+    "datetime": "2025-12-01T22:00:00",
+    "day": "Monday",
+    "model": "Relativity & Space-Time",
+    "slug": "relativity-space-time",
+    "thread": 3,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-02",
+    "time": "09:00",
+    "datetime": "2025-12-02T14:00:00",
+    "day": "Tuesday",
+    "model": "Variation, Selection, and Heredity",
+    "slug": "variation-selection-and-heredity",
+    "thread": 1,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-02",
+    "time": "12:00",
+    "datetime": "2025-12-02T17:00:00",
+    "day": "Tuesday",
+    "model": "Variation, Selection, and Heredity",
+    "slug": "variation-selection-and-heredity",
+    "thread": 2,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-02",
+    "time": "17:00",
+    "datetime": "2025-12-02T22:00:00",
+    "day": "Tuesday",
+    "model": "Variation, Selection, and Heredity",
+    "slug": "variation-selection-and-heredity",
+    "thread": 3,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-03",
+    "time": "09:00",
+    "datetime": "2025-12-03T14:00:00",
+    "day": "Wednesday",
+    "model": "Kahneman's 8 Decision-Making Questions",
+    "slug": "kahneman-s-8-decision-making-questions",
+    "thread": 1,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-03",
+    "time": "12:00",
+    "datetime": "2025-12-03T17:00:00",
+    "day": "Wednesday",
+    "model": "Kahneman's 8 Decision-Making Questions",
+    "slug": "kahneman-s-8-decision-making-questions",
+    "thread": 2,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-03",
+    "time": "17:00",
+    "datetime": "2025-12-03T22:00:00",
+    "day": "Wednesday",
+    "model": "Kahneman's 8 Decision-Making Questions",
+    "slug": "kahneman-s-8-decision-making-questions",
+    "thread": 3,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-04",
+    "time": "09:00",
+    "datetime": "2025-12-04T14:00:00",
+    "day": "Thursday",
+    "model": "Cognitive Biases & Systematic Errors",
+    "slug": "cognitive-biases-systematic-errors",
+    "thread": 1,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-04",
+    "time": "12:00",
+    "datetime": "2025-12-04T17:00:00",
+    "day": "Thursday",
+    "model": "Cognitive Biases & Systematic Errors",
+    "slug": "cognitive-biases-systematic-errors",
+    "thread": 2,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-04",
+    "time": "17:00",
+    "datetime": "2025-12-04T22:00:00",
+    "day": "Thursday",
+    "model": "Cognitive Biases & Systematic Errors",
+    "slug": "cognitive-biases-systematic-errors",
+    "thread": 3,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-05",
+    "time": "09:00",
+    "datetime": "2025-12-05T14:00:00",
+    "day": "Friday",
+    "model": "Bias Inherent in Models & Hidden Assumptions",
+    "slug": "bias-inherent-in-models-hidden-assumptions",
+    "thread": 1,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-05",
+    "time": "12:00",
+    "datetime": "2025-12-05T17:00:00",
+    "day": "Friday",
+    "model": "Bias Inherent in Models & Hidden Assumptions",
+    "slug": "bias-inherent-in-models-hidden-assumptions",
+    "thread": 2,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-05",
+    "time": "17:00",
+    "datetime": "2025-12-05T22:00:00",
+    "day": "Friday",
+    "model": "Bias Inherent in Models & Hidden Assumptions",
+    "slug": "bias-inherent-in-models-hidden-assumptions",
+    "thread": 3,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-06",
+    "time": "09:00",
+    "datetime": "2025-12-06T14:00:00",
+    "day": "Saturday",
+    "model": "Information Theory & Physical Reality",
+    "slug": "information-theory-physical-reality",
+    "thread": 1,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-06",
+    "time": "12:00",
+    "datetime": "2025-12-06T17:00:00",
+    "day": "Saturday",
+    "model": "Information Theory & Physical Reality",
+    "slug": "information-theory-physical-reality",
+    "thread": 2,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-06",
+    "time": "17:00",
+    "datetime": "2025-12-06T22:00:00",
+    "day": "Saturday",
+    "model": "Information Theory & Physical Reality",
+    "slug": "information-theory-physical-reality",
+    "thread": 3,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-07",
+    "time": "09:00",
+    "datetime": "2025-12-07T14:00:00",
+    "day": "Sunday",
+    "model": "Model Testing & Refinement Through Criticism",
+    "slug": "model-testing-refinement-through-criticism",
+    "thread": 1,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-07",
+    "time": "12:00",
+    "datetime": "2025-12-07T17:00:00",
+    "day": "Sunday",
+    "model": "Model Testing & Refinement Through Criticism",
+    "slug": "model-testing-refinement-through-criticism",
+    "thread": 2,
+    "totalThreads": 3,
+    "tweets": 3
+  },
+  {
+    "date": "2025-12-07",
+    "time": "17:00",
+    "datetime": "2025-12-07T22:00:00",
+    "day": "Sunday",
+    "model": "Model Testing & Refinement Through Criticism",
+    "slug": "model-testing-refinement-through-criticism",
+    "thread": 3,
+    "totalThreads": 3,
+    "tweets": 3
+  }
+]

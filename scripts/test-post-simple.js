@@ -16,9 +16,13 @@ async function testPost() {
   // Check for OAuth 2.0 first
   if (process.env.TWITTER_OAUTH2_ACCESS_TOKEN) {
     console.log('🔑 Using OAuth 2.0: ✅\n');
+    console.log('   Client ID:', process.env.TWITTER_CLIENT_ID ? '✅' : '❌');
+    console.log('   Access Token:', process.env.TWITTER_OAUTH2_ACCESS_TOKEN ? '✅' : '❌');
+    console.log('');
     
     client = new TwitterClient({
-      oauth2AccessToken: process.env.TWITTER_OAUTH2_ACCESS_TOKEN
+      oauth2AccessToken: process.env.TWITTER_OAUTH2_ACCESS_TOKEN,
+      clientId: process.env.TWITTER_CLIENT_ID
     });
   } else if (process.env.TWITTER_API_KEY && process.env.TWITTER_ACCESS_TOKEN) {
     console.log('🔑 Credentials check:');

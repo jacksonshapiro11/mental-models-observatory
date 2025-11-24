@@ -1,0 +1,30 @@
+{
+  "model": "Relativity & Space-Time",
+  "slug": "relativity-space-time",
+  "url": "https://www.cosmictrex.xyz/models/relativity-space-time",
+  "thread": [
+    {
+      "number": 1,
+      "text": "Video call with your friend in Tokyo. You're laughing at something they said five seconds ago.\n\nThey're already responding to something else.\n\nRelativity & Space-Time.\n\nThere's no universal \"now.\" Each observer experiences their own present moment depending on location and speed.",
+      "charCount": 280,
+      "type": "scenario"
+    },
+    {
+      "number": 2,
+      "text": "From Reality Is Not What It Seems by Carlo Rovelli:\n\n\"There is past and future, but the present exists only locally. What is 'now' on Earth happened 15 minutes ago on Mars.\"\n\nThe delay isn't a technical glitch. It's physics.",
+      "charCount": 224,
+      "type": "quote"
+    },
+    {
+      "number": 3,
+      "text": "I read a lot. Wanted to remember what mattered. Built this to help me think clearer. Maybe it helps you.\n\nhttps://www.cosmictrex.xyz/models/relativity-space-time",
+      "charCount": 161,
+      "type": "invitation"
+    }
+  ],
+  "threadNumber": 1,
+  "totalThreads": 3,
+  "scheduledDate": "2025-11-22",
+  "scheduledTime": "09:00",
+  "scheduledDateTime": "2025-11-22T09:00:00"
+}
