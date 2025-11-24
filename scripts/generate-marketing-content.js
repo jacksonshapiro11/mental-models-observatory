@@ -65,103 +65,161 @@ try {
   }
 }
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cosmictrex.xyz';
 
 /**
- * Generate Twitter/X thread for a model
+ * Generate Twitter/X thread following TWITTER_CONTENT_FRAMEWORK.md
+ * 
+ * NEW FORMAT: 3 complete tweets per model
+ * Each tweet: Scenario + Quote + Connection
+ * All 3 tweets about the same model
  */
+
+// Tweet 3 options pool (from framework)
+const TWEET3_OPTIONS = [
+  // Options 1-10: Humble journey (use 80% of time)
+  "I read a lot. Wanted to remember what mattered.\n\nBuilt this to help me think clearer. Maybe it helps you.\n\ncosmictrex.xyz",
+  "Signal gets buried under noise.\n\nI enjoy organizing ideas. This is what came out of it.\n\ncosmictrex.xyz",
+  "Information overload is real.\n\nSpent time filtering what I read. See if any of it resonates.\n\ncosmictrex.xyz",
+  "We all keep re-learning the same things.\n\nI organized them here. Take what's useful.\n\ncosmictrex.xyz",
+  "Most content is noise.\n\nI like reading. This is my attempt to find signal.\n\ncosmictrex.xyz",
+  "Hard to know what actually matters.\n\nI'm trying to figure it out. Maybe you are too.\n\ncosmictrex.xyz",
+  "Good ideas get buried fast.\n\nI pulled them together here. See what clicks.\n\ncosmictrex.xyz",
+  "Couldn't keep track of what I was learning.\n\nBuilt this to fix that. Use what helps.\n\ncosmictrex.xyz",
+  "Core ideas buried in endless repackaging.\n\nTried to get back to the core. Take what fits.\n\ncosmictrex.xyz",
+  "Started keeping notes for myself.\n\nOrganized them into this. Explore if you want.\n\ncosmictrex.xyz",
+  // Options 11-12: Time-based (use 20% of time)
+  "Ideas to help you think better.\n\nBased on 125 days of content. Organized here.\n\ncosmictrex.xyz",
+  "Ideas to help you think clearer.\n\nMore than 3000 hours of reading. See what resonates.\n\ncosmictrex.xyz"
+];
+
+function selectTweet3() {
+  // 80% humble journey, 20% time-based
+  if (Math.random() < 0.8) {
+    const humbleOptions = TWEET3_OPTIONS.slice(0, 10);
+    return humbleOptions[Math.floor(Math.random() * humbleOptions.length)];
+  } else {
+    const timeOptions = TWEET3_OPTIONS.slice(10, 12);
+    return timeOptions[Math.floor(Math.random() * timeOptions.length)];
+  }
+}
+
+function shortenHighlight(text, maxLength = 200) {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  
+  // Find natural break point
+  const shortened = text.substring(0, maxLength);
+  const lastPeriod = shortened.lastIndexOf('.');
+  const lastComma = shortened.lastIndexOf(',');
+  
+  if (lastPeriod > maxLength * 0.7) {
+    return text.substring(0, lastPeriod + 1);
+  } else if (lastComma > maxLength * 0.7) {
+    return text.substring(0, lastComma) + '...';
+  } else {
+    return shortened + '...';
+  }
+}
+
+function selectBestHighlight(highlights) {
+  if (!highlights?.curatedHighlights || highlights.curatedHighlights.length === 0) {
+    return null;
+  }
+  
+  // Sort by relevance + quality scores
+  const sorted = [...highlights.curatedHighlights].sort((a, b) => {
+    const scoreA = (a.relevanceScore || 0) + (a.qualityScore || 0);
+    const scoreB = (b.relevanceScore || 0) + (b.qualityScore || 0);
+    return scoreB - scoreA;
+  });
+  
+  return sorted[0];
+}
+
+function generateConnection(model, highlight) {
+  // One sentence connecting highlight back to scenario
+  // Keep under 50 characters, simple and punchy
+  const connections = [
+    "Consequences of consequences.",
+    "Every yes is a no to something else.",
+    "Most people aren't out to get you. They're just winging it.",
+    "Dead mutual funds don't show up in performance rankings.",
+    "Don't take advice from anyone who won't pay if they're wrong.",
+    "Strip away assumptions. Start with what's actually true.",
+    "Most of what you do doesn't move the needle.",
+    "Buffett passed on tech stocks for decades. Outside his circle."
+  ];
+  
+  // For now, pick random. Could be smarter based on model/highlight
+  return connections[Math.floor(Math.random() * connections.length)];
+}
+
 function generateTwitterThread(model, highlights) {
   const url = `${SITE_URL}/models/${model.slug}`;
-  const domain = READWISE_DOMAINS.find(d => d.slug === model.domainSlug);
   
-  // Select best highlight for hook
-  const topHighlight = highlights?.curatedHighlights?.[0];
-  const hookQuote = topHighlight 
-    ? `"${topHighlight.text?.substring(0, 100)}${topHighlight.text?.length > 100 ? '...' : ''}"`
-    : null;
-
+  // Need 3 different highlights for 3 tweets
+  if (!highlights?.curatedHighlights || highlights.curatedHighlights.length < 3) {
+    console.warn(`⚠️  Need at least 3 highlights for ${model.name}, found ${highlights?.curatedHighlights?.length || 0}`);
+    return null;
+  }
+  
+  // Select top 3 highlights (sorted by quality)
+  const sortedHighlights = [...highlights.curatedHighlights].sort((a, b) => {
+    const scoreA = (a.relevanceScore || 0) + (a.qualityScore || 0);
+    const scoreB = (b.relevanceScore || 0) + (b.qualityScore || 0);
+    return scoreB - scoreA;
+  });
+  
+  const selectedHighlights = sortedHighlights.slice(0, 3);
+  
+  // Load scenarios if available
+  let scenarios = [];
+  try {
+    const scenariosPath = path.join(__dirname, '..', 'scenarios.json');
+    if (fs.existsSync(scenariosPath)) {
+      const scenariosData = JSON.parse(fs.readFileSync(scenariosPath, 'utf8'));
+      const modelScenarios = scenariosData[model.slug];
+      if (modelScenarios && modelScenarios.scenarios && modelScenarios.scenarios.length >= 3) {
+        scenarios = modelScenarios.scenarios.slice(0, 3).map(s => s.text);
+      }
+    }
+  } catch (e) {
+    // Continue without scenarios
+  }
+  
+  // Generate 3 complete tweets (scenario + quote + connection + invitation + URL)
   const thread = [];
   
-  // Tweet 1: Hook
-  thread.push({
-    number: 1,
-    text: `🧵 ${model.name}: The mental model that ${model.description.substring(0, 80)}...\n\n${hookQuote ? `From "${topHighlight.book.title}" by ${topHighlight.book.author}` : ''}\n\nThread 👇`,
-    charCount: 0 // Will calculate
-  });
-
-  // Tweet 2: What it is
-  thread.push({
-    number: 2,
-    text: `What is ${model.name}?\n\n${model.description}\n\n${model.principles?.[0] ? `\nCore idea: ${model.principles[0].substring(0, 200)}` : ''}`,
-    charCount: 0
-  });
-
-  // Tweets 3-4: Core principles (2 per tweet if multiple)
-  if (model.principles && model.principles.length > 0) {
-    const principles = model.principles.slice(0, 4);
-    for (let i = 0; i < principles.length; i += 2) {
-      const batch = principles.slice(i, i + 2);
-      thread.push({
-        number: thread.length + 1,
-        text: `Key principles:\n\n${batch.map((p, idx) => `${i + idx + 1}. ${p.substring(0, 200)}`).join('\n\n')}`,
-        charCount: 0
-      });
-    }
-  }
-
-  // Tweet 5-6: Applications
-  if (model.applications && model.applications.length > 0) {
-    const apps = model.applications.slice(0, 3);
+  for (let i = 0; i < 3; i++) {
+    const highlight = selectedHighlights[i];
+    const scenario = scenarios[i] || model.description.substring(0, 120) + '...';
+    const shortenedQuote = shortenHighlight(highlight.text || highlight.curatorReason || '', 200);
+    const connection = generateConnection(model, highlight);
+    const invitation = selectTweet3(); // Get invitation/mission
+    
+    const tweet = `${scenario}\n\n${model.name}.\n\nFrom ${highlight.book.title} by ${highlight.book.author}:\n\n"${shortenedQuote}"\n\n${connection}\n\n${invitation}\n\n${url}`;
+    
     thread.push({
-      number: thread.length + 1,
-      text: `How to use it:\n\n${apps.map((app, idx) => `• ${app.substring(0, 200)}`).join('\n\n')}`,
-      charCount: 0
+      number: i + 1,
+      text: tweet.length > 280 ? tweet.substring(0, 277) + '...' : tweet,
+      charCount: Math.min(tweet.length, 280),
+      highlightUsed: {
+        readwiseId: highlight.readwiseId,
+        book: highlight.book.title,
+        author: highlight.book.author
+      }
     });
   }
-
-  // Tweet 7: Real-world example
-  if (model.examples && model.examples.length > 0) {
-    thread.push({
-      number: thread.length + 1,
-      text: `Real example:\n\n${model.examples[0].substring(0, 250)}`,
-      charCount: 0
-    });
-  }
-
-  // Tweet 8: Best highlight
-  if (topHighlight && topHighlight.text) {
-    thread.push({
-      number: thread.length + 1,
-      text: `💡 Insight:\n\n"${topHighlight.text}"\n\n— ${topHighlight.book.title} by ${topHighlight.book.author}`,
-      charCount: 0
-    });
-  }
-
-  // Final tweet: CTA
-  thread.push({
-    number: thread.length + 1,
-    text: `Want to go deeper?\n\n📚 Full model: ${url}\n\n${domain ? `🏷️ Domain: ${domain.name}` : ''}\n\n🧠 Explore 119 mental models for better thinking`,
-    charCount: 0
-  });
-
-  // Calculate character counts and ensure under 280
-  thread.forEach(tweet => {
-    tweet.charCount = tweet.text.length;
-    if (tweet.charCount > 280) {
-      // Truncate intelligently
-      tweet.text = tweet.text.substring(0, 277) + '...';
-      tweet.charCount = tweet.text.length;
-    }
-  });
-
+  
   return {
     model: model.name,
     slug: model.slug,
     url,
     thread,
-    totalTweets: thread.length,
+    totalTweets: 3,
     totalChars: thread.reduce((sum, t) => sum + t.charCount, 0),
-    hashtags: ['#MentalModels', '#DecisionMaking', '#CriticalThinking', model.difficulty ? `#${model.difficulty}` : ''].filter(Boolean)
+    highlightsUsed: thread.map(t => t.highlightUsed)
   };
 }
 
@@ -361,7 +419,7 @@ function generateVideoScript(model, highlights) {
       },
       cta: {
         time: '50-60s',
-        text: `Want to learn more? Check out the full model at mentalmodels.com. Link in description.`,
+        text: `Want to learn more? Check out the full model at cosmictrex.xyz. Link in description.`,
         visual: 'Website URL, subscribe button'
       }
     },

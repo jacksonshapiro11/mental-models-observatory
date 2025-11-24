@@ -2,141 +2,56 @@
  * Twitter/X API Client
  * 
  * Handles posting tweets and threads to Twitter/X
- * Uses Twitter API v2
+ * Uses Twitter API v2 with OAuth 1.0a
  */
 
-const https = require('https');
-const crypto = require('crypto');
+const { TwitterApi } = require('twitter-api-v2');
 
 class TwitterClient {
   constructor(config) {
-    this.apiKey = config.apiKey;
-    this.apiSecret = config.apiSecret;
-    this.accessToken = config.accessToken;
-    this.accessTokenSecret = config.accessTokenSecret;
-    this.baseURL = 'https://api.twitter.com/2';
-  }
-
-  /**
-   * Generate OAuth 1.0a signature
-   */
-  generateOAuthSignature(method, url, params, tokenSecret = '') {
-    const sortedParams = Object.keys(params)
-      .sort()
-      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
-      .join('&');
-
-    const signatureBase = [
-      method.toUpperCase(),
-      encodeURIComponent(url),
-      encodeURIComponent(sortedParams)
-    ].join('&');
-
-    const signingKey = `${encodeURIComponent(this.apiSecret)}&${encodeURIComponent(tokenSecret)}`;
-    const signature = crypto
-      .createHmac('sha1', signingKey)
-      .update(signatureBase)
-      .digest('base64');
-
-    return signature;
-  }
-
-  /**
-   * Generate OAuth header
-   */
-  generateOAuthHeader(method, url, params = {}) {
-    const oauthParams = {
-      oauth_consumer_key: this.apiKey,
-      oauth_token: this.accessToken,
-      oauth_signature_method: 'HMAC-SHA1',
-      oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-      oauth_nonce: crypto.randomBytes(16).toString('hex'),
-      oauth_version: '1.0',
-      ...params
-    };
-
-    oauthParams.oauth_signature = this.generateOAuthSignature(
-      method,
-      url,
-      oauthParams,
-      this.accessTokenSecret
-    );
-
-    const authHeader = 'OAuth ' + Object.keys(oauthParams)
-      .sort()
-      .map(key => `${encodeURIComponent(key)}="${encodeURIComponent(oauthParams[key])}"`)
-      .join(', ');
-
-    return authHeader;
-  }
-
-  /**
-   * Make API request
-   */
-  async makeRequest(method, endpoint, body = null) {
-    return new Promise((resolve, reject) => {
-      const url = `${this.baseURL}${endpoint}`;
-      const urlObj = new URL(url);
-
-      const options = {
-        hostname: urlObj.hostname,
-        path: urlObj.pathname + urlObj.search,
-        method: method,
-        headers: {
-          'Authorization': this.generateOAuthHeader(method, url, body ? { text: body.text } : {}),
-          'Content-Type': 'application/json'
-        }
-      };
-
-      const req = https.request(options, (res) => {
-        let data = '';
-
-        res.on('data', (chunk) => {
-          data += chunk;
-        });
-
-        res.on('end', () => {
-          try {
-            const parsed = JSON.parse(data);
-            if (res.statusCode >= 200 && res.statusCode < 300) {
-              resolve(parsed);
-            } else {
-              reject(new Error(`Twitter API error: ${res.statusCode} - ${JSON.stringify(parsed)}`));
-            }
-          } catch (error) {
-            reject(new Error(`Failed to parse response: ${data}`));
-          }
-        });
+    // Support both OAuth 1.0a and OAuth 2.0
+    if (config.oauth2AccessToken) {
+      // OAuth 2.0
+      this.client = new TwitterApi(config.oauth2AccessToken);
+      this.rwClient = this.client.readWrite;
+    } else if (config.apiKey && config.accessToken) {
+      // OAuth 1.0a for posting tweets (user context required)
+      this.client = new TwitterApi({
+        appKey: config.apiKey,
+        appSecret: config.apiSecret,
+        accessToken: config.accessToken,
+        accessTokenSecret: config.accessTokenSecret
       });
-
-      req.on('error', (error) => {
-        reject(error);
-      });
-
-      if (body) {
-        req.write(JSON.stringify(body));
+      
+      // Verify we have a read-write client (OAuth 1.0a should provide this)
+      if (!this.client.readWrite) {
+        throw new Error('Failed to initialize read-write client. Check OAuth credentials.');
       }
-
-      req.end();
-    });
+      
+      this.rwClient = this.client.readWrite;
+    } else {
+      throw new Error('No valid OAuth credentials provided');
+    }
   }
+
 
   /**
    * Post a single tweet
    */
   async postTweet(text, replyToTweetId = null) {
     try {
-      const body = {
-        text: text.substring(0, 280) // Twitter limit
-      };
-
+      const tweetText = text.substring(0, 280); // Twitter limit
+      
+      let response;
+      
+      // Try v2 API first (works with Essential/Elevated tiers)
       if (replyToTweetId) {
-        body.reply = {
-          in_reply_to_tweet_id: replyToTweetId
-        };
+        // Reply to previous tweet using v2
+        response = await this.rwClient.v2.reply(tweetText, replyToTweetId);
+      } else {
+        // Standalone tweet using v2
+        response = await this.rwClient.v2.tweet(tweetText);
       }
-
-      const response = await this.makeRequest('POST', '/tweets', body);
       
       return {
         success: true,
@@ -144,9 +59,28 @@ class TwitterClient {
         text: response.data.text
       };
     } catch (error) {
+      // Get more detailed error info
+      const errorDetails = {
+        message: error.message,
+        code: error.code,
+        data: error.data
+      };
+      
+      // If it's a Twitter API error, include rate limit info
+      if (error.rateLimit) {
+        errorDetails.rateLimit = error.rateLimit;
+      }
+      
+      // Check if it's an access tier issue
+      if (error.code === 453 || (error.data && error.data.errors && error.data.errors.some(e => e.code === 453))) {
+        errorDetails.accessTierIssue = true;
+        errorDetails.message = 'Your app needs "Essential" or "Elevated" access tier to post tweets. Free tier only allows read access.';
+      }
+      
       return {
         success: false,
-        error: error.message
+        error: error.message || 'Unknown error',
+        details: errorDetails
       };
     }
   }
@@ -179,4 +113,5 @@ class TwitterClient {
 }
 
 module.exports = TwitterClient;
+
 

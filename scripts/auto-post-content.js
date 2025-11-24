@@ -80,7 +80,192 @@ async function autoPostContent(inputDir, dryRun = false) {
     console.log('🧪 DRY RUN MODE - No posts will be made\n');
   }
 
-  // Find latest content directory
+  // Find today's content
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Check if this is the scheduled-tweets format (date-based directories directly in inputDir)
+  const dateDirs = fs.readdirSync(inputDir)
+    .filter(f => {
+      const fullPath = path.join(inputDir, f);
+      return fs.statSync(fullPath).isDirectory() && /^\d{4}-\d{2}-\d{2}$/.test(f);
+    })
+    .sort();
+  
+  if (dateDirs.length > 0) {
+    // This IS the scheduled-tweets format - date directories are directly in inputDir
+    const contentDir = inputDir;
+    // New format: date-based directories with individual model files
+    // Find today or next available date (including past dates if we're catching up)
+    let targetDate = today;
+    let targetDir = path.join(contentDir, targetDate);
+    
+    if (!fs.existsSync(targetDir)) {
+      // Find next available date (could be today, future, or earliest past date)
+      const nextDate = dateDirs.find(d => d >= today);
+      if (nextDate) {
+        targetDate = nextDate;
+        targetDir = path.join(contentDir, targetDate);
+        console.log(`📅 No content for today (${today}). Using next available: ${targetDate}`);
+      } else {
+        // No future dates, use the earliest available date
+        const earliestDate = dateDirs[0];
+        if (earliestDate) {
+          targetDate = earliestDate;
+          targetDir = path.join(contentDir, targetDate);
+          console.log(`📅 No content for today or future. Using earliest available: ${targetDate}`);
+        } else {
+          console.log(`⚠️  No content directories found.`);
+          console.log('   Run: npm run parse-tweets');
+          return;
+        }
+      }
+    }
+    
+    const todayDir = targetDir;
+    
+    const modelFiles = fs.readdirSync(todayDir)
+      .filter(f => f.endsWith('.json') && f !== 'posting-schedule.json');
+    
+    if (modelFiles.length === 0) {
+      console.log(`⚠️  No models found for today (${today}).`);
+      return;
+    }
+    
+    console.log(`📅 Posting content for: ${today}\n`);
+    
+    const results = {
+      date: today,
+      platform: 'twitter',
+      posts: [],
+      errors: []
+    };
+    
+    // Post each model's tweets (standalone, not threads)
+    for (const modelFile of modelFiles) {
+      const modelPath = path.join(todayDir, modelFile);
+      const modelData = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
+      
+      // Handle both formats
+      const model = modelData.model || modelData;
+      const tweets = modelData.thread || modelData.tweets || [];
+      
+      console.log(`\n📝 Processing: ${modelData.model || 'Unknown'} (${tweets.length} tweets)`);
+      
+      if (tweets.length === 0) {
+        console.log('⚠️  No tweets found for this model');
+        continue;
+      }
+      
+      // Post tweets in groups of 3 (threaded)
+      // Each group of 3 tweets forms one thread
+      const groupsOf3 = [];
+      for (let i = 0; i < tweets.length; i += 3) {
+        groupsOf3.push(tweets.slice(i, i + 3));
+      }
+      
+      console.log(`📱 Posting ${groupsOf3.length} threads (3 tweets each)`);
+      
+      for (let groupIdx = 0; groupIdx < groupsOf3.length; groupIdx++) {
+        const group = groupsOf3[groupIdx];
+        const threadNum = groupIdx + 1;
+        
+        console.log(`\n🧵 Thread ${threadNum}/${groupsOf3.length}:`);
+        
+        if (dryRun) {
+          group.forEach((tweet, idx) => {
+            const tweetText = tweet.text || tweet;
+            console.log(`  [DRY RUN] Tweet ${idx + 1}/3: ${tweetText.substring(0, 50)}...`);
+          });
+          results.posts.push({
+            model: modelData.model || 'Unknown',
+            thread: threadNum,
+            tweets: group.length,
+            success: true,
+            dryRun: true
+          });
+        } else {
+          // Post as threaded tweets (reply to previous)
+          const client = new TwitterClient({
+            apiKey: process.env.TWITTER_API_KEY,
+            apiSecret: process.env.TWITTER_API_SECRET,
+            accessToken: process.env.TWITTER_ACCESS_TOKEN,
+            accessTokenSecret: process.env.TWITTER_ACCESS_TOKEN_SECRET
+          });
+          
+          let previousTweetId = null;
+          const postedTweetIds = [];
+          
+          for (let idx = 0; idx < group.length; idx++) {
+            const tweet = group[idx];
+            const tweetText = tweet.text || tweet;
+            const tweetNum = idx + 1;
+            
+            try {
+              // Post as reply to previous tweet (or standalone if first)
+              const result = await client.postTweet(tweetText, previousTweetId);
+              
+              if (result.success) {
+                console.log(`  ✅ Posted tweet ${tweetNum}/3`);
+                previousTweetId = result.tweetId;
+                postedTweetIds.push(result.tweetId);
+                
+                // Wait 5 seconds between tweets in thread
+                if (tweetNum < group.length) {
+                  await new Promise(resolve => setTimeout(resolve, 5000));
+                }
+              } else {
+                console.error(`  ❌ Failed to post tweet ${tweetNum}:`, result.error);
+                results.errors.push(`${modelData.model || 'Unknown'} - Thread ${threadNum}, Tweet ${tweetNum}: ${result.error}`);
+                break; // Stop this thread if one fails
+              }
+            } catch (error) {
+              console.error(`  ❌ Error posting tweet ${tweetNum}:`, error.message);
+              results.errors.push(`${modelData.model || 'Unknown'} - Thread ${threadNum}, Tweet ${tweetNum}: ${error.message}`);
+              break; // Stop this thread if one fails
+            }
+          }
+          
+          if (postedTweetIds.length > 0) {
+            results.posts.push({
+              model: modelData.model || 'Unknown',
+              thread: threadNum,
+              tweets: postedTweetIds.length,
+              success: true,
+              tweetIds: postedTweetIds
+            });
+          }
+          
+          // Wait 1 minute between different threads
+          if (threadNum < groupsOf3.length) {
+            console.log('⏳ Waiting 60 seconds before next thread...');
+            await new Promise(resolve => setTimeout(resolve, 60000));
+          }
+        }
+      }
+      
+      // Rate limiting: wait 1 minute between models
+      if (!dryRun && modelFile !== modelFiles[modelFiles.length - 1]) {
+        console.log('⏳ Waiting 60 seconds (rate limiting)...');
+        await new Promise(resolve => setTimeout(resolve, 60000));
+      }
+    }
+    
+    // Save results
+    const resultsFile = path.join(todayDir, `post-results-${today}.json`);
+    fs.writeFileSync(resultsFile, JSON.stringify(results, null, 2));
+    
+    console.log(`\n✅ Posting complete!`);
+    console.log(`📊 Results saved to: ${resultsFile}`);
+    
+    if (results.errors.length > 0) {
+      console.log(`\n⚠️  Errors encountered:`);
+      results.errors.forEach(err => console.log(`   - ${err}`));
+    }
+    
+    return results;
+  }
+  
+  // Legacy format: find latest content directory with day-based files
   const dirs = fs.readdirSync(inputDir)
     .filter(f => fs.statSync(path.join(inputDir, f)).isDirectory())
     .sort()
@@ -94,9 +279,8 @@ async function autoPostContent(inputDir, dryRun = false) {
   const latestDir = dirs[0];
   const contentDir = path.join(inputDir, latestDir);
   console.log(`📁 Using content from: ${latestDir}\n`);
-
-  // Find today's content
-  const today = new Date().toISOString().split('T')[0];
+  
+  // Legacy format: day-based files
   const dayFiles = fs.readdirSync(contentDir)
     .filter(f => f.startsWith('day-') && f.endsWith('.json'))
     .sort((a, b) => {
@@ -119,7 +303,6 @@ async function autoPostContent(inputDir, dryRun = false) {
   if (!contentFile) {
     console.log('⚠️  No content found for today or future dates.');
     console.log('   Generating new content...');
-    // Could trigger content generation here
     return;
   }
 
