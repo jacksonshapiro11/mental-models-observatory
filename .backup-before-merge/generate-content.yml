@@ -1,0 +1,55 @@
+name: Auto-Generate Marketing Content
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC (adjust timezone as needed)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggering
+  push:
+    branches:
+      - main
+    paths:
+      - 'lib/readwise-data.ts' # Regenerate when models change
+      - 'lib/parse-all-domains.ts'
+
+jobs:
+  generate-content:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate marketing content
+        run: npm run generate-content -- --days=30
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.SITE_URL || 'https://your-domain.com' }}
+
+      - name: Generate schedules
+        run: npm run schedule-content
+
+      - name: Commit generated content
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: '🤖 Auto-generate marketing content'
+          file_pattern: 'marketing-content/**'
+          skip_dirty_check: true
+
+      - name: Create summary comment
+        if: github.event_name == 'push'
+        run: |
+          echo "## 📊 Marketing Content Generated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Generated 30 days of marketing content" >> $GITHUB_STEP_SUMMARY
+          echo "📁 Check \`marketing-content/\` folder" >> $GITHUB_STEP_SUMMARY
+          echo "📅 Schedules ready in \`marketing-content/[date]/schedules/\`" >> $GITHUB_STEP_SUMMARY
+
