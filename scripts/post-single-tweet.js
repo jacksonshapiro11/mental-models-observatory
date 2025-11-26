@@ -19,39 +19,41 @@ async function postTestThread() {
     process.exit(1);
   }
 
-  // Use OAuth 2.0 token
+  // Use OAuth 2.0 token with refresh capability
   const oauth2Token = process.env.TWITTER_OAUTH2_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN;
+  const refreshToken = process.env.TWITTER_OAUTH2_REFRESH_TOKEN;
   const clientId = process.env.TWITTER_CLIENT_ID;
+  const clientSecret = process.env.TWITTER_CLIENT_SECRET;
   
   const client = new TwitterClient({
     oauth2AccessToken: oauth2Token,
-    clientId: clientId
+    refreshToken: refreshToken,
+    clientId: clientId,
+    clientSecret: clientSecret
   });
 
   // Test tweet thread about Competitive Advantage
   const thread = [
-    // Tweet 1: The Scenario
+    // Tweet 1: The Scenario (279 chars)
     `Quarter tank of gas, middle of nowhere. Every station charges the same. You pick one.
 
 Next town over, only one station for 50 miles. Different game entirely.
 
 Competitive Advantage & Sustainable Moats
 
-https://www.cosmictrex.xyz/models/competitive-advantage-sustainable-moats
+https://cosmictrex.xyz/models/competitive-advantage-sustainable-moats`,
 
-Real examples →`,
-
-    // Tweet 2: The Book Example
+    // Tweet 2: The Book Example (279 chars)
     `From Zero to One by Peter Thiel:
 
-"Things that are important in building a good monopoly: Proprietary tech, network effects, strong brand. The tech advantage must provide a 10x improvement. Network effects make things more useful as more people use them."
+"Proprietary tech, network effects, strong brand. The tech advantage must provide a 10x improvement. Network effects make things more useful as more people use them."
 
-This is why some businesses have moats and others don't.`,
+This is why some businesses build lasting moats.`,
 
-    // Tweet 3: The Mission
+    // Tweet 3: The Mission (178 chars)
     `I read a lot. Wanted to remember what mattered. Built this to help me think clearer. Maybe it helps you.
 
-https://www.cosmictrex.xyz/models/competitive-advantage-sustainable-moats`
+https://cosmictrex.xyz/models/competitive-advantage-sustainable-moats`
   ];
 
   console.log('📱 Posting test thread to Twitter...\n');

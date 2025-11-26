@@ -9,6 +9,9 @@ const { TwitterApi } = require('twitter-api-v2');
 
 class TwitterClient {
   constructor(config) {
+    // Store config for token refresh
+    this.config = config;
+    
     // Support both OAuth 1.0a and OAuth 2.0
     if (config.oauth2AccessToken) {
       // OAuth 2.0 User Context
@@ -46,9 +49,43 @@ class TwitterClient {
 
 
   /**
+   * Refresh OAuth 2.0 access token
+   */
+  async refreshAccessToken() {
+    if (!this.isOAuth2 || !this.config.refreshToken || !this.config.clientId) {
+      throw new Error('Token refresh requires OAuth 2.0 with refresh token and client ID');
+    }
+
+    console.log('🔄 Refreshing access token...');
+
+    const authClient = new TwitterApi({
+      clientId: this.config.clientId,
+      clientSecret: this.config.clientSecret,
+    });
+
+    const { accessToken, refreshToken: newRefreshToken } = await authClient.refreshOAuth2Token(
+      this.config.refreshToken
+    );
+
+    // Update our client with new token
+    this.client = new TwitterApi(accessToken, {
+      clientId: this.config.clientId,
+    });
+    this.rwClient = this.client;
+    this.config.oauth2AccessToken = accessToken;
+    if (newRefreshToken) {
+      this.config.refreshToken = newRefreshToken;
+    }
+
+    console.log('✅ Access token refreshed');
+
+    return { accessToken, refreshToken: newRefreshToken };
+  }
+
+  /**
    * Post a single tweet
    */
-  async postTweet(text, replyToTweetId = null) {
+  async postTweet(text, replyToTweetId = null, retryCount = 0) {
     try {
       const tweetText = text.substring(0, 280); // Twitter limit
       
@@ -69,6 +106,17 @@ class TwitterClient {
         text: response.data.text
       };
     } catch (error) {
+      // If 401 and we have OAuth 2.0 with refresh token, try to refresh
+      if (error.code === 401 && this.isOAuth2 && this.config.refreshToken && retryCount === 0) {
+        try {
+          await this.refreshAccessToken();
+          // Retry the post with new token
+          return await this.postTweet(text, replyToTweetId, 1);
+        } catch (refreshError) {
+          console.error('❌ Token refresh failed:', refreshError.message);
+          // Fall through to normal error handling
+        }
+      }
       // Get more detailed error info
       const errorDetails = {
         message: error.message,
