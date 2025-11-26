@@ -50,6 +50,7 @@
     "post-tweets:force": "node scripts/post-scheduled-tweets.js --force",
     "test:twitter:read": "node scripts/test-twitter-read.js",
     "test:twitter:post": "node scripts/test-post-simple.js",
+    "test:post-one": "node scripts/test-post-one-tweet.js",
     "twitter:authorize": "node scripts/oauth2-authorize.js",
     "twitter:auth": "node scripts/oauth2-authorize-manual.js",
     "twitter:auth-prod": "node scripts/oauth2-production.js",
