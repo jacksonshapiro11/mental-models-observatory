@@ -12,6 +12,7 @@ A comprehensive Next.js application showcasing **119 mental models** across 40 k
 - ✅ **Production ready** - deployed on Vercel
 - ✅ **Progress tracking** - LocalStorage-based user progress with visual indicators
 - ✅ **Hybrid learning paths** - 100 curated paths + dynamic path generation
+- ✅ **Automated Twitter posting** - 3x daily to [@Cosmic_t_rex](https://twitter.com/Cosmic_t_rex)
 
 ---
 
@@ -281,6 +282,10 @@ node scripts/export-readwise-highlights-complete.js # Generate MENTAL_MODELS_REA
 # Content Updates
 node scripts/simple-update-by-code.js              # Update lib/readwise-data.ts from description files (by code)
 node scripts/compare-substance.js                  # Compare OLD vs NEW content for substance matching
+
+# Twitter Automation (see TWITTER_POSTING_SYSTEM.md)
+npm run queue-weekly-tweets <file>     # Parse & schedule weekly tweets
+npm run post-from-queue                # Post scheduled tweets (manual test)
 ```
 
 ---
@@ -428,6 +433,8 @@ npm run build
 - **[DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md)** - Detailed development workflow
 - **[TECHNICAL_ARCHITECTURE.md](docs/TECHNICAL_ARCHITECTURE.md)** - System architecture deep dive
 - **[readwise-integration.md](docs/readwise-integration.md)** - Readwise API documentation
+- **[TWITTER_POSTING_SYSTEM.md](TWITTER_POSTING_SYSTEM.md)** - Automated Twitter posting (3x daily)
+- **[TWITTER_TOKEN_MAINTENANCE.md](TWITTER_TOKEN_MAINTENANCE.md)** - OAuth token management
 
 ---
 
