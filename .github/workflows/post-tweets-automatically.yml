@@ -6,6 +6,9 @@ on:
     - cron: '0 */3 * * *'
   workflow_dispatch: # Manual trigger
 
+permissions:
+  contents: write  # Allow pushing commits back
+
 jobs:
   post-tweets:
     runs-on: ubuntu-latest
