@@ -37,6 +37,8 @@
     "setup": "./scripts/setup.sh",
     "generate-content": "node scripts/generate-marketing-content.js",
     "schedule-content": "node scripts/auto-schedule-content.js",
+    "queue-weekly-tweets": "node scripts/queue-weekly-tweets.js",
+    "post-from-queue": "node scripts/post-from-queue.js",
     "post-content": "node scripts/auto-post-content.js",
     "post-content:dry-run": "node scripts/auto-post-content.js --dry-run",
     "newsletter": "node scripts/generate-newsletter.js",

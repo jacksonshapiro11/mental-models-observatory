@@ -1,0 +1,68 @@
+name: Post Scheduled Tweets
+
+on:
+  schedule:
+    # Run every hour to check for scheduled tweets
+    - cron: '0 * * * *'
+  workflow_dispatch: # Manual trigger for testing
+    inputs:
+      force:
+        description: 'Force post all scheduled tweets'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  post-tweets:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Create .env.local with secrets
+        run: |
+          cat > .env.local << EOF
+          TWITTER_CLIENT_ID=${{ secrets.TWITTER_CLIENT_ID }}
+          TWITTER_CLIENT_SECRET=${{ secrets.TWITTER_CLIENT_SECRET }}
+          TWITTER_OAUTH2_ACCESS_TOKEN=${{ secrets.TWITTER_OAUTH2_ACCESS_TOKEN }}
+          TWITTER_OAUTH2_REFRESH_TOKEN=${{ secrets.TWITTER_OAUTH2_REFRESH_TOKEN }}
+          NEXT_PUBLIC_SITE_URL=https://www.cosmictrex.xyz
+          EOF
+      
+      - name: Post scheduled tweets
+        run: |
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            node scripts/post-scheduled-tweets.js --force
+          else
+            node scripts/post-scheduled-tweets.js
+          fi
+      
+      - name: Commit results
+        if: success()
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: '🐦 Posted scheduled tweets'
+          file_pattern: 'marketing-content/scheduled-tweets/post-results-*.json'
+          skip_dirty_check: true
+      
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## 🐦 Scheduled Tweets Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f "marketing-content/scheduled-tweets/post-results-*.json" ]; then
+            echo "✅ Check results in marketing-content/scheduled-tweets/" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⏳ No tweets scheduled for posting at this time" >> $GITHUB_STEP_SUMMARY
+          fi
+

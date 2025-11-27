@@ -1,0 +1,67 @@
+name: Post Tweets Automatically
+
+on:
+  schedule:
+    # Run every 3 hours to check for scheduled tweets
+    - cron: '0 */3 * * *'
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  post-tweets:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Create .env.local with secrets
+        run: |
+          cat > .env.local << EOF
+          TWITTER_CLIENT_ID=${{ secrets.TWITTER_CLIENT_ID }}
+          TWITTER_CLIENT_SECRET=${{ secrets.TWITTER_CLIENT_SECRET }}
+          TWITTER_OAUTH2_ACCESS_TOKEN=${{ secrets.TWITTER_OAUTH2_ACCESS_TOKEN }}
+          TWITTER_OAUTH2_REFRESH_TOKEN=${{ secrets.TWITTER_OAUTH2_REFRESH_TOKEN }}
+          NEXT_PUBLIC_SITE_URL=https://www.cosmictrex.xyz
+          EOF
+      
+      - name: Post scheduled tweet
+        id: post
+        run: node scripts/post-from-queue.js 2>&1 | tee output.txt
+        continue-on-error: true
+      
+      - name: Commit updated queue
+        if: success()
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: '🐦 Posted scheduled tweet'
+          file_pattern: 'tweets/**'
+          skip_dirty_check: true
+      
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## 🐦 Tweet Posting Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f output.txt ]; then
+            if grep -q "✅ Thread posted successfully" output.txt; then
+              echo "✅ Successfully posted scheduled tweet!" >> $GITHUB_STEP_SUMMARY
+              grep "View:" output.txt >> $GITHUB_STEP_SUMMARY || true
+            elif grep -q "No tweets scheduled for posting yet" output.txt; then
+              echo "⏰ No tweets ready to post yet" >> $GITHUB_STEP_SUMMARY
+              grep "Next tweet:" output.txt >> $GITHUB_STEP_SUMMARY || true
+            elif grep -q "No pending tweets in queue" output.txt; then
+              echo "📭 Queue is empty - add more tweets!" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Error occurred - check logs" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
