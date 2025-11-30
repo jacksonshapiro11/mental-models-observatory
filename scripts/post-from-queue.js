@@ -71,15 +71,36 @@ async function postFromQueue() {
   console.log(`🐦 Posting: ${thread.modelName}`);
   console.log(`   Scheduled: ${thread.scheduledDate} ${thread.scheduledTime} EST\n`);
   
-  // Use SAME TwitterClient as test-tweet-now
-  // Note: Token auto-refresh is built into postTweet() - it will automatically
-  // refresh on 401 errors, so we don't need to refresh proactively
+  // Initialize TwitterClient
   const client = new TwitterClient({
     oauth2AccessToken: process.env.TWITTER_OAUTH2_ACCESS_TOKEN,
     refreshToken: process.env.TWITTER_OAUTH2_REFRESH_TOKEN,
     clientId: process.env.TWITTER_CLIENT_ID,
     clientSecret: process.env.TWITTER_CLIENT_SECRET
   });
+  
+  // CRITICAL: Always refresh token at start of each run to guarantee fresh token
+  // Access tokens expire after ~2 hours, and we run 3x/day with 3-5 hour gaps
+  // This ensures we NEVER have an expired token during posting
+  if (client.isOAuth2 && client.config.refreshToken) {
+    console.log('🔄 Refreshing access token to ensure freshness...\n');
+    try {
+      await client.refreshAccessToken();
+      console.log('✅ Token refreshed successfully - ready to post\n');
+    } catch (refreshError) {
+      console.error('❌ CRITICAL: Token refresh failed!');
+      console.error(`   Error: ${refreshError.message}`);
+      console.error('\n💡 This usually means:');
+      console.error('   1. Refresh token has expired (~60 days)');
+      console.error('   2. Need to re-authorize: node scripts/quick-twitter-auth.js');
+      console.error('   3. Update GitHub Secrets with new tokens\n');
+      process.exit(1);
+    }
+  } else {
+    console.error('❌ CRITICAL: Missing OAuth2 refresh token configuration!');
+    console.error('   Cannot guarantee token freshness without refresh token\n');
+    process.exit(1);
+  }
   
   // Post thread (SAME logic as test-tweet-now)
   let previousTweetId = null;

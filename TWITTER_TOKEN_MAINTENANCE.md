@@ -6,24 +6,32 @@
 - **Access Token**: Expires after ~2 hours
 - **Refresh Token**: Expires after ~60 days (or when you re-authorize)
 
-### Auto-Refresh (Built-In)
-Our system automatically refreshes access tokens:
+### Proactive Token Refresh (Guaranteed Freshness)
+**We ALWAYS refresh the token at the start of each run** to guarantee a fresh token:
 
-1. **During GitHub Actions run**: If a tweet fails with 401, it automatically:
-   - Uses the refresh token to get a new access token
-   - Retries the tweet
-   - ✅ Works within a single workflow run
+1. **Every GitHub Actions run**:
+   - ✅ Token is refreshed BEFORE attempting to post
+   - ✅ Fresh token is guaranteed (good for 2 hours)
+   - ✅ No expired tokens during posting
+   - ✅ Works for the entire 60-day refresh token period
 
-2. **Between runs**: Tokens are stored in GitHub Secrets and persist
+2. **Backup reactive refresh**: If refresh fails, we fail fast with clear error
+
+### Why This Works
+- Access tokens expire after ~2 hours
+- We run 3x/day with 3-5 hour gaps between runs
+- **Proactive refresh ensures we always start with a fresh token**
+- No need to wait for 401 errors - we prevent them entirely
 
 ## The One Limitation
 
 **GitHub Actions can't update its own secrets** without special setup.
 
 This means:
-- ✅ Auto-refresh works during a run (within 3 hours)
-- ✅ Workflow runs every 3 hours (well before 2-hour expiration)
-- ❌ Can't automatically update GitHub Secrets for next run
+- ✅ Token is refreshed at start of each run (proactive)
+- ✅ Fresh token guaranteed for entire posting process
+- ✅ Works autonomously for full 60-day period
+- ❌ Can't automatically update GitHub Secrets (but we don't need to - refresh happens each run)
 
 ## Solution: Manual Re-Auth Every ~60 Days
 
