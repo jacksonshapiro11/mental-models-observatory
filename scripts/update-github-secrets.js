@@ -17,10 +17,11 @@ function updateSecret(secretName, secretValue) {
     console.log(`🔐 Updating secret: ${secretName}`);
     
     // Use gh secret set with stdin to avoid exposing secret in command line
-    const token = process.env.GITHUB_PAT || process.env.GITHUB_TOKEN;
+    // Check for PAT (user's secret name) or GITHUB_PAT, fallback to GITHUB_TOKEN
+    const token = process.env.PAT || process.env.GITHUB_PAT || process.env.GITHUB_TOKEN;
     
     if (!token) {
-      reject(new Error('Missing GITHUB_TOKEN or GITHUB_PAT'));
+      reject(new Error('Missing GITHUB_TOKEN, GITHUB_PAT, or PAT'));
       return;
     }
     
