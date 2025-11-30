@@ -72,6 +72,8 @@ async function postFromQueue() {
   console.log(`   Scheduled: ${thread.scheduledDate} ${thread.scheduledTime} EST\n`);
   
   // Use SAME TwitterClient as test-tweet-now
+  // Note: Token auto-refresh is built into postTweet() - it will automatically
+  // refresh on 401 errors, so we don't need to refresh proactively
   const client = new TwitterClient({
     oauth2AccessToken: process.env.TWITTER_OAUTH2_ACCESS_TOKEN,
     refreshToken: process.env.TWITTER_OAUTH2_REFRESH_TOKEN,

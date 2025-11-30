@@ -2,8 +2,13 @@ name: Post Tweets Automatically
 
 on:
   schedule:
-    # Run every 3 hours to check for scheduled tweets
-    - cron: '0 */3 * * *'
+    # Run 3 times per day at 9 AM, 12 PM, and 5 PM EST/EDT
+    # EST (Nov-Mar): UTC-5 → 9 AM = 14:00 UTC, 12 PM = 17:00 UTC, 5 PM = 22:00 UTC
+    # EDT (Mar-Nov): UTC-4 → 9 AM = 13:00 UTC, 12 PM = 16:00 UTC, 5 PM = 21:00 UTC
+    # Using EST times (14, 17, 22) - will be correct during standard time, 1hr later during daylight saving
+    - cron: '0 14 * * *'  # 9 AM EST / 10 AM EDT
+    - cron: '0 17 * * *'  # 12 PM EST / 1 PM EDT
+    - cron: '0 22 * * *'  # 5 PM EST / 6 PM EDT
   workflow_dispatch: # Manual trigger
 
 permissions:
