@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write  # Allow pushing commits back
+  secrets: write   # Allow updating secrets (if GITHUB_PAT is provided)
 
 jobs:
   post-tweets:
@@ -44,6 +45,19 @@ jobs:
       - name: Post scheduled tweet
         id: post
         run: node scripts/post-from-queue.js 2>&1 | tee output.txt
+        continue-on-error: true
+      
+      - name: Update GitHub Secrets (if refresh token rotated)
+        if: always()  # Run even if previous step failed
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}  # Optional: PAT with repo scope for secret updates
+        run: |
+          if [ -f .token-update.json ]; then
+            echo "🔄 Refresh token was rotated - updating GitHub Secret..."
+            node scripts/update-github-secrets.js || echo "⚠️  Secret update failed (this is OK if GITHUB_PAT is not set)"
+          else
+            echo "ℹ️  No token rotation - secrets update not needed"
+          fi
         continue-on-error: true
       
       - name: Commit updated queue

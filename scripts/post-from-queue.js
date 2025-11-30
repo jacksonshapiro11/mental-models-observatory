@@ -82,10 +82,16 @@ async function postFromQueue() {
   // CRITICAL: Always refresh token at start of each run to guarantee fresh token
   // Access tokens expire after ~2 hours, and we run 3x/day with 3-5 hour gaps
   // This ensures we NEVER have an expired token during posting
+  let newRefreshToken = null;
   if (client.isOAuth2 && client.config.refreshToken) {
     console.log('🔄 Refreshing access token to ensure freshness...\n');
     try {
-      await client.refreshAccessToken();
+      const refreshResult = await client.refreshAccessToken();
+      // Twitter may rotate the refresh token - capture it if provided
+      if (refreshResult.refreshToken && refreshResult.refreshToken !== client.config.refreshToken) {
+        newRefreshToken = refreshResult.refreshToken;
+        console.log('⚠️  Refresh token was rotated - will update GitHub Secrets\n');
+      }
       console.log('✅ Token refreshed successfully - ready to post\n');
     } catch (refreshError) {
       console.error('❌ CRITICAL: Token refresh failed!');
@@ -160,6 +166,16 @@ async function postFromQueue() {
   
   const remaining = updated.filter(item => item.status === 'pending').length;
   console.log(`📊 Remaining: ${remaining} threads\n`);
+  
+  // If refresh token was rotated, save it for GitHub Secrets update
+  if (newRefreshToken) {
+    const tokenUpdateFile = path.join(process.cwd(), '.token-update.json');
+    fs.writeFileSync(tokenUpdateFile, JSON.stringify({
+      refreshToken: newRefreshToken,
+      updatedAt: new Date().toISOString()
+    }, null, 2));
+    console.log('💾 New refresh token saved for GitHub Secrets update\n');
+  }
 }
 
 postFromQueue()

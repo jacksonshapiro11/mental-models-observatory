@@ -3,145 +3,92 @@
 /**
  * Updates GitHub Secrets with refreshed OAuth tokens
  * This runs in GitHub Actions after a successful token refresh
+ * Uses GitHub CLI (gh) which is simpler and pre-installed in Actions runners
  */
 
-const https = require('https');
+const { spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 async function updateSecret(secretName, secretValue) {
-  const token = process.env.GITHUB_TOKEN;
-  const repo = process.env.GITHUB_REPOSITORY; // format: "owner/repo"
-  
-  if (!token || !repo) {
-    console.error('❌ Missing GITHUB_TOKEN or GITHUB_REPOSITORY');
-    return false;
-  }
-
-  console.log(`🔐 Updating secret: ${secretName}`);
-
+  // Use GitHub CLI (gh) which is pre-installed in GitHub Actions
+  // This requires GITHUB_TOKEN to be set (automatically available in Actions)
   try {
-    // Get the repository's public key (needed for encryption)
-    const publicKey = await getRepoPublicKey(repo, token);
+    console.log(`🔐 Updating secret: ${secretName}`);
     
-    // Encrypt the secret value
-    const encryptedValue = await encryptSecret(secretValue, publicKey.key);
+    // Use gh secret set command (simplest approach)
+    // Note: GITHUB_TOKEN must have write access to secrets
+    // If it doesn't work, we'll need a PAT stored as GITHUB_PAT secret
+    const token = process.env.GITHUB_PAT || process.env.GITHUB_TOKEN;
     
-    // Update the secret
-    await putSecret(repo, token, secretName, encryptedValue, publicKey.key_id);
+    if (!token) {
+      console.error('❌ Missing GITHUB_TOKEN or GITHUB_PAT');
+      return false;
+    }
+    
+    // Use gh secret set with stdin to avoid exposing secret in command line
+    // Set GH_TOKEN for authentication
+    const { spawn } = require('child_process');
+    
+    return new Promise((resolve, reject) => {
+      const gh = spawn('gh', ['secret', 'set', secretName], {
+        env: { ...process.env, GH_TOKEN: token },
+        stdio: ['pipe', 'inherit', 'inherit']
+      });
+      
+      gh.stdin.write(secretValue);
+      gh.stdin.end();
+      
+      gh.on('close', (code) => {
+        if (code === 0) {
+          resolve(true);
+        } else {
+          reject(new Error(`gh secret set exited with code ${code}`));
+        }
+      });
+      
+      gh.on('error', reject);
+    });
     
     console.log(`✅ Updated ${secretName}`);
     return true;
   } catch (error) {
     console.error(`❌ Failed to update ${secretName}:`, error.message);
+    console.error('💡 Note: GITHUB_TOKEN may not have permission to update secrets.');
+    console.error('   Consider using a PAT stored as GITHUB_PAT secret with repo scope.');
     return false;
   }
 }
 
-function getRepoPublicKey(repo, token) {
-  return new Promise((resolve, reject) => {
-    const options = {
-      hostname: 'api.github.com',
-      path: `/repos/${repo}/actions/secrets/public-key`,
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'User-Agent': 'mental-models-observatory',
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => data += chunk);
-      res.on('end', () => {
-        if (res.statusCode === 200) {
-          resolve(JSON.parse(data));
-        } else {
-          reject(new Error(`HTTP ${res.statusCode}: ${data}`));
-        }
-      });
-    });
-
-    req.on('error', reject);
-    req.end();
-  });
-}
-
-function encryptSecret(value, publicKey) {
-  // Use libsodium-wrappers for encryption (GitHub's recommended method)
-  // For now, return base64 encoded value (GitHub Actions will handle encryption)
-  return Buffer.from(value).toString('base64');
-}
-
-function putSecret(repo, token, secretName, encryptedValue, keyId) {
-  return new Promise((resolve, reject) => {
-    const payload = JSON.stringify({
-      encrypted_value: encryptedValue,
-      key_id: keyId
-    });
-
-    const options = {
-      hostname: 'api.github.com',
-      path: `/repos/${repo}/actions/secrets/${secretName}`,
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'User-Agent': 'mental-models-observatory',
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'Content-Type': 'application/json',
-        'Content-Length': payload.length
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => data += chunk);
-      res.on('end', () => {
-        if (res.statusCode === 201 || res.statusCode === 204) {
-          resolve();
-        } else {
-          reject(new Error(`HTTP ${res.statusCode}: ${data}`));
-        }
-      });
-    });
-
-    req.on('error', reject);
-    req.write(payload);
-    req.end();
-  });
-}
-
 async function main() {
-  // Read refreshed tokens from .env.local (written by twitter-client.js)
-  const fs = require('fs');
-  const path = require('path');
+  // Read new refresh token from .token-update.json (created by post-from-queue.js)
+  const tokenUpdatePath = path.join(process.cwd(), '.token-update.json');
   
-  const envPath = path.join(process.cwd(), '.env.local');
-  if (!fs.existsSync(envPath)) {
-    console.log('ℹ️  No .env.local found - no token updates needed');
+  if (!fs.existsSync(tokenUpdatePath)) {
+    console.log('ℹ️  No token update needed - refresh token was not rotated');
     return;
   }
 
-  const envContent = fs.readFileSync(envPath, 'utf8');
+  const tokenUpdate = JSON.parse(fs.readFileSync(tokenUpdatePath, 'utf8'));
   
-  const accessTokenMatch = envContent.match(/TWITTER_OAUTH2_ACCESS_TOKEN=(.+)/);
-  const refreshTokenMatch = envContent.match(/TWITTER_OAUTH2_REFRESH_TOKEN=(.+)/);
-
-  if (!accessTokenMatch || !refreshTokenMatch) {
-    console.log('ℹ️  No token updates found in .env.local');
+  if (!tokenUpdate.refreshToken) {
+    console.log('ℹ️  No refresh token in update file');
     return;
   }
 
-  console.log('🔄 Updating GitHub Secrets with refreshed tokens...\n');
+  console.log('🔄 Updating GitHub Secret with rotated refresh token...\n');
 
-  const accessUpdated = await updateSecret('TWITTER_OAUTH2_ACCESS_TOKEN', accessTokenMatch[1]);
-  const refreshUpdated = await updateSecret('TWITTER_OAUTH2_REFRESH_TOKEN', refreshTokenMatch[1]);
+  const updated = await updateSecret('TWITTER_OAUTH2_REFRESH_TOKEN', tokenUpdate.refreshToken);
 
-  if (accessUpdated && refreshUpdated) {
-    console.log('\n✅ All secrets updated! Future runs will use fresh tokens.');
+  if (updated) {
+    console.log('\n✅ Refresh token secret updated! Future runs will use the new token.');
+    // Clean up the update file
+    fs.unlinkSync(tokenUpdatePath);
   } else {
-    console.error('\n⚠️  Some secrets failed to update. Manual intervention may be needed.');
+    console.error('\n⚠️  Failed to update refresh token secret.');
+    console.error('   The new token is saved in .token-update.json');
+    console.error('   You may need to manually update GitHub Secrets.');
+    console.error('   Or set up a GITHUB_PAT secret with repo scope for automatic updates.');
   }
 }
 
