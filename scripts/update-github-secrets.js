@@ -10,54 +10,46 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-async function updateSecret(secretName, secretValue) {
+function updateSecret(secretName, secretValue) {
   // Use GitHub CLI (gh) which is pre-installed in GitHub Actions
   // This requires GITHUB_TOKEN to be set (automatically available in Actions)
-  try {
+  return new Promise((resolve, reject) => {
     console.log(`🔐 Updating secret: ${secretName}`);
     
-    // Use gh secret set command (simplest approach)
-    // Note: GITHUB_TOKEN must have write access to secrets
-    // If it doesn't work, we'll need a PAT stored as GITHUB_PAT secret
+    // Use gh secret set with stdin to avoid exposing secret in command line
     const token = process.env.GITHUB_PAT || process.env.GITHUB_TOKEN;
     
     if (!token) {
-      console.error('❌ Missing GITHUB_TOKEN or GITHUB_PAT');
-      return false;
+      reject(new Error('Missing GITHUB_TOKEN or GITHUB_PAT'));
+      return;
     }
     
-    // Use gh secret set with stdin to avoid exposing secret in command line
-    // Set GH_TOKEN for authentication
-    const { spawn } = require('child_process');
-    
-    return new Promise((resolve, reject) => {
-      const gh = spawn('gh', ['secret', 'set', secretName], {
-        env: { ...process.env, GH_TOKEN: token },
-        stdio: ['pipe', 'inherit', 'inherit']
-      });
-      
-      gh.stdin.write(secretValue);
-      gh.stdin.end();
-      
-      gh.on('close', (code) => {
-        if (code === 0) {
-          resolve(true);
-        } else {
-          reject(new Error(`gh secret set exited with code ${code}`));
-        }
-      });
-      
-      gh.on('error', reject);
+    const gh = spawn('gh', ['secret', 'set', secretName], {
+      env: { ...process.env, GH_TOKEN: token },
+      stdio: ['pipe', 'inherit', 'inherit']
     });
     
-    console.log(`✅ Updated ${secretName}`);
-    return true;
-  } catch (error) {
-    console.error(`❌ Failed to update ${secretName}:`, error.message);
-    console.error('💡 Note: GITHUB_TOKEN may not have permission to update secrets.');
-    console.error('   Consider using a PAT stored as GITHUB_PAT secret with repo scope.');
-    return false;
-  }
+    gh.stdin.write(secretValue);
+    gh.stdin.end();
+    
+    gh.on('close', (code) => {
+      if (code === 0) {
+        console.log(`✅ Updated ${secretName}`);
+        resolve(true);
+      } else {
+        const error = new Error(`gh secret set exited with code ${code}`);
+        console.error(`❌ Failed to update ${secretName}:`, error.message);
+        console.error('💡 Note: GITHUB_TOKEN may not have permission to update secrets.');
+        console.error('   Consider using a PAT stored as GITHUB_PAT secret with repo scope.');
+        reject(error);
+      }
+    });
+    
+    gh.on('error', (err) => {
+      console.error(`❌ Failed to update ${secretName}:`, err.message);
+      reject(err);
+    });
+  });
 }
 
 async function main() {
