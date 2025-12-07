@@ -171,8 +171,8 @@ function main() {
     console.log(`   ... and ${scheduled.length - 5} more`);
   }
   
-  console.log('\n✅ Ready! Commit and push to GitHub.');
-  console.log('   GitHub Action will auto-post every 3 hours.\n');
+  console.log('\n✅ Ready for manual posting!');
+  console.log('   View queued tweets: npm run view-queued-tweets\n');
 }
 
 main();

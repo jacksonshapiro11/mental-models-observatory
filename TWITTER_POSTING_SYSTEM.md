@@ -1,5 +1,9 @@
 # Twitter Posting System - Clean & Simple
 
+> **⚠️ NOTE: This document describes the automated posting system which has been archived.**
+> 
+> **For the current simplified manual workflow, see [MANUAL_TWEET_WORKFLOW.md](./MANUAL_TWEET_WORKFLOW.md)**
+
 **Automated 3x daily posting to [@Cosmic_t_rex](https://twitter.com/Cosmic_t_rex)**
 
 ---
