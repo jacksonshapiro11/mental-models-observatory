@@ -29,7 +29,7 @@ function getAllBlogPosts(): BlogPost[] {
     
     // Parse frontmatter
     const frontmatterMatch = fileContents.match(/^---\n([\s\S]*?)\n---/);
-    if (!frontmatterMatch) return;
+    if (!frontmatterMatch || !frontmatterMatch[1]) return;
 
     const frontmatter = frontmatterMatch[1];
     const titleMatch = frontmatter.match(/title:\s*(.+)/);
@@ -38,13 +38,13 @@ function getAllBlogPosts(): BlogPost[] {
     const excerptMatch = frontmatter.match(/excerpt:\s*['"](.+?)['"]/);
     const readTimeMatch = frontmatter.match(/readTime:\s*(\d+)/);
 
-    if (titleMatch && slugMatch) {
+    if (titleMatch?.[1] && slugMatch?.[1]) {
       allPosts.push({
         title: titleMatch[1].trim(),
-        date: dateMatch ? dateMatch[1].trim() : '',
+        date: dateMatch?.[1]?.trim() ?? '',
         slug: slugMatch[1].trim(),
-        excerpt: excerptMatch ? excerptMatch[1].trim() : '',
-        readTime: readTimeMatch ? parseInt(readTimeMatch[1]) : 5,
+        excerpt: excerptMatch?.[1]?.trim() ?? '',
+        readTime: readTimeMatch?.[1] ? parseInt(readTimeMatch[1]) : 5,
       });
     }
   });

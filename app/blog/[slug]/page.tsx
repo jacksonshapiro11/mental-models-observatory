@@ -31,12 +31,12 @@ function getBlogPost(slug: string): BlogPost | null {
     
     // Parse frontmatter
     const frontmatterMatch = fileContents.match(/^---\n([\s\S]*?)\n---/);
-    if (!frontmatterMatch) continue;
+    if (!frontmatterMatch || !frontmatterMatch[1]) continue;
 
     const frontmatter = frontmatterMatch[1];
     const slugMatch = frontmatter.match(/slug:\s*(.+)/);
     
-    if (slugMatch && slugMatch[1].trim() === slug) {
+    if (slugMatch && slugMatch[1] && slugMatch[1].trim() === slug) {
       const titleMatch = frontmatter.match(/title:\s*(.+)/);
       const dateMatch = frontmatter.match(/date:\s*['"](.+?)['"]/);
       const excerptMatch = frontmatter.match(/excerpt:\s*['"](.+?)['"]/);
@@ -45,11 +45,11 @@ function getBlogPost(slug: string): BlogPost | null {
       const content = fileContents.replace(/^---\n[\s\S]*?\n---\n/, '');
 
       return {
-        title: titleMatch ? titleMatch[1].trim() : '',
-        date: dateMatch ? dateMatch[1].trim() : '',
-        slug: slugMatch[1].trim(),
-        excerpt: excerptMatch ? excerptMatch[1].trim() : '',
-        readTime: readTimeMatch ? parseInt(readTimeMatch[1]) : 5,
+        title: titleMatch?.[1]?.trim() ?? '',
+        date: dateMatch?.[1]?.trim() ?? '',
+        slug: slugMatch[1]?.trim() ?? slug,
+        excerpt: excerptMatch?.[1]?.trim() ?? '',
+        readTime: readTimeMatch?.[1] ? parseInt(readTimeMatch[1]) : 5,
         content,
       };
     }
