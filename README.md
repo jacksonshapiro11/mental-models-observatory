@@ -9,6 +9,7 @@ A comprehensive Next.js application showcasing **119 mental models** across 40 k
 - ✅ **119 mental models** with complete data (20 recently updated with expanded content)
 - ✅ **1,132 curated highlights** from Readwise (100% coverage)
 - ✅ **40 knowledge domains** with tier-based organization
+- ✅ **Blog feature** - Write and publish articles with Word doc conversion
 - ✅ **Production ready** - deployed on Vercel
 - ✅ **Progress tracking** - LocalStorage-based user progress with visual indicators
 - ✅ **Hybrid learning paths** - 100 curated paths + dynamic path generation
@@ -17,6 +18,22 @@ A comprehensive Next.js application showcasing **119 mental models** across 40 k
 ---
 
 ## 🆕 Recent Updates
+
+### January 2026 - Blog Feature
+- ✅ **Blog System** - Full-featured blog with markdown support
+  - Blog listing page (`/blog`) with post cards
+  - Individual blog post pages (`/blog/[slug]`)
+  - Word document to Markdown conversion script
+  - Automatic metadata extraction (title, date, read time, slug)
+  - Dark mode support with Espresso Gold theme
+  - Centered headers and optimized typography
+- ✅ **Contact Modal** - Interactive contact popup
+  - Twitter: [@Cosmic_t_rex](https://twitter.com/Cosmic_t_rex)
+  - Email: cosmictrex11@gmail.com
+  - Themed for both light and dark modes
+- ✅ **Header Updates** - Consistent button styling
+  - Black buttons in both light and dark modes
+  - Contact, Blog, and Home navigation buttons
 
 ### December 2025 - UI/UX Enhancements
 - ✅ **Espresso-Gold Dark Mode** - Sophisticated brown and gold color scheme
@@ -73,6 +90,9 @@ mental-models-observatory/
 ├── app/                          # Next.js App Router
 │   ├── page.tsx                 # Homepage
 │   ├── models/[slug]/           # Individual model pages
+│   ├── blog/                    # Blog section
+│   │   ├── page.tsx            # Blog listing page
+│   │   └── [slug]/page.tsx     # Individual blog post pages
 │   ├── knowledge-domains/       # Domain browsing
 │   └── api/readwise/            # Readwise API integration
 │
@@ -82,9 +102,16 @@ mental-models-observatory/
 │   │   ├── HighlightBlock.tsx       # Individual highlight card
 │   │   └── SourceAttribution.tsx    # Book/author metadata
 │   ├── layout/                  # Navigation, headers, footers
+│   ├── ContactModal.tsx         # Contact information modal
 │   └── ui/                      # Base UI components
 │       ├── ThemeToggle.tsx      # Dark/light mode toggle
 │       └── QuickStartModal.tsx   # "What is this?" modal
+│
+├── blog/
+│   └── posts/                   # Blog post markdown files
+│       ├── 2026-01-14-the-secret-to-life-in-3-concepts.md
+│       ├── 2025-12-12-the-future-and-ai.md
+│       └── images/              # Blog post images
 │
 ├── lib/
 │   ├── readwise-data.ts         # SOURCE OF TRUTH - All 119 models
@@ -112,7 +139,8 @@ mental-models-observatory/
 │   ├── replace-old-models-content.js         # Replace content in existing models
 │   ├── compare-substance.js                  # Compare OLD vs NEW content for substance matching
 │   ├── test-all-models.js                    # Verify all models have complete data
-│   └── test-all-model-pages.js               # Test all model pages load successfully
+│   ├── test-all-model-pages.js               # Test all model pages load successfully
+│   └── convert-word-to-blog.js               # Convert Word documents to blog post markdown
 │
 └── docs/                        # Comprehensive documentation
     ├── QUICK_REFERENCE.md
@@ -283,6 +311,9 @@ node scripts/export-readwise-highlights-complete.js # Generate MENTAL_MODELS_REA
 node scripts/simple-update-by-code.js              # Update lib/readwise-data.ts from description files (by code)
 node scripts/compare-substance.js                  # Compare OLD vs NEW content for substance matching
 
+# Blog
+node scripts/convert-word-to-blog.js path/to/post.docx  # Convert Word document to blog post
+
 # Twitter Automation (see TWITTER_POSTING_SYSTEM.md)
 npm run queue-weekly-tweets <file>     # Parse & schedule weekly tweets
 npm run post-from-queue                # Post scheduled tweets (manual test)
@@ -440,11 +471,13 @@ npm run build
 
 ## 🛠️ Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 15 (App Router, Turbopack)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **Animations**: Framer Motion
 - **Icons**: Lucide React
+- **Markdown**: react-markdown, gray-matter
+- **Blog Processing**: mammoth (Word to HTML), reading-time
 - **API**: Readwise integration
 - **Deployment**: Vercel
 
@@ -456,8 +489,10 @@ Built with data from [Readwise](https://readwise.io/) and powered by [Next.js](h
 
 ---
 
-## 📞 Support
+## 📞 Contact & Support
 
+- **Twitter**: [@Cosmic_t_rex](https://twitter.com/Cosmic_t_rex)
+- **Email**: cosmictrex11@gmail.com
 - **Issues**: [GitHub Issues](https://github.com/yourusername/mental-models-observatory/issues)
 - **System Status**: `/api/readwise/debug`
 - **Documentation**: `/docs/` folder
