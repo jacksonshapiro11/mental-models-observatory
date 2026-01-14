@@ -6,6 +6,7 @@ import {
     BookOpen,
     Brain,
     ChevronDown,
+    FileText,
     Home,
     Info,
     Menu,
@@ -200,6 +201,18 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
               Models
             </Link>
 
+            {/* Blog */}
+            <Link
+              href="/blog"
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive('/blog')
+                  ? 'text-foundational-600 dark:text-[var(--espresso-cta-text)] bg-foundational-50 dark:bg-[var(--espresso-cta-text)]/20'
+                  : 'text-neutral-600 dark:text-[var(--espresso-cta-text)] hover:text-neutral-800 dark:hover:text-[var(--espresso-cta-text)]/80 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-cta-text)]/10'
+              }`}
+            >
+              Blog
+            </Link>
+
             {/* About */}
             <Link
               href="/about"
@@ -213,8 +226,16 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
             </Link>
           </div>
 
-          {/* Search, Home Button, and Mobile Menu */}
+          {/* Search, Blog, Home Button, and Mobile Menu */}
           <div className="flex items-center space-x-2">
+            {/* Blog Button */}
+            <Link
+              href="/blog"
+              className="flex items-center space-x-2 px-3 py-2 bg-foundational-500 dark:bg-black text-white rounded-lg hover:bg-foundational-600 dark:hover:bg-gray-900 transition-colors font-medium shadow-md dark:shadow-lg"
+            >
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:block">Blog</span>
+            </Link>
             {/* Home Button - Far Right */}
             <Link
               href="/"
@@ -326,6 +347,18 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
               >
                 <BookOpen className="w-5 h-5" />
                 <span>Models</span>
+              </Link>
+
+              <Link
+                href="/blog"
+                className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/blog')
+                    ? 'text-foundational-600 dark:text-[var(--espresso-accent)] bg-foundational-50 dark:bg-[var(--espresso-accent)]/20'
+                    : 'text-neutral-600 dark:text-[var(--espresso-h1)]'
+                }`}
+              >
+                <FileText className="w-5 h-5" />
+                <span>Blog</span>
               </Link>
 
               <Link

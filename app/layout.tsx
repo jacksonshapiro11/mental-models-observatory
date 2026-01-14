@@ -4,6 +4,7 @@ import Link from 'next/link';
 import './globals.css';
 import { ThemeProvider } from '@/lib/theme-context';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import ContactModal from '@/components/ContactModal';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -70,9 +71,16 @@ export default function RootLayout({
               <h1>Guided Learning Experience</h1>
               <div className="flex items-center gap-4">
                 <ThemeToggle />
+                <ContactModal />
+                <Link 
+                  href="/blog" 
+                  className="bg-black dark:bg-black text-white dark:text-white px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg"
+                >
+                  Blog
+                </Link>
                 <Link 
                   href="/" 
-                  className="bg-white dark:bg-black text-blue-600 dark:text-white px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors font-medium shadow-md dark:shadow-lg"
+                  className="bg-black dark:bg-black text-white dark:text-white px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg"
                 >
                   Home
                 </Link>
