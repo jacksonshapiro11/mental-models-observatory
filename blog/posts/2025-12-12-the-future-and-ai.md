@@ -10,6 +10,8 @@ aiSummary:
   quotes: []
 ---
 
+![The Future and AI](/blog/images/future-and-ai.jpg)
+
 ## Intro
 
 The future will be defined by embracing the new highest leverage technologies. Throughout history, humans have won in their niche by leveraging technology better than their competition whether that comes from other humans, animals, or the environment itself. Not embracing critical technologies like gunpowder was life or death. The technology changes but human nature remains constant. As time marches forward, the risk of being left behind increases because technology compounds its growth. Every innovation comes faster and the sum of those innovations becomes much more powerful. Progressing in and adapting to society mandates a complex thoughtful approach to new innovations. Tech must not only be embraced, but also properly rejected.
