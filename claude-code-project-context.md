@@ -143,16 +143,25 @@ mental-models-observatory/
 │   ├── page.tsx                 // Landing page
 │   ├── domains/[slug]/page.tsx  // Domain pages
 │   ├── models/[slug]/page.tsx   // Model detail pages
+│   ├── daily-update/            // Daily Brief
+│   │   ├── page.tsx            // Latest brief
+│   │   ├── [date]/page.tsx     // Archive route
+│   │   └── layout.tsx          // Full-bleed layout
 │   └── api/
 │       ├── readwise/            // Readwise API routes
 │       └── ai-guide/            // AI navigation endpoint
+├── content/
+│   └── daily-updates/           // Daily Brief markdown files
 ├── components/
 │   ├── ui/                      // Base UI components
 │   ├── layout/                  // Layout components
 │   ├── content/                 // Content-specific components
+│   ├── daily-update/            // Daily Brief renderer
+│   │   └── BriefViewer.tsx     // Main brief client component
 │   └── navigation/              // AI guide components
 ├── lib/
 │   ├── readwise.ts             // Readwise API client
+│   ├── daily-update-parser.ts  // Brief markdown → structured data
 │   ├── data.ts                 // Data management
 │   ├── ai-guide.ts             // AI navigation logic
 │   └── utils.ts                // Utilities
@@ -166,6 +175,31 @@ mental-models-observatory/
     └── books.json              // Book references
 ```
 
+## Daily Brief System (February 2026)
+
+A full daily intelligence brief system at `/daily-update`, driven by markdown files.
+
+**Architecture:**
+- `content/daily-updates/YYYY-MM-DD.md` — Source markdown files (one per day)
+- `lib/daily-update-parser.ts` — Parses markdown into structured `DailyBrief` with typed sections
+- `components/daily-update/BriefViewer.tsx` — Client component with section-specific renderers, sticky nav, progress bar, status badges
+- `app/daily-update/page.tsx` — Server component loading latest brief
+- `app/daily-update/[date]/page.tsx` — Hidden archive route (easter egg, not linked anywhere)
+- `app/daily-update/layout.tsx` — Full-bleed layout override
+
+**Section types:** dashboard, the-six, the-take, big-stories, tomorrows-headlines, watchlist, discovery, worldview-updates, ref-big-stories, ref-tomorrows
+
+**Key patterns:**
+- Dual-mode Tailwind classes: `text-neutral-900 dark:text-[var(--espresso-h1)]`
+- Status inference from title keywords (developing, elevated, accelerating, etc.)
+- `parseBlocks()` splits content into typed blocks (table, h2, h3, list, numbered-list, italic, paragraph)
+- IntersectionObserver for scroll-based active section tracking
+- Sticky header stacking: site header `z-[70] top-0`, progress bar `z-[60] top-[57px]`, section nav `z-50 top-[58px]`
+
+**Design philosophy:** Ephemeral — `/daily-update` always shows today's brief only. Past briefs are stored for internal worldview tracking but are intentionally not discoverable. Hidden archive route exists as easter egg.
+
+**Deployment:** Add markdown file to `content/daily-updates/`, git push, Vercel auto-deploys.
+
 ## Current Implementation Status
 
 **Completed:**
@@ -173,11 +207,15 @@ mental-models-observatory/
 - Detailed prompts for all phases
 - Data structure design
 - AI navigation system design
+- Daily Brief system with markdown-driven content
+- Blog feature with Word doc conversion
+- Espresso-Gold dark mode theme
+- Twitter automation
 
 **Next Steps:**
-1. Execute foundation prompts (1-6) to build core website
-2. Implement AI navigation system (prompt 7)
-3. Add mobile optimization and production deployment (prompts 8-9)
+1. Automate Daily Brief generation (API + scheduled workflow)
+2. Dashboard data automation (price APIs)
+3. Archive retrieval for internal analysis (worldview evolution tracking)
 
 ## Key Implementation Notes
 

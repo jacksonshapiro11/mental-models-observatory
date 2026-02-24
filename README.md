@@ -10,6 +10,7 @@ A comprehensive Next.js application showcasing **119 mental models** across 40 k
 - ✅ **1,132 curated highlights** from Readwise (100% coverage)
 - ✅ **40 knowledge domains** with tier-based organization
 - ✅ **Blog feature** - Write and publish articles with Word doc conversion
+- ✅ **Daily Brief** - Markdown-driven daily intelligence brief at `/daily-update`
 - ✅ **Production ready** - deployed on Vercel
 - ✅ **Progress tracking** - LocalStorage-based user progress with visual indicators
 - ✅ **Hybrid learning paths** - 100 curated paths + dynamic path generation
@@ -18,6 +19,20 @@ A comprehensive Next.js application showcasing **119 mental models** across 40 k
 ---
 
 ## 🆕 Recent Updates
+
+### February 2026 - Daily Brief
+- ✅ **Daily Brief System** - Full-featured daily intelligence brief at `/daily-update`
+  - Markdown-driven content system (`content/daily-updates/YYYY-MM-DD.md`)
+  - Custom markdown parser (`lib/daily-update-parser.ts`) splits briefs into typed sections
+  - Client component (`components/daily-update/BriefViewer.tsx`) with section-specific renderers
+  - Sticky section navigation with scroll-based active tracking (IntersectionObserver)
+  - Reading progress bar
+  - Status badges (developing, elevated, accelerating, new, watching, building) auto-inferred from content
+  - Ephemeral by design — `/daily-update` always shows today's brief only. Past briefs are stored for internal data but not discoverable (hidden archive route exists as easter egg at `/daily-update/[date]`)
+  - Full light + dark mode support (amber accents light, espresso-gold dark)
+  - Sections: Dashboard, The Six, The Take, Big Stories, Tomorrow's Headlines, Watchlist, Discovery, Worldview Updates, Full Reference sections
+  - "Daily Brief" button added to site header
+- ✅ **Deployment workflow** - Drop markdown file in `content/daily-updates/`, git push, Vercel auto-deploys
 
 ### January 2026 - Blog Feature
 - ✅ **Blog System** - Full-featured blog with markdown support
@@ -93,6 +108,10 @@ mental-models-observatory/
 │   ├── blog/                    # Blog section
 │   │   ├── page.tsx            # Blog listing page
 │   │   └── [slug]/page.tsx     # Individual blog post pages
+│   ├── daily-update/            # Daily Brief section
+│   │   ├── page.tsx            # Latest brief (server component)
+│   │   ├── [date]/page.tsx     # Hidden archive route (easter egg, not linked)
+│   │   └── layout.tsx          # Full-bleed layout override
 │   ├── knowledge-domains/       # Domain browsing
 │   └── api/readwise/            # Readwise API integration
 │
@@ -101,6 +120,8 @@ mental-models-observatory/
 │   │   ├── ReadwiseHighlights.tsx   # Main highlights display
 │   │   ├── HighlightBlock.tsx       # Individual highlight card
 │   │   └── SourceAttribution.tsx    # Book/author metadata
+│   ├── daily-update/            # Daily Brief components
+│   │   └── BriefViewer.tsx      # Main brief renderer (client component)
 │   ├── layout/                  # Navigation, headers, footers
 │   ├── ContactModal.tsx         # Contact information modal
 │   └── ui/                      # Base UI components
@@ -113,8 +134,13 @@ mental-models-observatory/
 │       ├── 2025-12-12-the-future-and-ai.md
 │       └── images/              # Blog post images
 │
+├── content/
+│   └── daily-updates/           # Daily Brief markdown files
+│       └── 2026-02-23.md       # Each brief is a dated markdown file
+│
 ├── lib/
 │   ├── readwise-data.ts         # SOURCE OF TRUTH - All 119 models
+│   ├── daily-update-parser.ts   # Markdown → structured DailyBrief parser
 │   ├── parse-all-domains.ts     # Highlight parsing + slug mappings
 │   ├── readwise-highlights.ts   # API integration & caching
 │   └── data.ts                  # Exports for components
@@ -172,6 +198,64 @@ Readwise website notes/       →    lib/parse-all-domains.ts    →    componen
 | `lib/parse-all-domains.ts` | Slug mappings + highlight parsing logic | Fixing model ID mismatches |
 | `Readwise website notes/*.md` | Raw curated highlights from Readwise | Adding new highlights |
 | `components/content/ReadwiseHighlights.tsx` | Displays highlights on model pages | Changing highlight UI |
+| `content/daily-updates/*.md` | Daily Brief markdown files | Publishing a new brief |
+| `lib/daily-update-parser.ts` | Parses brief markdown into structured sections | Adding new section types |
+| `components/daily-update/BriefViewer.tsx` | Renders brief with section-specific formatting | Changing brief UI/styling |
+
+---
+
+## 📰 Publishing a Daily Brief
+
+The Daily Brief system renders markdown files as a rich, single-scroll reading experience at `/daily-update`.
+
+### Adding a New Brief
+
+1. **Create a dated markdown file** in `content/daily-updates/`:
+```bash
+# File: content/daily-updates/2026-02-24.md
+```
+
+2. **Follow the section structure** — each section starts with `# ▸ SECTION NAME`:
+```markdown
+*Life note text here*
+
+**News TLDR:** One-sentence summary of the day.
+
+# ▸ THE DASHBOARD
+(Market tables in markdown format)
+
+# ▸ THE SIX
+## Markets & Economy
+- Bullet points...
+
+# ▸ THE TAKE
+## Title of Today's Deep Analysis
+Analysis content...
+
+# ▸ THE BIG STORIES
+*Intro text*
+## 1. Story Title — Status update
+Details...
+
+# ▸ TOMORROW'S HEADLINES
+# ▸ THE WATCHLIST
+# ▸ DISCOVERY
+# ▸ WORLDVIEW UPDATES
+# ▸ FULL REFERENCE: BIG STORIES
+# ▸ FULL REFERENCE: TOMORROW'S HEADLINES
+```
+
+3. **Deploy**: `git add content/daily-updates/2026-02-24.md && git commit -m "Brief: Feb 24" && git push`
+
+Vercel auto-deploys. `/daily-update` always shows the latest brief. Past briefs are stored in `content/daily-updates/` for internal reference and worldview tracking, but are intentionally not discoverable — no archive page, no links to past dates. A hidden route at `/daily-update/[date]` exists as an easter egg for anyone who knows the URL pattern.
+
+### How the Parser Works
+
+`lib/daily-update-parser.ts` splits the markdown on `# ▸` markers into typed sections. Each section gets an `id`, `type`, `label`, and `shortLabel` for the sticky nav. The epigraph (first italic line) and lede (first bold paragraph) are extracted separately.
+
+### Section-Specific Renderers
+
+`BriefViewer.tsx` uses different renderers per section type — `DashboardSection` renders tables with color-coded percentages, `BigStoriesSection` adds status badges, `TheTakeSection` formats the deep analysis, etc. The `parseBlocks()` function splits section content into typed blocks (table, h2, h3, list, numbered-list, italic, paragraph) that renderers consume.
 
 ---
 
@@ -280,6 +364,7 @@ This compares existing content in `lib/readwise-data.ts` with updated content in
 | Highlight display | `components/content/ReadwiseHighlights.tsx` | Fetches and displays all highlights |
 | Individual highlight | `components/content/HighlightBlock.tsx` | Single highlight card design |
 | Navigation | `components/layout/Navigation.tsx` | Top navigation bar |
+| Daily Brief | `components/daily-update/BriefViewer.tsx` | Brief reading experience |
 | Homepage | `app/page.tsx` | Landing page |
 | Theme toggle | `components/ui/ThemeToggle.tsx` | Dark/light mode switcher |
 | Quick Start modal | `components/ui/QuickStartModal.tsx` | "What is this?" modal |

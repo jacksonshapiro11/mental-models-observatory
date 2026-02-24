@@ -10,6 +10,7 @@ import {
     Home,
     Info,
     Menu,
+    Newspaper,
     Search,
     Target,
     X
@@ -201,6 +202,18 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
               Models
             </Link>
 
+            {/* Daily Update */}
+            <Link
+              href="/daily-update"
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive('/daily-update')
+                  ? 'text-foundational-600 dark:text-[var(--espresso-cta-text)] bg-foundational-50 dark:bg-[var(--espresso-cta-text)]/20'
+                  : 'text-neutral-600 dark:text-[var(--espresso-cta-text)] hover:text-neutral-800 dark:hover:text-[var(--espresso-cta-text)]/80 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-cta-text)]/10'
+              }`}
+            >
+              Daily Update
+            </Link>
+
             {/* Blog */}
             <Link
               href="/blog"
@@ -347,6 +360,18 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
               >
                 <BookOpen className="w-5 h-5" />
                 <span>Models</span>
+              </Link>
+
+              <Link
+                href="/daily-update"
+                className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/daily-update')
+                    ? 'text-foundational-600 dark:text-[var(--espresso-accent)] bg-foundational-50 dark:bg-[var(--espresso-accent)]/20'
+                    : 'text-neutral-600 dark:text-[var(--espresso-h1)]'
+                }`}
+              >
+                <Newspaper className="w-5 h-5" />
+                <span>Daily Update</span>
               </Link>
 
               <Link

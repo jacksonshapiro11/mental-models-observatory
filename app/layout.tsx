@@ -67,19 +67,25 @@ export default function RootLayout({
       <body className={`${inter.className} h-full bg-neutral-25 text-neutral-800 antialiased`}>
         <ThemeProvider>
           <div className="flex min-h-full flex-col">
-            <header className="p-4 bg-blue-600 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)] flex justify-between items-center transition-colors duration-300">
+            <header className="sticky top-0 z-[70] p-4 bg-blue-600 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)] flex justify-between items-center transition-colors duration-300">
               <h1>Guided Learning Experience</h1>
               <div className="flex items-center gap-4">
                 <ThemeToggle />
                 <ContactModal />
-                <Link 
-                  href="/blog" 
+                <Link
+                  href="/daily-update"
+                  className="bg-black dark:bg-black text-white dark:text-white px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg"
+                >
+                  Daily Brief
+                </Link>
+                <Link
+                  href="/blog"
                   className="bg-black dark:bg-black text-white dark:text-white px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg"
                 >
                   Blog
                 </Link>
-                <Link 
-                  href="/" 
+                <Link
+                  href="/"
                   className="bg-black dark:bg-black text-white dark:text-white px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg"
                 >
                   Home
