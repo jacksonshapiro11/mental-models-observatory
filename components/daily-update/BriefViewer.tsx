@@ -35,7 +35,7 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Markdown rendering helpers ──────────────────────────────────────────────
 
-function RichText({ text, className = '' }: { text: string; className?: string }) {
+function RichText({ text, className = '', onAnchorClick }: { text: string; className?: string; onAnchorClick?: (id: string) => void }) {
   const parts: React.ReactNode[] = [];
   let remaining = text;
   let key = 0;
@@ -44,11 +44,13 @@ function RichText({ text, className = '' }: { text: string; className?: string }
     const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
     const italicMatch = remaining.match(/(?<!\*)\*([^*]+?)\*(?!\*)/);
     const codeMatch = remaining.match(/`(.+?)`/);
+    const linkMatch = remaining.match(/\[([^\]]+?)\]\(([^)]+?)\)/);
 
     const matches = [
       boldMatch ? { type: 'bold', match: boldMatch, index: boldMatch.index! } : null,
       italicMatch ? { type: 'italic', match: italicMatch, index: italicMatch.index! } : null,
       codeMatch ? { type: 'code', match: codeMatch, index: codeMatch.index! } : null,
+      linkMatch ? { type: 'link', match: linkMatch, index: linkMatch.index! } : null,
     ].filter(Boolean).sort((a, b) => a!.index - b!.index);
 
     if (matches.length === 0) { parts.push(remaining); break; }
@@ -62,6 +64,23 @@ function RichText({ text, className = '' }: { text: string; className?: string }
       parts.push(<em key={key++} className="text-neutral-500 dark:text-neutral-400">{first.match![1]}</em>);
     } else if (first.type === 'code') {
       parts.push(<code key={key++} className="text-amber-700 dark:text-[var(--espresso-accent)] bg-amber-50 dark:bg-[var(--espresso-bg-medium)] px-1.5 py-0.5 rounded text-[0.9em] font-mono">{first.match![1]}</code>);
+    } else if (first.type === 'link') {
+      const linkText = first.match![1] ?? '';
+      const linkHref = first.match![2] ?? '';
+      if (linkHref.startsWith('#') && onAnchorClick) {
+        // Internal anchor link — use scrollToSection
+        const sectionId = linkHref.slice(1);
+        parts.push(
+          <a key={key++} href={linkHref} onClick={(e) => { e.preventDefault(); onAnchorClick(sectionId); }}
+            className="text-amber-600 dark:text-[var(--espresso-accent)] hover:underline cursor-pointer">{linkText}</a>
+        );
+      } else {
+        // External link
+        parts.push(
+          <a key={key++} href={linkHref} target="_blank" rel="noopener noreferrer"
+            className="text-amber-600 dark:text-[var(--espresso-accent)] hover:underline">{linkText}</a>
+        );
+      }
     }
 
     remaining = remaining.slice(first.index + first.match![0].length);
@@ -440,7 +459,7 @@ function GenericSection({ content }: { content: string }) {
         );
         if (block.type === 'table') return <MarkdownTable key={i} content={block.content} />;
         if (block.type === 'italic') return (
-          <p key={i} className="text-[15px] text-neutral-500 dark:text-neutral-400 italic leading-[1.7]">{block.content}</p>
+          <p key={i} className="text-[15px] text-neutral-500 dark:text-neutral-400 italic leading-[1.7]"><RichText text={block.content} /></p>
         );
         if (block.type === 'list') {
           const items = block.content.split('\n').filter(Boolean);
@@ -567,6 +586,7 @@ const SECTION_TITLES: Record<string, string> = {
   'dashboard': 'The Dashboard',
   'the-six': 'The Six',
   'the-take': 'The Take',
+  'the-model': 'The Model',
   'big-stories': 'The Big Stories',
   'tomorrows-headlines': "Tomorrow's Headlines",
   'watchlist': 'The Watchlist',
@@ -624,7 +644,10 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
   const activeSectionIndex = brief.sections.findIndex(s => s.id === activeSection);
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-neutral-50 dark:bg-[var(--espresso-bg-dark)]">
+    <div
+      ref={containerRef}
+      className="min-h-screen bg-neutral-50 dark:bg-[var(--espresso-bg-dark)] [--daily-tab-unexplored-color:#9ca3af] [--daily-tab-unexplored-hover-color:#4b5563] dark:[--daily-tab-unexplored-color:#1A1410] dark:[--daily-tab-unexplored-hover-color:#1A1410]"
+    >
       {/* Progress bar — sits right below the site header */}
       <div className="fixed top-[57px] left-0 right-0 z-[60] h-1 bg-neutral-200 dark:bg-[var(--espresso-bg-medium)]">
         <div
@@ -649,7 +672,7 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
                       ? 'bg-amber-500 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-bg-dark)]'
                       : isPast
                       ? 'text-amber-600 dark:text-[var(--espresso-accent)] hover:bg-amber-50 dark:hover:bg-[var(--espresso-accent)]/10'
-                      : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/5'
+                      : 'text-[var(--daily-tab-unexplored-color)] hover:text-[var(--daily-tab-unexplored-hover-color)] hover:bg-neutral-100 dark:hover:bg-white/5'
                   }`}
                 >
                   <span className="hidden sm:inline">{section.label}</span>
@@ -678,6 +701,11 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
           {brief.lede && (
             <p className="text-[17px] text-neutral-700 dark:text-[var(--espresso-body)] max-w-2xl mx-auto leading-[1.7]">
               {brief.lede}
+            </p>
+          )}
+          {brief.orientation && (
+            <p className="text-[15px] text-neutral-500 dark:text-neutral-400 max-w-2xl mx-auto leading-[1.7] mt-6 italic">
+              <RichText text={brief.orientation} onAnchorClick={scrollToSection} />
             </p>
           )}
         </div>

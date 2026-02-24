@@ -8,13 +8,14 @@ export interface DailyBrief {
   displayDate: string;    // "Monday, February 23, 2026"
   epigraph: string;       // Italic line after title
   lede: string;           // Italic summary paragraph
+  orientation: string;    // "New here?" guide paragraph (optional)
   sections: BriefSection[];
   raw: string;            // Full markdown for fallback
 }
 
 export interface BriefSection {
   id: string;
-  type: 'dashboard' | 'the-six' | 'the-take' | 'big-stories' | 'tomorrows-headlines' | 'watchlist' | 'discovery' | 'worldview' | 'ref-big-stories' | 'ref-tomorrows';
+  type: 'dashboard' | 'the-six' | 'the-take' | 'the-model' | 'big-stories' | 'tomorrows-headlines' | 'watchlist' | 'discovery' | 'worldview' | 'ref-big-stories' | 'ref-tomorrows';
   label: string;
   shortLabel: string;
   content: string;        // Raw markdown content of this section
@@ -26,6 +27,7 @@ const SECTION_DEFS: { marker: string; id: string; type: BriefSection['type']; la
   { marker: '# ▸ THE DASHBOARD', id: 'dashboard', type: 'dashboard', label: 'Dashboard', shortLabel: 'Dash' },
   { marker: '# ▸ THE SIX', id: 'the-six', type: 'the-six', label: 'The Six', shortLabel: 'Six' },
   { marker: '# ▸ THE TAKE', id: 'the-take', type: 'the-take', label: 'The Take', shortLabel: 'Take' },
+  { marker: '# ▸ THE MODEL', id: 'the-model', type: 'the-model', label: 'The Model', shortLabel: 'Model' },
   { marker: '# ▸ THE BIG STORIES', id: 'big-stories', type: 'big-stories', label: 'Big Stories', shortLabel: 'Stories' },
   { marker: "# ▸ TOMORROW'S HEADLINES", id: 'tomorrows-headlines', type: 'tomorrows-headlines', label: 'Tomorrow', shortLabel: 'Tomorrow' },
   { marker: '# ▸ THE WATCHLIST', id: 'watchlist', type: 'watchlist', label: 'Watchlist', shortLabel: 'Watch' },
@@ -44,9 +46,11 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
   let epigraph = '';
   let displayDate = '';
   let lede = '';
+  let orientation = '';
   let headerEndIndex = 0;
+  let italicLinesAfterDate: string[] = [];
 
-  for (let i = 0; i < Math.min(lines.length, 15); i++) {
+  for (let i = 0; i < Math.min(lines.length, 20); i++) {
     const line = (lines[i] ?? '').trim();
     if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && i < 5) {
       epigraph = line.slice(1, -1);
@@ -55,14 +59,18 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
       displayDate = line.replace('## ', '');
       headerEndIndex = i + 1;
     }
-    // Lede is the italic paragraph after the date, before first ---
+    // Collect italic paragraphs after the date, before first ---
     if (headerEndIndex > 0 && i > headerEndIndex && line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
-      lede = line.slice(1, -1);
+      italicLinesAfterDate.push(line.slice(1, -1));
     }
     if (line === '---' && headerEndIndex > 0) {
       break;
     }
   }
+
+  // First italic line is the news TLDR (lede), second is the orientation
+  lede = italicLinesAfterDate[0] || '';
+  orientation = italicLinesAfterDate[1] || '';
 
   // Split into sections
   const sections: BriefSection[] = [];
@@ -110,6 +118,7 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
     displayDate,
     epigraph,
     lede,
+    orientation,
     sections,
     raw: markdown,
   };
