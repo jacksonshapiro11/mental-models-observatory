@@ -198,7 +198,13 @@ A full daily intelligence brief system at `/daily-update`, driven by markdown fi
 
 **Design philosophy:** Ephemeral — `/daily-update` always shows today's brief only. Past briefs are stored for internal worldview tracking but are intentionally not discoverable. Hidden archive route exists as easter egg.
 
-**Deployment:** Add markdown file to `content/daily-updates/`, git push, Vercel auto-deploys.
+**IMPORTANT — Save every brief:** Every generated brief MUST be saved to `content/daily-updates/YYYY-MM-DD.md` in this repo. Past briefs accumulate for worldview tracking and system improvement even though they're not publicly browsable.
+
+**Daily workflow:**
+1. Generate brief in Cowork (Editorial Bible + Worldview loaded as project docs, web search for fresh data)
+2. Cowork saves markdown to `content/daily-updates/YYYY-MM-DD.md`
+3. Push from Cursor: `git add content/daily-updates/*.md && git commit -m "Brief: [date]" && git push`
+4. Vercel auto-deploys (~30 seconds)
 
 ## Current Implementation Status
 

@@ -204,39 +204,38 @@ Readwise website notes/       →    lib/parse-all-domains.ts    →    componen
 
 ---
 
-## 📰 Publishing a Daily Brief
+## 📰 Daily Brief — Workflow & Publishing
 
 The Daily Brief system renders markdown files as a rich, single-scroll reading experience at `/daily-update`.
 
-### Adding a New Brief
+### Daily Workflow
 
-1. **Create a dated markdown file** in `content/daily-updates/`:
-```bash
-# File: content/daily-updates/2026-02-24.md
-```
+**IMPORTANT: Every brief must be saved to `content/daily-updates/YYYY-MM-DD.md` in this repo.** Past briefs accumulate here for worldview tracking and system improvement, even though they're not publicly browsable on the site.
 
-2. **Follow the section structure** — each section starts with `# ▸ SECTION NAME`:
+1. **Generate the brief** in Cowork (load Daily Update project with Editorial Bible + Worldview, use web search for fresh data). Cowork saves the markdown file directly to `content/daily-updates/YYYY-MM-DD.md`.
+2. **Push from Cursor** — open the repo in Cursor and run:
+   ```bash
+   git add content/daily-updates/2026-02-24.md
+   git commit -m "Brief: Feb 24"
+   git push
+   ```
+3. **Vercel auto-deploys** — the brief is live at `/daily-update` within ~30 seconds.
+
+The brief is ephemeral by design — `/daily-update` always shows only the latest brief. Past briefs are stored in `content/daily-updates/` for internal reference and worldview tracking, but are intentionally not discoverable on the site. A hidden route at `/daily-update/[date]` exists as an easter egg for anyone who knows the URL pattern.
+
+### Brief Format
+
+Each section starts with `# ▸ SECTION NAME`. The recognized sections are:
+
 ```markdown
 *Life note text here*
 
 **News TLDR:** One-sentence summary of the day.
 
 # ▸ THE DASHBOARD
-(Market tables in markdown format)
-
 # ▸ THE SIX
-## Markets & Economy
-- Bullet points...
-
 # ▸ THE TAKE
-## Title of Today's Deep Analysis
-Analysis content...
-
 # ▸ THE BIG STORIES
-*Intro text*
-## 1. Story Title — Status update
-Details...
-
 # ▸ TOMORROW'S HEADLINES
 # ▸ THE WATCHLIST
 # ▸ DISCOVERY
@@ -244,10 +243,6 @@ Details...
 # ▸ FULL REFERENCE: BIG STORIES
 # ▸ FULL REFERENCE: TOMORROW'S HEADLINES
 ```
-
-3. **Deploy**: `git add content/daily-updates/2026-02-24.md && git commit -m "Brief: Feb 24" && git push`
-
-Vercel auto-deploys. `/daily-update` always shows the latest brief. Past briefs are stored in `content/daily-updates/` for internal reference and worldview tracking, but are intentionally not discoverable — no archive page, no links to past dates. A hidden route at `/daily-update/[date]` exists as an easter egg for anyone who knows the URL pattern.
 
 ### How the Parser Works
 

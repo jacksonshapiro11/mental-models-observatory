@@ -1,5 +1,15 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# Editorial & strategy docs (never push to GitHub)
+Editorial_Bible*
+Worldview*
+worldview*
+Roadmap*
+roadmap*
+*_Bible_*.md
+*_Worldview_*.md
+*_Roadmap_*.md
+
 # dependencies
 /node_modules
 /.pnp
