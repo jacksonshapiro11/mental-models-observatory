@@ -59,9 +59,9 @@ function RichText({ text, className = '', onAnchorClick }: { text: string; class
     if (first.index > 0) parts.push(remaining.slice(0, first.index));
 
     if (first.type === 'bold') {
-      parts.push(<strong key={key++} className="text-neutral-900 dark:text-[var(--espresso-h1)] font-semibold">{first.match![1]}</strong>);
+      parts.push(<strong key={key++} className="text-neutral-900 dark:text-[var(--espresso-h1)] font-semibold"><RichText text={first.match![1] ?? ''} {...(onAnchorClick ? { onAnchorClick } : {})} /></strong>);
     } else if (first.type === 'italic') {
-      parts.push(<em key={key++} className="text-neutral-500 dark:text-neutral-400">{first.match![1]}</em>);
+      parts.push(<em key={key++} className="text-neutral-500 dark:text-neutral-400"><RichText text={first.match![1] ?? ''} {...(onAnchorClick ? { onAnchorClick } : {})} /></em>);
     } else if (first.type === 'code') {
       parts.push(<code key={key++} className="text-amber-700 dark:text-[var(--espresso-accent)] bg-amber-50 dark:bg-[var(--espresso-bg-medium)] px-1.5 py-0.5 rounded text-[0.9em] font-mono">{first.match![1]}</code>);
     } else if (first.type === 'link') {
