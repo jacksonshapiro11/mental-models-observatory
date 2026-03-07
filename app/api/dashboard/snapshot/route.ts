@@ -51,6 +51,9 @@ export async function GET(req: NextRequest) {
     const today = new Date().toISOString().slice(0, 10);
     await writePriceHistory(today, snapshot);
 
+    // Include debug info so we can see what's actually happening
+    const debug = req.nextUrl.searchParams.get('debug') === 'true';
+
     return NextResponse.json({
       ok: true,
       date: today,
@@ -59,6 +62,17 @@ export async function GET(req: NextRequest) {
         Object.keys(snapshot.crypto || {}).length +
         Object.keys(snapshot.commodities || {}).length,
       errors: snapshot.errors,
+      ...(debug && {
+        breakdown: {
+          equities: Object.keys(snapshot.equities || {}),
+          crypto: Object.keys(snapshot.crypto || {}),
+          commodities: Object.keys(snapshot.commodities || {}),
+          rates: Object.keys(snapshot.rates || {}),
+          dxy: snapshot.dxy ? 'ok' : 'missing',
+          fearGreed: snapshot.fearGreed ? 'ok' : 'missing',
+        },
+        warnings: snapshot._warnings || [],
+      }),
     });
   } catch (err) {
     console.error('Snapshot generation failed:', err);
@@ -95,8 +109,17 @@ export async function PATCH(req: NextRequest) {
 
 // ─── SNAPSHOT GENERATION ─────────────────────────────────────────────────────
 
-async function generateSnapshot(): Promise<DashboardSnapshot> {
+// Collect warnings during snapshot generation so we can surface them in the response
+const _warnings: string[] = [];
+function warn(msg: string) {
+  console.warn(msg);
+  _warnings.push(msg);
+}
+
+async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: string[] }> {
   const now = Date.now();
+  _warnings.length = 0; // Reset for this run
+
   const results = await Promise.allSettled([
     fetchEquityHistory(),
     fetchCryptoHistory(),
@@ -106,7 +129,15 @@ async function generateSnapshot(): Promise<DashboardSnapshot> {
     fetchFearGreed(),
   ]);
 
+  const labels = ['equities', 'crypto', 'commodities', 'rates', 'forex/DXY', 'fearGreed'];
   const [equityResult, cryptoResult, commodityResult, rateResult, forexResult, fgResult] = results;
+
+  // Log rejected promises as warnings too
+  results.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      warn(`${labels[i]} REJECTED: ${r.reason?.message || r.reason || 'Unknown'}`);
+    }
+  });
 
   return {
     generatedAt: now,
@@ -120,6 +151,7 @@ async function generateSnapshot(): Promise<DashboardSnapshot> {
     errors: results
       .map((r, i) => r.status === 'rejected' ? { index: i, error: r.reason?.message || 'Unknown' } : null)
       .filter((e): e is { index: number; error: string } => e !== null),
+    _warnings: [..._warnings],
   };
 }
 
@@ -164,11 +196,11 @@ async function calibrateMultipliers(): Promise<Record<string, number>> {
           console.log(`Calibrated ${etf} multiplier: ${multipliers[etf]} (index=${indexPrice}, etf=${etfPrice})`);
         }
       } catch (err) {
-        console.warn(`Yahoo calibration for ${etf} failed, using default:`, err);
+        warn(`Yahoo calibration for ${etf} failed: ${err instanceof Error ? err.message : err}`);
       }
     }
   } catch (err) {
-    console.warn('Multiplier calibration failed, using defaults:', err);
+    warn(`Multiplier calibration failed: ${err instanceof Error ? err.message : err}`);
   }
 
   return multipliers;
@@ -205,7 +237,7 @@ async function fetchEquityHistory() {
       const data = await res.json();
 
       if (data.s !== 'ok' || !data.c || data.c.length < 50) {
-        console.warn(`Finnhub candle ${etf.symbol}: insufficient data`);
+        warn(`Finnhub candle ${etf.symbol}: insufficient data (got ${data.c?.length ?? 0} points, status: ${data.s})`);
         continue;
       }
 
@@ -219,7 +251,7 @@ async function fetchEquityHistory() {
         multiplier: etf.multiplier, // Store so live endpoint can use it
       };
     } catch (err) {
-      console.warn(`Equity history ${etf.symbol} failed:`, err);
+      warn(`Equity history ${etf.symbol} failed: ${err instanceof Error ? err.message : err}`);
     }
   }
 
@@ -247,7 +279,7 @@ async function fetchCryptoHistory() {
       const data = await res.json();
 
       if (!data.prices || data.prices.length < 50) {
-        console.warn(`CoinGecko ${coin.id}: insufficient data`);
+        warn(`CoinGecko ${coin.id}: insufficient data (got ${data.prices?.length ?? 0} points, error: ${data.error || data.status?.error_message || 'none'})`);
         continue;
       }
 
@@ -260,7 +292,7 @@ async function fetchCryptoHistory() {
         mas: calculateMAs(closes),
       };
     } catch (err) {
-      console.warn(`Crypto history ${coin.id} failed:`, err);
+      warn(`Crypto history ${coin.id} failed: ${err instanceof Error ? err.message : err}`);
     }
 
     // Small delay between CoinGecko calls to avoid rate limiting
@@ -290,7 +322,7 @@ async function fetchCommodities() {
       const data = await res.json();
 
       if (!data.data || data.data.length < 50) {
-        console.warn(`Alpha Vantage ${commodity.function}: insufficient data`);
+        warn(`Alpha Vantage ${commodity.function}: insufficient data (keys: ${Object.keys(data).join(', ')})`);
         continue;
       }
 
@@ -307,7 +339,7 @@ async function fetchCommodities() {
         mas: calculateMAs(closes),
       };
     } catch (err) {
-      console.warn(`Commodity ${commodity.name} failed:`, err);
+      warn(`Commodity ${commodity.name} failed: ${err instanceof Error ? err.message : err}`);
     }
   }
 
@@ -332,7 +364,7 @@ async function fetchRates() {
       const data = await res.json();
 
       if (!data.observations || data.observations.length < 10) {
-        console.warn(`FRED ${s.id}: insufficient data`);
+        warn(`FRED ${s.id}: insufficient data`);
         continue;
       }
 
@@ -349,7 +381,7 @@ async function fetchRates() {
         mas: calculateMAs(closes),
       };
     } catch (err) {
-      console.warn(`FRED ${s.id} failed:`, err);
+      warn(`FRED ${s.id} failed: ${err instanceof Error ? err.message : err}`);
     }
   }
 
@@ -396,7 +428,7 @@ async function fetchFearGreed() {
     }
     return null;
   } catch (err) {
-    console.warn('Fear & Greed fetch failed:', err);
+    warn(`Fear & Greed fetch failed: ${err instanceof Error ? err.message : err}`);
     return null;
   }
 }
