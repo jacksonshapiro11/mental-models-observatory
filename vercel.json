@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/dashboard/snapshot",
+      "schedule": "0 11 * * 1-5"
+    },
+    {
+      "path": "/api/audio/generate",
+      "schedule": "30 11 * * 1-5"
+    }
+  ]
+}

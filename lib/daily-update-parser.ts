@@ -59,6 +59,10 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
       displayDate = line.replace('## ', '');
       headerEndIndex = i + 1;
     }
+    // Capture bold TLDR line (e.g. "**News TLDR:** ...")
+    if (headerEndIndex > 0 && i > headerEndIndex && line.startsWith('**') && !lede) {
+      lede = line;
+    }
     // Collect italic paragraphs after the date, before first ---
     if (headerEndIndex > 0 && i > headerEndIndex && line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
       italicLinesAfterDate.push(line.slice(1, -1));
@@ -68,9 +72,14 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
     }
   }
 
-  // First italic line is the news TLDR (lede), second is the orientation
-  lede = italicLinesAfterDate[0] || '';
-  orientation = italicLinesAfterDate[1] || '';
+  // If lede was captured from bold TLDR line, orientation is first italic line
+  // Otherwise fall back to old behavior (first italic = lede, second = orientation)
+  if (lede) {
+    orientation = italicLinesAfterDate[0] || '';
+  } else {
+    lede = italicLinesAfterDate[0] || '';
+    orientation = italicLinesAfterDate[1] || '';
+  }
 
   // Split into sections
   const sections: BriefSection[] = [];

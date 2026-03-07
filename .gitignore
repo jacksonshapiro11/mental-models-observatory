@@ -10,6 +10,16 @@ roadmap*
 *_Worldview_*.md
 *_Roadmap_*.md
 
+# Skills (project-specific Claude skills — never push to GitHub)
+/skills/
+framework-propagator/
+Market_Data_Collector*
+Editor_v*
+Critic_v*
+Workflow_v*
+Thesis_Tracker*
+Quality_Tracker*
+
 # dependencies
 /node_modules
 /.pnp
@@ -132,6 +142,9 @@ temp/
 
 # Local Netlify folder
 .netlify
+
+# Audio test output (local MP3 generation)
+scripts/output/
 
 # Sentry Config File
 .sentryclirc

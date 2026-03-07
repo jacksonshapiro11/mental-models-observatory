@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { DailyBrief, BriefSection } from '@/lib/daily-update-parser';
+import LiveDashboard from '@/components/dashboard/LiveDashboard';
+import AudioPlayer from '@/components/daily-update/AudioPlayer';
 
 // ─── Status badge system ─────────────────────────────────────────────────────
 
@@ -568,7 +570,43 @@ function RefTomorrowsSection({ content }: { content: string }) {
 
 function SectionContent({ section }: { section: BriefSection }) {
   switch (section.type) {
-    case 'dashboard': return <DashboardSection content={section.content} />;
+    case 'dashboard': {
+      // Parse per-section context notes from the brief markdown.
+      // Structure: ### Equities → table → italic notes → ### Crypto → table → italic notes → ### Commodities → ...
+      const blocks = parseBlocks(section.content);
+      let currentSection = '';
+      const sectionNotes: Record<string, string[]> = { equity: [], crypto: [], commodity: [] };
+
+      for (const block of blocks) {
+        if (block.type === 'h3') {
+          const h = block.content.toLowerCase();
+          if (h.includes('equit')) currentSection = 'equity';
+          else if (h.includes('crypto')) currentSection = 'crypto';
+          else if (h.includes('commodit') || h.includes('rate')) currentSection = 'commodity';
+          else currentSection = '';
+        } else if ((block.type === 'italic' || block.type === 'paragraph') && currentSection) {
+          sectionNotes[currentSection]!.push(block.content);
+        }
+      }
+
+      const equityNotes = (sectionNotes.equity ?? []).length > 0 ? sectionNotes.equity!.join(' ') : undefined;
+      const cryptoNotes = (sectionNotes.crypto ?? []).length > 0 ? sectionNotes.crypto!.join(' ') : undefined;
+      const commodityNotes = (sectionNotes.commodity ?? []).length > 0 ? sectionNotes.commodity!.join(' ') : undefined;
+
+      return (
+        <div>
+          <LiveDashboard
+            equityNotes={equityNotes as string | null}
+            cryptoNotes={cryptoNotes as string | null}
+            commodityNotes={commodityNotes as string | null}
+          />
+          {/* CoinGecko attribution (required by their terms) */}
+          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-3">
+            Crypto data provided by <a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer" className="underline hover:text-neutral-500">CoinGecko</a>
+          </p>
+        </div>
+      );
+    }
     case 'the-six': return <TheSixSection content={section.content} />;
     case 'the-take': return <TheTakeSection content={section.content} />;
     case 'big-stories': return <BigStoriesSection content={section.content} />;
@@ -700,7 +738,7 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
           )}
           {brief.lede && (
             <p className="text-[17px] text-neutral-700 dark:text-[var(--espresso-body)] max-w-2xl mx-auto leading-[1.7]">
-              {brief.lede}
+              <RichText text={brief.lede} />
             </p>
           )}
           {brief.orientation && (
@@ -711,6 +749,9 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
         </div>
 
         <div className="h-px bg-gradient-to-r from-transparent via-amber-300/40 dark:via-[var(--espresso-accent)]/20 to-transparent" />
+
+        {/* Audio player */}
+        <AudioPlayer date={brief.date} />
 
         {/* Sections */}
         {brief.sections.map((section, idx) => (
