@@ -49,6 +49,9 @@ yarn-error.log*
 .env*.local
 .env
 
+# Config with credentials (never commit)
+.config/
+
 # vercel
 .vercel
 
