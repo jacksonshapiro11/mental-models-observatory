@@ -1,8 +1,11 @@
 /**
  * /api/dashboard/snapshot — App Router
  *
- * GET: Runs ONCE per day at 6 AM ET via cron. Fetches 400 days of history,
- * calculates MAs and reference prices, writes to Upstash, appends to price history.
+ * GET: Runs ONCE per day at 6 AM ET via cron.
+ *   - Fetches today's prices from Yahoo Finance (same source as seed-prices.mjs)
+ *   - Reads historical data from Redis (populated by seed-prices.mjs)
+ *   - Calculates % changes and MAs using per-asset trading day lookback
+ *   - Writes to Upstash: dashboard:snapshot:latest + dashboard:history:YYYY-MM-DD
  *
  * PATCH: Manual field updates (FedWatch, ETF flows) during evening session.
  *
@@ -16,28 +19,73 @@ import {
   writePriceHistory,
   type DashboardSnapshot,
 } from '@/lib/upstash';
-import { calculateDXY } from '@/lib/dxy';
+import { fetchDXY } from '@/lib/dxy';
+import { Redis } from '@upstash/redis';
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 
 const FINNHUB_KEY = process.env.FINNHUB_API_KEY!;
-const COINGECKO_KEY = process.env.COINGECKO_API_KEY!;
-const ALPHA_VANTAGE_KEY = process.env.ALPHA_VANTAGE_API_KEY!;
 const SNAPSHOT_SECRET = process.env.SNAPSHOT_SECRET!;
 
 const TIMEOUT = 8000;
 
-const PERIODS: Record<string, number> = { '1D': 1, '5D': 5, '1M': 30, '1Y': 365 };
-const MA_PERIODS: Record<string, number> = { '50D': 50, '200D': 200, '200W': 1400 };
+// Per-asset trading day lookback (matches seed-prices.mjs)
+const PERIODS: Record<string, number> = { '1D': 1, '5D': 5, '1M': 21, '1Y': 252 };
+const MA_PERIODS: Record<string, number> = { '50D': 50, '200D': 200, '200W': 1000 };
 
-// ─── AUTH HELPER ─────────────────────────────────────────────────────────────
+// All assets we track — matches seed-prices.mjs exactly
+const ASSETS: Record<string, { yahoo: string; actual: string | null; fallbackMultiplier: number; category: string }> = {
+  // Equities (ETF proxies → actual index for calibration)
+  SPX:    { yahoo: 'SPY',   actual: '%5EGSPC',  fallbackMultiplier: 10,    category: 'equities' },
+  NDX:    { yahoo: 'QQQ',   actual: '%5ENDX',   fallbackMultiplier: 40.95, category: 'equities' },
+  DJI:    { yahoo: 'DIA',   actual: '%5EDJI',   fallbackMultiplier: 100,   category: 'equities' },
+  IGV:    { yahoo: 'IGV',   actual: null,        fallbackMultiplier: 1,     category: 'equities' },
+  SMH:    { yahoo: 'SMH',   actual: null,        fallbackMultiplier: 1,     category: 'equities' },
+  IWM:    { yahoo: 'IWM',   actual: null,        fallbackMultiplier: 1,     category: 'equities' },
+  IWF:    { yahoo: 'IWF',   actual: null,        fallbackMultiplier: 1,     category: 'equities' },
+  IWD:    { yahoo: 'IWD',   actual: null,        fallbackMultiplier: 1,     category: 'equities' },
+  XLE:    { yahoo: 'XLE',   actual: null,        fallbackMultiplier: 1,     category: 'equities' },
+  ARKK:   { yahoo: 'ARKK',  actual: null,        fallbackMultiplier: 1,     category: 'equities' },
+
+  // Crypto (direct price, multiplier always 1)
+  BTC:    { yahoo: 'BTC-USD',       actual: null, fallbackMultiplier: 1, category: 'crypto' },
+  ETH:    { yahoo: 'ETH-USD',       actual: null, fallbackMultiplier: 1, category: 'crypto' },
+  SOL:    { yahoo: 'SOL-USD',       actual: null, fallbackMultiplier: 1, category: 'crypto' },
+  AAVE:   { yahoo: 'AAVE-USD',      actual: null, fallbackMultiplier: 1, category: 'crypto' },
+  UNI:    { yahoo: 'UNI7083-USD',   actual: null, fallbackMultiplier: 1, category: 'crypto' },
+  LINK:   { yahoo: 'LINK-USD',      actual: null, fallbackMultiplier: 1, category: 'crypto' },
+
+  // Commodities (ETF proxies → actual futures for calibration)
+  GOLD:   { yahoo: 'GLD',   actual: 'GC%3DF',  fallbackMultiplier: 10,  category: 'commodities' },
+  SILVER: { yahoo: 'SLV',   actual: 'SI%3DF',  fallbackMultiplier: 1,   category: 'commodities' },
+  BRENT:  { yahoo: 'BNO',   actual: 'BZ%3DF',  fallbackMultiplier: 1,   category: 'commodities' },
+  COPPER: { yahoo: 'CPER',  actual: 'HG%3DF',  fallbackMultiplier: 1,   category: 'commodities' },
+  NATGAS: { yahoo: 'UNG',   actual: 'NG%3DF',  fallbackMultiplier: 1,   category: 'commodities' },
+
+  // Rates (Treasury yields — direct, multiplier always 1)
+  US10Y:  { yahoo: '%5ETNX', actual: null, fallbackMultiplier: 1, category: 'rates' },
+};
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
 
 function isAuthorized(req: NextRequest): boolean {
   const secret = req.headers.get('x-snapshot-secret') || req.nextUrl.searchParams.get('secret');
-  return secret === SNAPSHOT_SECRET;
+  if (secret === SNAPSHOT_SECRET) return true;
+  const authHeader = req.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET || SNAPSHOT_SECRET;
+  if (authHeader === `Bearer ${cronSecret}`) return true;
+  return false;
 }
 
-// ─── GET: Full Snapshot Regeneration ─────────────────────────────────────────
+// ─── DIAGNOSTICS ─────────────────────────────────────────────────────────────
+
+const _warnings: string[] = [];
+function warn(msg: string) {
+  console.warn(msg);
+  _warnings.push(msg);
+}
+
+// ─── GET: Daily Snapshot ─────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
@@ -45,13 +93,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    _warnings.length = 0;
     const snapshot = await generateSnapshot();
     await writeSnapshot(snapshot);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = snapshot.date;
     await writePriceHistory(today, snapshot);
 
-    // Include debug info so we can see what's actually happening
     const debug = req.nextUrl.searchParams.get('debug') === 'true';
 
     return NextResponse.json({
@@ -71,13 +119,13 @@ export async function GET(req: NextRequest) {
           dxy: snapshot.dxy ? 'ok' : 'missing',
           fearGreed: snapshot.fearGreed ? 'ok' : 'missing',
         },
-        warnings: snapshot._warnings || [],
+        warnings: [..._warnings],
       }),
     });
   } catch (err) {
     console.error('Snapshot generation failed:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Unknown error' },
+      { error: err instanceof Error ? err.message : 'Unknown error', warnings: [..._warnings] },
       { status: 500 }
     );
   }
@@ -109,307 +157,263 @@ export async function PATCH(req: NextRequest) {
 
 // ─── SNAPSHOT GENERATION ─────────────────────────────────────────────────────
 
-// Collect warnings during snapshot generation so we can surface them in the response
-const _warnings: string[] = [];
-function warn(msg: string) {
-  console.warn(msg);
-  _warnings.push(msg);
-}
-
 async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: string[] }> {
   const now = Date.now();
-  _warnings.length = 0; // Reset for this run
 
-  const results = await Promise.allSettled([
-    fetchEquityHistory(),
-    fetchCryptoHistory(),
-    fetchCommodities(),
-    fetchRates(),
-    fetchForexForDXY(),
+  // Step 1: Fetch today's prices from Yahoo Finance for all assets
+  console.log('[snapshot] Fetching today\'s prices from Yahoo Finance...');
+  const todayPrices = await fetchAllYahooPrices();
+  console.log(`[snapshot] Got prices for ${Object.keys(todayPrices).length} assets`);
+
+  // Step 2: Read historical data from Redis (populated by seed-prices.mjs)
+  console.log('[snapshot] Reading historical data from Redis...');
+  const history = await readRecentHistory(1500);
+  console.log(`[snapshot] Found ${history.length} historical days in Redis`);
+
+  if (history.length < 50) {
+    warn(`Only ${history.length} history days in Redis — need at least 50 for MAs. Run: node scripts/seed-prices.mjs`);
+  }
+
+  // Step 3: Build per-asset price arrays from history
+  const assetPrices = buildAssetPriceArrays(history);
+
+  // Step 4: Append today's prices to the arrays
+  const today = new Date().toISOString().slice(0, 10);
+  for (const [name, data] of Object.entries(todayPrices)) {
+    if (!assetPrices[name]) {
+      assetPrices[name] = { dates: [], prices: [], category: ASSETS[name]?.category || 'equities' };
+    }
+    const arr = assetPrices[name]!;
+    if (arr.dates.length === 0 || arr.dates[arr.dates.length - 1] !== today) {
+      arr.dates.push(today);
+      arr.prices.push(data.adjustedPrice);
+    } else {
+      // Update today's price with the latest
+      arr.prices[arr.prices.length - 1] = data.adjustedPrice;
+    }
+  }
+
+  // Step 5: Calculate changes and MAs for each asset
+  const equities: Record<string, { latestClose: number; changes: Record<string, number>; mas: Record<string, number>; multiplier: number }> = {};
+  const crypto: Record<string, { latestClose: number; changes: Record<string, number>; mas: Record<string, number>; multiplier: number }> = {};
+  const commodities: Record<string, { latestClose: number; changes: Record<string, number>; mas: Record<string, number>; multiplier: number }> = {};
+  const rates: Record<string, { latestClose: number; changes: Record<string, number>; mas: Record<string, number>; multiplier: number }> = {};
+
+  const categoryMap: Record<string, typeof equities> = { equities, crypto, commodities, rates };
+
+  for (const [name, arr] of Object.entries(assetPrices)) {
+    if (arr.prices.length === 0) continue;
+
+    const latest = arr.prices[arr.prices.length - 1]!;
+    const changes = calculateChanges(arr.prices);
+    const mas = calculateMAs(arr.prices);
+    const multiplier = todayPrices[name]?.multiplier ?? ASSETS[name]?.fallbackMultiplier ?? 1;
+
+    const cat = categoryMap[arr.category];
+    if (cat) {
+      cat[name] = { latestClose: round(latest, 2), changes, mas, multiplier };
+    }
+  }
+
+  // Step 6: Fetch metadata (DXY via Finnhub, Fear & Greed)
+  const [dxyResult, fgResult] = await Promise.allSettled([
+    FINNHUB_KEY ? fetchDXY(FINNHUB_KEY, TIMEOUT) : Promise.resolve(null),
     fetchFearGreed(),
   ]);
 
-  const labels = ['equities', 'crypto', 'commodities', 'rates', 'forex/DXY', 'fearGreed'];
-  const [equityResult, cryptoResult, commodityResult, rateResult, forexResult, fgResult] = results;
-
-  // Log rejected promises as warnings too
-  results.forEach((r, i) => {
-    if (r.status === 'rejected') {
-      warn(`${labels[i]} REJECTED: ${r.reason?.message || r.reason || 'Unknown'}`);
-    }
-  });
-
   return {
     generatedAt: now,
-    date: new Date().toISOString().slice(0, 10),
-    equities: equityResult.status === 'fulfilled' ? equityResult.value : {},
-    crypto: cryptoResult.status === 'fulfilled' ? cryptoResult.value : {},
-    commodities: commodityResult.status === 'fulfilled' ? commodityResult.value : {},
-    rates: rateResult.status === 'fulfilled' ? rateResult.value : {},
-    dxy: forexResult.status === 'fulfilled' ? forexResult.value : null,
+    date: today,
+    equities,
+    crypto,
+    commodities,
+    rates,
+    dxy: dxyResult.status === 'fulfilled' ? dxyResult.value : null,
     fearGreed: fgResult.status === 'fulfilled' ? fgResult.value : null,
-    errors: results
-      .map((r, i) => r.status === 'rejected' ? { index: i, error: r.reason?.message || 'Unknown' } : null)
-      .filter((e): e is { index: number; error: string } => e !== null),
+    errors: [],
     _warnings: [..._warnings],
   };
 }
 
-// ─── ETF-TO-INDEX MULTIPLIER CALIBRATION ─────────────────────────────────────
-// Hardcoded multipliers drift over time (QQQ×43.5 was off by 6%).
-// We auto-calibrate daily by fetching actual index levels from Yahoo Finance
-// and comparing to ETF prices. Falls back to last known good multipliers.
+// ─── YAHOO FINANCE FETCH ─────────────────────────────────────────────────────
+// Same approach as seed-prices.mjs — free, no API key needed
 
-const DEFAULT_MULTIPLIERS: Record<string, number> = { SPY: 10, QQQ: 40.95, DIA: 100, IGV: 1, SMH: 1, IWM: 1, IWF: 1, IWD: 1, XLE: 1, ARKK: 1 };
+interface YahooPriceResult {
+  adjustedPrice: number;
+  multiplier: number;
+}
 
-async function calibrateMultipliers(): Promise<Record<string, number>> {
-  const indices = [
-    { etf: 'SPY', yahoo: '%5EGSPC' },  // ^GSPC (S&P 500)
-    { etf: 'QQQ', yahoo: '%5ENDX' },   // ^NDX (Nasdaq 100)
-    { etf: 'DIA', yahoo: '%5EDJI' },   // ^DJI (Dow Jones)
-    // IGV and SMH are tracked at ETF price directly (multiplier = 1), no calibration needed
-  ];
+async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> {
+  const results: Record<string, YahooPriceResult> = {};
 
-  const multipliers = { ...DEFAULT_MULTIPLIERS };
+  for (const [name, asset] of Object.entries(ASSETS)) {
+    try {
+      const etfPrice = await fetchYahooCurrentPrice(asset.yahoo);
+      if (etfPrice == null || etfPrice <= 0) {
+        warn(`Yahoo ${name} (${asset.yahoo}): no price`);
+        continue;
+      }
 
-  try {
-    // Fetch current ETF prices from Finnhub
-    const etfPrices: Record<string, number> = {};
-    for (const { etf } of indices) {
-      const url = `https://finnhub.io/api/v1/quote?symbol=${etf}&token=${FINNHUB_KEY}`;
-      const res = await fetchWithTimeout(url, 4000);
-      const data = await res.json();
-      if (data.c > 0) etfPrices[etf] = data.c;
-    }
-
-    // Fetch actual index levels from Yahoo Finance (unofficial but stable)
-    for (const { etf, yahoo } of indices) {
-      try {
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahoo}?interval=1d&range=1d`;
-        const res = await fetchWithTimeout(url, 4000);
-        const data = await res.json();
-        const indexPrice = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-        const etfPrice = etfPrices[etf];
-
-        if (indexPrice > 0 && etfPrice != null && etfPrice > 0) {
-          multipliers[etf] = round(indexPrice / etfPrice, 4);
-          console.log(`Calibrated ${etf} multiplier: ${multipliers[etf]} (index=${indexPrice}, etf=${etfPrice})`);
+      let multiplier = asset.fallbackMultiplier;
+      if (asset.actual) {
+        try {
+          const actualPrice = await fetchYahooCurrentPrice(asset.actual);
+          if (actualPrice != null && actualPrice > 0 && etfPrice > 0) {
+            multiplier = round(actualPrice / etfPrice, 4);
+            console.log(`[snapshot] Calibrate ${name}: ${asset.yahoo}=${etfPrice} × ${multiplier} = ${round(etfPrice * multiplier, 2)} (actual: ${actualPrice})`);
+          }
+        } catch (err) {
+          warn(`Yahoo calibration ${name} (${asset.actual}) failed: ${err instanceof Error ? err.message : err}`);
         }
-      } catch (err) {
-        warn(`Yahoo calibration for ${etf} failed: ${err instanceof Error ? err.message : err}`);
-      }
-    }
-  } catch (err) {
-    warn(`Multiplier calibration failed: ${err instanceof Error ? err.message : err}`);
-  }
-
-  return multipliers;
-}
-
-// ─── EQUITY HISTORY (Finnhub candles for SPY, QQQ, DIA) ─────────────────────
-
-async function fetchEquityHistory() {
-  // Auto-calibrate multipliers from actual index levels
-  const multipliers = await calibrateMultipliers();
-
-  const etfs = [
-    { symbol: 'SPY', name: 'SPX', multiplier: multipliers.SPY ?? 10 },
-    { symbol: 'QQQ', name: 'NDX', multiplier: multipliers.QQQ ?? 40.95 },
-    { symbol: 'DIA', name: 'DJI', multiplier: multipliers.DIA ?? 100 },
-    { symbol: 'IGV', name: 'IGV', multiplier: 1 },   // SaaS/Software ETF — tracks at ETF price
-    { symbol: 'SMH', name: 'SMH', multiplier: 1 },   // Semiconductor ETF — tracks at ETF price
-    { symbol: 'IWM', name: 'IWM', multiplier: 1 },   // Russell 2000 (small cap risk appetite)
-    { symbol: 'IWF', name: 'IWF', multiplier: 1 },   // Russell 1000 Growth
-    { symbol: 'IWD', name: 'IWD', multiplier: 1 },   // Russell 1000 Value
-    { symbol: 'XLE', name: 'XLE', multiplier: 1 },   // Energy Select SPDR (Iran/oil thesis)
-    { symbol: 'ARKK', name: 'ARKK', multiplier: 1 }, // ARK Innovation (speculative tech proxy)
-  ];
-
-  const to = Math.floor(Date.now() / 1000);
-  const from = to - 400 * 86400;
-
-  const results: Record<string, { latestClose: number; changes: Record<string, number>; mas: Record<string, number>; multiplier: number }> = {};
-
-  for (const etf of etfs) {
-    try {
-      const url = `https://finnhub.io/api/v1/stock/candle?symbol=${etf.symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_KEY}`;
-      const res = await fetchWithTimeout(url, TIMEOUT);
-      const data = await res.json();
-
-      if (data.s !== 'ok' || !data.c || data.c.length < 50) {
-        warn(`Finnhub candle ${etf.symbol}: insufficient data (got ${data.c?.length ?? 0} points, status: ${data.s})`);
-        continue;
       }
 
-      const closes = data.c.map((p: number) => p * etf.multiplier);
-      const latest = closes[closes.length - 1];
-
-      results[etf.name] = {
-        latestClose: round(latest, 0),
-        changes: calculateChanges(closes),
-        mas: calculateMAs(closes),
-        multiplier: etf.multiplier, // Store so live endpoint can use it
+      results[name] = {
+        adjustedPrice: round(etfPrice * multiplier, 2),
+        multiplier,
       };
     } catch (err) {
-      warn(`Equity history ${etf.symbol} failed: ${err instanceof Error ? err.message : err}`);
-    }
-  }
-
-  return results;
-}
-
-// ─── CRYPTO HISTORY (CoinGecko market_chart) ─────────────────────────────────
-
-async function fetchCryptoHistory() {
-  const coins = [
-    { id: 'bitcoin', name: 'BTC' },
-    { id: 'ethereum', name: 'ETH' },
-    { id: 'solana', name: 'SOL' },
-    { id: 'aave', name: 'AAVE' },
-    { id: 'uniswap', name: 'UNI' },
-    { id: 'chainlink', name: 'LINK' },
-  ];
-
-  const results: Record<string, { latestClose: number; changes: Record<string, number>; mas: Record<string, number> }> = {};
-
-  for (const coin of coins) {
-    try {
-      const url = `https://api.coingecko.com/api/v3/coins/${coin.id}/market_chart?vs_currency=usd&days=400&x_cg_demo_key=${COINGECKO_KEY}`;
-      const res = await fetchWithTimeout(url, TIMEOUT);
-      const data = await res.json();
-
-      if (!data.prices || data.prices.length < 50) {
-        warn(`CoinGecko ${coin.id}: insufficient data (got ${data.prices?.length ?? 0} points, error: ${data.error || data.status?.error_message || 'none'})`);
-        continue;
-      }
-
-      const closes = data.prices.map(([, price]: [number, number]) => price);
-      const latest = closes[closes.length - 1];
-
-      results[coin.name] = {
-        latestClose: round(latest, 2),
-        changes: calculateChanges(closes),
-        mas: calculateMAs(closes),
-      };
-    } catch (err) {
-      warn(`Crypto history ${coin.id} failed: ${err instanceof Error ? err.message : err}`);
+      warn(`Yahoo ${name} (${asset.yahoo}) failed: ${err instanceof Error ? err.message : err}`);
     }
 
-    // Small delay between CoinGecko calls to avoid rate limiting
     await sleep(200);
   }
 
   return results;
 }
 
-// ─── COMMODITIES (Alpha Vantage: Gold, Silver, Brent) ────────────────────────
-
-async function fetchCommodities() {
-  const commodities = [
-    { function: 'GOLD', name: 'GOLD' },
-    { function: 'SILVER', name: 'SILVER' },
-    { function: 'BRENT', name: 'BRENT' },
-    { function: 'COPPER', name: 'COPPER' },
-    { function: 'NATURAL_GAS', name: 'NATGAS' },
-  ];
-
-  const results: Record<string, { latestClose: number; changes: Record<string, number>; mas: Record<string, number> }> = {};
-
-  for (const commodity of commodities) {
-    try {
-      const url = `https://www.alphavantage.co/query?function=${commodity.function}&interval=daily&apikey=${ALPHA_VANTAGE_KEY}`;
-      const res = await fetchWithTimeout(url, TIMEOUT);
-      const data = await res.json();
-
-      if (!data.data || data.data.length < 50) {
-        warn(`Alpha Vantage ${commodity.function}: insufficient data (keys: ${Object.keys(data).join(', ')})`);
-        continue;
-      }
-
-      const closes = data.data
-        .filter((d: { value: string }) => d.value !== '.' && d.value != null)
-        .map((d: { value: string }) => parseFloat(d.value))
-        .reverse(); // oldest-first for MA calculation
-
-      const latest = closes[closes.length - 1];
-
-      results[commodity.name] = {
-        latestClose: round(latest, 2),
-        changes: calculateChanges(closes),
-        mas: calculateMAs(closes),
-      };
-    } catch (err) {
-      warn(`Commodity ${commodity.name} failed: ${err instanceof Error ? err.message : err}`);
-    }
-  }
-
-  return results;
+async function fetchYahooCurrentPrice(symbol: string): Promise<number | null> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+  const res = await fetchWithTimeout(url, TIMEOUT, { 'User-Agent': 'Mozilla/5.0' });
+  const data = await res.json();
+  const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+  return typeof price === 'number' && price > 0 ? price : null;
 }
 
-// ─── RATES (FRED: 10Y Treasury, Fed Funds) ───────────────────────────────────
+// ─── READ HISTORICAL DATA FROM REDIS ─────────────────────────────────────────
 
-async function fetchRates() {
-  const series = [
-    { id: 'DGS10', name: 'US10Y' },
-    { id: 'DFF', name: 'FEDFUNDS' },
-  ];
-
-  const results: Record<string, { latestClose: number; changes: Record<string, number>; mas: Record<string, number> }> = {};
-
-  for (const s of series) {
-    try {
-      const key = process.env.FRED_API_KEY || 'DEMO_KEY';
-      const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${s.id}&api_key=${key}&file_type=json&sort_order=desc&limit=500`;
-      const res = await fetchWithTimeout(url, TIMEOUT);
-      const data = await res.json();
-
-      if (!data.observations || data.observations.length < 10) {
-        warn(`FRED ${s.id}: insufficient data`);
-        continue;
-      }
-
-      const closes = data.observations
-        .filter((o: { value: string }) => o.value !== '.')
-        .map((o: { value: string }) => parseFloat(o.value))
-        .reverse();
-
-      const latest = closes[closes.length - 1];
-
-      results[s.name] = {
-        latestClose: round(latest, 2),
-        changes: calculateChanges(closes),
-        mas: calculateMAs(closes),
-      };
-    } catch (err) {
-      warn(`FRED ${s.id} failed: ${err instanceof Error ? err.message : err}`);
-    }
-  }
-
-  return results;
+interface HistoryEntry {
+  date: string;
+  equities: Record<string, { latestClose: number; multiplier?: number }>;
+  crypto: Record<string, { latestClose: number }>;
+  commodities: Record<string, { latestClose: number; multiplier?: number }>;
+  rates: Record<string, { latestClose: number }>;
 }
 
-// ─── FOREX FOR DXY SNAPSHOT ──────────────────────────────────────────────────
-
-async function fetchForexForDXY() {
-  const pairs = ['OANDA:EUR_USD', 'OANDA:USD_JPY', 'OANDA:GBP_USD', 'OANDA:USD_CAD', 'OANDA:USD_SEK', 'OANDA:USD_CHF'];
-  const symbolMap: Record<string, string> = {
-    'OANDA:EUR_USD': 'EURUSD', 'OANDA:USD_JPY': 'USDJPY', 'OANDA:GBP_USD': 'GBPUSD',
-    'OANDA:USD_CAD': 'USDCAD', 'OANDA:USD_SEK': 'USDSEK', 'OANDA:USD_CHF': 'USDCHF',
-  };
-
-  const rates: Record<string, number> = {};
-  const fetches = pairs.map(async (pair) => {
-    const url = `https://finnhub.io/api/v1/quote?symbol=${pair}&token=${FINNHUB_KEY}`;
-    const res = await fetchWithTimeout(url, 4000);
-    const data = await res.json();
-    const key = symbolMap[pair];
-    if (key) rates[key] = data.c;
+async function readRecentHistory(maxDays: number): Promise<HistoryEntry[]> {
+  const r = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
   });
 
-  await Promise.allSettled(fetches);
-  const dxyValue = calculateDXY(rates);
+  // Generate date keys for last maxDays calendar days
+  const keys: string[] = [];
+  const now = Date.now();
+  for (let i = 0; i < maxDays; i++) {
+    const date = new Date(now - i * 86400000).toISOString().slice(0, 10);
+    keys.push(`dashboard:history:${date}`);
+  }
 
-  return dxyValue ? { value: dxyValue, rates } : null;
+  // Batch read using pipeline
+  const batchSize = 100;
+  const entries: HistoryEntry[] = [];
+
+  for (let i = 0; i < keys.length; i += batchSize) {
+    const batch = keys.slice(i, i + batchSize);
+    const pipeline = r.pipeline();
+    for (const key of batch) {
+      pipeline.get(key);
+    }
+    const results = await pipeline.exec();
+
+    for (const raw of results) {
+      if (!raw) continue;
+      try {
+        const entry = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (entry && entry.date) {
+          entries.push(entry as HistoryEntry);
+        }
+      } catch {
+        // Skip malformed entries
+      }
+    }
+  }
+
+  // Sort chronologically (oldest first)
+  entries.sort((a, b) => a.date.localeCompare(b.date));
+
+  return entries;
+}
+
+// ─── BUILD PER-ASSET PRICE ARRAYS ────────────────────────────────────────────
+
+interface AssetPriceArray {
+  dates: string[];
+  prices: number[];
+  category: string;
+}
+
+function buildAssetPriceArrays(history: HistoryEntry[]): Record<string, AssetPriceArray> {
+  const arrays: Record<string, AssetPriceArray> = {};
+
+  for (const entry of history) {
+    const categories: { cat: string; assets: Record<string, { latestClose: number }> }[] = [
+      { cat: 'equities', assets: entry.equities || {} },
+      { cat: 'crypto', assets: entry.crypto || {} },
+      { cat: 'commodities', assets: entry.commodities || {} },
+      { cat: 'rates', assets: entry.rates || {} },
+    ];
+
+    for (const { cat, assets } of categories) {
+      for (const [name, data] of Object.entries(assets)) {
+        if (!data || data.latestClose == null || data.latestClose <= 0) continue;
+        if (!arrays[name]) {
+          arrays[name] = { dates: [], prices: [], category: cat };
+        }
+        arrays[name]!.dates.push(entry.date);
+        arrays[name]!.prices.push(data.latestClose);
+      }
+    }
+  }
+
+  return arrays;
+}
+
+// ─── CALCULATION HELPERS ─────────────────────────────────────────────────────
+
+function calculateChanges(prices: number[]): Record<string, number> {
+  if (!prices || prices.length < 2) return {};
+
+  const latest = prices[prices.length - 1]!;
+  const changes: Record<string, number> = {};
+
+  for (const [label, daysBack] of Object.entries(PERIODS)) {
+    const idx = prices.length - 1 - daysBack;
+    if (idx >= 0 && prices[idx] != null && prices[idx]! > 0) {
+      changes[label] = round(((latest - prices[idx]!) / prices[idx]!) * 100, 2);
+    }
+  }
+
+  return changes;
+}
+
+function calculateMAs(prices: number[]): Record<string, number> {
+  if (!prices || prices.length < 50) return {};
+
+  const mas: Record<string, number> = {};
+
+  for (const [label, period] of Object.entries(MA_PERIODS)) {
+    if (prices.length >= period) {
+      const slice = prices.slice(-period);
+      const avg = slice.reduce((sum, v) => sum + v, 0) / slice.length;
+      mas[label] = round(avg, 2);
+    } else if (prices.length >= Math.floor(period * 0.8)) {
+      // Allow partial MA if we have at least 80% of the data
+      const avg = prices.reduce((sum, v) => sum + v, 0) / prices.length;
+      mas[label] = round(avg, 2);
+    }
+  }
+
+  return mas;
 }
 
 // ─── FEAR & GREED ────────────────────────────────────────────────────────────
@@ -433,49 +437,7 @@ async function fetchFearGreed() {
   }
 }
 
-// ─── CALCULATION HELPERS ─────────────────────────────────────────────────────
-
-function calculateChanges(closes: number[]): Record<string, number> {
-  if (!closes || closes.length < 2) return {};
-
-  const latest = closes[closes.length - 1]!;
-  const changes: Record<string, number> = {};
-
-  for (const [label, daysBack] of Object.entries(PERIODS)) {
-    const idx = closes.length - 1 - daysBack;
-    if (idx >= 0 && closes[idx] != null && closes[idx] > 0) {
-      changes[label] = round(((latest - closes[idx]!) / closes[idx]!) * 100, 2);
-    }
-  }
-
-  return changes;
-}
-
-function calculateMAs(closes: number[]): Record<string, number> {
-  if (!closes || closes.length < 50) return {};
-
-  const mas: Record<string, number> = {};
-
-  for (const [label, period] of Object.entries(MA_PERIODS)) {
-    if (closes.length >= period) {
-      const slice = closes.slice(-period);
-      const avg = slice.reduce((sum, v) => sum + v, 0) / slice.length;
-      mas[label] = round(avg, 2);
-    } else if (label === '200W' && closes.length >= 200) {
-      const weekly: number[] = [];
-      for (let i = closes.length - 1; i >= 0; i -= 7) {
-        weekly.push(closes[i]!);
-        if (weekly.length >= 200) break;
-      }
-      if (weekly.length >= 50) {
-        const avg = weekly.reduce((sum, v) => sum + v, 0) / weekly.length;
-        mas[label] = round(avg, 2);
-      }
-    }
-  }
-
-  return mas;
-}
+// ─── UTILITIES ───────────────────────────────────────────────────────────────
 
 function round(value: number, decimals: number): number {
   return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals);
@@ -485,8 +447,11 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function fetchWithTimeout(url: string, timeout: number): Promise<Response> {
+function fetchWithTimeout(url: string, timeout: number, headers?: Record<string, string>): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
-  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+  return fetch(url, {
+    signal: controller.signal,
+    headers: headers ? { ...headers } : undefined,
+  }).finally(() => clearTimeout(timer));
 }

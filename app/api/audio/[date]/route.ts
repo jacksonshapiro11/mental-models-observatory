@@ -29,14 +29,18 @@ export async function GET(
 
   try {
     // Try Redis first (production path)
-    const episode = await readEpisodeMetadata(date);
-
-    if (episode) {
-      return NextResponse.json(episode, {
-        headers: {
-          'Cache-Control': 's-maxage=86400, stale-while-revalidate=172800',
-        },
-      });
+    try {
+      const episode = await readEpisodeMetadata(date);
+      if (episode) {
+        return NextResponse.json(episode, {
+          headers: {
+            'Cache-Control': 's-maxage=86400, stale-while-revalidate=172800',
+          },
+        });
+      }
+    } catch (redisErr) {
+      // Redis unavailable (common in local dev) — fall through to local file check
+      console.warn(`[audio] Redis lookup failed for ${date}, checking local files:`, redisErr);
     }
 
     // Dev fallback: check for local MP3 in public/audio/

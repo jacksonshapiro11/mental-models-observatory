@@ -66,6 +66,16 @@ export async function GET() {
     const snapshotData = snapshotResult.status === 'fulfilled' ? snapshotResult.value : null;
     const manualData = manualResult.status === 'fulfilled' ? manualResult.value : {};
 
+    // Log snapshot status for debugging
+    if (!snapshotData) {
+      console.warn('[live] No snapshot found in Redis — changes/MAs will be empty');
+      if (snapshotResult.status === 'rejected') {
+        console.error('[live] Snapshot read failed:', snapshotResult.reason);
+      }
+    } else {
+      console.log(`[live] Snapshot loaded: ${snapshotData.date}, equities=${Object.keys(snapshotData.equities || {}).length}, crypto=${Object.keys(snapshotData.crypto || {}).length}`);
+    }
+
     // Now fetch live data (equity prices use snapshot's calibrated multipliers)
     const [cryptoPrices, equityPrices, dxyResult, coinGeckoGlobal] =
       await Promise.allSettled([
@@ -236,7 +246,7 @@ function mergeChanges(livePrice: number | null, snapshotRef: AssetRef | null): R
   return changes;
 }
 
-// ─── CRYPTO PRICES (Binance) ─────────────────────────────────────────────────
+// ─── CRYPTO PRICES (Binance Global) ─────────────────────────────────────────
 
 async function fetchCryptoPrices(): Promise<Record<string, { price: number; source: string }>> {
   const results: Record<string, { price: number; source: string }> = {};
@@ -245,7 +255,7 @@ async function fetchCryptoPrices(): Promise<Record<string, { price: number; sour
 
   try {
     const fetches = CRYPTO_PAIRS.map(async ({ symbol, name }) => {
-      const url = `https://api.binance.us/api/v3/ticker/price?symbol=${symbol}`;
+      const url = `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`;
       const res = await fetch(url, { signal: controller.signal });
       if (!res.ok) throw new Error(`Binance ${symbol}: ${res.status}`);
       const data = await res.json();

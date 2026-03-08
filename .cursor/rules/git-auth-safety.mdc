@@ -1,0 +1,16 @@
+---
+description: Never use env files for git auth
+alwaysApply: true
+---
+
+# Git Auth Safety
+
+- Never read `.env`, `.env.local`, or any secrets file to obtain git credentials.
+- Never source env files for `git push`, `git fetch`, or other git auth operations.
+- Prefer normal credentialed git commands (credential helper, keychain, or existing logged-in session).
+- If git auth is missing, ask the user to run push locally or provide a secure auth path instead of reading local secret files.
+
+## Allowed Pattern
+
+- Run `git push origin main` directly.
+- If it fails with auth errors, stop and ask for the preferred auth method.

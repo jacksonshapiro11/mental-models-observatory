@@ -697,7 +697,7 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
       {/* Sticky section nav — below site header + progress bar */}
       <div className="sticky top-[58px] z-50 bg-neutral-50/95 dark:bg-[var(--espresso-bg-dark)]/95 backdrop-blur-sm border-b border-neutral-200 dark:border-[var(--espresso-accent)]/15 py-3">
         <div className="max-w-4xl mx-auto px-4">
-          <div className="flex gap-1 overflow-x-auto no-scrollbar">
+          <div className="flex gap-1.5 sm:gap-1 overflow-x-auto no-scrollbar">
             {brief.sections.map((section, idx) => {
               const isActive = section.id === activeSection;
               const isPast = idx < activeSectionIndex;
@@ -705,7 +705,7 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
                 <button
                   key={section.id}
                   onClick={() => scrollToSection(section.id)}
-                  className={`flex-1 min-w-0 px-2 py-1.5 rounded-md text-xs font-medium transition-all truncate ${
+                  className={`sm:flex-1 sm:min-w-0 flex-shrink-0 px-3 sm:px-2 py-1.5 rounded-md text-xs font-medium transition-all sm:truncate whitespace-nowrap ${
                     isActive
                       ? 'bg-amber-500 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-bg-dark)]'
                       : isPast
@@ -723,8 +723,8 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
       </div>
 
       {/* Header */}
-      <div className="max-w-4xl mx-auto px-4 pt-14 pb-8">
-        <div className="text-center mb-12">
+      <div className="max-w-4xl mx-auto px-4 pt-8 sm:pt-14 pb-6 sm:pb-8">
+        <div className="text-center mb-8 sm:mb-12">
           <div className="text-xs font-semibold text-amber-600 dark:text-[var(--espresso-accent)] uppercase tracking-[0.2em] mb-5">
             The Daily Brief
           </div>

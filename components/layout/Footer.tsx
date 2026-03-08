@@ -81,15 +81,15 @@ export function Footer({ showStats = true }: FooterProps) {
   return (
     <footer className="bg-neutral-800 text-neutral-100">
       {/* Main footer content */}
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
           {/* Brand section */}
           <div className="lg:col-span-4">
             <div className="flex items-center space-x-2 mb-4">
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-foundational-500 to-accent-500 flex items-center justify-center">
                 <Brain className="h-4 w-4 text-white" />
               </div>
-              <span className="text-xl font-bold">Mental Models Observatory</span>
+              <span className="text-lg sm:text-xl font-bold">Mental Models Observatory</span>
             </div>
             
             <p className="text-neutral-300 leading-relaxed mb-6 max-w-md">
@@ -99,18 +99,18 @@ export function Footer({ showStats = true }: FooterProps) {
 
             {/* Quick stats */}
             {showStats && (
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-foundational-400">150+</div>
-                  <div className="text-xs text-neutral-400">Models</div>
+                  <div className="text-xl sm:text-2xl font-bold text-foundational-400">150+</div>
+                  <div className="text-[11px] sm:text-xs text-neutral-400">Models</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-practical-400">40</div>
-                  <div className="text-xs text-neutral-400">Domains</div>
+                  <div className="text-xl sm:text-2xl font-bold text-practical-400">40</div>
+                  <div className="text-[11px] sm:text-xs text-neutral-400">Domains</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-specialized-400">1000+</div>
-                  <div className="text-xs text-neutral-400">Sources</div>
+                  <div className="text-xl sm:text-2xl font-bold text-specialized-400">1000+</div>
+                  <div className="text-[11px] sm:text-xs text-neutral-400">Sources</div>
                 </div>
               </div>
             )}
@@ -209,13 +209,13 @@ export function Footer({ showStats = true }: FooterProps) {
       <div className="border-t border-neutral-700">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="bg-gradient-to-r from-neutral-700/50 to-neutral-600/50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
               <div>
-                <h4 className="font-medium text-neutral-100 mb-1">
+                <h4 className="font-medium text-neutral-100 mb-1 text-sm sm:text-base">
                   Complete Mental Models Framework
                 </h4>
-                <p className="text-sm text-neutral-300">
-                  40 domains • 3 tiers • 150+ models • Complete source transparency
+                <p className="text-xs sm:text-sm text-neutral-300">
+                  40 domains · 3 tiers · 150+ models · Complete source transparency
                 </p>
               </div>
               <div className="flex items-center space-x-2">

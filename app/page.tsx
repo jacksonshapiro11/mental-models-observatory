@@ -37,15 +37,15 @@ export default function HomePage() {
       <QuickStartModal isOpen={showQuickStart} onClose={() => setShowQuickStart(false)} />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-foundational-50 via-neutral-25 to-accent-50 dark:from-[var(--espresso-bg-dark)] dark:via-[var(--espresso-bg-medium)] dark:to-[var(--espresso-bg-light)] py-8 sm:py-16 transition-colors duration-300">
+      <section className="relative overflow-hidden bg-gradient-to-br from-foundational-50 via-neutral-25 to-accent-50 dark:from-[var(--espresso-bg-dark)] dark:via-[var(--espresso-bg-medium)] dark:to-[var(--espresso-bg-light)] py-6 sm:py-12 lg:py-16 transition-colors duration-300">
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-               <h1 className="mx-auto max-w-4xl text-5xl font-bold tracking-tight text-neutral-800 dark:text-[var(--espresso-h1)] sm:text-6xl lg:text-7xl mb-6 transition-colors duration-300">
+               <h1 className="mx-auto max-w-4xl text-3xl font-bold tracking-tight text-neutral-800 dark:text-[var(--espresso-h1)] sm:text-5xl lg:text-7xl mb-4 sm:mb-6 transition-colors duration-300">
                  Guided Learning{' '}
                  <span className="gradient-text dark:text-[var(--espresso-accent)]">Experience</span>
                </h1>
-               <p className="mx-auto mt-6 max-w-2xl text-xl text-neutral-600 dark:text-[var(--espresso-body)] mb-8 transition-colors duration-300">
+               <p className="mx-auto mt-4 sm:mt-6 max-w-2xl text-base sm:text-lg lg:text-xl text-neutral-600 dark:text-[var(--espresso-body)] mb-6 sm:mb-8 transition-colors duration-300">
                  The cost of information has approached zero, but the core truths of humanity and the world remain the same. Now more than ever, we need a focused and curated start to our learning journey as we risk getting lost in the dark forest of infinite self-reinforcing content. We have compiled the big ideas from the big disciplines backed up by 5000 pages of hand curated sources to help you start wide and go deep with the society altering ideas that will fill your life with meaning, purpose, and direction while giving you an edge in any pursuit.
                </p>
 
@@ -66,11 +66,11 @@ export default function HomePage() {
                  <div className="mb-6">
                    <button
                      onClick={() => setShowOnboarding(true)}
-                     className="btn btn-primary btn-xl group mb-3"
+                     className="btn btn-primary btn-lg sm:btn-xl group mb-3"
                    >
-                     <Compass className="mr-2 h-6 w-6" />
+                     <Compass className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
                      Get My Personalized Guide
-                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                     <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-x-1" />
                    </button>
                    <p className="text-sm text-neutral-500 dark:text-[var(--espresso-body)]/70">Answer 5 questions • Get tailored learning paths • No signup required</p>
                  </div>
@@ -99,35 +99,35 @@ export default function HomePage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-neutral-50 dark:bg-[var(--espresso-surface)]/20 transition-colors duration-300">
+      <section className="py-10 sm:py-16 bg-neutral-50 dark:bg-[var(--espresso-surface)]/20 transition-colors duration-300">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-foundational-100 dark:bg-[var(--espresso-accent)]/20">
                 <Brain className="h-6 w-6 text-foundational-600 dark:text-[var(--espresso-accent)]" />
               </div>
-              <div className="text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">{allModels.length}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">{allModels.length}</div>
               <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Mental Models</div>
             </div>
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-specialized-100 dark:bg-[var(--espresso-accent)]/20">
                 <Target className="h-6 w-6 text-specialized-600 dark:text-[var(--espresso-accent)]" />
               </div>
-              <div className="text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">{allDomains.length}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">{allDomains.length}</div>
               <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Knowledge Domains</div>
             </div>
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-practical-100 dark:bg-[var(--espresso-accent)]/20">
                 <BookOpen className="h-6 w-6 text-practical-600 dark:text-[var(--espresso-accent)]" />
               </div>
-              <div className="text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">100+</div>
+              <div className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">100+</div>
               <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Source References</div>
             </div>
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-accent-100 dark:bg-[var(--espresso-accent)]/20">
                 <Users className="h-6 w-6 text-accent-600 dark:text-[var(--espresso-accent)]" />
               </div>
-              <div className="text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">Growing</div>
+              <div className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">Growing</div>
               <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Community</div>
             </div>
           </div>

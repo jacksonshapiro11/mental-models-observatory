@@ -22,9 +22,9 @@ const maxWidthClasses = {
 };
 
 const paddingClasses = {
-  sm: 'px-4 py-6',
-  md: 'px-6 py-8',
-  lg: 'px-8 py-12'
+  sm: 'px-3 py-4 sm:px-4 sm:py-6',
+  md: 'px-4 py-5 sm:px-6 sm:py-8',
+  lg: 'px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-12'
 };
 
 export function ContentLayout({
@@ -104,7 +104,7 @@ export function ContentLayout({
       )}
 
       <div className={`mx-auto ${maxWidthClasses[maxWidth]} ${paddingClasses[padding]}`}>
-        <div className={`flex ${hasSidebar ? 'gap-8' : ''}`}>
+        <div className={`flex ${hasSidebar ? 'gap-4 sm:gap-6 lg:gap-8' : ''}`}>
           {/* Sidebar - Left */}
           {hasSidebar && sidebarPosition === 'left' && (
             <>
@@ -118,7 +118,7 @@ export function ContentLayout({
               {/* Mobile sidebar */}
               <aside 
                 id="mobile-sidebar"
-                className={`fixed top-0 left-0 bottom-0 w-80 bg-white shadow-xl z-50 transform transition-transform duration-300 lg:hidden ${
+                className={`fixed top-0 left-0 bottom-0 w-[85vw] max-w-80 bg-white shadow-xl z-50 transform transition-transform duration-300 lg:hidden ${
                   sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}
               >
@@ -179,7 +179,7 @@ export function ContentLayout({
               {/* Mobile sidebar */}
               <aside 
                 id="mobile-sidebar"
-                className={`fixed top-0 right-0 bottom-0 w-80 bg-white shadow-xl z-50 transform transition-transform duration-300 lg:hidden ${
+                className={`fixed top-0 right-0 bottom-0 w-[85vw] max-w-80 bg-white shadow-xl z-50 transform transition-transform duration-300 lg:hidden ${
                   sidebarOpen ? 'translate-x-0' : 'translate-x-full'
                 }`}
               >

@@ -1,6 +1,8 @@
+'use client';
+
 /**
  * THE DAILY BRIEF — Live Financial Dashboard
- * 
+ *
  * A production-grade live pricing dashboard for cosmictrex.com
  * 
  * Architecture:
@@ -29,6 +31,7 @@ const styles = {
     borderRadius: '12px',
     maxWidth: '1200px',
     margin: '0 auto',
+    overflowX: 'hidden',
   },
   header: {
     display: 'flex',
@@ -205,10 +208,9 @@ function formatChange(value) {
   return `${sign}${value.toFixed(2)}%`;
 }
 
-function formatMA(value, prefix = '$') {
+function formatMA(value, priceOpts = {}) {
   if (value == null) return '~';
-  if (prefix === '$') return formatPrice(value, { decimals: 0 });
-  return value.toFixed(2) + '%';
+  return formatPrice(value, { decimals: 0, ...priceOpts });
 }
 
 function timeAgo(timestamp) {
@@ -257,13 +259,31 @@ function PriceRow({ asset, data, color, priceOpts = {} }) {
         {formatChange(changes['1Y'])}
       </td>
       <td style={{ ...styles.td, ...styles.maCell }}>
-        {formatMA(mas['50D'], priceOpts.prefix)}
+        {formatMA(mas['50D'], priceOpts)}
       </td>
       <td style={{ ...styles.td, ...styles.maCell }}>
-        {formatMA(mas['200D'], priceOpts.prefix)}
+        {formatMA(mas['200D'], priceOpts)}
+      </td>
+      <td style={{ ...styles.td, ...styles.maCell }}>
+        {formatMA(mas['200W'], priceOpts)}
       </td>
     </tr>
   );
+}
+
+// ─── MOBILE SCROLL WRAPPER ──────────────────────────────────────────────────
+// Allows wide tables to scroll horizontally on small screens without
+// touching any of the table rendering logic.
+
+const scrollWrapper = {
+  overflowX: 'auto',
+  WebkitOverflowScrolling: 'touch',
+  margin: '0 -16px',
+  padding: '0 16px',
+};
+
+function ScrollableTable({ children }) {
+  return <div style={scrollWrapper}>{children}</div>;
 }
 
 // ─── MAIN DASHBOARD ─────────────────────────────────────────────────────────
@@ -332,62 +352,67 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
       {meta.marketStatus === 'pre' && data.futures && (
         <>
           <div style={styles.sectionLabel}>Futures</div>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.thLeft}>Index</th>
-                <th style={styles.th}>Level</th>
-                <th style={styles.th}>Change</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(data.futures).map(([name, info]) => (
-                <tr key={name}>
-                  <td style={styles.tdLeft}>
-                    <div style={styles.ticker}>
-                      <div style={styles.tickerDot('#3b82f6')} />
-                      {name}
-                    </div>
-                  </td>
-                  <td style={styles.td}>{formatPrice(info.price, { prefix: '', decimals: 0 })}</td>
-                  <td style={{ ...styles.td, ...styles.change(info.change) }}>
-                    {formatChange(info.change)}
-                  </td>
+          <ScrollableTable>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.thLeft}>Index</th>
+                  <th style={styles.th}>Level</th>
+                  <th style={styles.th}>Change</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {Object.entries(data.futures).map(([name, info]) => (
+                  <tr key={name}>
+                    <td style={styles.tdLeft}>
+                      <div style={styles.ticker}>
+                        <div style={styles.tickerDot('#3b82f6')} />
+                        {name}
+                      </div>
+                    </td>
+                    <td style={styles.td}>{formatPrice(info.price, { prefix: '', decimals: 0 })}</td>
+                    <td style={{ ...styles.td, ...styles.change(info.change) }}>
+                      {formatChange(info.change)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollableTable>
         </>
       )}
 
       {/* Equities */}
       <div style={styles.sectionLabel}>Equities</div>
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            <th style={styles.thLeft}>Index</th>
-            <th style={styles.th}>Price</th>
-            <th style={styles.th}>1D</th>
-            <th style={styles.th}>5D</th>
-            <th style={styles.th}>1M</th>
-            <th style={styles.th}>1Y</th>
-            <th style={styles.th}>50D</th>
-            <th style={styles.th}>200D</th>
-          </tr>
-        </thead>
-        <tbody>
-          <PriceRow asset="S&P 500" data={equities.SPX} color="#3b82f6" priceOpts={{ prefix: '', decimals: 0 }} />
-          <PriceRow asset="Nasdaq 100" data={equities.NDX} color="#8b5cf6" priceOpts={{ prefix: '', decimals: 0 }} />
-          <PriceRow asset="Dow" data={equities.DJI} color="#06b6d4" priceOpts={{ prefix: '', decimals: 0 }} />
-          <PriceRow asset="Russell 2000" data={equities.IWM} color="#10b981" priceOpts={{ prefix: '$', decimals: 2 }} />
-          <PriceRow asset="IGV (SaaS)" data={equities.IGV} color="#f472b6" priceOpts={{ prefix: '$', decimals: 2 }} />
-          <PriceRow asset="SMH (Semis)" data={equities.SMH} color="#a78bfa" priceOpts={{ prefix: '$', decimals: 2 }} />
-          <PriceRow asset="Growth (IWF)" data={equities.IWF} color="#22d3ee" priceOpts={{ prefix: '$', decimals: 2 }} />
-          <PriceRow asset="Value (IWD)" data={equities.IWD} color="#fb923c" priceOpts={{ prefix: '$', decimals: 2 }} />
-          <PriceRow asset="XLE (Energy)" data={equities.XLE} color="#84cc16" priceOpts={{ prefix: '$', decimals: 2 }} />
-          <PriceRow asset="ARKK" data={equities.ARKK} color="#e879f9" priceOpts={{ prefix: '$', decimals: 2 }} />
-        </tbody>
-      </table>
+      <ScrollableTable>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.thLeft}>Index</th>
+              <th style={styles.th}>Price</th>
+              <th style={styles.th}>1D</th>
+              <th style={styles.th}>5D</th>
+              <th style={styles.th}>1M</th>
+              <th style={styles.th}>1Y</th>
+              <th style={styles.th}>50D</th>
+              <th style={styles.th}>200D</th>
+              <th style={styles.th}>200W</th>
+            </tr>
+          </thead>
+          <tbody>
+            <PriceRow asset="S&P 500" data={equities.SPX} color="#3b82f6" priceOpts={{ prefix: '', decimals: 0 }} />
+            <PriceRow asset="Nasdaq 100" data={equities.NDX} color="#8b5cf6" priceOpts={{ prefix: '', decimals: 0 }} />
+            <PriceRow asset="Dow" data={equities.DJI} color="#06b6d4" priceOpts={{ prefix: '', decimals: 0 }} />
+            <PriceRow asset="Russell 2000" data={equities.IWM} color="#10b981" priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="IGV (SaaS)" data={equities.IGV} color="#f472b6" priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="SMH (Semis)" data={equities.SMH} color="#a78bfa" priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="Growth (IWF)" data={equities.IWF} color="#22d3ee" priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="Value (IWD)" data={equities.IWD} color="#fb923c" priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="XLE (Energy)" data={equities.XLE} color="#84cc16" priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="ARKK" data={equities.ARKK} color="#e879f9" priceOpts={{ prefix: '$', decimals: 2 }} />
+          </tbody>
+        </table>
+      </ScrollableTable>
 
       {/* Equity context notes */}
       {equityNotes && (
@@ -396,28 +421,31 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
 
       {/* Crypto */}
       <div style={styles.sectionLabel}>Crypto</div>
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            <th style={styles.thLeft}>Asset</th>
-            <th style={styles.th}>Price</th>
-            <th style={styles.th}>1D</th>
-            <th style={styles.th}>5D</th>
-            <th style={styles.th}>1M</th>
-            <th style={styles.th}>1Y</th>
-            <th style={styles.th}>50D</th>
-            <th style={styles.th}>200D</th>
-          </tr>
-        </thead>
-        <tbody>
-          <PriceRow asset="BTC" data={crypto.BTC} color="#f59e0b" />
-          <PriceRow asset="ETH" data={crypto.ETH} color="#6366f1" />
-          <PriceRow asset="SOL" data={crypto.SOL} color="#14b8a6" />
-          <PriceRow asset="AAVE" data={crypto.AAVE} color="#9333ea" />
-          <PriceRow asset="UNI" data={crypto.UNI} color="#ec4899" />
-          <PriceRow asset="LINK" data={crypto.LINK} color="#2563eb" />
-        </tbody>
-      </table>
+      <ScrollableTable>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.thLeft}>Asset</th>
+              <th style={styles.th}>Price</th>
+              <th style={styles.th}>1D</th>
+              <th style={styles.th}>5D</th>
+              <th style={styles.th}>1M</th>
+              <th style={styles.th}>1Y</th>
+              <th style={styles.th}>50D</th>
+              <th style={styles.th}>200D</th>
+              <th style={styles.th}>200W</th>
+            </tr>
+          </thead>
+          <tbody>
+            <PriceRow asset="BTC" data={crypto.BTC} color="#f59e0b" />
+            <PriceRow asset="ETH" data={crypto.ETH} color="#6366f1" />
+            <PriceRow asset="SOL" data={crypto.SOL} color="#14b8a6" />
+            <PriceRow asset="AAVE" data={crypto.AAVE} color="#9333ea" />
+            <PriceRow asset="UNI" data={crypto.UNI} color="#ec4899" />
+            <PriceRow asset="LINK" data={crypto.LINK} color="#2563eb" />
+          </tbody>
+        </table>
+      </ScrollableTable>
 
       {/* Crypto context notes */}
       {cryptoNotes && (
@@ -539,28 +567,31 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
 
       {/* Commodities & Rates */}
       <div style={styles.sectionLabel}>Commodities & Rates</div>
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            <th style={styles.thLeft}>Asset</th>
-            <th style={styles.th}>Price</th>
-            <th style={styles.th}>1D</th>
-            <th style={styles.th}>5D</th>
-            <th style={styles.th}>1M</th>
-            <th style={styles.th}>1Y</th>
-            <th style={styles.th}>50D</th>
-            <th style={styles.th}>200D</th>
-          </tr>
-        </thead>
-        <tbody>
-          <PriceRow asset="Gold" data={commodities.GOLD} color="#eab308" />
-          <PriceRow asset="Silver" data={commodities.SILVER} color="#a1a1aa" />
-          <PriceRow asset="Brent" data={commodities.BRENT} color="#78716c" />
-          <PriceRow asset="Copper" data={commodities.COPPER} color="#d97706" />
-          <PriceRow asset="Nat Gas" data={commodities.NATGAS} color="#059669" />
-          <PriceRow asset="10Y" data={rates.US10Y} color="#f43f5e" priceOpts={{ prefix: '', suffix: '%' }} />
-        </tbody>
-      </table>
+      <ScrollableTable>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.thLeft}>Asset</th>
+              <th style={styles.th}>Price</th>
+              <th style={styles.th}>1D</th>
+              <th style={styles.th}>5D</th>
+              <th style={styles.th}>1M</th>
+              <th style={styles.th}>1Y</th>
+              <th style={styles.th}>50D</th>
+              <th style={styles.th}>200D</th>
+              <th style={styles.th}>200W</th>
+            </tr>
+          </thead>
+          <tbody>
+            <PriceRow asset="Gold" data={commodities.GOLD} color="#eab308" />
+            <PriceRow asset="Silver" data={commodities.SILVER} color="#a1a1aa" />
+            <PriceRow asset="Brent" data={commodities.BRENT} color="#78716c" />
+            <PriceRow asset="Copper" data={commodities.COPPER} color="#d97706" />
+            <PriceRow asset="Nat Gas" data={commodities.NATGAS} color="#059669" />
+            <PriceRow asset="10Y" data={rates.US10Y} color="#f43f5e" priceOpts={{ prefix: '', suffix: '%' }} />
+          </tbody>
+        </table>
+      </ScrollableTable>
 
       {/* Commodity context notes */}
       {commodityNotes && (

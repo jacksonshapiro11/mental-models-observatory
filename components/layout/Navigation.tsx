@@ -240,11 +240,11 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
           </div>
 
           {/* Search, Blog, Home Button, and Mobile Menu */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
             {/* Blog Button */}
             <Link
               href="/blog"
-              className="flex items-center space-x-2 px-3 py-2 bg-foundational-500 dark:bg-black text-white rounded-lg hover:bg-foundational-600 dark:hover:bg-gray-900 transition-colors font-medium shadow-md dark:shadow-lg"
+              className="flex items-center space-x-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-foundational-500 dark:bg-black text-white rounded-lg hover:bg-foundational-600 dark:hover:bg-gray-900 transition-colors font-medium shadow-md dark:shadow-lg text-sm"
             >
               <FileText className="w-4 h-4" />
               <span className="hidden sm:block">Blog</span>
@@ -252,7 +252,7 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
             {/* Home Button - Far Right */}
             <Link
               href="/"
-              className="flex items-center space-x-2 px-3 py-2 bg-foundational-500 dark:bg-black text-white rounded-lg hover:bg-foundational-600 dark:hover:bg-gray-900 transition-colors font-medium shadow-md dark:shadow-lg"
+              className="flex items-center space-x-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-foundational-500 dark:bg-black text-white rounded-lg hover:bg-foundational-600 dark:hover:bg-gray-900 transition-colors font-medium shadow-md dark:shadow-lg text-sm"
             >
               <Home className="w-4 h-4" />
               <span className="hidden sm:block">Home</span>

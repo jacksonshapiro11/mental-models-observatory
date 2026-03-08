@@ -73,17 +73,42 @@ const ALL_MARKERS = [
 function parseBriefForAudio(brief) {
   const lines = brief.raw.split('\n');
 
+  // Extract display date
   let displayDate = brief.date;
   for (const line of lines.slice(0, 15)) {
     if (line.trim().startsWith('## ')) { displayDate = line.replace('## ', '').trim(); break; }
   }
 
+  // Extract epigraph — italic line *before* the ## date header
+  // Format: *"Quote text here"* or *Quote text here*
+  let epigraph = '';
+  for (const line of lines.slice(0, 10)) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('## ')) break; // stop at date header
+    // Check for italic text (epigraph) — starts and ends with *
+    if (trimmed.startsWith('*') && !trimmed.startsWith('**') && trimmed.endsWith('*') && trimmed.length > 20) {
+      epigraph = trimmed.slice(1, -1).trim();
+      break;
+    }
+    // Also check blockquote style: > *quote*
+    if (trimmed.startsWith('> *') || trimmed.startsWith('>*') || trimmed.startsWith('> "') || trimmed.startsWith('>"')) {
+      epigraph = trimmed.replace(/^>\s*/, '').replace(/\*(.+?)\*/g, '$1').trim();
+      if (epigraph.length > 20) break;
+    }
+  }
+
+  // Extract lede — the **News TLDR:** bold paragraph after the date
   let lede = '';
   let foundDate = false;
-  for (const line of lines.slice(0, 20)) {
-    if (line.trim().startsWith('## ')) foundDate = true;
-    if (foundDate && line.trim().startsWith('*') && !line.trim().startsWith('**') && line.trim().endsWith('*')) {
-      lede = line.trim().slice(1, -1); // First italic paragraph after date = lede summary
+  for (const line of lines.slice(0, 30)) {
+    if (line.trim().startsWith('## ')) { foundDate = true; continue; }
+    if (!foundDate) continue;
+    // Look for the bold TLDR paragraph (starts with **)
+    if (line.trim().startsWith('**News TLDR:**') || line.trim().startsWith('**')) {
+      lede = line.trim()
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/\*(.+?)\*/g, '$1')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
       break;
     }
   }
@@ -113,21 +138,17 @@ function parseBriefForAudio(brief) {
       let i = 0;
       while (i < contentLines.length) {
         const line = contentLines[i].trim();
-        // Skip table rows
         if (line.startsWith('|')) { i++; continue; }
-        // Keep subsection headers (### Equities, ### Crypto, etc.)
         if (line.startsWith('###')) {
           commentaryLines.push(line.replace(/^#+\s*/, ''));
           i++;
           continue;
         }
-        // Keep italic commentary paragraphs (wrapped in *)
         if (line.startsWith('*') && !line.startsWith('**')) {
           commentaryLines.push(line.replace(/^\*/, '').replace(/\*$/, ''));
           i++;
           continue;
         }
-        // Keep regular paragraphs too (some commentary isn't italic)
         if (line && !line.startsWith('#') && !line.startsWith('|') && !line.startsWith('---')) {
           commentaryLines.push(line);
         }
@@ -136,10 +157,55 @@ function parseBriefForAudio(brief) {
       content = commentaryLines.join('\n\n');
     }
 
+    // For The Six: split into sub-sections at ## headers and process each individually
+    // This prevents GPT-4o from compressing 11K+ chars into a few paragraphs
+    if (sec.name === 'The Six') {
+      const subSections = splitAtSubHeaders(content);
+      for (const sub of subSections) {
+        sections.push({ name: `The Six: ${sub.name}`, content: sub.content, mode: 'full' });
+      }
+      continue;
+    }
+
     sections.push({ name: sec.name, content, mode: sec.mode });
   }
 
-  return { displayDate, lede, sections };
+  return { displayDate, lede, epigraph, sections };
+}
+
+/** Split content at ## sub-headers into individual chunks */
+function splitAtSubHeaders(content) {
+  const subSections = [];
+  const lines = content.split('\n');
+  let currentName = 'Overview';
+  let currentLines = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('## ')) {
+      // Save previous sub-section if it has content
+      if (currentLines.length > 0) {
+        const text = currentLines.join('\n').trim();
+        if (text.length > 50) {
+          subSections.push({ name: currentName, content: text });
+        }
+      }
+      currentName = trimmed.replace(/^#+\s*/, '');
+      currentLines = [];
+    } else {
+      currentLines.push(line);
+    }
+  }
+
+  // Save last sub-section
+  if (currentLines.length > 0) {
+    const text = currentLines.join('\n').trim();
+    if (text.length > 50) {
+      subSections.push({ name: currentName, content: text });
+    }
+  }
+
+  return subSections;
 }
 
 // ─── Financial text normalization (regex layer) ─────────────────────────────
@@ -227,71 +293,128 @@ function buildRawContent(brief) {
   return { raw: parts.join('\n\n'), parsed };
 }
 
-// ─── LLM conversational rewrite ─────────────────────────────────────────────
+// ─── LLM conversational rewrite (per-section to prevent compression) ─────────
+// Sending all 35K chars to the LLM in one shot causes massive compression (~4K out).
+// Instead: rewrite each section individually, then stitch together.
+// Each section gets the full prompt context so voice/tone is consistent.
 
-const SCRIPTWRITER_PROMPT = `You are a podcast scriptwriter for "The Daily Brief," a daily financial market intelligence podcast. You receive raw content from a written brief and rewrite it as a natural, conversational podcast script.
+const SECTION_SYSTEM_PROMPT = `You are a podcast scriptwriter for "The Daily Brief," a daily financial market intelligence podcast.
 
-VOICE AND TONE:
-- Speak like a sharp, well-informed friend explaining markets over coffee
-- Confident but not pompous. Direct but not rushed
-- Use natural transitions between topics ("Now here's what's interesting...", "Shifting to crypto...", "The bigger picture here...")
-- Vary sentence length. Mix short punchy statements with longer analytical ones
-- It's OK to editorialize slightly — "this matters because...", "pay attention to...", "the market's telling you..."
+YOUR JOB: Convert written market analysis into natural spoken form. Do NOT summarize or compress.
+Every insight, every thesis, every key level, every "so what" from the source must appear in your output.
 
-STRUCTURE:
-- Open with the date, then read the epigraph (the daily quote) naturally — e.g. "Today's thought: [quote]"
-- Follow with a 2-3 sentence hook summarizing the day's biggest story
-- Flow through sections with natural spoken transitions (don't say "Section: The Six")
-- Dashboard commentary should feel like a quick market check-in, not a data dump
-- For Big Stories and Tomorrow's Headlines: hit the headline and the "so what" — skip tracking metadata, story numbers, and status labels
-- Watchlist items: mention the asset, the thesis, and the key levels — skip the Validates/Rejects framework verbatim
-- Close with a brief sign-off
+VOICE: Speak like a sharp, well-informed friend explaining markets over coffee. Confident but not pompous. Vary sentence length. Mix short punchy statements with longer analytical ones.
 
-NUMBERS AND DATA — SPEAK LIKE A HUMAN:
-- Round aggressively when precision doesn't matter. Say "up about one and a half percent" not "up 1.47 percent." Say "nearly two percent" not "1.93 percent." Say "just over half a percent" not "0.54 percent."
-- Keep precise numbers ONLY when the precision is the point — specific prices, key levels, exact earnings figures
-- For prices, use natural spoken forms: "sixty-eight eighty-two" for 6,882 on the S&P. "Ninety-seven thousand" not "97,412" for Bitcoin (unless the exact level matters)
-- Basis points: say "twenty-five basis points" not "25 bps." For large moves, prefer plain language: "a quarter point" instead of "25 basis points" when context is clear
-- Large dollar amounts: "about 1.2 billion" not "1.2 billion dollars exactly." Use "trillion," "billion," "million" — never abbreviations
-- Percentages with signs: say "up about a point and a half" or "down roughly two percent" — never "plus 1.61 percent" or "minus 2.03 percent"
-- Dates: say "March sixth" not "March 6, 2026." Say "last Thursday" or "earlier this week" when the exact date isn't critical
-- Use approximation words naturally: "roughly," "about," "just under," "a little over," "nearly"
+SKIP: Markdown formatting, links, emoji, reference markers, story numbers, status labels, confidence scores, Validates/Rejects framework labels (but include the reasoning).
 
-CRITICAL RULES:
-- Preserve ALL substantive analysis and directional insights from the original
-- Do NOT add information that isn't in the source material
-- Do NOT hallucinate data, prices, or claims
-- Expand ALL abbreviations and financial shorthand for speech (YoY → "year over year", Q3 → "third quarter")
-- Spell out ticker symbols or use company names (NVDA → "NVIDIA", MSTR → "MicroStrategy")
-- Remove all markdown formatting, links, emoji, and reference markers (e.g., "[See Big Story #1]")
-- Keep the script to roughly 3,000-5,000 words (targeting ~15-20 minutes of audio at natural pace)
+NUMBERS — THIS IS CRITICAL FOR NATURAL SPEECH:
+- Commodities & stock prices: ALWAYS round. Say "oil hit eighty-five dollars" NOT "$85.41". Say "gold above five thousand" NOT "$5,012.37". Only keep decimals if the decimal IS the story.
+- Index levels: Round to nearest hundred or use natural speech. Say "S&P near fifty-eight hundred" NOT "5,782.76". Say "Nasdaq around twenty thousand."
+- Yields & rates: Keep the precision — these move in basis points. Say "four point one four percent on the ten-year" or "the ten-year at four-fourteen." Never round a yield to a whole number.
+- Percentage changes: Round to halves. Say "up about a point and a half" NOT "up 1.47%". Say "down roughly two percent" NOT "down 1.93%". Say "up about five percent" NOT "up 4.9%".
+- Crypto: Round to nearest thousand for BTC ("Bitcoin at seventy-two thousand"), nearest hundred for ETH. Only precise when a key level matters.
+- Dollar amounts: "about one point two billion" NOT "1.2 billion dollars exactly." Use "trillion," "billion," "million."
+- Basis points: Say "twenty-five basis points" NOT "25 bps." For context, "a quarter point" works too.
+- Dates: Say "March sixth" NOT "March 6, 2026." Say "last Thursday" when the exact date isn't critical.
+- Use natural approximation: "roughly," "about," "just under," "a little over," "nearly."
 
-Return ONLY the podcast script. No meta-commentary, no stage directions, no [bracketed notes].`;
+RULES:
+- Do NOT add information not in the source
+- Do NOT hallucinate data
+- Expand ALL abbreviations (YoY → "year over year", ETF → "E.T.F.", Q3 → "third quarter")
+- Spell out ticker symbols (NVDA → "NVIDIA", MSTR → "MicroStrategy")
 
-async function rewriteAsScript(rawContent, displayDate) {
+Return ONLY the spoken script for this section. No meta-commentary, no [bracketed notes].`;
+
+// Per-section user prompts — tailored instructions for what to emphasize
+const SECTION_INSTRUCTIONS = {
+  'intro': 'Write a podcast opening. Read the epigraph/daily quote EXACTLY as provided — do NOT substitute a different quote. Then give a 2-3 sentence hook about the day\'s biggest story based on the lede. Keep it punchy — this sets the tone.',
+  'The Dashboard': 'Convert this dashboard commentary into a quick spoken market check-in. Cover equities, crypto, commodities, and rates. Focus on the narrative and analysis, not raw numbers. Use transitions between asset classes.',
+  'The Take': 'Convert this editorial synthesis into spoken form. This is the heart of the brief — the big picture argument. Give it full treatment, don\'t compress.',
+  'The Model': 'Explain this mental model naturally, including the source, the framework, and how it applies to today\'s markets. Make it feel like a teaching moment.',
+  'The Big Stories': 'Cover EVERY story individually. Each one gets: the headline, the context, the implications, and what to watch. Do NOT skip or lump stories together. This is the longest section — give each story the depth it deserves.',
+  "Tomorrow's Headlines": 'Cover EVERY headline individually. For each: what happened, what it means, and the forward signal. Do NOT lump them together.',
+  'The Watchlist': 'Cover EVERY watchlist item. For each: the asset, the thesis, key levels, and what would change the view. Include the reasoning behind each position.',
+  'Discovery': 'Mention each recommended read/listen with why it matters.',
+
+  // The Six sub-sections — each gets its own API call to prevent compression
+  'The Six: Markets & Macro': 'Convert EVERY bullet point in this markets & macro section into spoken analysis. Cover each one individually with its full context and implications. Do NOT skip any.',
+  'The Six: Crypto': 'Convert EVERY crypto bullet into spoken analysis. Each gets its full explanation — the data, the thesis, and the "so what." Do NOT skip any.',
+  'The Six: AI & Tech': 'Convert EVERY AI & tech bullet into spoken analysis. Cover the companies, the numbers, and why each matters. Do NOT skip any.',
+  'The Six: Geopolitics': 'Convert EVERY geopolitics bullet into spoken analysis. Cover the developments, the strategic context, and the implications. Do NOT skip any.',
+  'The Six: Deep Read / Listen': 'Mention each recommended read or listen with a brief explanation of why it matters and what the reader will get from it.',
+  'The Six: Inner Game': 'Read this reflective/philosophical section naturally and warmly. Include the quote, the story or teaching, and the practical action. This is the personal, human moment in the brief — give it space.',
+};
+
+async function rewriteAsScript(brief) {
   const client = new OpenAI({ apiKey: OPENAI_API_KEY });
-  console.log('  Rewriting as conversational podcast script...');
+  const parsed = parseBriefForAudio(brief);
+
+  console.log(`  Epigraph: "${parsed.epigraph.slice(0, 80)}..."`);
+  console.log(`  Lede: "${parsed.lede.slice(0, 80)}..."`);
+  console.log(`  Sections: ${parsed.sections.map(s => s.name).join(', ')}`);
+
+  const scriptParts = [];
+  let totalChars = 0;
+
+  // 1. Generate intro (date + epigraph + hook)
+  console.log('  [1] Intro...');
+  const introContent = `DATE: ${parsed.displayDate}\nEPIGRAPH: ${parsed.epigraph}\nLEDE: ${parsed.lede}`;
+  const intro = await rewriteSection(client, 'intro', introContent);
+  scriptParts.push(intro);
+  totalChars += intro.length;
+  process.stdout.write(`       → ${intro.length} chars\n`);
+
+  // 2. Process each section individually
+  for (let i = 0; i < parsed.sections.length; i++) {
+    const sec = parsed.sections[i];
+    const num = i + 2;
+    process.stdout.write(`  [${num}] ${sec.name}...`);
+
+    const sectionScript = await rewriteSection(client, sec.name, sec.content);
+    scriptParts.push(sectionScript);
+    totalChars += sectionScript.length;
+    process.stdout.write(` → ${sectionScript.length} chars\n`);
+
+    // Small delay to avoid rate limits
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  console.log(`  Total script: ${totalChars} chars across ${scriptParts.length} sections`);
+
+  const fullScript = scriptParts.join('\n\n');
+  return regexNormalize(fullScript);
+}
+
+async function rewriteSection(client, sectionName, content) {
+  // Look up exact match first, then try prefix match for sub-sections
+  let instruction = SECTION_INSTRUCTIONS[sectionName];
+  if (!instruction) {
+    // Check if it's a sub-section like "The Six: Something New"
+    for (const [key, val] of Object.entries(SECTION_INSTRUCTIONS)) {
+      if (sectionName.startsWith(key.split(':')[0] + ':')) {
+        instruction = val;
+        break;
+      }
+    }
+  }
+  if (!instruction) instruction = `Convert this "${sectionName}" section into natural spoken podcast form. Include ALL substantive content — do not skip or compress anything.`;
 
   try {
     const resp = await client.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        { role: 'system', content: SCRIPTWRITER_PROMPT },
-        { role: 'user', content: rawContent },
+        { role: 'system', content: SECTION_SYSTEM_PROMPT },
+        { role: 'user', content: `SECTION: ${sectionName}\n\nINSTRUCTION: ${instruction}\n\nCONTENT:\n${content}` },
       ],
       temperature: 0.4,
-      max_tokens: 8000,
     });
-    const script = resp.choices[0]?.message?.content?.trim();
-    if (!script) throw new Error('Empty response');
-
-    // Run regex normalization on the output to catch anything the LLM missed
-    return regexNormalize(script);
+    const result = resp.choices[0]?.message?.content?.trim();
+    if (!result) throw new Error('Empty response');
+    return result;
   } catch (err) {
-    console.log(`  ⚠ Script rewrite failed (${err.code || err.status || err.message})`);
-    console.log(`    Falling back to regex-only preprocessing...`);
-    // Fallback: just normalize the raw content
-    return regexNormalize(rawContent);
+    console.log(` ⚠ Failed (${err.message}), using regex fallback`);
+    return regexNormalize(content);
   }
 }
 
@@ -348,14 +471,19 @@ const dateArg = process.argv[2];
 const brief = loadBrief(dateArg);
 if (!brief) { console.error(`No brief found${dateArg ? ` for ${dateArg}` : ''}`); process.exit(1); }
 
-const { raw: rawContent, parsed } = buildRawContent(brief);
+const parsed = parseBriefForAudio(brief);
 console.log(`\nBrief: ${parsed.displayDate} (${brief.date})`);
-console.log(`Sections: ${parsed.sections.length} (${parsed.sections.map(s => s.name).join(', ')})`);
-console.log(`Raw content: ${rawContent.length} chars`);
+console.log(`Epigraph: "${parsed.epigraph.slice(0, 80)}..."`);
+console.log(`Lede: "${parsed.lede.slice(0, 80)}..."`);
+console.log(`Sections: ${parsed.sections.length}`);
+for (const s of parsed.sections) {
+  console.log(`  - ${s.name} (${s.content.length} chars)`);
+}
+console.log(`Raw content: ${brief.raw.length} chars`);
 console.log('');
 
-console.log('Step 1/3: Preprocessing...');
-const script = await rewriteAsScript(rawContent, parsed.displayDate);
+console.log('Step 1/3: Preprocessing (per-section rewrite)...');
+const script = await rewriteAsScript(brief);
 console.log(`  → ${script.length} characters (script)`);
 
 const outputDir = path.join(__dirname, 'output');

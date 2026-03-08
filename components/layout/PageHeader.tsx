@@ -134,7 +134,7 @@ export function PageHeader({
 
       {/* Content */}
       <div className="relative">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-16">
           {/* Back link */}
           {backLink && (
             <div className="mb-6">
@@ -211,30 +211,30 @@ export function PageHeader({
               </div>
 
               {/* Main title */}
-              <h1 className={`text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight ${tierColors.text} mb-4`}>
+              <h1 className={`text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight ${tierColors.text} mb-3 sm:mb-4`}>
                 {title}
               </h1>
 
               {/* Subtitle */}
               {subtitle && (
-                <p className={`text-xl sm:text-2xl ${tierColors.accent} mb-6 font-medium`}>
+                <p className={`text-base sm:text-xl lg:text-2xl ${tierColors.accent} mb-4 sm:mb-6 font-medium`}>
                   {subtitle}
                 </p>
               )}
 
               {/* Description */}
               {description && (
-                <p className="text-lg text-neutral-700 leading-relaxed max-w-3xl mb-8">
+                <p className="text-base sm:text-lg text-neutral-700 leading-relaxed max-w-3xl mb-6 sm:mb-8">
                   {description}
                 </p>
               )}
 
               {/* Statistics */}
               {stats && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mb-8">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
                   {stats.totalModels !== undefined && (
                     <div className="text-center sm:text-left">
-                      <div className={`text-2xl sm:text-3xl font-bold ${tierColors.text}`}>
+                      <div className={`text-xl sm:text-2xl lg:text-3xl font-bold ${tierColors.text}`}>
                         {stats.totalModels}
                       </div>
                       <div className="text-sm text-neutral-600 flex items-center justify-center sm:justify-start">
@@ -246,7 +246,7 @@ export function PageHeader({
 
                   {stats.totalHighlights !== undefined && (
                     <div className="text-center sm:text-left">
-                      <div className={`text-2xl sm:text-3xl font-bold ${tierColors.text}`}>
+                      <div className={`text-xl sm:text-2xl lg:text-3xl font-bold ${tierColors.text}`}>
                         {stats.totalHighlights}
                       </div>
                       <div className="text-sm text-neutral-600 flex items-center justify-center sm:justify-start">
@@ -258,7 +258,7 @@ export function PageHeader({
 
                   {stats.totalSources !== undefined && (
                     <div className="text-center sm:text-left">
-                      <div className={`text-2xl sm:text-3xl font-bold ${tierColors.text}`}>
+                      <div className={`text-xl sm:text-2xl lg:text-3xl font-bold ${tierColors.text}`}>
                         {stats.totalSources}
                       </div>
                       <div className="text-sm text-neutral-600 flex items-center justify-center sm:justify-start">
@@ -284,7 +284,7 @@ export function PageHeader({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center space-x-3 mt-6 lg:mt-0 lg:ml-8">
+            <div className="flex items-center space-x-2 sm:space-x-3 mt-4 sm:mt-6 lg:mt-0 lg:ml-8">
               {/* Default actions */}
               <Button
                 variant="outline"
