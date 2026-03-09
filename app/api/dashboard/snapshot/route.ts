@@ -452,6 +452,6 @@ function fetchWithTimeout(url: string, timeout: number, headers?: Record<string,
   const timer = setTimeout(() => controller.abort(), timeout);
   return fetch(url, {
     signal: controller.signal,
-    headers: headers ? { ...headers } : undefined,
+    ...(headers ? { headers: { ...headers } } : {}),
   }).finally(() => clearTimeout(timer));
 }
