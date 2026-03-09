@@ -84,6 +84,21 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
   // Split into sections
   const sections: BriefSection[] = [];
 
+  // Always inject the LiveDashboard as the first section.
+  // The dashboard component fetches its own data from the API —
+  // it doesn't need markdown content. This ensures the dashboard
+  // renders even when the brief markdown doesn't include a dashboard section.
+  const hasDashboardInMarkdown = markdown.includes('# ▸ THE DASHBOARD');
+  if (!hasDashboardInMarkdown) {
+    sections.push({
+      id: 'dashboard',
+      type: 'dashboard',
+      label: 'Dashboard',
+      shortLabel: 'Dash',
+      content: '', // LiveDashboard component handles its own data
+    });
+  }
+
   for (let si = 0; si < SECTION_DEFS.length; si++) {
     const def = SECTION_DEFS[si]!;
     const startIdx = markdown.indexOf(def.marker);

@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/dashboard/snapshot",
-      "schedule": "0 11 * * 1-5"
+      "schedule": "0 11 * * *"
     },
     {
       "path": "/api/audio/generate",

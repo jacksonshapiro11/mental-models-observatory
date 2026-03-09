@@ -12,15 +12,15 @@
  * Protected by SNAPSHOT_SECRET header or query param.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { fetchDXY } from '@/lib/dxy';
 import {
-  writeSnapshot,
   writeManualFields,
   writePriceHistory,
+  writeSnapshot,
   type DashboardSnapshot,
 } from '@/lib/upstash';
-import { fetchDXY } from '@/lib/dxy';
 import { Redis } from '@upstash/redis';
+import { NextRequest, NextResponse } from 'next/server';
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 
@@ -452,6 +452,6 @@ function fetchWithTimeout(url: string, timeout: number, headers?: Record<string,
   const timer = setTimeout(() => controller.abort(), timeout);
   return fetch(url, {
     signal: controller.signal,
-    ...(headers ? { headers } : {}),
+    headers: headers ? { ...headers } : undefined,
   }).finally(() => clearTimeout(timer));
 }

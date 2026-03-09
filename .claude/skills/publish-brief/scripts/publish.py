@@ -24,7 +24,8 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
 REPO = "jacksonshapiro11/mental-models-observatory"
-BRANCH = "main"
+BRANCH_MAIN = "main"
+BRANCH_DRAFT = "draft"
 API_BASE = f"https://api.github.com/repos/{REPO}/contents"
 
 # Audio generation config
@@ -63,17 +64,46 @@ def github_request(url, token, method="GET", data=None):
         return json.loads(body) if body else {}, e.code
 
 
-def get_existing_file_sha(path, token):
+def ensure_branch_exists(branch, token):
+    """Create branch from main if it doesn't exist."""
+    # Get main branch SHA
+    url = f"https://api.github.com/repos/{REPO}/git/ref/heads/{BRANCH_MAIN}"
+    result, status = github_request(url, token)
+    if status != 200:
+        print(f"ERROR: Could not get main branch ref")
+        return False
+    main_sha = result["object"]["sha"]
+
+    # Check if draft branch exists
+    url = f"https://api.github.com/repos/{REPO}/git/ref/heads/{branch}"
+    result, status = github_request(url, token)
+    if status == 200:
+        # Branch exists — update it to match main
+        url = f"https://api.github.com/repos/{REPO}/git/refs/heads/{branch}"
+        data = {"sha": main_sha, "force": True}
+        result, status = github_request(url, token, method="PATCH", data=data)
+        return status == 200
+    else:
+        # Create branch from main
+        url = f"https://api.github.com/repos/{REPO}/git/refs"
+        data = {"ref": f"refs/heads/{branch}", "sha": main_sha}
+        result, status = github_request(url, token, method="POST", data=data)
+        return status == 201
+
+
+def get_existing_file_sha(path, token, branch=None):
     """Check if file already exists and get its SHA (needed for updates)."""
-    url = f"{API_BASE}/{path}?ref={BRANCH}"
+    branch = branch or BRANCH_MAIN
+    url = f"{API_BASE}/{path}?ref={branch}"
     result, status = github_request(url, token)
     if status == 200:
         return result.get("sha")
     return None
 
 
-def publish_brief(markdown_path, brief_date=None, dry_run=False):
+def publish_brief(markdown_path, brief_date=None, dry_run=False, draft=False):
     token = get_token()
+    branch = BRANCH_DRAFT if draft else BRANCH_MAIN
 
     # Read the markdown file
     with open(markdown_path, "r") as f:
@@ -92,28 +122,36 @@ def publish_brief(markdown_path, brief_date=None, dry_run=False):
     repo_path = f"content/daily-updates/{brief_date}.md"
 
     if dry_run:
-        print(f"DRY RUN — would publish to: {repo_path}")
+        print(f"DRY RUN — would publish to: {repo_path} on branch '{branch}'")
         print(f"Content length: {len(content)} characters")
         print(f"First 200 chars:\n{content[:200]}")
         return
 
+    # If draft mode, ensure the draft branch exists
+    if draft:
+        print(f"Setting up draft branch '{branch}'...")
+        if not ensure_branch_exists(branch, token):
+            print("ERROR: Could not create/update draft branch")
+            return False
+
     # Encode content as base64
     encoded = base64.b64encode(content.encode("utf-8")).decode("utf-8")
 
-    # Check if file already exists
-    sha = get_existing_file_sha(repo_path, token)
+    # Check if file already exists on target branch
+    sha = get_existing_file_sha(repo_path, token, branch)
 
     # Build the request
+    commit_prefix = "Draft: " if draft else "Brief: "
     data = {
-        "message": f"Brief: {brief_date}",
+        "message": f"{commit_prefix}{brief_date}",
         "content": encoded,
-        "branch": BRANCH,
+        "branch": branch,
     }
     if sha:
         data["sha"] = sha
-        print(f"Updating existing brief for {brief_date}...")
+        print(f"Updating existing brief for {brief_date} on '{branch}'...")
     else:
-        print(f"Creating new brief for {brief_date}...")
+        print(f"Creating new brief for {brief_date} on '{branch}'...")
 
     # Push to GitHub
     url = f"{API_BASE}/{repo_path}"
@@ -122,11 +160,15 @@ def publish_brief(markdown_path, brief_date=None, dry_run=False):
     if status in (200, 201):
         html_url = result.get("content", {}).get("html_url", "")
         print(f"Published! {html_url}")
-        print(f"Vercel will auto-deploy. Brief live at: /daily-update")
+        if draft:
+            print(f"Vercel preview deployment will be available shortly.")
+            print(f"Check Vercel dashboard or PR for preview URL.")
+        else:
+            print(f"Vercel will auto-deploy. Brief live at: /daily-update")
 
-        # Trigger audio generation in the background after deploy
-        if not dry_run and not os.environ.get("SKIP_AUDIO"):
-            trigger_audio_generation(brief_date)
+            # Trigger audio generation only on main publish (not draft)
+            if not os.environ.get("SKIP_AUDIO"):
+                trigger_audio_generation(brief_date)
 
         return True
     else:
@@ -177,10 +219,11 @@ if __name__ == "__main__":
     parser.add_argument("file", help="Path to the markdown file")
     parser.add_argument("--date", help="Brief date (YYYY-MM-DD), defaults to today")
     parser.add_argument("--dry-run", action="store_true", help="Preview without publishing")
+    parser.add_argument("--draft", action="store_true", help="Publish to draft branch for preview (not live)")
     args = parser.parse_args()
 
     if not os.path.exists(args.file):
         print(f"ERROR: File not found: {args.file}")
         sys.exit(1)
 
-    publish_brief(args.file, args.date, args.dry_run)
+    publish_brief(args.file, args.date, args.dry_run, args.draft)

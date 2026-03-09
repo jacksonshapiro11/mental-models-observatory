@@ -246,10 +246,22 @@ function mergeChanges(livePrice: number | null, snapshotRef: AssetRef | null): R
   return changes;
 }
 
-// ─── CRYPTO PRICES (Binance Global) ─────────────────────────────────────────
+// ─── CRYPTO PRICES (Binance → CoinGecko fallback) ──────────────────────────
+
+// CoinGecko IDs for fallback pricing
+const COINGECKO_IDS: Record<string, string> = {
+  BTC: 'bitcoin',
+  ETH: 'ethereum',
+  SOL: 'solana',
+  AAVE: 'aave',
+  UNI: 'uniswap',
+  LINK: 'chainlink',
+};
 
 async function fetchCryptoPrices(): Promise<Record<string, { price: number; source: string }>> {
   const results: Record<string, { price: number; source: string }> = {};
+
+  // Try Binance first (real-time, no API key needed)
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT);
 
@@ -264,10 +276,36 @@ async function fetchCryptoPrices(): Promise<Record<string, { price: number; sour
 
     await Promise.allSettled(fetches);
   } catch (err: unknown) {
-    if (err instanceof Error && err.name !== 'AbortError') console.error('Crypto fetch error:', err);
+    if (err instanceof Error && err.name !== 'AbortError') console.error('Binance fetch error:', err);
   } finally {
     clearTimeout(timer);
   }
+
+  // Fallback: if any coins are missing, try CoinGecko simple/price
+  const missing = CRYPTO_PAIRS.filter(({ name }) => !results[name]).map(({ name }) => name);
+  if (missing.length > 0) {
+    console.warn(`[live] Binance missing ${missing.join(', ')} — falling back to CoinGecko`);
+    try {
+      const ids = missing.map(name => COINGECKO_IDS[name]).filter(Boolean).join(',');
+      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&x_cg_demo_key=${COINGECKO_KEY}`;
+      const res = await fetchWithTimeout(url, TIMEOUT);
+      if (res.ok) {
+        const data = await res.json();
+        for (const name of missing) {
+          const cgId = COINGECKO_IDS[name];
+          if (cgId && data[cgId]?.usd) {
+            results[name] = { price: data[cgId].usd, source: 'coingecko' };
+          }
+        }
+      }
+    } catch (err) {
+      console.error('CoinGecko fallback failed:', err);
+    }
+  }
+
+  // Log what we got
+  const sources = Object.entries(results).map(([k, v]) => `${k}:${v.source}`).join(', ');
+  console.log(`[live] Crypto prices: ${sources || 'NONE — will use snapshot'}`);
 
   return results;
 }
