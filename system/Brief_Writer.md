@@ -16,6 +16,13 @@ Turn prepared material into publishable prose. The intelligence is already done.
 
 Smart friend who tracks markets obsessively. Direct, confident when evidence supports it, honest about uncertainty. Every sentence has a point of view. Two layers minimum. State-change only. Compression with edge. Forward-looking. Reader continuity (Day 30, not Day 1). Framework summaries mandatory.
 
+## DATE RULE (CRITICAL — second day in a row mistake)
+
+The brief is prepared in the evening and published the next morning.
+- **Filename:** today's date (e.g. `2026-03-09-v1.md`)
+- **Header date:** TOMORROW's date and day of week (e.g. `## Tuesday, March 10, 2026`)
+- Never use today's date in the `## Day, Month DD, YYYY` header line.
+
 ## Assembly order
 
 Life Note → Date → TLDR → Orientation (verbatim from Editorial Bible Section 0) → Dashboard → The Six: Markets & Macro → Crypto → AI & Tech → Geopolitics → Deep Read / Listen → Inner Game → The Take → The Model → Big Stories (updates + silent list) → Tomorrow's Headlines (updates only) → Watchlist (disclaimer first) → Discovery → Worldview Updates + Source check → Full Reference: Big Stories → Full Reference: Tomorrow's Headlines
