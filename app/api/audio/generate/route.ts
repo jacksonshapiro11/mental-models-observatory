@@ -20,6 +20,7 @@ import fs from 'fs';
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
+import OpenAI from 'openai';
 import { getBriefByDate, getLatestBrief } from '@/lib/daily-update-parser';
 import { preprocessBriefForTTS } from '@/lib/audio/text-preprocessor';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
@@ -57,6 +58,54 @@ function extractDescription(brief: { lede: string }): string {
     .replace(/\*(.+?)\*/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .slice(0, 300);
+}
+
+/** Generate a punchy, clickbaity episode title from the lede via GPT-4o */
+async function generateEpisodeTitle(lede: string, displayDate: string, apiKey: string): Promise<string> {
+  try {
+    const client = new OpenAI({ apiKey });
+    const resp = await client.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You generate punchy, clickbaity podcast episode titles. 4-8 words max. The title should make someone NEED to tap play.
+
+Rules:
+- Pull from the 1-2 most dramatic/surprising stories in the lede
+- Use power words: Breaks, Hits, Crashes, Secret, Nobody Saw, Unravels, Explodes
+- Be specific — name the company, asset, or event
+- No dates in the title
+- No generic titles like "Market Update" or "Daily Roundup"
+- Use sentence case, not title case
+- Return ONLY the title, nothing else
+
+Examples of great titles:
+- "SaaSpocalypse hits private credit"
+- "Oil at $100 and nobody's ready"
+- "Adobe's CEO walks, markets shrug"
+- "The dollar's dirty secret"
+- "Five funds gate in one day"
+- "Bitcoin holds while everything breaks"
+- "NVIDIA's trillion-dollar tell"`,
+        },
+        {
+          role: 'user',
+          content: `Generate an episode title from this lede:\n\n${lede}`,
+        },
+      ],
+      temperature: 0.8,
+      max_tokens: 50,
+    });
+    const title = resp.choices[0]?.message?.content?.trim();
+    if (title && title.length > 0 && title.length < 80) {
+      return title;
+    }
+  } catch (err) {
+    console.warn(`[audio] Title generation failed (${err}), using fallback`);
+  }
+  // Fallback: generic but branded
+  return `Markets, Meditations, and Mental Models — ${displayDate}`;
 }
 
 // ─── POST handler ───────────────────────────────────────────────────────────
@@ -142,10 +191,14 @@ export async function POST(req: NextRequest) {
     // 7. Estimate duration (128kbps MP3 → bytes / (128000/8) = seconds)
     const estimatedDuration = Math.round(audio.length / (128000 / 8));
 
-    // 8. Store episode metadata in Redis
+    // 8. Generate episode title + store metadata in Redis
+    const openaiKey = process.env.OPENAI_API_KEY!;
+    const episodeTitle = await generateEpisodeTitle(brief.lede, brief.displayDate, openaiKey);
+    console.log(`[audio] Episode title: ${episodeTitle}`);
+
     const episode = {
       date: brief.date,
-      title: `Daily Brief — ${brief.displayDate}`,
+      title: episodeTitle,
       description: extractDescription(brief),
       audioUrl: blob.url,
       duration: estimatedDuration,

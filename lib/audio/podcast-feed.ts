@@ -124,12 +124,12 @@ interface FeedConfig {
 }
 
 const DEFAULT_CONFIG: FeedConfig = {
-  title: 'The Daily Brief — Mental Models Observatory',
-  description: 'Daily market intelligence: macro, crypto, AI, geopolitics, and the mental models that connect them. A financial brief designed for speed listeners.',
-  siteUrl: 'https://mentalmodelsobservatory.com',
-  feedUrl: 'https://mentalmodelsobservatory.com/api/podcast/feed',
-  coverImageUrl: 'https://mentalmodelsobservatory.com/podcast-cover.jpg',
-  author: 'Mental Models Observatory',
+  title: 'Markets, Meditations, and Mental Models',
+  description: 'Your daily guide to an increasingly complex world. Markets, crypto, AI, geopolitics, and the mental models that connect them — from Cosmic Trex, where ancient wisdom meets the cutting edge.',
+  siteUrl: 'https://www.cosmictrex.com',
+  feedUrl: 'https://www.cosmictrex.com/api/podcast/feed',
+  coverImageUrl: 'https://www.cosmictrex.com/podcast-cover.jpg',
+  author: 'Cosmic Trex',
   email: 'jacksonshapiro11@gmail.com',
   language: 'en-us',
   category: 'Business',
