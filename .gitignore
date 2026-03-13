@@ -1,10 +1,25 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Internal draft & working files (never push to GitHub)
+# ============================================
+# INTERNAL — THE PROCESS IS THE SECRET SAUCE
+# Only content/daily-updates/ and public/audio/ ship.
+# Everything below stays local.
+# ============================================
+
+# Draft & working files
 daily-briefs/
 daily-intelligence/
 
-# Editorial & strategy docs (never push to GitHub)
+# System skills & production pipeline (NEVER push)
+system/
+
+# Claude project config
+.claude/
+
+# Old/archived files
+zz_Old/
+
+# Editorial & strategy docs
 Editorial_Bible*
 Worldview*
 worldview*
@@ -13,16 +28,16 @@ roadmap*
 *_Bible_*.md
 *_Worldview_*.md
 *_Roadmap_*.md
+Thesis_Tracker*
+Quality_Tracker*
 
-# Skills (project-specific Claude skills — never push to GitHub)
+# Legacy skill patterns (kept for safety)
 /skills/
 framework-propagator/
 Market_Data_Collector*
 Editor_v*
 Critic_v*
 Workflow_v*
-Thesis_Tracker*
-Quality_Tracker*
 
 # dependencies
 /node_modules
