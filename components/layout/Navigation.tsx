@@ -106,10 +106,10 @@ export function Navigation({ currentPath, transparent = false }: NavigationProps
               <Brain className="h-4 w-4 text-white dark:text-[var(--espresso-accent)]" />
             </div>
             <span className="text-xl font-bold text-neutral-800 dark:text-[var(--espresso-cta-text)] hidden sm:block">
-              Guided Learning Experience
+              Cosmic Trex
             </span>
             <span className="text-xl font-bold text-neutral-800 dark:text-[var(--espresso-cta-text)] sm:hidden">
-              GLE
+              CT
             </span>
           </div>
 

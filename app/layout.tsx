@@ -14,14 +14,14 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Guided Learning Experience',
-    template: '%s | Guided Learning Experience',
+    default: 'Cosmic Trex — Where Ancient Wisdom Meets the Cutting Edge',
+    template: '%s | Cosmic Trex',
   },
-  description: 'A comprehensive collection of mental models organized across 40 domains of knowledge with full source transparency.',
-  keywords: ['mental models', 'thinking frameworks', 'decision making', 'problem solving', 'cognitive tools'],
-  authors: [{ name: 'Guided Learning Experience' }],
-  creator: 'Guided Learning Experience',
-  publisher: 'Guided Learning Experience',
+  description: 'Markets, Meditations, and Mental Models — your daily guide to an increasingly complex world.',
+  keywords: ['mental models', 'thinking frameworks', 'markets', 'daily brief', 'investing', 'meditation', 'decision making'],
+  authors: [{ name: 'Cosmic Trex' }],
+  creator: 'Cosmic Trex',
+  publisher: 'Cosmic Trex',
   formatDetection: {
     email: false,
     address: false,
@@ -35,14 +35,14 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: '/',
-    title: 'Guided Learning Experience',
-    description: 'A comprehensive collection of mental models organized across 40 domains of knowledge.',
-    siteName: 'Guided Learning Experience',
+    title: 'Cosmic Trex — Where Ancient Wisdom Meets the Cutting Edge',
+    description: 'Markets, Meditations, and Mental Models — your daily guide to an increasingly complex world.',
+    siteName: 'Cosmic Trex',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Guided Learning Experience',
-    description: 'A comprehensive collection of mental models organized across 40 domains of knowledge.',
+    title: 'Cosmic Trex — Where Ancient Wisdom Meets the Cutting Edge',
+    description: 'Markets, Meditations, and Mental Models — your daily guide to an increasingly complex world.',
   },
   robots: {
     index: true,
@@ -67,36 +67,41 @@ export default function RootLayout({
       <body className={`${inter.className} h-full bg-neutral-25 text-neutral-800 antialiased`}>
         <ThemeProvider>
           <div className="flex min-h-full flex-col">
-            <header className="sticky top-0 z-[70] p-4 bg-blue-600 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)] flex justify-between items-center transition-colors duration-300">
-              <h1>Guided Learning Experience</h1>
-              <div className="flex items-center gap-4">
-                <ThemeToggle />
-                <ContactModal />
-                <Link
-                  href="/daily-update"
-                  className="bg-black dark:bg-black text-white dark:text-white px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg"
-                >
-                  Daily Brief
+            <header className="sticky top-0 z-[70] px-4 py-3 bg-blue-600 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)] transition-colors duration-300">
+              <div className="flex justify-between items-center flex-wrap gap-2">
+                <Link href="/" className="flex flex-col min-w-0 shrink">
+                  <h1 className="text-lg sm:text-xl font-bold leading-tight truncate">Cosmic Trex</h1>
+                  <span className="text-[10px] sm:text-xs opacity-80 leading-tight hidden sm:block">Where ancient wisdom meets the cutting edge</span>
                 </Link>
-                <Link
-                  href="/blog"
-                  className="bg-black dark:bg-black text-white dark:text-white px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg"
-                >
-                  Blog
-                </Link>
-                <Link
-                  href="/"
-                  className="bg-black dark:bg-black text-white dark:text-white px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg"
-                >
-                  Home
-                </Link>
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                  <ThemeToggle />
+                  <ContactModal />
+                  <Link
+                    href="/daily-update"
+                    className="bg-black dark:bg-black text-white dark:text-white px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg text-xs sm:text-sm whitespace-nowrap"
+                  >
+                    Daily Brief
+                  </Link>
+                  <Link
+                    href="/blog"
+                    className="bg-black dark:bg-black text-white dark:text-white px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg text-xs sm:text-sm hidden sm:block"
+                  >
+                    Blog
+                  </Link>
+                  <Link
+                    href="/"
+                    className="bg-black dark:bg-black text-white dark:text-white px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg text-xs sm:text-sm hidden sm:block"
+                  >
+                    Home
+                  </Link>
+                </div>
               </div>
             </header>
             <main id="main-content" className="flex-1 p-4">
               {children}
             </main>
             <footer className="p-4 bg-gray-800 dark:bg-[var(--espresso-bg-dark)] text-white dark:text-[var(--espresso-body)] transition-colors duration-300">
-              <p>© 2024 Guided Learning Experience</p>
+              <p>© 2026 Cosmic Trex</p>
             </footer>
           </div>
         </ThemeProvider>

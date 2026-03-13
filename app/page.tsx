@@ -42,11 +42,14 @@ export default function HomePage() {
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
                <h1 className="mx-auto max-w-4xl text-3xl font-bold tracking-tight text-neutral-800 dark:text-[var(--espresso-h1)] sm:text-5xl lg:text-7xl mb-4 sm:mb-6 transition-colors duration-300">
-                 Guided Learning{' '}
-                 <span className="gradient-text dark:text-[var(--espresso-accent)]">Experience</span>
+                 Cosmic{' '}
+                 <span className="gradient-text dark:text-[var(--espresso-accent)]">Trex</span>
                </h1>
-               <p className="mx-auto mt-4 sm:mt-6 max-w-2xl text-base sm:text-lg lg:text-xl text-neutral-600 dark:text-[var(--espresso-body)] mb-6 sm:mb-8 transition-colors duration-300">
-                 The cost of information has approached zero, but the core truths of humanity and the world remain the same. Now more than ever, we need a focused and curated start to our learning journey as we risk getting lost in the dark forest of infinite self-reinforcing content. We have compiled the big ideas from the big disciplines backed up by 5000 pages of hand curated sources to help you start wide and go deep with the society altering ideas that will fill your life with meaning, purpose, and direction while giving you an edge in any pursuit.
+               <p className="mx-auto mt-2 max-w-xl text-sm sm:text-base text-neutral-500 dark:text-[var(--espresso-body)]/70 italic mb-4 sm:mb-6 transition-colors duration-300">
+                 Where ancient wisdom meets the cutting edge
+               </p>
+               <p className="mx-auto max-w-2xl text-base sm:text-lg lg:text-xl text-neutral-600 dark:text-[var(--espresso-body)] mb-6 sm:mb-8 transition-colors duration-300">
+                 Markets, Meditations, and Mental Models — your daily guide to an increasingly complex world.
                </p>
 
                {/* What is this button - centered and prominent */}
