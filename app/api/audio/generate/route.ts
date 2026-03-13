@@ -134,6 +134,7 @@ export async function POST(req: NextRequest) {
       access: 'public',
       contentType: 'audio/mpeg',
       addRandomSuffix: false,
+      token: process.env.BLOB_READ_WRITE_TOKEN || process.env.public_READ_WRITE_TOKEN,
     });
 
     console.log(`[audio] Uploaded to Blob: ${blob.url}`);
