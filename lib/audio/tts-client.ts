@@ -60,6 +60,32 @@ export class OpenAITTSClient implements TTSProvider {
   }
 }
 
+// ─── Retry helper ───────────────────────────────────────────────────────────
+
+/** Retry an async fn with exponential backoff. Retries on rate-limit (429) and server errors (5xx). */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  { maxRetries = 3, baseDelayMs = 2000, label = '' } = {}
+): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const status = err?.status ?? err?.response?.status;
+      const isRetryable = status === 429 || (status >= 500 && status < 600);
+
+      if (!isRetryable || attempt === maxRetries) {
+        throw err;
+      }
+
+      const delay = baseDelayMs * Math.pow(2, attempt);
+      console.warn(`[audio] ${label} attempt ${attempt + 1} failed (${status}), retrying in ${delay}ms...`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw new Error('Unreachable');
+}
+
 // ─── Audio generation orchestrator ──────────────────────────────────────────
 
 /**
@@ -170,7 +196,10 @@ export async function generateFullAudio(
   const promises = chunks.map(async (chunk, i) => {
     await acquire();
     try {
-      const buffer = await provider.generateAudio(chunk, options);
+      const buffer = await withRetry(
+        () => provider.generateAudio(chunk, options),
+        { label: `TTS chunk ${i + 1}/${chunks.length}` }
+      );
       completed++;
       options?.onProgress?.(completed, chunks.length);
       return buffer;

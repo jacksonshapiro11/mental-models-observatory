@@ -474,7 +474,31 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'The Six: Inner Game': 'Read this reflective/philosophical section naturally and warmly. Include the quote, the story or teaching, and the practical action. This is the personal, human moment in the brief — give it space.',
 };
 
-/** Rewrite a single section via GPT-4o */
+/** Retry an async fn with exponential backoff on rate-limit (429) and server errors (5xx). */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  { maxRetries = 3, baseDelayMs = 2000, label = '' } = {}
+): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const status = err?.status ?? err?.response?.status;
+      const isRetryable = status === 429 || (status >= 500 && status < 600);
+
+      if (!isRetryable || attempt === maxRetries) {
+        throw err;
+      }
+
+      const delay = baseDelayMs * Math.pow(2, attempt);
+      console.warn(`[audio] ${label} attempt ${attempt + 1} failed (${status}), retrying in ${delay}ms...`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw new Error('Unreachable');
+}
+
+/** Rewrite a single section via GPT-4o with retry */
 async function rewriteSection(client: OpenAI, sectionName: string, content: string): Promise<string> {
   // Look up exact match first, then try prefix match for sub-sections
   let instruction = SECTION_INSTRUCTIONS[sectionName];
@@ -489,63 +513,95 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
   if (!instruction) instruction = `Convert this "${sectionName}" section into natural spoken podcast form. Include ALL substantive content — do not skip or compress anything.`;
 
   try {
-    const resp = await client.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: SECTION_SYSTEM_PROMPT },
-        { role: 'user', content: `SECTION: ${sectionName}\n\nINSTRUCTION: ${instruction}\n\nCONTENT:\n${content}` },
-      ],
-      temperature: 0.4,
-    });
-    const result = resp.choices[0]?.message?.content?.trim();
-    if (!result) throw new Error('Empty response');
+    const result = await withRetry(
+      async () => {
+        const resp = await client.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: SECTION_SYSTEM_PROMPT },
+            { role: 'user', content: `SECTION: ${sectionName}\n\nINSTRUCTION: ${instruction}\n\nCONTENT:\n${content}` },
+          ],
+          temperature: 0.4,
+        });
+        const text = resp.choices[0]?.message?.content?.trim();
+        if (!text) throw new Error('Empty response');
+        return text;
+      },
+      { label: `GPT-4o "${sectionName}"` }
+    );
     return result;
   } catch (err) {
-    console.warn(`[audio] Section "${sectionName}" LLM failed (${err}), using regex fallback`);
+    console.warn(`[audio] Section "${sectionName}" LLM failed after retries (${err}), using regex fallback`);
     return regexNormalize(content);
   }
 }
 
-/** Rewrite the full brief as a podcast script, processing sections in parallel */
+/** Rewrite the full brief as a podcast script. Tries parallel first, falls back to sequential. */
 async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string, epigraph: string): Promise<string> {
   const client = new OpenAI({ apiKey: openaiApiKey });
 
   // Build all section tasks: intro + each content section
   const tasks: { index: number; name: string; content: string }[] = [];
 
-  // Index 0 = intro
   tasks.push({
     index: 0,
     name: 'intro',
     content: `DATE: ${parsed.displayDate}\nEPIGRAPH: ${epigraph}\nLEDE: ${parsed.lede}`,
   });
 
-  // Index 1..N = content sections
   for (let i = 0; i < parsed.sections.length; i++) {
     const sec = parsed.sections[i]!;
     tasks.push({ index: i + 1, name: sec.name, content: sec.content });
   }
 
-  console.log(`[audio] Rewriting ${tasks.length} sections in parallel via GPT-4o...`);
+  // Strategy 1: Parallel (fast — all sections at once)
+  try {
+    console.log(`[audio] Rewriting ${tasks.length} sections in parallel via GPT-4o...`);
 
-  // Run all sections in parallel (GPT-4o handles concurrent requests well)
-  const results = await Promise.all(
-    tasks.map(async (task) => {
-      console.log(`[audio] Section ${task.index + 1}: ${task.name}...`);
+    const results = await Promise.all(
+      tasks.map(async (task) => {
+        console.log(`[audio] Section ${task.index + 1}: ${task.name}...`);
+        const script = await rewriteSection(client, task.name, task.content);
+        console.log(`[audio]   → ${script.length} chars`);
+        return { index: task.index, script };
+      })
+    );
+
+    // Check how many fell back to regex (indicates rate limiting)
+    // Regex fallback produces much shorter output — heuristic: if >40% of sections
+    // are suspiciously short, the parallel approach got throttled
+    const avgLen = results.reduce((s, r) => s + r.script.length, 0) / results.length;
+    const shortCount = results.filter(r => r.script.length < avgLen * 0.3).length;
+
+    if (shortCount > results.length * 0.4) {
+      console.warn(`[audio] ${shortCount}/${results.length} sections look regex-fallback — switching to sequential`);
+      throw new Error('Too many regex fallbacks, retry sequentially');
+    }
+
+    results.sort((a, b) => a.index - b.index);
+    const scriptParts = results.map(r => r.script);
+    const totalChars = scriptParts.reduce((sum, s) => sum + s.length, 0);
+    console.log(`[audio] Total script: ${totalChars} chars across ${scriptParts.length} sections`);
+    return scriptParts.join('\n\n');
+
+  } catch (parallelErr) {
+    // Strategy 2: Sequential fallback (slower but gentler on rate limits)
+    console.warn(`[audio] Parallel rewrite failed (${parallelErr}), falling back to sequential...`);
+
+    const scriptParts: string[] = [];
+    for (const task of tasks) {
+      console.log(`[audio] [sequential] Section ${task.index + 1}: ${task.name}...`);
       const script = await rewriteSection(client, task.name, task.content);
+      scriptParts.push(script);
       console.log(`[audio]   → ${script.length} chars`);
-      return { index: task.index, script };
-    })
-  );
+      // Small delay between sequential calls
+      await new Promise(r => setTimeout(r, 300));
+    }
 
-  // Reassemble in order
-  results.sort((a, b) => a.index - b.index);
-  const scriptParts = results.map(r => r.script);
-  const totalChars = scriptParts.reduce((sum, s) => sum + s.length, 0);
-
-  console.log(`[audio] Total script: ${totalChars} chars across ${scriptParts.length} sections`);
-
-  return scriptParts.join('\n\n');
+    const totalChars = scriptParts.reduce((sum, s) => sum + s.length, 0);
+    console.log(`[audio] Total script (sequential): ${totalChars} chars across ${scriptParts.length} sections`);
+    return scriptParts.join('\n\n');
+  }
 }
 
 // ─── Main preprocessor ─────────────────────────────────────────────────────
