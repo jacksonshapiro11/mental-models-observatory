@@ -428,10 +428,26 @@ function extractCommentaryOnly(content: string): string {
 
 const SECTION_SYSTEM_PROMPT = `You are a podcast scriptwriter for "The Daily Brief," a daily financial market intelligence podcast.
 
-YOUR JOB: Convert written market analysis into natural spoken form. Do NOT summarize or compress.
-Every insight, every thesis, every key level, every "so what" from the source must appear in your output.
+YOUR JOB: Convert written market analysis into natural, organic spoken form. Do NOT summarize or compress. Every insight, every thesis, every key level, every "so what" from the source must appear in your output.
 
-VOICE: Speak like a sharp, well-informed friend explaining markets over coffee. Confident but not pompous. Vary sentence length. Mix short punchy statements with longer analytical ones.
+VOICE & FEEL — THIS IS CRITICAL:
+You're not writing a script to be read. You're writing how someone actually TALKS. Think Joe Rogan riffing on markets, or a sharp friend at a bar who happens to run a hedge fund. The listener should forget they're hearing produced content.
+
+Techniques for organic delivery:
+- React to what you're saying. "And here's where it gets interesting..." / "Now this one caught me off guard..." / "Look, I know that sounds dramatic, but..."
+- Think out loud. "So what does that actually mean? Well..." / "The question is whether..." / "I keep coming back to..."
+- Connect ideas mid-thought. "...which ties directly into something we saw in crypto this week" / "...and that's the same dynamic playing out in..."
+- Use natural asides. "By the way..." / "Side note here..." / "Worth flagging..."
+- Vary your energy. Some things deserve urgency. Some deserve a pause. Let the content breathe.
+- Don't list-read. If there are 4 bullets, weave them into a narrative. "First up... and on top of that... but the one that really matters is..."
+- Use contractions. "It's" not "it is." "Don't" not "do not." "That's" not "that is."
+
+AVOID — these make it sound like a script:
+- Starting every paragraph the same way
+- Perfect parallel structure (real speech isn't symmetric)
+- Overly clean transitions ("Moving on to..." / "Next up..." / "Let's turn to...")
+- Formal topic sentences followed by supporting evidence (that's essay structure, not speech)
+- Wrapping every point with a neat takeaway
 
 SKIP: Markdown formatting, links, emoji, reference markers, story numbers, status labels, confidence scores, Validates/Rejects framework labels (but include the reasoning).
 
@@ -448,7 +464,8 @@ NUMBERS — THIS IS CRITICAL FOR NATURAL SPEECH:
 
 RULES:
 - Do NOT add information not in the source
-- Do NOT hallucinate data
+- Do NOT hallucinate data, quotes, or attributions
+- Do NOT invent quotes and attribute them to people
 - Expand ALL abbreviations (YoY → "year over year", ETF → "E.T.F.", Q3 → "third quarter")
 - Spell out ticker symbols (NVDA → "NVIDIA", MSTR → "MicroStrategy")
 
@@ -456,22 +473,22 @@ Return ONLY the spoken script for this section. No meta-commentary, no [brackete
 
 /** Per-section user prompts — tailored instructions for what to emphasize */
 const SECTION_INSTRUCTIONS: Record<string, string> = {
-  'intro': 'Write a podcast opening. Read the epigraph/daily quote EXACTLY as provided — do NOT substitute a different quote. Then give a 2-3 sentence hook about the day\'s biggest story based on the lede. Keep it punchy — this sets the tone.',
-  'The Dashboard': 'Convert this dashboard commentary into a quick spoken market check-in. Cover equities, crypto, commodities, and rates. Focus on the narrative and analysis, not raw numbers. Use transitions between asset classes.',
-  'The Take': 'Convert this editorial synthesis into spoken form. This is the heart of the brief — the big picture argument. Give it full treatment, don\'t compress.',
-  'The Model': 'Explain this mental model naturally, including the source, the framework, and how it applies to today\'s markets. Make it feel like a teaching moment.',
-  'The Big Stories': 'Cover EVERY story individually. Each one gets: the headline, the context, the implications, and what to watch. Do NOT skip or lump stories together. This is the longest section — give each story the depth it deserves.',
-  "Tomorrow's Headlines": 'Cover EVERY headline individually. For each: what happened, what it means, and the forward signal. Do NOT lump them together.',
-  'The Watchlist': 'Cover EVERY watchlist item. For each: the asset, the thesis, key levels, and what would change the view. Include the reasoning behind each position.',
-  'Discovery': 'Mention each recommended read/listen with why it matters.',
+  'intro': 'Write a short podcast opening. Say "Welcome to The Daily Brief" and the date naturally. Then give a 2-3 sentence hook about the day\'s biggest story based on the lede. Keep it punchy — this sets the energy for the whole episode. Do NOT include any quotes or epigraphs — that will be added separately.',
+  'The Dashboard': 'Start with a brief intro like "Let\'s check the dashboard" or "Here\'s where things stand." Convert this dashboard commentary into a quick spoken market check-in. Weave equities, crypto, commodities, and rates into a narrative — don\'t just read each one in sequence. What\'s the story the numbers are telling today?',
+  'The Take': 'Introduce this with something like "Alright, the Take" or "Here\'s what I think is the biggest thing happening right now." This is the heart of the brief — the big picture argument. Give it full treatment, don\'t compress. Let the argument build naturally, like you\'re working through it in real time.',
+  'The Model': 'Introduce this section — something like "Today\'s mental model..." or "Here\'s something worth adding to your toolkit." Explain the model naturally, including the source, the framework, and how it applies to today\'s markets. Make it feel like a genuine teaching moment, not a textbook entry.',
+  'The Big Stories': 'Introduce with something like "Let\'s run through the big stories." Cover EVERY story individually. Each one gets the headline, the context, the implications, and what to watch. Don\'t just list them — react to them, connect them where relevant, flag which ones you think matter most.',
+  "Tomorrow's Headlines": 'Introduce this — "Here\'s what we\'re watching for tomorrow" or similar. Cover EVERY headline individually. For each: what happened, what it means, and the forward signal. Thread them together where the stories connect.',
+  'The Watchlist': 'Introduce with something like "Alright, the Watchlist" or "Let\'s talk positioning." Cover EVERY watchlist item. For each: the asset, the thesis, key levels, and what would change the view. This should sound like you\'re talking through your own book, not reading a spreadsheet.',
+  'Discovery': 'Introduce this — "A couple things worth reading this weekend" or similar. Mention each recommended read/listen with genuine enthusiasm about why it matters. Sell the listener on actually checking these out.',
 
   // The Six sub-sections — each gets its own API call to prevent compression
-  'The Six: Markets & Macro': 'Convert EVERY bullet point in this markets & macro section into spoken analysis. Cover each one individually with its full context and implications. Do NOT skip any.',
-  'The Six: Crypto': 'Convert EVERY crypto bullet into spoken analysis. Each gets its full explanation — the data, the thesis, and the "so what." Do NOT skip any.',
-  'The Six: AI & Tech': 'Convert EVERY AI & tech bullet into spoken analysis. Cover the companies, the numbers, and why each matters. Do NOT skip any.',
-  'The Six: Geopolitics': 'Convert EVERY geopolitics bullet into spoken analysis. Cover the developments, the strategic context, and the implications. Do NOT skip any.',
-  'The Six: Deep Read / Listen': 'Mention each recommended read or listen with a brief explanation of why it matters and what the reader will get from it.',
-  'The Six: Inner Game': 'Read this reflective/philosophical section naturally and warmly. Include the quote, the story or teaching, and the practical action. This is the personal, human moment in the brief — give it space.',
+  'The Six: Markets & Macro': 'This is the Markets & Macro section of The Six. Convert EVERY bullet point into spoken analysis. Don\'t just read them in order — weave a narrative. What\'s the thread connecting these stories? React to the surprising ones.',
+  'The Six: Crypto': 'This is the Crypto section of The Six. Convert EVERY bullet into spoken analysis. Each gets its full explanation — the data, the thesis, and the "so what." Connect the dots between different crypto stories where they relate.',
+  'The Six: AI & Tech': 'This is the AI & Tech section of The Six. Convert EVERY bullet into spoken analysis. Cover the companies, the numbers, and why each matters. Get excited about the genuinely exciting stuff — your enthusiasm should be real, not performed.',
+  'The Six: Geopolitics': 'This is the Geopolitics section of The Six. Convert EVERY bullet into spoken analysis. Cover the developments, the strategic context, and the implications. Help the listener understand why each one matters for markets specifically.',
+  'The Six: Deep Read / Listen': 'Introduce this with something like "A couple things worth your time this week" or "Some reads and listens I wanted to flag." Mention each recommended read or listen with genuine enthusiasm about why it matters and what the listener will get from it.',
+  'The Six: Inner Game': 'Introduce this warmly — "And finally, the Inner Game" or "Let\'s slow down for a second." Read this reflective section naturally and warmly. Include the quote, the story or teaching, and the practical action. This is the personal, human moment in the brief — let it breathe. Don\'t rush it.',
 };
 
 /** Retry an async fn with exponential backoff on rate-limit (429) and server errors (5xx). */
@@ -543,11 +560,14 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
   // Build all section tasks: intro + each content section
   const tasks: { index: number; name: string; content: string }[] = [];
 
+  // Intro: hard-inject the epigraph verbatim so GPT-4o can't hallucinate a different quote.
+  // GPT-4o only writes the hook — the epigraph is prepended after.
   tasks.push({
     index: 0,
     name: 'intro',
-    content: `DATE: ${parsed.displayDate}\nEPIGRAPH: ${epigraph}\nLEDE: ${parsed.lede}`,
-  });
+    content: `DATE: ${parsed.displayDate}\nLEDE: ${parsed.lede}`,
+    _epigraph: epigraph, // carried through for post-processing
+  } as any);
 
   for (let i = 0; i < parsed.sections.length; i++) {
     const sec = parsed.sections[i]!;
@@ -580,6 +600,14 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
 
     results.sort((a, b) => a.index - b.index);
     const scriptParts = results.map(r => r.script);
+
+    // Hard-inject the epigraph into the intro (index 0) so it's never hallucinated
+    if (epigraph && scriptParts[0]) {
+      // Strip any markdown formatting from epigraph for clean spoken form
+      const cleanEpigraph = epigraph.replace(/\*+/g, '').replace(/[_~`]/g, '').trim();
+      scriptParts[0] = scriptParts[0] + `\n\nToday's quote: ${cleanEpigraph}`;
+    }
+
     const totalChars = scriptParts.reduce((sum, s) => sum + s.length, 0);
     console.log(`[audio] Total script: ${totalChars} chars across ${scriptParts.length} sections`);
     return scriptParts.join('\n\n');
@@ -596,6 +624,12 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
       console.log(`[audio]   → ${script.length} chars`);
       // Small delay between sequential calls
       await new Promise(r => setTimeout(r, 300));
+    }
+
+    // Hard-inject epigraph into intro (sequential path)
+    if (epigraph && scriptParts[0]) {
+      const cleanEpigraph = epigraph.replace(/\*+/g, '').replace(/[_~`]/g, '').trim();
+      scriptParts[0] = scriptParts[0] + `\n\nToday's quote: ${cleanEpigraph}`;
     }
 
     const totalChars = scriptParts.reduce((sum, s) => sum + s.length, 0);
