@@ -67,11 +67,11 @@ export default function RootLayout({
       <body className={`${inter.className} h-full bg-neutral-25 text-neutral-800 antialiased`}>
         <ThemeProvider>
           <div className="flex min-h-full flex-col">
-            <header className="sticky top-0 z-[70] px-4 py-3 bg-blue-600 dark:bg-[var(--espresso-accent)] text-white dark:text-[var(--espresso-cta-text)] transition-colors duration-300">
+            <header className="sticky top-0 z-[70] px-4 py-3 bg-blue-600 dark:bg-[var(--espresso-bg-dark)] text-white dark:text-[var(--espresso-h1)] transition-colors duration-300 dark:border-b dark:border-[var(--espresso-accent)]/30">
               <div className="flex justify-between items-center flex-wrap gap-2">
                 <Link href="/" className="flex flex-col min-w-0 shrink">
-                  <h1 className="text-lg sm:text-xl font-bold leading-tight truncate">Cosmic Trex</h1>
-                  <span className="text-[10px] sm:text-xs opacity-80 leading-tight hidden sm:block">Where ancient wisdom meets the cutting edge</span>
+                  <h1 className="text-lg sm:text-xl font-bold leading-tight truncate dark:text-[var(--espresso-accent)]">Cosmic Trex</h1>
+                  <span className="text-[10px] sm:text-xs opacity-80 leading-tight hidden sm:block dark:text-[var(--espresso-body)]">Where ancient wisdom meets the cutting edge</span>
                 </Link>
                 <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                   <ThemeToggle />
