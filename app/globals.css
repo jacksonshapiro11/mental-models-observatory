@@ -1088,15 +1088,30 @@
     }
 }
 
-/* Ensure Home button is black in dark mode */
-.dark header a[href="/"],
-.dark nav a[href="/"] {
+/* DARK MODE - Site header (layout.tsx) */
+.dark .site-header {
+  background-color: var(--espresso-bg-dark) !important;
+  color: var(--espresso-h1) !important;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.dark .site-header h1 {
+  color: var(--espresso-accent) !important;
+}
+
+.dark .site-header span {
+  color: var(--espresso-body) !important;
+}
+
+/* Ensure nav button-style links (rounded-lg) are black in dark mode */
+.dark header a.rounded-lg,
+.dark nav a.rounded-lg {
   background-color: #000000 !important;
   color: #ffffff !important;
 }
 
-.dark header a[href="/"]:hover,
-.dark nav a[href="/"]:hover {
+.dark header a.rounded-lg:hover,
+.dark nav a.rounded-lg:hover {
   background-color: #1a1a1a !important;
 }
 
