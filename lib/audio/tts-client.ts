@@ -134,6 +134,9 @@ export interface GenerateFullAudioOptions extends TTSOptions {
 
 /**
  * Generate audio for a full brief text, handling chunking and concatenation.
+ *
+ * TTS chunks run in parallel (up to `concurrency` at a time) to stay within
+ * Vercel's 300-second function limit. Results are reassembled in order.
  */
 export async function generateFullAudio(
   provider: TTSProvider,
@@ -141,15 +144,42 @@ export async function generateFullAudio(
   options?: GenerateFullAudioOptions
 ): Promise<{ audio: Buffer; chunks: number; characterCount: number }> {
   const chunks = chunkText(text, provider.maxCharsPerRequest);
-  const audioBuffers: Buffer[] = [];
+  const concurrency = (options as any)?.concurrency ?? 5;
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i]!;
-    const buffer = await provider.generateAudio(chunk, options);
-    audioBuffers.push(buffer);
-    options?.onProgress?.(i + 1, chunks.length);
+  // Launch all TTS requests in parallel, throttled by concurrency limit
+  let completed = 0;
+  const semaphore = { active: 0, queue: [] as (() => void)[] };
+
+  function acquire(): Promise<void> {
+    if (semaphore.active < concurrency) {
+      semaphore.active++;
+      return Promise.resolve();
+    }
+    return new Promise<void>(resolve => semaphore.queue.push(resolve));
   }
 
+  function release(): void {
+    const next = semaphore.queue.shift();
+    if (next) {
+      next();
+    } else {
+      semaphore.active--;
+    }
+  }
+
+  const promises = chunks.map(async (chunk, i) => {
+    await acquire();
+    try {
+      const buffer = await provider.generateAudio(chunk, options);
+      completed++;
+      options?.onProgress?.(completed, chunks.length);
+      return buffer;
+    } finally {
+      release();
+    }
+  });
+
+  const audioBuffers = await Promise.all(promises);
   const audio = concatenateMP3Buffers(audioBuffers);
   const characterCount = chunks.reduce((sum, c) => sum + c.length, 0);
 

@@ -506,39 +506,46 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
   }
 }
 
-/** Rewrite the full brief as a podcast script, processing each section individually */
+/** Rewrite the full brief as a podcast script, processing sections in parallel */
 async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string, epigraph: string): Promise<string> {
   const client = new OpenAI({ apiKey: openaiApiKey });
 
-  const scriptParts: string[] = [];
-  let totalChars = 0;
+  // Build all section tasks: intro + each content section
+  const tasks: { index: number; name: string; content: string }[] = [];
 
-  // 1. Generate intro (date + epigraph + hook)
-  console.log('[audio] Section 1: Intro...');
-  const introContent = `DATE: ${parsed.displayDate}\nEPIGRAPH: ${epigraph}\nLEDE: ${parsed.lede}`;
-  const intro = await rewriteSection(client, 'intro', introContent);
-  scriptParts.push(intro);
-  totalChars += intro.length;
-  console.log(`[audio]   → ${intro.length} chars`);
+  // Index 0 = intro
+  tasks.push({
+    index: 0,
+    name: 'intro',
+    content: `DATE: ${parsed.displayDate}\nEPIGRAPH: ${epigraph}\nLEDE: ${parsed.lede}`,
+  });
 
-  // 2. Process each section individually
+  // Index 1..N = content sections
   for (let i = 0; i < parsed.sections.length; i++) {
     const sec = parsed.sections[i]!;
-    console.log(`[audio] Section ${i + 2}: ${sec.name}...`);
-
-    const sectionScript = await rewriteSection(client, sec.name, sec.content);
-    scriptParts.push(sectionScript);
-    totalChars += sectionScript.length;
-    console.log(`[audio]   → ${sectionScript.length} chars`);
-
-    // Small delay to avoid rate limits
-    await new Promise(r => setTimeout(r, 200));
+    tasks.push({ index: i + 1, name: sec.name, content: sec.content });
   }
+
+  console.log(`[audio] Rewriting ${tasks.length} sections in parallel via GPT-4o...`);
+
+  // Run all sections in parallel (GPT-4o handles concurrent requests well)
+  const results = await Promise.all(
+    tasks.map(async (task) => {
+      console.log(`[audio] Section ${task.index + 1}: ${task.name}...`);
+      const script = await rewriteSection(client, task.name, task.content);
+      console.log(`[audio]   → ${script.length} chars`);
+      return { index: task.index, script };
+    })
+  );
+
+  // Reassemble in order
+  results.sort((a, b) => a.index - b.index);
+  const scriptParts = results.map(r => r.script);
+  const totalChars = scriptParts.reduce((sum, s) => sum + s.length, 0);
 
   console.log(`[audio] Total script: ${totalChars} chars across ${scriptParts.length} sections`);
 
-  const fullScript = scriptParts.join('\n\n');
-  return fullScript;
+  return scriptParts.join('\n\n');
 }
 
 // ─── Main preprocessor ─────────────────────────────────────────────────────
