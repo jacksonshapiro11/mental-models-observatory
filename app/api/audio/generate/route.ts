@@ -13,6 +13,9 @@
  * Triggered by Vercel cron or manual POST.
  */
 
+// Allow up to 5 minutes for audio generation (GPT-4o script + TTS + upload)
+export const maxDuration = 300;
+
 import fs from 'fs';
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
