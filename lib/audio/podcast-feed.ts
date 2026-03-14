@@ -130,7 +130,7 @@ const DEFAULT_CONFIG: FeedConfig = {
   feedUrl: 'https://www.cosmictrex.com/api/podcast/feed',
   coverImageUrl: 'https://www.cosmictrex.com/podcast-cover.jpg',
   author: 'Cosmic Trex',
-  email: 'jacksonshapiro11@gmail.com',
+  email: 'cosmictrex11@gmail.com',
   language: 'en-us',
   category: 'Business',
   subcategory: 'Investing',
