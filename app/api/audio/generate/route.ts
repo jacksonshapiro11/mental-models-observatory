@@ -35,17 +35,26 @@ const CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates');
 
 function isAuthorized(req: NextRequest): boolean {
   const snapshotSecret = process.env.SNAPSHOT_SECRET;
-  if (!snapshotSecret) return false;
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (!snapshotSecret && !cronSecret) {
+    console.error('[audio] Neither SNAPSHOT_SECRET nor CRON_SECRET is set');
+    return false;
+  }
 
   // Check query param or header (manual triggers + publish script)
   const secret = req.headers.get('x-snapshot-secret') || req.nextUrl.searchParams.get('secret');
-  if (secret === snapshotSecret) return true;
+  if (secret && snapshotSecret && secret === snapshotSecret) return true;
 
-  // Check Vercel cron header (uses CRON_SECRET env var — set this to the same value as SNAPSHOT_SECRET)
+  // Check Vercel cron header — accepts either CRON_SECRET or SNAPSHOT_SECRET
   const authHeader = req.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET || snapshotSecret;
-  if (authHeader === `Bearer ${cronSecret}`) return true;
+  if (authHeader) {
+    const token = authHeader.replace('Bearer ', '');
+    if (cronSecret && token === cronSecret) return true;
+    if (snapshotSecret && token === snapshotSecret) return true;
+  }
 
+  console.warn(`[audio] Auth failed. Has SNAPSHOT_SECRET: ${!!snapshotSecret}, Has CRON_SECRET: ${!!cronSecret}, Has auth header: ${!!authHeader}, Has secret param: ${!!secret}`);
   return false;
 }
 
@@ -209,9 +218,20 @@ export async function POST(req: NextRequest) {
     await writeEpisodeMetadata(episode);
     console.log(`[audio] Metadata stored for ${brief.date}`);
 
+    // 9. Verify episode is in RSS feed
+    let feedVerified = false;
+    try {
+      const storedEpisode = await readEpisodeMetadata(brief.date);
+      feedVerified = !!storedEpisode && storedEpisode.audioUrl === blob.url;
+      console.log(`[audio] RSS feed verification: ${feedVerified ? 'PASS' : 'FAIL'}`);
+    } catch (verifyErr) {
+      console.warn(`[audio] RSS feed verification error: ${verifyErr}`);
+    }
+
     return NextResponse.json({
       status: 'success',
       episode,
+      feedVerified,
       stats: {
         characterCount,
         chunks,
