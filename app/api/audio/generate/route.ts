@@ -60,9 +60,10 @@ function isAuthorized(req: NextRequest): boolean {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function extractDescription(brief: { lede: string }): string {
-  // Strip markdown from lede for podcast episode description
-  return brief.lede
+function extractDescription(brief: { lede: string; orientation?: string }): string {
+  // Strip markdown from lede for podcast episode description, with fallback to orientation
+  const source = brief.lede || brief.orientation || '';
+  return source
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/\*(.+?)\*/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
@@ -201,8 +202,11 @@ export async function POST(req: NextRequest) {
     const estimatedDuration = Math.round(audio.length / (128000 / 8));
 
     // 8. Generate episode title + store metadata in Redis
+    // Use lede, orientation, or raw markdown start as fallback for title generation
     const openaiKey = process.env.OPENAI_API_KEY!;
-    const episodeTitle = await generateEpisodeTitle(brief.lede, brief.displayDate, openaiKey);
+    const titleInput = brief.lede || brief.orientation || (rawMarkdown ? rawMarkdown.slice(0, 500) : '');
+    console.log(`[audio] Title input source: ${brief.lede ? 'lede' : brief.orientation ? 'orientation' : 'rawMarkdown'} (${titleInput.length} chars)`);
+    const episodeTitle = await generateEpisodeTitle(titleInput, brief.displayDate, openaiKey);
     console.log(`[audio] Episode title: ${episodeTitle}`);
 
     const episode = {
