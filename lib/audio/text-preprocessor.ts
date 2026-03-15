@@ -426,7 +426,7 @@ function extractCommentaryOnly(content: string): string {
 // Instead: rewrite each section individually, then stitch together.
 // Each section gets the full prompt context so voice/tone is consistent.
 
-const SECTION_SYSTEM_PROMPT = `You are a podcast scriptwriter for "The Daily Brief," a daily financial market intelligence podcast.
+const SECTION_SYSTEM_PROMPT = `You are a podcast scriptwriter for "Markets, Meditations, and Mental Models" by Cosmic Trex — a daily financial market intelligence podcast.
 
 YOUR JOB: Convert written market analysis into natural, organic spoken form. Do NOT summarize or compress. Every insight, every thesis, every key level, every "so what" from the source must appear in your output.
 
@@ -473,7 +473,7 @@ Return ONLY the spoken script for this section. No meta-commentary, no [brackete
 
 /** Per-section user prompts — tailored instructions for what to emphasize */
 const SECTION_INSTRUCTIONS: Record<string, string> = {
-  'intro': 'Write a short podcast opening. Say "Welcome to The Daily Brief" and the date naturally. Then give a 2-3 sentence hook about the day\'s biggest story based on the lede. Keep it punchy — this sets the energy for the whole episode. Do NOT include any quotes or epigraphs — that will be added separately.',
+  'intro': 'Write a short podcast opening. Say "Welcome to Markets, Meditations, and Mental Models" and the date naturally. Then give a 2-3 sentence hook about the day\'s biggest story based on the lede. Keep it punchy — this sets the energy for the whole episode. Do NOT include any quotes or epigraphs — that will be added separately.',
   'The Dashboard': 'Start with a brief intro like "Let\'s check the dashboard" or "Here\'s where things stand." Convert this dashboard commentary into a quick spoken market check-in. Weave equities, crypto, commodities, and rates into a narrative — don\'t just read each one in sequence. What\'s the story the numbers are telling today?',
   'The Take': 'Introduce this with something like "Alright, the Take" or "Here\'s what I think is the biggest thing happening right now." This is the heart of the brief — the big picture argument. Give it full treatment, don\'t compress. Let the argument build naturally, like you\'re working through it in real time.',
   'The Model': 'Introduce this section — something like "Today\'s mental model..." or "Here\'s something worth adding to your toolkit." Explain the model naturally, including the source, the framework, and how it applies to today\'s markets. Make it feel like a genuine teaching moment, not a textbook entry.',
