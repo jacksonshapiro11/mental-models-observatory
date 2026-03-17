@@ -37,12 +37,44 @@ const SECTION_DEFS: { marker: string; id: string; type: BriefSection['type']; la
   { marker: "# ▸ FULL REFERENCE: TOMORROW'S HEADLINES", id: 'ref-tomorrows', type: 'ref-tomorrows', label: 'Ref: Tomorrow', shortLabel: 'Ref:Tmrw' },
 ];
 
+// ─── Flexible section marker matching ─────────────────────────────────────────
+// The Brief Writer occasionally drifts on exact markers (e.g. "# ▸ BIG STORIES"
+// instead of "# ▸ THE BIG STORIES", or "## Full Reference:" instead of
+// "# ▸ FULL REFERENCE:"). This function finds section starts resiliently.
+
+function findSectionStart(markdown: string, marker: string): number {
+  // 1. Exact match (fastest path)
+  let idx = markdown.indexOf(marker);
+  if (idx !== -1) return idx;
+
+  // 2. Try without "THE " (handles "# ▸ BIG STORIES" vs "# ▸ THE BIG STORIES")
+  const withoutThe = marker.replace(/(#\s*▸\s*)THE\s+/i, '$1');
+  if (withoutThe !== marker) {
+    idx = markdown.indexOf(withoutThe);
+    if (idx !== -1) return idx;
+  }
+
+  // 3. Try "## " prefix instead of "# ▸ " with title case (handles "## Full Reference: Big Stories")
+  const sectionName = marker.replace(/^#\s*▸\s*(THE\s+)?/i, '').trim();
+  const lines = markdown.split('\n');
+  let charIdx = 0;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^#{1,3}\s/.test(trimmed) && trimmed.toUpperCase().includes(sectionName.toUpperCase())) {
+      return charIdx + (line.length - line.trimStart().length);
+    }
+    charIdx += line.length + 1;
+  }
+
+  return -1;
+}
+
 // ─── Parser ──────────────────────────────────────────────────────────────────
 
 export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief {
   const lines = markdown.split('\n');
 
-  // Extract epigraph (first italic line after # THE DAILY BRIEF)
+  // Extract epigraph (first italic line after brief title)
   let epigraph = '';
   let displayDate = '';
   let lede = '';
@@ -88,7 +120,7 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
   // The dashboard component fetches its own data from the API —
   // it doesn't need markdown content. This ensures the dashboard
   // renders even when the brief markdown doesn't include a dashboard section.
-  const hasDashboardInMarkdown = markdown.includes('# ▸ THE DASHBOARD');
+  const hasDashboardInMarkdown = findSectionStart(markdown, '# ▸ THE DASHBOARD') !== -1;
   if (!hasDashboardInMarkdown) {
     sections.push({
       id: 'dashboard',
@@ -101,7 +133,7 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
 
   for (let si = 0; si < SECTION_DEFS.length; si++) {
     const def = SECTION_DEFS[si]!;
-    const startIdx = markdown.indexOf(def.marker);
+    const startIdx = findSectionStart(markdown, def.marker);
     if (startIdx === -1) continue;
 
     // Content starts after the marker line
@@ -112,7 +144,7 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
     let endIdx = markdown.length;
     for (let ni = si + 1; ni < SECTION_DEFS.length; ni++) {
       const nextDef = SECTION_DEFS[ni]!;
-      const nextIdx = markdown.indexOf(nextDef.marker);
+      const nextIdx = findSectionStart(markdown, nextDef.marker);
       if (nextIdx !== -1 && nextIdx > startIdx) {
         endIdx = nextIdx;
         break;

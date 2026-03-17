@@ -142,7 +142,8 @@ dist
 
 # Gatsby files
 .cache/
-public
+# NOTE: bare 'public' rule removed — it was blocking public/audio/ from being committed.
+# public/audio/ must be trackable for the audio pipeline.
 
 # Storybook build outputs
 .out

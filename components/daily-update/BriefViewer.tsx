@@ -399,7 +399,7 @@ function TomorrowsHeadlinesSection({ content }: { content: string }) {
 
 function WatchlistSection({ content }: { content: string }) {
   const blocks = parseBlocks(content);
-  const items: { content: string }[] = [];
+  const items: { content: string; isUpdate?: boolean }[] = [];
   let current = '';
   let skippedFirstItalic = false;
 
@@ -407,7 +407,10 @@ function WatchlistSection({ content }: { content: string }) {
     if (block.type === 'italic' && !skippedFirstItalic) {
       skippedFirstItalic = true; continue;
     }
-    if (block.type === 'paragraph' && block.content.startsWith('**') && block.content.includes('—')) {
+    // New item starts with a heading (### Ticker) or a bold paragraph with em-dash (** Ticker — )
+    const isNewItem = (block.type === 'h3') ||
+      (block.type === 'paragraph' && block.content.startsWith('**') && block.content.includes('—'));
+    if (isNewItem) {
       if (current) items.push({ content: current.trim() });
       current = block.content + '\n';
     } else {
@@ -416,34 +419,114 @@ function WatchlistSection({ content }: { content: string }) {
   }
   if (current) items.push({ content: current.trim() });
 
+  // Post-process: split "Updates" blocks that have multiple tickers jammed into one paragraph.
+  // Pattern: **Updates:** **TICKER (~$XX)** — text. **TICKER2 (~$YY)** — text.
+  const processedItems: { content: string; isUpdate?: boolean }[] = [];
+  for (const item of items) {
+    const firstLine = item.content.split('\n')[0] ?? '';
+    if (firstLine.startsWith('**Updates') || firstLine.startsWith('**Update')) {
+      // Split on bold ticker patterns: **TICKER (~$XX)** — or **TICKER** —
+      const text = item.content.replace(/^\*\*Updates?:?\*\*\s*/i, '');
+      // Split where a new bold ticker starts (look for **UPPERCASE at word boundary)
+      const tickerParts = text.split(/(?=\*\*[A-Z]{2,}[\s(])/).filter(s => s.trim());
+      if (tickerParts.length > 1) {
+        for (const part of tickerParts) {
+          processedItems.push({ content: part.trim(), isUpdate: true });
+        }
+      } else {
+        processedItems.push({ content: item.content, isUpdate: true });
+      }
+    } else {
+      processedItems.push(item);
+    }
+  }
+
+  // Label detection helper — matches both **Label:** (bold) and *Label:* (italic) formats
+  const labelPattern = /^(?:\*{1,2})(Framework error|Data signal|Signal|Upside|Downside|Upside\/downside|Validates|Rejects)(?::?\*{1,2})/i;
+
+  // If a line contains multiple labels jammed together (no line breaks), split them out
+  function splitLabels(line: string): string[] {
+    // Match positions where a label starts mid-line (preceded by content)
+    const splitRegex = /\s+(?=\*{1,2}(?:Framework error|Data signal|Signal|Upside|Downside|Upside\/downside|Validates|Rejects):?\*{0,2})/i;
+    const parts = line.split(splitRegex).filter(Boolean);
+    return parts.length > 1 ? parts : [line];
+  }
+
+  // Check if any items are updates (for section header)
+  const hasUpdates = processedItems.some(item => item.isUpdate);
+  const updateItems = processedItems.filter(item => item.isUpdate);
+  const newItems = processedItems.filter(item => !item.isUpdate);
+
   return (
     <div className="space-y-5">
-      {items.map((item, i) => (
-        <div key={i} className="p-5 rounded-xl bg-white dark:bg-[var(--espresso-bg-medium)]/40 border border-neutral-200 dark:border-[var(--espresso-accent)]/10">
-          {item.content.split('\n').filter(Boolean).map((line, j) => {
-            const isUpside = line.startsWith('**Upside:');
-            const isDownside = line.startsWith('**Downside:');
-            const isValidates = line.startsWith('**Validates:');
-            const isRejects = line.startsWith('**Rejects:');
-            const isDateNote = /^\*(?:Feb|Mar|Jan|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s/.test(line);
-            const isTitle = j === 0;
-
+      {/* Updates section — compact cards with "update" styling */}
+      {hasUpdates && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-amber-700 dark:text-[var(--espresso-accent)] uppercase tracking-wider flex items-center gap-2">
+            <span className="w-3 h-px bg-amber-500 dark:bg-[var(--espresso-accent)]" />
+            Updates
+          </h3>
+          {updateItems.map((item, i) => {
+            const lines = item.content.split('\n').filter(Boolean);
             return (
-              <p key={j} className={`leading-[1.7] mb-2 ${
-                isTitle ? 'text-lg font-bold text-neutral-900 dark:text-[var(--espresso-h1)] mb-3' :
-                isUpside ? 'text-[15px] text-green-600 dark:text-green-400' :
-                isDownside ? 'text-[15px] text-red-500 dark:text-red-400' :
-                isValidates ? 'text-[14px] text-neutral-500 dark:text-neutral-400' :
-                isRejects ? 'text-[14px] text-neutral-500 dark:text-neutral-400' :
-                isDateNote ? 'text-[14px] text-amber-600 dark:text-[var(--espresso-accent)] italic mt-2' :
-                'text-base text-neutral-600 dark:text-[var(--espresso-body)]'
-              }`}>
-                <RichText text={line} />
-              </p>
+              <div key={`update-${i}`} className="p-4 rounded-lg bg-amber-50/50 dark:bg-[var(--espresso-accent)]/5 border border-amber-200/60 dark:border-[var(--espresso-accent)]/10">
+                {lines.map((line, j) => (
+                  <p key={j} className="text-[15px] text-neutral-700 dark:text-[var(--espresso-body)] leading-[1.7]">
+                    <RichText text={line} />
+                  </p>
+                ))}
+              </div>
             );
           })}
         </div>
-      ))}
+      )}
+
+      {/* New positions — full cards */}
+      {newItems.length > 0 && hasUpdates && (
+        <h3 className="text-sm font-semibold text-amber-700 dark:text-[var(--espresso-accent)] uppercase tracking-wider flex items-center gap-2 mt-4">
+          <span className="w-3 h-px bg-amber-500 dark:bg-[var(--espresso-accent)]" />
+          New Positions
+        </h3>
+      )}
+      {newItems.map((item, i) => {
+        // Expand all lines, splitting any that have multiple labels jammed together
+        const rawLines = item.content.split('\n').filter(Boolean);
+        const lines: string[] = [];
+        for (const line of rawLines) {
+          lines.push(...splitLabels(line));
+        }
+
+        return (
+          <div key={i} className="p-5 rounded-xl bg-white dark:bg-[var(--espresso-bg-medium)]/40 border border-neutral-200 dark:border-[var(--espresso-accent)]/10">
+            {lines.map((line, j) => {
+              const labelMatch = line.match(labelPattern);
+              const labelType = labelMatch ? (labelMatch[1] ?? '').toLowerCase() : null;
+              const isUpside = labelType === 'upside' || labelType === 'upside/downside';
+              const isDownside = labelType === 'downside';
+              const isValidates = labelType === 'validates';
+              const isRejects = labelType === 'rejects';
+              const isSignal = labelType === 'signal' || labelType === 'data signal';
+              const isDateNote = /^\*(?:Feb|Mar|Jan|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s/.test(line);
+              const isTitle = j === 0;
+
+              return (
+                <p key={j} className={`leading-[1.7] mb-2 ${
+                  isTitle ? 'text-lg font-bold text-neutral-900 dark:text-[var(--espresso-h1)] mb-3' :
+                  isUpside ? 'text-[15px] text-green-600 dark:text-green-400' :
+                  isDownside ? 'text-[15px] text-red-500 dark:text-red-400' :
+                  isValidates ? 'text-[14px] text-neutral-500 dark:text-neutral-400' :
+                  isRejects ? 'text-[14px] text-neutral-500 dark:text-neutral-400' :
+                  isSignal ? 'text-[15px] text-blue-600 dark:text-blue-400' :
+                  isDateNote ? 'text-[14px] text-amber-600 dark:text-[var(--espresso-accent)] italic mt-2' :
+                  'text-base text-neutral-600 dark:text-[var(--espresso-body)]'
+                }`}>
+                  <RichText text={line} />
+                </p>
+              );
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -726,7 +809,7 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
       <div className="max-w-4xl mx-auto px-4 pt-8 sm:pt-14 pb-6 sm:pb-8">
         <div className="text-center mb-8 sm:mb-12">
           <div className="text-xs font-semibold text-amber-600 dark:text-[var(--espresso-accent)] uppercase tracking-[0.2em] mb-5">
-            The Daily Brief
+            Markets, Meditations & Mental Models
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-[var(--espresso-h1)] mb-5">
             {brief.displayDate}

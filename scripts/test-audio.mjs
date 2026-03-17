@@ -70,6 +70,35 @@ const ALL_MARKERS = [
   "# ▸ FULL REFERENCE: TOMORROW'S HEADLINES",
 ];
 
+/**
+ * Find a section marker flexibly — handles "# ▸ BIG STORIES" vs "# ▸ THE BIG STORIES" etc.
+ */
+function findMarkerIndex(text, marker) {
+  let idx = text.indexOf(marker);
+  if (idx !== -1) return idx;
+
+  // Try without "THE "
+  const withoutThe = marker.replace(/(#\s*▸\s*)THE\s+/i, '$1');
+  if (withoutThe !== marker) {
+    idx = text.indexOf(withoutThe);
+    if (idx !== -1) return idx;
+  }
+
+  // Try line-by-line case-insensitive match on section name
+  const sectionName = marker.replace(/^#\s*▸\s*(THE\s+)?/i, '').trim();
+  const lines = text.split('\n');
+  let charIdx = 0;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^#{1,3}\s/.test(trimmed) && trimmed.toUpperCase().includes(sectionName.toUpperCase())) {
+      return charIdx + (line.length - line.trimStart().length);
+    }
+    charIdx += line.length + 1;
+  }
+
+  return -1;
+}
+
 function parseBriefForAudio(brief) {
   const lines = brief.raw.split('\n');
 
@@ -115,7 +144,7 @@ function parseBriefForAudio(brief) {
 
   const sections = [];
   for (const sec of AUDIO_SECTIONS) {
-    const startIdx = brief.raw.indexOf(sec.marker);
+    const startIdx = findMarkerIndex(brief.raw, sec.marker);
     if (startIdx === -1) continue;
 
     const afterMarker = brief.raw.indexOf('\n', startIdx);
@@ -124,7 +153,7 @@ function parseBriefForAudio(brief) {
     let endIdx = brief.raw.length;
     for (const m of ALL_MARKERS) {
       if (m === sec.marker) continue;
-      const idx = brief.raw.indexOf(m);
+      const idx = findMarkerIndex(brief.raw, m);
       if (idx > startIdx && idx < endIdx) endIdx = idx;
     }
 

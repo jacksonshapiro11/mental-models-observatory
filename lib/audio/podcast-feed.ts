@@ -137,7 +137,7 @@ const DEFAULT_CONFIG: FeedConfig = {
   explicit: false,
 };
 
-function generateEpisodeXml(episode: EpisodeMetadata): string {
+function generateEpisodeXml(episode: EpisodeMetadata, coverImageUrl: string): string {
   const pubDate = toRfc2822Date(episode.date);
   const duration = formatDuration(episode.duration);
 
@@ -149,6 +149,7 @@ function generateEpisodeXml(episode: EpisodeMetadata): string {
       <pubDate>${pubDate}</pubDate>
       <itunes:duration>${duration}</itunes:duration>
       <itunes:episode>${parseInt(episode.date.replace(/-/g, ''), 10)}</itunes:episode>
+      <itunes:image href="${escapeXml(coverImageUrl)}" />
       <itunes:explicit>no</itunes:explicit>
     </item>`;
 }
@@ -164,7 +165,7 @@ export async function generatePodcastFeed(config?: Partial<FeedConfig>): Promise
     ? toRfc2822Date(episodes[0]!.date)
     : new Date().toUTCString();
 
-  const episodeXml = episodes.map(generateEpisodeXml).join('\n');
+  const episodeXml = episodes.map(ep => generateEpisodeXml(ep, cfg.coverImageUrl)).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"
