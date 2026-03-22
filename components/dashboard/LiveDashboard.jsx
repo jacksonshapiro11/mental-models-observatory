@@ -170,6 +170,25 @@ const styles = {
     borderTop: '1px solid #1e1e22',
     fontStyle: 'italic',
   },
+  tabBar: {
+    display: 'flex',
+    gap: '4px',
+  },
+  tab: (active) => ({
+    padding: '4px 12px',
+    fontSize: '10px',
+    fontWeight: 600,
+    letterSpacing: '1.5px',
+    textTransform: 'uppercase',
+    color: active ? '#e4e4e7' : '#52525b',
+    background: active ? '#1e1e22' : 'transparent',
+    border: '1px solid',
+    borderColor: active ? '#27272a' : 'transparent',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    fontFamily: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace",
+  }),
   errorBanner: {
     padding: '12px',
     background: '#1c1007',
@@ -293,6 +312,7 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
   const [lastFetch, setLastFetch] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('equities');
   const intervalRef = useRef(null);
 
   const fetchData = useCallback(async () => {
@@ -334,7 +354,14 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
-        <div style={styles.title}>▸ The Dashboard</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={styles.title}>▸ The Dashboard</div>
+          <div style={styles.tabBar}>
+            <button style={styles.tab(activeTab === 'equities')} onClick={() => setActiveTab('equities')}>Equities</button>
+            <button style={styles.tab(activeTab === 'crypto')} onClick={() => setActiveTab('crypto')}>Crypto</button>
+            <button style={styles.tab(activeTab === 'commodities')} onClick={() => setActiveTab('commodities')}>Commodities</button>
+          </div>
+        </div>
         <div style={styles.freshness}>
           <div style={styles.dot(status)} />
           <span>{status === 'live' ? 'Live' : status === 'stale' ? 'Stale' : 'Disconnected'}</span>
@@ -347,6 +374,9 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
           ⚠ Data may be delayed: {error}
         </div>
       )}
+
+      {/* ═══ EQUITIES TAB ═══ */}
+      {activeTab === 'equities' && <>
 
       {/* Futures (pre-market only) */}
       {meta.marketStatus === 'pre' && data.futures && (
@@ -418,6 +448,11 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
       {equityNotes && (
         <div style={styles.contextNote}>{equityNotes}</div>
       )}
+
+      </>}
+
+      {/* ═══ CRYPTO TAB ═══ */}
+      {activeTab === 'crypto' && <>
 
       {/* Crypto */}
       <div style={styles.sectionLabel}>Crypto</div>
@@ -565,6 +600,11 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
         </div>
       )}
 
+      </>}
+
+      {/* ═══ COMMODITIES TAB ═══ */}
+      {activeTab === 'commodities' && <>
+
       {/* Commodities & Rates */}
       <div style={styles.sectionLabel}>Commodities & Rates</div>
       <ScrollableTable>
@@ -628,6 +668,8 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
           )}
         </div>
       )}
+
+      </>}
 
       {/* Legacy single context notes (fallback) */}
       {contextNotes && !equityNotes && !cryptoNotes && !commodityNotes && (

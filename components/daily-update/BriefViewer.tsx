@@ -692,6 +692,8 @@ function SectionContent({ section }: { section: BriefSection }) {
     }
     case 'the-six': return <TheSixSection content={section.content} />;
     case 'the-take': return <TheTakeSection content={section.content} />;
+    case 'asset-spotlight': return <GenericSection content={section.content} />;
+    case 'inner-game': return <GenericSection content={section.content} />;
     case 'big-stories': return <BigStoriesSection content={section.content} />;
     case 'tomorrows-headlines': return <TomorrowsHeadlinesSection content={section.content} />;
     case 'watchlist': return <WatchlistSection content={section.content} />;
@@ -707,6 +709,8 @@ const SECTION_TITLES: Record<string, string> = {
   'dashboard': 'The Dashboard',
   'the-six': 'The Six',
   'the-take': 'The Take',
+  'asset-spotlight': 'Asset Spotlight',
+  'inner-game': 'Inner Game',
   'the-model': 'The Model',
   'big-stories': 'The Big Stories',
   'tomorrows-headlines': "Tomorrow's Headlines",
@@ -808,9 +812,13 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
       {/* Header */}
       <div className="max-w-4xl mx-auto px-4 pt-8 sm:pt-14 pb-6 sm:pb-8">
         <div className="text-center mb-8 sm:mb-12">
-          <div className="text-xs font-semibold text-amber-600 dark:text-[var(--espresso-accent)] uppercase tracking-[0.2em] mb-5">
+          <div className="text-lg sm:text-xl font-semibold text-amber-600 dark:text-[var(--espresso-accent)] uppercase tracking-[0.15em] mb-5">
             Markets, Meditations & Mental Models
           </div>
+
+          {/* Audio player — between header and date */}
+          <AudioPlayer date={brief.date} />
+
           <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-[var(--espresso-h1)] mb-5">
             {brief.displayDate}
           </h1>
@@ -829,46 +837,79 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
               <RichText text={brief.orientation} onAnchorClick={scrollToSection} />
             </p>
           )}
+
+          {/* Previous brief link */}
+          <p className="text-xl sm:text-2xl text-neutral-400 dark:text-neutral-500 mt-8">
+            Miss yesterday?{' '}
+            <a
+              href="/archive"
+              className="text-amber-600 dark:text-[var(--espresso-accent)] hover:underline font-semibold"
+            >
+              Find a previous brief →
+            </a>
+          </p>
         </div>
 
         <div className="h-px bg-gradient-to-r from-transparent via-amber-300/40 dark:via-[var(--espresso-accent)]/20 to-transparent" />
 
-        {/* Audio player */}
-        <AudioPlayer date={brief.date} />
+        {/* Act headers and sections */}
+        {(() => {
+          const ACT_HEADERS: Record<string, string> = {
+            'dashboard': 'Markets',
+            'inner-game': 'Meditations',
+            'the-model': 'Mental Models',
+          };
 
-        {/* Sections */}
-        {brief.sections.map((section, idx) => (
-          <React.Fragment key={section.id}>
-            <section
-              ref={(el) => { sectionRefs.current[section.id] = el; }}
-              className="py-14"
-              id={section.id}
-            >
-              {/* Section header — centered with decorative lines */}
-              <div className="mb-10 text-center">
-                <div className="flex items-center justify-center gap-4 mb-1">
-                  <span className="flex-1 max-w-[60px] h-px bg-amber-300/60 dark:bg-[var(--espresso-accent)]/25" />
-                  <h2 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-[var(--espresso-h1)] tracking-tight">
-                    {SECTION_TITLES[section.id] || section.label}
-                  </h2>
-                  <span className="flex-1 max-w-[60px] h-px bg-amber-300/60 dark:bg-[var(--espresso-accent)]/25" />
-                </div>
-              </div>
+          return (
+            <>
+              {brief.sections.map((section, idx) => (
+                <React.Fragment key={section.id}>
+                  {/* Inject act header before specific sections */}
+                  {ACT_HEADERS[section.id] && (
+                    <div className="pt-16 pb-6 flex flex-col items-center justify-center">
+                      <div className="flex items-center gap-5">
+                        <span className="w-12 h-px bg-amber-400/50 dark:bg-[var(--espresso-accent)]/30" />
+                        <div className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-[var(--espresso-accent)] uppercase tracking-[0.2em]">
+                          {ACT_HEADERS[section.id]}
+                        </div>
+                        <span className="w-12 h-px bg-amber-400/50 dark:bg-[var(--espresso-accent)]/30" />
+                      </div>
+                    </div>
+                  )}
 
-              {/* Section content — subtitle comes from the markdown itself */}
-              <SectionContent section={section} />
-            </section>
+                  <section
+                    ref={(el) => { sectionRefs.current[section.id] = el; }}
+                    className="py-14"
+                    id={section.id}
+                  >
+                    {/* Section header — centered with decorative lines */}
+                    <div className="mb-10 text-center">
+                      <div className="flex items-center justify-center gap-4 mb-1">
+                        <span className="flex-1 max-w-[60px] h-px bg-amber-300/60 dark:bg-[var(--espresso-accent)]/25" />
+                        <h2 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-[var(--espresso-h1)] tracking-tight">
+                          {SECTION_TITLES[section.id] || section.label}
+                        </h2>
+                        <span className="flex-1 max-w-[60px] h-px bg-amber-300/60 dark:bg-[var(--espresso-accent)]/25" />
+                      </div>
+                    </div>
 
-            {idx < brief.sections.length - 1 && (
-              <div className="h-px bg-gradient-to-r from-transparent via-amber-200/60 dark:via-[var(--espresso-accent)]/15 to-transparent" />
-            )}
-          </React.Fragment>
-        ))}
+                    {/* Section content — subtitle comes from the markdown itself */}
+                    <SectionContent section={section} />
+                  </section>
+
+                  {idx < brief.sections.length - 1 && (
+                    <div className="h-px bg-gradient-to-r from-transparent via-amber-200/60 dark:via-[var(--espresso-accent)]/15 to-transparent" />
+                  )}
+                </React.Fragment>
+              ))}
+            </>
+          );
+        })()}
 
         {/* Footer */}
         <div className="mt-16 pt-6 border-t border-neutral-200 dark:border-[var(--espresso-accent)]/10 text-center">
-          <div className="text-xs text-neutral-400 dark:text-neutral-500">
-            Mental Models Observatory — Daily Update
+          <div className="text-sm text-neutral-400 dark:text-neutral-500">
+            Markets, Meditations & Mental Models
           </div>
         </div>
       </div>

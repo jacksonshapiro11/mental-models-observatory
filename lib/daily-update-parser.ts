@@ -15,7 +15,7 @@ export interface DailyBrief {
 
 export interface BriefSection {
   id: string;
-  type: 'dashboard' | 'the-six' | 'the-take' | 'the-model' | 'big-stories' | 'tomorrows-headlines' | 'watchlist' | 'discovery' | 'worldview' | 'ref-big-stories' | 'ref-tomorrows';
+  type: 'dashboard' | 'the-six' | 'the-take' | 'asset-spotlight' | 'inner-game' | 'the-model' | 'discovery' | 'big-stories' | 'tomorrows-headlines' | 'watchlist' | 'worldview' | 'ref-big-stories' | 'ref-tomorrows';
   label: string;
   shortLabel: string;
   content: string;        // Raw markdown content of this section
@@ -27,11 +27,14 @@ const SECTION_DEFS: { marker: string; id: string; type: BriefSection['type']; la
   { marker: '# ▸ THE DASHBOARD', id: 'dashboard', type: 'dashboard', label: 'Dashboard', shortLabel: 'Dash' },
   { marker: '# ▸ THE SIX', id: 'the-six', type: 'the-six', label: 'The Six', shortLabel: 'Six' },
   { marker: '# ▸ THE TAKE', id: 'the-take', type: 'the-take', label: 'The Take', shortLabel: 'Take' },
+  { marker: '# ▸ ASSET SPOTLIGHT', id: 'asset-spotlight', type: 'asset-spotlight', label: 'Asset Spotlight', shortLabel: 'Asset' },
+  { marker: '# ▸ INNER GAME', id: 'inner-game', type: 'inner-game', label: 'Inner Game', shortLabel: 'Inner' },
   { marker: '# ▸ THE MODEL', id: 'the-model', type: 'the-model', label: 'The Model', shortLabel: 'Model' },
+  { marker: '# ▸ DISCOVERY', id: 'discovery', type: 'discovery', label: 'Discovery', shortLabel: 'Discovery' },
+  // Legacy sections — kept for backward compatibility with older briefs
   { marker: '# ▸ THE BIG STORIES', id: 'big-stories', type: 'big-stories', label: 'Big Stories', shortLabel: 'Stories' },
   { marker: "# ▸ TOMORROW'S HEADLINES", id: 'tomorrows-headlines', type: 'tomorrows-headlines', label: 'Tomorrow', shortLabel: 'Tomorrow' },
   { marker: '# ▸ THE WATCHLIST', id: 'watchlist', type: 'watchlist', label: 'Watchlist', shortLabel: 'Watch' },
-  { marker: '# ▸ DISCOVERY', id: 'discovery', type: 'discovery', label: 'Discovery', shortLabel: 'Discovery' },
   { marker: '# ▸ WORLDVIEW UPDATES', id: 'worldview', type: 'worldview', label: 'Worldview', shortLabel: 'Worldview' },
   { marker: '# ▸ FULL REFERENCE: BIG STORIES', id: 'ref-big-stories', type: 'ref-big-stories', label: 'Ref: Stories', shortLabel: 'Ref:Stories' },
   { marker: "# ▸ FULL REFERENCE: TOMORROW'S HEADLINES", id: 'ref-tomorrows', type: 'ref-tomorrows', label: 'Ref: Tomorrow', shortLabel: 'Ref:Tmrw' },

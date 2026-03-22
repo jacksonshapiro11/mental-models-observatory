@@ -137,16 +137,24 @@ const AUDIO_SECTIONS: AudioSectionConfig[] = [
   { marker: '# ▸ THE DASHBOARD', name: 'The Dashboard', mode: 'commentary-only' },
   { marker: '# ▸ THE SIX', name: 'The Six', mode: 'full' },
   { marker: '# ▸ THE TAKE', name: 'The Take', mode: 'full' },
+  { marker: '# ▸ ASSET SPOTLIGHT', name: 'Asset Spotlight', mode: 'full' },
+  { marker: '# ▸ INNER GAME', name: 'Inner Game', mode: 'full' },
   { marker: '# ▸ THE MODEL', name: 'The Model', mode: 'full' },
+  { marker: '# ▸ DISCOVERY', name: 'Discovery', mode: 'full' },
+];
+
+// Legacy section markers — kept so the pipeline can still process older briefs
+// that were published before the 3-act restructure (March 2026)
+const LEGACY_AUDIO_SECTIONS: AudioSectionConfig[] = [
   { marker: '# ▸ THE BIG STORIES', name: 'The Big Stories', mode: 'full' },
   { marker: "# ▸ TOMORROW'S HEADLINES", name: "Tomorrow's Headlines", mode: 'full' },
   { marker: '# ▸ THE WATCHLIST', name: 'The Watchlist', mode: 'full' },
-  { marker: '# ▸ DISCOVERY', name: 'Discovery', mode: 'full' },
 ];
 
 /** All known section markers (for finding boundaries) */
 const ALL_MARKERS = [
   ...AUDIO_SECTIONS.map(s => s.marker),
+  ...LEGACY_AUDIO_SECTIONS.map(s => s.marker),
   '# ▸ WORLDVIEW UPDATES',
   '# ▸ FULL REFERENCE: BIG STORIES',
   "# ▸ FULL REFERENCE: TOMORROW'S HEADLINES",
@@ -306,7 +314,9 @@ function extractRawContent(
 
   if (rawMarkdown) {
     // Parse directly from raw markdown (same approach as test script)
-    for (const sec of AUDIO_SECTIONS) {
+    // Try current sections first, then legacy sections for older briefs
+    const allSectionsToTry = [...AUDIO_SECTIONS, ...LEGACY_AUDIO_SECTIONS];
+    for (const sec of allSectionsToTry) {
       const startIdx = findMarkerIndex(rawMarkdown, sec.marker);
       if (startIdx === -1) continue;
 
@@ -341,15 +351,21 @@ function extractRawContent(
     }
   } else {
     // Fall back to parsed sections from daily-update-parser
+    // Maps section IDs from the parser to audio section configs
+    const allConfigs = [...AUDIO_SECTIONS, ...LEGACY_AUDIO_SECTIONS];
+    const configByName = (name: string) => allConfigs.find(c => c.name === name);
     const sectionIdToConfig: Record<string, AudioSectionConfig> = {
-      'dashboard': AUDIO_SECTIONS[0]!,
-      'the-six': AUDIO_SECTIONS[1]!,
-      'the-take': AUDIO_SECTIONS[2]!,
-      'the-model': AUDIO_SECTIONS[3]!,
-      'big-stories': AUDIO_SECTIONS[4]!,
-      'tomorrows-headlines': AUDIO_SECTIONS[5]!,
-      'watchlist': AUDIO_SECTIONS[6]!,
-      'discovery': AUDIO_SECTIONS[7]!,
+      'dashboard': configByName('The Dashboard')!,
+      'the-six': configByName('The Six')!,
+      'the-take': configByName('The Take')!,
+      'asset-spotlight': configByName('Asset Spotlight')!,
+      'inner-game': configByName('Inner Game')!,
+      'the-model': configByName('The Model')!,
+      'discovery': configByName('Discovery')!,
+      // Legacy section IDs (for older briefs)
+      'big-stories': configByName('The Big Stories')!,
+      'tomorrows-headlines': configByName("Tomorrow's Headlines")!,
+      'watchlist': configByName('The Watchlist')!,
     };
 
     for (const section of brief.sections) {
@@ -532,18 +548,23 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'The Dashboard': 'Open with a brief natural transition like "Let\'s start with the dashboard" or "Here\'s where markets stand." Quick market snapshot — 2-3 sentences max. What was the session\'s character (risk-on, risk-off, rotational), the key technical picture, and one structural observation if there is one. Do NOT preview stories from The Six or summarize news — just the numbers and what they\'re saying. Plain language, no jargon.',
   'The Take': 'Open with a natural transition that names the section, like "Now for today\'s Take" or "Let\'s get into the Take." This is the heart of the episode — the big picture argument. Give it full treatment, don\'t compress. Let the argument build naturally, like you\'re thinking through it in real time. Explain any frameworks in plain language — if the listener has never heard of the concept, they should still follow the logic.',
   'The Model': 'Open with a natural transition like "Today\'s mental model" or "Now for the Model." Explain the model in plain language. What is it, where does it come from, and how does it connect to what\'s happening today? Make it feel like you\'re sharing something genuinely interesting you learned — not lecturing.',
-  'The Big Stories': 'Open with a natural transition like "Let\'s check in on the big stories" or "Now the big stories we\'re tracking." Run through the big stories. Cover EVERY story individually — headline, context, why it matters, what to watch. React to them naturally. Flag which ones you think matter most. Don\'t repeat information that was already covered in The Six — reference it briefly and add the NEW context.',
-  "Tomorrow's Headlines": 'Open with a natural transition like "Looking ahead — tomorrow\'s headlines" or "Now what\'s coming next." Cover EVERY headline. For each: what happened, what it means going forward, and the signal. Keep it forward-looking. Don\'t re-explain things already covered — just add the new angle.',
-  'The Watchlist': 'Open with a natural transition like "Now the Watchlist" or "Let\'s look at the Watchlist." Talk through each position like you\'re explaining your thinking to a friend. The asset, why it\'s interesting, the key levels, and what would make you wrong. Plain language — no spreadsheet jargon.',
+  'Asset Spotlight': 'Open with a natural transition like "Now for today\'s Asset Spotlight" or "Let\'s check in on a position." This is a thesis check on one portfolio asset — walk through the original thesis, what\'s changed, the key levels, and whether the thesis still holds. Talk through it like you\'re explaining your thinking to a friend. Plain language — no spreadsheet jargon.',
+  'Inner Game': 'Open with a natural transition like "Now for the Inner Game" or "Time for today\'s meditation." Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode — let it breathe. Don\'t rush it. No market references here at all. This is the meditations section — give it the space it deserves.',
   'Discovery': 'Open with a natural transition like "Time for today\'s Discovery" or "Now for something different — today\'s Discovery." This is an original essay about a concept from science, history, or systems thinking — NOT a reading recommendation. Explain the concept, tell the story, and help the listener see why it matters. Teach it like you find it genuinely fascinating. Do NOT say "this is a great read" or refer to it as something to read — it\'s content you\'re delivering right now. Keep it warm and intellectually curious.',
+  // Legacy sections — still used for processing older briefs
+  'The Big Stories': 'Open with a natural transition like "Let\'s check in on the big stories." Run through the big stories. Cover EVERY story individually — headline, context, why it matters, what to watch.',
+  "Tomorrow's Headlines": 'Open with a natural transition like "Looking ahead — tomorrow\'s headlines." Cover EVERY headline. For each: what happened, what it means going forward, and the signal.',
+  'The Watchlist': 'Open with a natural transition like "Now the Watchlist." Talk through each position like you\'re explaining your thinking to a friend. The asset, why it\'s interesting, the key levels, and what would make you wrong.',
 
   // The Six sub-sections — each gets its own API call to prevent compression
   'The Six: Markets & Macro': 'Open with a natural transition into The Six, like "Now let\'s get into today\'s six — starting with markets and macro." Cover EVERY bullet point. Weave a narrative — what\'s the thread connecting these stories? Use plain language. If there\'s a technical concept, explain it simply. React naturally to the surprising ones.',
   'The Six: Crypto': 'Transition naturally, like "Moving to crypto." Cover EVERY bullet. Explain each in plain terms — the data, the thesis, and what it means for someone holding crypto. Connect the dots where stories relate. Avoid crypto jargon where a normal word works.',
   'The Six: AI & Tech': 'Transition naturally, like "Over to AI and tech." Cover EVERY bullet. Explain what shipped, what changed, and why it matters. If something is genuinely exciting, let that come through naturally — don\'t perform excitement with hype words.',
   'The Six: Geopolitics': 'Transition naturally, like "Now geopolitics." Cover EVERY bullet. Explain the developments and why they matter for markets. Help the listener understand the strategic picture. Use plain language — "Iran is expanding its targets from oil infrastructure to civilian airports" not "the escalation matrix is broadening."',
-  'The Six: Deep Read / Listen': 'Transition naturally, like "A few things worth your time this week." Share each recommendation like you\'re texting a friend a link. Why is this worth their time? What will they learn? Keep it genuine — no hard sell.',
-  'The Six: Inner Game': 'Transition naturally, like "And finally, the inner game." Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the human moment — let it breathe. Don\'t rush it. No market references here at all.',
+  'The Six: Wild Card': 'Transition naturally, like "And now for the wild card" or "Now for something completely different — the wild card." Do NOT say "the six" or reference "today\'s six" — this is its own distinct segment. This is cross-disciplinary content — sports, science, culture, fashion, anything cool that makes you smarter. Cover each item with genuine curiosity. Explain why it\'s interesting and what makes it worth knowing. Keep it fun and accessible.',
+  'The Six: Deep Read / Listen': 'Transition naturally, like "A few things worth your time this week" or "And to wrap up the six, a few reads and listens." Share each recommendation like you\'re texting a friend a link. Why is this worth their time? What will they learn? Keep it genuine — no hard sell.',
+  // Legacy sub-section — Inner Game was under The Six in pre-March-22 briefs
+  'The Six: Inner Game': 'Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the personal, human moment — let it breathe. No market references.',
 };
 
 /** Retry an async fn with exponential backoff on rate-limit (429) and server errors (5xx). */
@@ -728,6 +749,14 @@ export async function preprocessBriefForTTS(
 
   console.log(`[audio] Extracted ${parsed.sections.length} sections: ${parsed.sections.map(s => s.name).join(', ')}`);
   console.log(`[audio] Raw content: ${rawContent.length} characters`);
+
+  // Warn about expected sections that weren't found (helps diagnose formatting issues)
+  const expectedNames = AUDIO_SECTIONS.map(s => s.name);
+  const foundNames = new Set(parsed.sections.map(s => s.name.split(':')[0].trim()));
+  const missingSections = expectedNames.filter(n => !foundNames.has(n));
+  if (missingSections.length > 0) {
+    console.warn(`[audio] ⚠️  Missing expected sections: ${missingSections.join(', ')}. Check brief formatting — headers must be "# ▸ SECTION NAME" format.`);
+  }
 
   // Extract epigraph for the intro
   let epigraph = '';

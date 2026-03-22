@@ -30,7 +30,7 @@ A comprehensive Next.js application showcasing **119 mental models** across 40 k
   - Status badges (developing, elevated, accelerating, new, watching, building) auto-inferred from content
   - Ephemeral by design — `/daily-update` always shows today's brief only. Past briefs are stored for internal data but not discoverable (hidden archive route exists as easter egg at `/daily-update/[date]`)
   - Full light + dark mode support (amber accents light, espresso-gold dark)
-  - Sections: Dashboard, The Six, The Take, Big Stories, Tomorrow's Headlines, Watchlist, Discovery, Worldview Updates, Full Reference sections
+  - 3-act structure: Markets (Dashboard, The Six, The Take, Asset Spotlight) → Meditations (Inner Game) → Mental Models (The Model, Discovery)
   - "Daily Brief" button added to site header
 - ✅ **Deployment workflow** - Drop markdown file in `content/daily-updates/`, git push, Vercel auto-deploys
 

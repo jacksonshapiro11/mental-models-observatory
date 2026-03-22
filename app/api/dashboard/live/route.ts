@@ -32,6 +32,9 @@ const TIMEOUT = 5000;
 // Default multipliers — overridden by daily calibrated values from snapshot
 const DEFAULT_MULTIPLIERS: Record<string, number> = { SPY: 10, QQQ: 40.95, DIA: 100, IGV: 1, SMH: 1, IWM: 1, IWF: 1, IWD: 1, XLE: 1, ARKK: 1 };
 
+// Indices use multiplier: round to 0 decimals; ETFs are direct prices: 2 decimals
+const INDEX_NAMES = new Set(['SPX', 'NDX', 'DJI']);
+
 const ETF_PROXIES = [
   { symbol: 'SPY', name: 'SPX' },
   { symbol: 'QQQ', name: 'NDX' },
@@ -43,6 +46,15 @@ const ETF_PROXIES = [
   { symbol: 'IWD', name: 'IWD' },   // Russell 1000 Value
   { symbol: 'XLE', name: 'XLE' },   // Energy Select SPDR (Iran/oil)
   { symbol: 'ARKK', name: 'ARKK' }, // ARK Innovation (speculative tech)
+] as const;
+
+// Commodity futures — Yahoo Finance direct (actual futures prices, no ETF tracking error)
+const COMMODITY_FUTURES = [
+  { yahoo: 'GC%3DF', name: 'GOLD' },     // Gold futures
+  { yahoo: 'SI%3DF', name: 'SILVER' },    // Silver futures
+  { yahoo: 'BZ%3DF', name: 'BRENT' },     // Brent crude futures
+  { yahoo: 'HG%3DF', name: 'COPPER' },    // Copper futures
+  { yahoo: 'NG%3DF', name: 'NATGAS' },    // Natural gas futures
 ] as const;
 
 const CRYPTO_PAIRS = [
@@ -76,11 +88,14 @@ export async function GET() {
       console.log(`[live] Snapshot loaded: ${snapshotData.date}, equities=${Object.keys(snapshotData.equities || {}).length}, crypto=${Object.keys(snapshotData.crypto || {}).length}`);
     }
 
-    // Now fetch live data (equity prices use snapshot's calibrated multipliers)
-    const [cryptoPrices, equityPrices, dxyResult, coinGeckoGlobal] =
+    // Now fetch live data in parallel
+    // - Equities: Finnhub real-time ETF quotes (indices use calibrated multiplier)
+    // - Commodities: Yahoo Finance futures (actual futures prices, ~15min delay but no ETF tracking error)
+    const [cryptoPrices, equityPrices, commodityPrices, dxyResult, coinGeckoGlobal] =
       await Promise.allSettled([
         fetchCryptoPrices(),
         fetchEquityPrices(snapshotData),
+        fetchCommodityPrices(),
         fetchDXY(FINNHUB_KEY, TIMEOUT),
         fetchCoinGeckoGlobalCached(),
       ]);
@@ -88,6 +103,7 @@ export async function GET() {
     const response = buildResponse({
       cryptoPrices: cryptoPrices.status === 'fulfilled' ? cryptoPrices.value : {},
       equityPrices: equityPrices.status === 'fulfilled' ? equityPrices.value : {},
+      commodityPrices: commodityPrices.status === 'fulfilled' ? commodityPrices.value : {},
       dxy: dxyResult.status === 'fulfilled' ? dxyResult.value : null,
       coinGecko: coinGeckoGlobal.status === 'fulfilled' ? coinGeckoGlobal.value : null,
       snapshot: snapshotData,
@@ -113,13 +129,14 @@ export async function GET() {
 interface BuildResponseArgs {
   cryptoPrices: Record<string, { price: number; source: string }>;
   equityPrices: Record<string, { price: number; prevClose: number; source: string }>;
+  commodityPrices: Record<string, { price: number; source: string }>;
   dxy: DXYResult | null;
   coinGecko: CoinGeckoGlobal | null;
   snapshot: DashboardSnapshot | null;
   manual: ManualFields;
 }
 
-function buildResponse({ cryptoPrices, equityPrices, dxy, coinGecko, snapshot, manual }: BuildResponseArgs) {
+function buildResponse({ cryptoPrices, equityPrices, commodityPrices, dxy, coinGecko, snapshot, manual }: BuildResponseArgs) {
   const now = Date.now();
   const marketStatus = getMarketStatus();
 
@@ -146,13 +163,14 @@ function buildResponse({ cryptoPrices, equityPrices, dxy, coinGecko, snapshot, m
     };
   }
 
-  // Commodities and rates are daily — straight from snapshot
+  // Commodities — live Yahoo Finance futures prices with snapshot fallback
   const commodities: Record<string, unknown> = {};
   for (const name of ['GOLD', 'SILVER', 'BRENT', 'COPPER', 'NATGAS']) {
+    const live = commodityPrices[name];
     const ref = snapshot?.commodities?.[name];
     commodities[name] = {
-      price: ref?.latestClose ?? null,
-      changes: ref?.changes || {},
+      price: live?.price ?? ref?.latestClose ?? null,
+      changes: mergeChanges(live?.price ?? null, ref ?? null),
       mas: ref?.mas || {},
     };
   }
@@ -328,9 +346,11 @@ async function fetchEquityPrices(snapshot: DashboardSnapshot | null): Promise<Re
       const res = await fetch(url, { signal: controller.signal });
       if (!res.ok) throw new Error(`Finnhub ${symbol}: ${res.status}`);
       const data = await res.json();
+      // Indices (SPX, NDX, DJI) round to 0 decimals; ETFs keep 2 decimals
+      const decimals = INDEX_NAMES.has(name) ? 0 : 2;
       results[name] = {
-        price: round(data.c * multiplier, 0),
-        prevClose: round(data.pc * multiplier, 0),
+        price: round(data.c * multiplier, decimals),
+        prevClose: round(data.pc * multiplier, decimals),
         source: 'finnhub',
       };
     });
@@ -341,6 +361,38 @@ async function fetchEquityPrices(snapshot: DashboardSnapshot | null): Promise<Re
   } finally {
     clearTimeout(timer);
   }
+
+  return results;
+}
+
+// ─── COMMODITY PRICES (Yahoo Finance futures → snapshot fallback) ────────────
+// Uses actual futures symbols (GC=F, SI=F, BZ=F, HG=F, NG=F) for accurate prices
+// without ETF tracking error, contango drag, or expense ratio distortion.
+// ~15 minute delay on Yahoo free tier, but far more accurate than ETF proxies.
+
+async function fetchCommodityPrices(): Promise<Record<string, { price: number; source: string }>> {
+  const results: Record<string, { price: number; source: string }> = {};
+
+  try {
+    const fetches = COMMODITY_FUTURES.map(async ({ yahoo, name }) => {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahoo}?interval=1d&range=1d`;
+      const res = await fetchWithTimeout(url, TIMEOUT);
+      if (!res.ok) throw new Error(`Yahoo ${name}: ${res.status}`);
+      const data = await res.json();
+      const meta = data?.chart?.result?.[0]?.meta;
+      const price = meta?.regularMarketPrice ?? meta?.previousClose;
+      if (price && price > 0) {
+        results[name] = { price: round(price, 2), source: 'yahoo' };
+      }
+    });
+
+    await Promise.allSettled(fetches);
+  } catch (err) {
+    console.error('Commodity fetch error:', err);
+  }
+
+  const sources = Object.entries(results).map(([k, v]) => `${k}:${v.price}`).join(', ');
+  console.log(`[live] Commodity prices: ${sources || 'NONE — using snapshot'}`);
 
   return results;
 }

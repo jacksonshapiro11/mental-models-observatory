@@ -57,6 +57,28 @@ function RssIcon({ className }: { className?: string }) {
   );
 }
 
+function SpotifyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+    </svg>
+  );
+}
+
+function ApplePodcastIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M5.34 0A5.328 5.328 0 000 5.34v13.32A5.328 5.328 0 005.34 24h13.32A5.328 5.328 0 0024 18.66V5.34A5.328 5.328 0 0018.66 0H5.34zm6.525 2.568c2.336 0 4.448.902 6.056 2.587 1.224 1.272 1.912 2.619 2.264 4.392.12.6-.12 1.2-.6 1.2-.48 0-.84-.36-.96-.96-.264-1.476-.84-2.616-1.848-3.648C15.387 4.728 13.647 3.96 11.7 3.96c-1.812 0-3.552.768-4.956 2.148-1.08 1.068-1.68 2.22-1.932 3.72-.12.6-.48.96-.96.96-.48 0-.72-.6-.6-1.2.348-1.776 1.032-3.12 2.268-4.392A8.556 8.556 0 0111.865 2.568zM12 7.2a4.8 4.8 0 014.8 4.8c0 1.06-.344 2.04-.924 2.832-.24.324-.588.36-.888.108-.3-.252-.348-.636-.108-.96A3.384 3.384 0 0015.6 12 3.6 3.6 0 008.4 12c0 .744.24 1.44.648 2.004.24.324.18.696-.12.948-.3.252-.648.216-.888-.108A4.752 4.752 0 017.2 12 4.8 4.8 0 0112 7.2zm-.024 3.6a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4zm-.012 3.744c.648 0 1.08.408 1.116 1.08l.36 5.016c.036.54-.204.972-.588 1.2a1.476 1.476 0 01-1.776 0c-.384-.228-.624-.66-.588-1.2l.36-5.016c.036-.672.468-1.08 1.116-1.08z" />
+    </svg>
+  );
+}
+
+// ─── Podcast links ──────────────────────────────────────────────────────────
+const PODCAST_LINKS = {
+  spotify: 'https://open.spotify.com/show/0MhCdB3jidaoJ25kg7zr6O',
+  apple: 'https://podcasts.apple.com/us/podcast/markets-meditations-and-mental-models/id1885352035',
+};
+
 // ─── Time formatting ────────────────────────────────────────────────────────
 
 function formatTime(seconds: number): string {
@@ -191,21 +213,43 @@ export default function AudioPlayer({ date }: AudioPlayerProps) {
                 Audio edition coming soon
               </span>
             </div>
-            <div className="relative flex-shrink-0">
-              <button
-                onClick={copyRssUrl}
-                className="p-2 rounded-md text-neutral-400 dark:text-neutral-500 hover:text-amber-500 dark:hover:text-[var(--espresso-accent)] hover:bg-neutral-100 dark:hover:bg-[var(--espresso-bg-dark)] transition-colors"
-                aria-label="Copy podcast feed URL"
-                title="Copy RSS feed URL — subscribe in your podcast app"
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <a
+                href={PODCAST_LINKS.spotify}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-md text-[#1DB954] hover:opacity-80 hover:bg-neutral-100 dark:hover:bg-[var(--espresso-bg-dark)] transition-all"
+                aria-label="Listen on Spotify"
+                title="Listen on Spotify"
               >
-                <RssIcon className="w-4 h-4" />
-              </button>
-              {showRssTooltip && (
-                <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 text-xs font-medium whitespace-nowrap shadow-lg">
-                  Feed URL copied!
-                  <div className="absolute top-full right-3 w-2 h-2 bg-neutral-900 dark:bg-neutral-100 rotate-45 -mt-1" />
-                </div>
-              )}
+                <SpotifyIcon className="w-7 h-7" />
+              </a>
+              <a
+                href={PODCAST_LINKS.apple}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-md text-[#D56DFB] hover:opacity-80 hover:bg-neutral-100 dark:hover:bg-[var(--espresso-bg-dark)] transition-all"
+                aria-label="Listen on Apple Podcasts"
+                title="Listen on Apple Podcasts"
+              >
+                <ApplePodcastIcon className="w-7 h-7" />
+              </a>
+              <div className="relative">
+                <button
+                  onClick={copyRssUrl}
+                  className="p-2 rounded-md text-neutral-400 dark:text-neutral-500 hover:text-amber-500 dark:hover:text-[var(--espresso-accent)] hover:bg-neutral-100 dark:hover:bg-[var(--espresso-bg-dark)] transition-colors"
+                  aria-label="Copy podcast feed URL"
+                  title="Copy RSS feed URL — subscribe in your podcast app"
+                >
+                  <RssIcon className="w-4 h-4" />
+                </button>
+                {showRssTooltip && (
+                  <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 text-xs font-medium whitespace-nowrap shadow-lg">
+                    Feed URL copied!
+                    <div className="absolute top-full right-3 w-2 h-2 bg-neutral-900 dark:bg-neutral-100 rotate-45 -mt-1" />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -289,22 +333,44 @@ export default function AudioPlayer({ date }: AudioPlayerProps) {
             {speed}×
           </button>
 
-          {/* RSS feed link */}
-          <div className="relative flex-shrink-0">
-            <button
-              onClick={copyRssUrl}
-              className="p-2 rounded-md text-neutral-400 dark:text-neutral-500 hover:text-amber-500 dark:hover:text-[var(--espresso-accent)] hover:bg-neutral-100 dark:hover:bg-[var(--espresso-bg-dark)] transition-colors"
-              aria-label="Copy podcast feed URL"
-              title="Copy RSS feed URL"
+          {/* Podcast platform links */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <a
+              href={PODCAST_LINKS.spotify}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-md text-[#1DB954] hover:opacity-80 hover:bg-neutral-100 dark:hover:bg-[var(--espresso-bg-dark)] transition-all"
+              aria-label="Listen on Spotify"
+              title="Listen on Spotify"
             >
-              <RssIcon className="w-4 h-4" />
-            </button>
-            {showRssTooltip && (
-              <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 text-xs font-medium whitespace-nowrap shadow-lg">
-                Feed URL copied!
-                <div className="absolute top-full right-3 w-2 h-2 bg-neutral-900 dark:bg-neutral-100 rotate-45 -mt-1" />
-              </div>
-            )}
+              <SpotifyIcon className="w-7 h-7" />
+            </a>
+            <a
+              href={PODCAST_LINKS.apple}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-md text-[#D56DFB] hover:opacity-80 hover:bg-neutral-100 dark:hover:bg-[var(--espresso-bg-dark)] transition-all"
+              aria-label="Listen on Apple Podcasts"
+              title="Listen on Apple Podcasts"
+            >
+              <ApplePodcastIcon className="w-7 h-7" />
+            </a>
+            <div className="relative">
+              <button
+                onClick={copyRssUrl}
+                className="p-2 rounded-md text-neutral-400 dark:text-neutral-500 hover:text-amber-500 dark:hover:text-[var(--espresso-accent)] hover:bg-neutral-100 dark:hover:bg-[var(--espresso-bg-dark)] transition-colors"
+                aria-label="Copy podcast feed URL"
+                title="Copy RSS feed URL"
+              >
+                <RssIcon className="w-4 h-4" />
+              </button>
+              {showRssTooltip && (
+                <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 text-xs font-medium whitespace-nowrap shadow-lg">
+                  Feed URL copied!
+                  <div className="absolute top-full right-3 w-2 h-2 bg-neutral-900 dark:bg-neutral-100 rotate-45 -mt-1" />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -50,21 +50,31 @@ function loadBrief(dateSlug) {
 
 // ─── Section extraction ─────────────────────────────────────────────────────
 
-// Sections to include in audio (in order)
+// Sections to include in audio (in order) — matches 3-act structure:
+// Act 1: Markets (Dashboard → Six → Take → Asset Spotlight)
+// Act 2: Meditations (Inner Game)
+// Act 3: Mental Models (The Model → Discovery)
 const AUDIO_SECTIONS = [
   { marker: '# ▸ THE DASHBOARD', name: 'The Dashboard', mode: 'commentary-only' },
   { marker: '# ▸ THE SIX', name: 'The Six', mode: 'full' },
   { marker: '# ▸ THE TAKE', name: 'The Take', mode: 'full' },
+  { marker: '# ▸ ASSET SPOTLIGHT', name: 'Asset Spotlight', mode: 'full' },
+  { marker: '# ▸ INNER GAME', name: 'Inner Game', mode: 'full' },
   { marker: '# ▸ THE MODEL', name: 'The Model', mode: 'full' },
+  { marker: '# ▸ DISCOVERY', name: 'Discovery', mode: 'full' },
+];
+
+// Legacy sections — kept so the test script can process older briefs
+const LEGACY_AUDIO_SECTIONS = [
   { marker: '# ▸ THE BIG STORIES', name: 'The Big Stories', mode: 'full' },
   { marker: "# ▸ TOMORROW'S HEADLINES", name: "Tomorrow's Headlines", mode: 'full' },
   { marker: '# ▸ THE WATCHLIST', name: 'The Watchlist', mode: 'full' },
-  { marker: '# ▸ DISCOVERY', name: 'Discovery', mode: 'full' },
 ];
 
 // All markers (for finding section boundaries)
 const ALL_MARKERS = [
   ...AUDIO_SECTIONS.map(s => s.marker),
+  ...LEGACY_AUDIO_SECTIONS.map(s => s.marker),
   '# ▸ WORLDVIEW UPDATES',
   '# ▸ FULL REFERENCE: BIG STORIES',
   "# ▸ FULL REFERENCE: TOMORROW'S HEADLINES",
@@ -143,7 +153,8 @@ function parseBriefForAudio(brief) {
   }
 
   const sections = [];
-  for (const sec of AUDIO_SECTIONS) {
+  const allSectionsToTry = [...AUDIO_SECTIONS, ...LEGACY_AUDIO_SECTIONS];
+  for (const sec of allSectionsToTry) {
     const startIdx = findMarkerIndex(brief.raw, sec.marker);
     if (startIdx === -1) continue;
 
@@ -361,18 +372,23 @@ const SECTION_INSTRUCTIONS = {
   'The Dashboard': 'Convert this dashboard commentary into a quick spoken market check-in. Cover equities, crypto, commodities, and rates. Focus on the narrative and analysis, not raw numbers. Use transitions between asset classes.',
   'The Take': 'Convert this editorial synthesis into spoken form. This is the heart of the brief — the big picture argument. Give it full treatment, don\'t compress.',
   'The Model': 'Explain this mental model naturally, including the source, the framework, and how it applies to today\'s markets. Make it feel like a teaching moment.',
-  'The Big Stories': 'Cover EVERY story individually. Each one gets: the headline, the context, the implications, and what to watch. Do NOT skip or lump stories together. This is the longest section — give each story the depth it deserves.',
-  "Tomorrow's Headlines": 'Cover EVERY headline individually. For each: what happened, what it means, and the forward signal. Do NOT lump them together.',
-  'The Watchlist': 'Cover EVERY watchlist item. For each: the asset, the thesis, key levels, and what would change the view. Include the reasoning behind each position.',
-  'Discovery': 'Mention each recommended read/listen with why it matters.',
+  'Asset Spotlight': 'This is a thesis check on one portfolio asset. Walk through the original thesis, what\'s changed, the key levels, and whether the thesis still holds. Talk through it like you\'re explaining your thinking to a friend.',
+  'Inner Game': 'Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode — the meditations section. Let it breathe. Don\'t rush it. No market references here.',
+  'Discovery': 'This is an original essay about a concept from science, history, or systems thinking. Explain the concept, tell the story, and help the listener see why it matters. Do NOT say "this is a great read" — it\'s content you\'re delivering right now.',
+  // Legacy sections — still used for processing older briefs
+  'The Big Stories': 'Cover EVERY story individually. Each one gets: the headline, the context, the implications, and what to watch.',
+  "Tomorrow's Headlines": 'Cover EVERY headline individually. For each: what happened, what it means, and the forward signal.',
+  'The Watchlist': 'Cover EVERY watchlist item. For each: the asset, the thesis, key levels, and what would change the view.',
 
   // The Six sub-sections — each gets its own API call to prevent compression
   'The Six: Markets & Macro': 'Convert EVERY bullet point in this markets & macro section into spoken analysis. Cover each one individually with its full context and implications. Do NOT skip any.',
   'The Six: Crypto': 'Convert EVERY crypto bullet into spoken analysis. Each gets its full explanation — the data, the thesis, and the "so what." Do NOT skip any.',
   'The Six: AI & Tech': 'Convert EVERY AI & tech bullet into spoken analysis. Cover the companies, the numbers, and why each matters. Do NOT skip any.',
   'The Six: Geopolitics': 'Convert EVERY geopolitics bullet into spoken analysis. Cover the developments, the strategic context, and the implications. Do NOT skip any.',
+  'The Six: Wild Card': 'Do NOT say "the six" — this is its own distinct segment, the wild card. Cross-disciplinary content — sports, science, culture. Cover each item with genuine curiosity.',
   'The Six: Deep Read / Listen': 'Mention each recommended read or listen with a brief explanation of why it matters and what the reader will get from it.',
-  'The Six: Inner Game': 'Read this reflective/philosophical section naturally and warmly. Include the quote, the story or teaching, and the practical action. This is the personal, human moment in the brief — give it space.',
+  // Legacy sub-section — Inner Game was under The Six in pre-March-22 briefs
+  'The Six: Inner Game': 'Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the personal, human moment — let it breathe. No market references.',
 };
 
 async function rewriteAsScript(brief) {
