@@ -34,7 +34,7 @@ export function parsePortfolioTracker(): Portfolio | null {
 
   // Extract status
   const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
-  const status = statusMatch ? statusMatch[1].trim() : 'Unknown';
+  const status = statusMatch?.[1]?.trim() ?? 'Unknown';
 
   // Split into position blocks — each starts with ### followed by position name
   const positionBlocks = content.split(/\n### /).slice(1);
@@ -81,7 +81,7 @@ export function parsePortfolioTracker(): Portfolio | null {
     const assumptionRegex = /^\d+\.\s+(.+?)(?:\s*—\s*Prob:\s*(\d+%))?\s*(?:—\s*Track via:\s*(.+?))?\s*(?:—\s*Kill:\s*(.+?))?$/gm;
     const keyAssSection = block.match(/\*\*KEY ASSUMPTIONS:\*\*([\s\S]*?)(?=\*\*PRE-MORTEM|\*\*EXPECTED|---|\n##)/);
     if (keyAssSection) {
-      const assLines = keyAssSection[1].split('\n').filter(l => /^\d+\./.test(l.trim()));
+      const assLines = (keyAssSection[1] ?? '').split('\n').filter(l => /^\d+\./.test(l.trim()));
       for (const line of assLines) {
         const parts = line.trim().match(/^\d+\.\s+(.+?)(?:\s*—\s*Prob:\s*(\d+%))?\s*(?:—\s*Track via:\s*(.+?))?\s*(?:—\s*Kill:\s*(.+?))?$/);
         if (parts) {
@@ -99,7 +99,7 @@ export function parsePortfolioTracker(): Portfolio | null {
     const killCriteria: string[] = [];
     const killSection = block.match(/\*\*KILL(?:\sCRITERIA|\sSIGNALS?):\*\*([\s\S]*?)(?=\*\*|---|\n##)/);
     if (killSection) {
-      const kills = killSection[1].split('\n').filter(l => l.trim().startsWith('-'));
+      const kills = (killSection[1] ?? '').split('\n').filter(l => l.trim().startsWith('-'));
       for (const k of kills) killCriteria.push(k.trim().replace(/^-\s*/, ''));
     }
     // Also extract kills from assumptions
@@ -111,7 +111,7 @@ export function parsePortfolioTracker(): Portfolio | null {
     const preMortem: string[] = [];
     const pmSection = block.match(/\*\*PRE-MORTEM:\*\*([\s\S]*?)(?=\*\*EXPECTED|\*\*POSITION|---|\n##)/);
     if (pmSection) {
-      const pms = pmSection[1].split('\n').filter(l => /^\d+\./.test(l.trim()));
+      const pms = (pmSection[1] ?? '').split('\n').filter(l => /^\d+\./.test(l.trim()));
       for (const pm of pms) preMortem.push(pm.trim().replace(/^\d+\.\s*/, ''));
     }
 

@@ -752,7 +752,7 @@ export async function preprocessBriefForTTS(
 
   // Warn about expected sections that weren't found (helps diagnose formatting issues)
   const expectedNames = AUDIO_SECTIONS.map(s => s.name);
-  const foundNames = new Set(parsed.sections.map(s => s.name.split(':')[0].trim()));
+  const foundNames = new Set(parsed.sections.map(s => (s.name.split(':')[0] ?? s.name).trim()));
   const missingSections = expectedNames.filter(n => !foundNames.has(n));
   if (missingSections.length > 0) {
     console.warn(`[audio] ⚠️  Missing expected sections: ${missingSections.join(', ')}. Check brief formatting — headers must be "# ▸ SECTION NAME" format.`);
