@@ -51,7 +51,7 @@ function parsePredictions(): { predictions: Prediction[]; watchlistItems: string
     for (const match of killMatches) {
       predictions.push({
         category: 'Portfolio Kill Signal',
-        text: match[1].trim(),
+        text: match[1]?.trim() ?? '',
         date: 'Portfolio entry',
         dueDate: 'Rolling',
         status: 'pending',
