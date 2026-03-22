@@ -83,22 +83,16 @@ export default function RootLayout({
                     Daily Brief
                   </Link>
                   <Link
-                    href="/portfolio"
-                    className="bg-black dark:bg-black text-white dark:text-white px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg text-xs sm:text-sm hidden sm:block"
-                  >
-                    Portfolio
-                  </Link>
-                  <Link
-                    href="/archive"
-                    className="bg-black dark:bg-black text-white dark:text-white px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg text-xs sm:text-sm hidden sm:block"
-                  >
-                    Archive
-                  </Link>
-                  <Link
                     href="/blog"
                     className="bg-black dark:bg-black text-white dark:text-white px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg text-xs sm:text-sm hidden sm:block"
                   >
                     Blog
+                  </Link>
+                  <Link
+                    href="/"
+                    className="bg-black dark:bg-black text-white dark:text-white px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg text-xs sm:text-sm hidden sm:block"
+                  >
+                    Home
                   </Link>
                 </div>
               </div>

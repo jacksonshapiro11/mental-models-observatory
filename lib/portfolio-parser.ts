@@ -26,7 +26,11 @@ export interface Portfolio {
 }
 
 export function parsePortfolioTracker(): Portfolio | null {
-  const filePath = path.join(process.cwd(), 'system/Portfolio_Tracker.md');
+  // Public portfolio (committed, deploys to Vercel) takes priority
+  const publicPath = path.join(process.cwd(), 'content/portfolio.md');
+  // System portfolio (gitignored, local dev only) as fallback
+  const systemPath = path.join(process.cwd(), 'system/Portfolio_Tracker.md');
+  const filePath = fs.existsSync(publicPath) ? publicPath : systemPath;
   if (!fs.existsSync(filePath)) return null;
 
   const content = fs.readFileSync(filePath, 'utf-8');
