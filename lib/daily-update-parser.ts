@@ -89,6 +89,8 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
     const line = (lines[i] ?? '').trim();
     if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && i < 5) {
       epigraph = line.slice(1, -1);
+      // Strip leading/trailing quotes — the renderer adds its own typographic quotes
+      epigraph = epigraph.replace(/^[""\u201C\u201D]+/, '').replace(/[""\u201C\u201D]+$/, '').trim();
     }
     if (line.startsWith('## ') && !displayDate) {
       displayDate = line.replace('## ', '');

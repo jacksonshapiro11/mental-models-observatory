@@ -433,7 +433,7 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
             <PriceRow asset="S&P 500" data={equities.SPX} color="#3b82f6" priceOpts={{ prefix: '', decimals: 0 }} />
             <PriceRow asset="Nasdaq 100" data={equities.NDX} color="#8b5cf6" priceOpts={{ prefix: '', decimals: 0 }} />
             <PriceRow asset="Dow" data={equities.DJI} color="#06b6d4" priceOpts={{ prefix: '', decimals: 0 }} />
-            <PriceRow asset="Russell 2000" data={equities.IWM} color="#10b981" priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="Russell 2000" data={equities.RUT} color="#10b981" priceOpts={{ prefix: '', decimals: 0 }} />
             <PriceRow asset="IGV (SaaS)" data={equities.IGV} color="#f472b6" priceOpts={{ prefix: '$', decimals: 2 }} />
             <PriceRow asset="SMH (Semis)" data={equities.SMH} color="#a78bfa" priceOpts={{ prefix: '$', decimals: 2 }} />
             <PriceRow asset="Growth (IWF)" data={equities.IWF} color="#22d3ee" priceOpts={{ prefix: '$', decimals: 2 }} />
@@ -607,6 +607,9 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
 
       {/* Commodities & Rates */}
       <div style={styles.sectionLabel}>Commodities & Rates</div>
+      <div style={{ fontSize: '0.8em', color: '#a1a1aa', padding: '4px 0 8px', lineHeight: 1.4 }}>
+        Prices reflect front-month futures contracts and may diverge from spot prices, particularly for oil and natural gas.
+      </div>
       <ScrollableTable>
         <table style={styles.table}>
           <thead>

@@ -29,24 +29,26 @@ const FINNHUB_KEY = process.env.FINNHUB_API_KEY!;
 const COINGECKO_KEY = process.env.COINGECKO_API_KEY!;
 const TIMEOUT = 5000;
 
-// Default multipliers — overridden by daily calibrated values from snapshot
-const DEFAULT_MULTIPLIERS: Record<string, number> = { SPY: 10, QQQ: 40.95, DIA: 100, IGV: 1, SMH: 1, IWM: 1, IWF: 1, IWD: 1, XLE: 1, ARKK: 1 };
+// Indices fetched directly from Yahoo Finance (actual prices, no multiplier)
+const INDEX_SYMBOLS = [
+  { yahoo: '%5EGSPC', name: 'SPX', decimals: 0 },
+  { yahoo: '%5ENDX',  name: 'NDX', decimals: 0 },
+  { yahoo: '%5EDJI',  name: 'DJI', decimals: 0 },
+  { yahoo: '%5ERUT',  name: 'RUT', decimals: 0 },  // Russell 2000
+] as const;
 
-// Indices use multiplier: round to 0 decimals; ETFs are direct prices: 2 decimals
-const INDEX_NAMES = new Set(['SPX', 'NDX', 'DJI']);
-
+// ETFs fetched from Finnhub (direct prices, no multiplier needed)
 const ETF_PROXIES = [
-  { symbol: 'SPY', name: 'SPX' },
-  { symbol: 'QQQ', name: 'NDX' },
-  { symbol: 'DIA', name: 'DJI' },
   { symbol: 'IGV', name: 'IGV' },   // SaaS/Software ETF (Thesis 1)
   { symbol: 'SMH', name: 'SMH' },   // Semiconductor ETF (Thesis 4, BS #7)
-  { symbol: 'IWM', name: 'IWM' },   // Russell 2000 (small cap risk appetite)
   { symbol: 'IWF', name: 'IWF' },   // Russell 1000 Growth
   { symbol: 'IWD', name: 'IWD' },   // Russell 1000 Value
   { symbol: 'XLE', name: 'XLE' },   // Energy Select SPDR (Iran/oil)
   { symbol: 'ARKK', name: 'ARKK' }, // ARK Innovation (speculative tech)
 ] as const;
+
+// All equity names (indices + ETFs) for response building
+const ALL_EQUITY_NAMES = [...INDEX_SYMBOLS.map(i => i.name), ...ETF_PROXIES.map(e => e.name)];
 
 // Commodity futures — Yahoo Finance direct (actual futures prices, no ETF tracking error)
 const COMMODITY_FUTURES = [
@@ -89,20 +91,28 @@ export async function GET() {
     }
 
     // Now fetch live data in parallel
-    // - Equities: Finnhub real-time ETF quotes (indices use calibrated multiplier)
+    // - Indices (SPX/NDX/DJI): Yahoo Finance actual index prices (no ETF proxy math)
+    // - ETFs: Finnhub real-time quotes (direct prices, multiplier=1)
     // - Commodities: Yahoo Finance futures (actual futures prices, ~15min delay but no ETF tracking error)
-    const [cryptoPrices, equityPrices, commodityPrices, dxyResult, coinGeckoGlobal] =
+    const [cryptoPrices, indexPrices, etfPrices, commodityPrices, dxyResult, coinGeckoGlobal] =
       await Promise.allSettled([
         fetchCryptoPrices(),
-        fetchEquityPrices(snapshotData),
+        fetchIndexPrices(),
+        fetchETFPrices(),
         fetchCommodityPrices(),
         fetchDXY(FINNHUB_KEY, TIMEOUT),
         fetchCoinGeckoGlobalCached(),
       ]);
 
+    // Merge index prices (Yahoo) and ETF prices (Finnhub) into one equityPrices map
+    const mergedEquityPrices = {
+      ...(indexPrices.status === 'fulfilled' ? indexPrices.value : {}),
+      ...(etfPrices.status === 'fulfilled' ? etfPrices.value : {}),
+    };
+
     const response = buildResponse({
       cryptoPrices: cryptoPrices.status === 'fulfilled' ? cryptoPrices.value : {},
-      equityPrices: equityPrices.status === 'fulfilled' ? equityPrices.value : {},
+      equityPrices: mergedEquityPrices,
       commodityPrices: commodityPrices.status === 'fulfilled' ? commodityPrices.value : {},
       dxy: dxyResult.status === 'fulfilled' ? dxyResult.value : null,
       coinGecko: coinGeckoGlobal.status === 'fulfilled' ? coinGeckoGlobal.value : null,
@@ -127,9 +137,9 @@ export async function GET() {
 // ─── BUILD RESPONSE ──────────────────────────────────────────────────────────
 
 interface BuildResponseArgs {
-  cryptoPrices: Record<string, { price: number; source: string }>;
+  cryptoPrices: Record<string, { price: number; prevClose: number; source: string }>;
   equityPrices: Record<string, { price: number; prevClose: number; source: string }>;
-  commodityPrices: Record<string, { price: number; source: string }>;
+  commodityPrices: Record<string, { price: number; prevClose: number; source: string }>;
   dxy: DXYResult | null;
   coinGecko: CoinGeckoGlobal | null;
   snapshot: DashboardSnapshot | null;
@@ -142,12 +152,12 @@ function buildResponse({ cryptoPrices, equityPrices, commodityPrices, dxy, coinG
 
   // Merge live prices with snapshot reference data
   const equities: Record<string, unknown> = {};
-  for (const etf of ETF_PROXIES) {
-    const live = equityPrices[etf.name];
-    const ref = snapshot?.equities?.[etf.name];
-    equities[etf.name] = {
+  for (const name of ALL_EQUITY_NAMES) {
+    const live = equityPrices[name];
+    const ref = snapshot?.equities?.[name];
+    equities[name] = {
       price: live?.price ?? ref?.latestClose ?? null,
-      changes: mergeChanges(live?.price ?? null, ref ?? null),
+      changes: mergeChanges(live?.price ?? null, ref ?? null, live?.prevClose),
       mas: ref?.mas || {},
     };
   }
@@ -156,9 +166,11 @@ function buildResponse({ cryptoPrices, equityPrices, commodityPrices, dxy, coinG
   for (const pair of CRYPTO_PAIRS) {
     const live = cryptoPrices[pair.name];
     const ref = snapshot?.crypto?.[pair.name];
+    // Use Binance prevClosePrice (midnight UTC) for 1D; fall back to snapshot if unavailable
+    const prevClose = (live?.prevClose && live.prevClose > 0) ? live.prevClose : undefined;
     crypto[pair.name] = {
       price: live?.price ?? ref?.latestClose ?? null,
-      changes: mergeChanges(live?.price ?? null, ref ?? null),
+      changes: mergeChanges(live?.price ?? null, ref ?? null, prevClose),
       mas: ref?.mas || {},
     };
   }
@@ -170,7 +182,7 @@ function buildResponse({ cryptoPrices, equityPrices, commodityPrices, dxy, coinG
     const ref = snapshot?.commodities?.[name];
     commodities[name] = {
       price: live?.price ?? ref?.latestClose ?? null,
-      changes: mergeChanges(live?.price ?? null, ref ?? null),
+      changes: mergeChanges(live?.price ?? null, ref ?? null, live?.prevClose),
       mas: ref?.mas || {},
     };
   }
@@ -251,14 +263,16 @@ interface AssetRef {
   mas: Record<string, number>;
 }
 
-function mergeChanges(livePrice: number | null, snapshotRef: AssetRef | null): Record<string, number> {
+function mergeChanges(livePrice: number | null, snapshotRef: AssetRef | null, prevClose?: number | null): Record<string, number> {
   if (!snapshotRef || !snapshotRef.changes) return {};
 
   const changes = { ...snapshotRef.changes };
 
-  if (livePrice && snapshotRef.latestClose && snapshotRef.latestClose > 0) {
-    const liveVsSnapshot = ((livePrice - snapshotRef.latestClose) / snapshotRef.latestClose) * 100;
-    changes['1D'] = round(liveVsSnapshot, 2);
+  // For 1D change: use prevClose from the live data source (yesterday's actual close)
+  // rather than snapshot.latestClose (which may be stale or from a different time).
+  const baseline = prevClose ?? snapshotRef.latestClose;
+  if (livePrice && baseline && baseline > 0) {
+    changes['1D'] = round(((livePrice - baseline) / baseline) * 100, 2);
   }
 
   return changes;
@@ -276,20 +290,25 @@ const COINGECKO_IDS: Record<string, string> = {
   LINK: 'chainlink',
 };
 
-async function fetchCryptoPrices(): Promise<Record<string, { price: number; source: string }>> {
-  const results: Record<string, { price: number; source: string }> = {};
+async function fetchCryptoPrices(): Promise<Record<string, { price: number; prevClose: number; source: string }>> {
+  const results: Record<string, { price: number; prevClose: number; source: string }> = {};
 
   // Try Binance first (real-time, no API key needed)
+  // Use /ticker/24hr instead of /ticker/price to get prevClosePrice (midnight UTC close)
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT);
 
   try {
     const fetches = CRYPTO_PAIRS.map(async ({ symbol, name }) => {
-      const url = `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`;
+      const url = `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`;
       const res = await fetch(url, { signal: controller.signal });
       if (!res.ok) throw new Error(`Binance ${symbol}: ${res.status}`);
       const data = await res.json();
-      results[name] = { price: parseFloat(data.price), source: 'binance' };
+      results[name] = {
+        price: parseFloat(data.lastPrice),
+        prevClose: parseFloat(data.prevClosePrice),  // midnight UTC close
+        source: 'binance',
+      };
     });
 
     await Promise.allSettled(fetches);
@@ -312,7 +331,7 @@ async function fetchCryptoPrices(): Promise<Record<string, { price: number; sour
         for (const name of missing) {
           const cgId = COINGECKO_IDS[name];
           if (cgId && data[cgId]?.usd) {
-            results[name] = { price: data[cgId].usd, source: 'coingecko' };
+            results[name] = { price: data[cgId].usd, prevClose: 0, source: 'coingecko' };
           }
         }
       }
@@ -328,36 +347,65 @@ async function fetchCryptoPrices(): Promise<Record<string, { price: number; sour
   return results;
 }
 
-// ─── EQUITY PRICES (Finnhub via ETF proxies) ────────────────────────────────
-// Uses calibrated multipliers from snapshot (recalculated daily from actual index levels)
+// ─── INDEX PRICES (Yahoo Finance — actual index values, no ETF proxy) ────────
+// SPX, NDX, DJI fetched directly. ~15min delay on Yahoo free tier,
+// but 100% accurate prices (no multiplier drift or ETF tracking error).
 
-async function fetchEquityPrices(snapshot: DashboardSnapshot | null): Promise<Record<string, { price: number; prevClose: number; source: string }>> {
+async function fetchIndexPrices(): Promise<Record<string, { price: number; prevClose: number; source: string }>> {
+  const results: Record<string, { price: number; prevClose: number; source: string }> = {};
+
+  try {
+    const fetches = INDEX_SYMBOLS.map(async ({ yahoo, name, decimals }) => {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahoo}?interval=1d&range=1d`;
+      const res = await fetchWithTimeout(url, TIMEOUT);
+      if (!res.ok) throw new Error(`Yahoo ${name}: ${res.status}`);
+      const data = await res.json();
+      const meta = data?.chart?.result?.[0]?.meta;
+      const price = meta?.regularMarketPrice;
+      const prevClose = meta?.chartPreviousClose ?? meta?.previousClose;
+      if (price && price > 0) {
+        results[name] = {
+          price: round(price, decimals),
+          prevClose: prevClose ? round(prevClose, decimals) : round(price, decimals),
+          source: 'yahoo',
+        };
+      }
+    });
+    await Promise.allSettled(fetches);
+  } catch (err) {
+    console.error('Index fetch error:', err);
+  }
+
+  const sources = Object.entries(results).map(([k, v]) => `${k}:${v.price}`).join(', ');
+  console.log(`[live] Index prices: ${sources || 'NONE — using snapshot'}`);
+
+  return results;
+}
+
+// ─── ETF PRICES (Finnhub — direct quotes, no multiplier) ────────────────────
+// ETFs like IGV, SMH, IWM etc. — their price IS the price, multiplier=1.
+
+async function fetchETFPrices(): Promise<Record<string, { price: number; prevClose: number; source: string }>> {
   const results: Record<string, { price: number; prevClose: number; source: string }> = {};
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT);
 
   try {
     const fetches = ETF_PROXIES.map(async ({ symbol, name }) => {
-      // Use calibrated multiplier from snapshot, fall back to defaults
-      const snapshotMultiplier = (snapshot?.equities?.[name] as unknown as Record<string, unknown>)?.multiplier as number | undefined;
-      const multiplier = snapshotMultiplier ?? DEFAULT_MULTIPLIERS[symbol] ?? 10;
-
       const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`;
       const res = await fetch(url, { signal: controller.signal });
       if (!res.ok) throw new Error(`Finnhub ${symbol}: ${res.status}`);
       const data = await res.json();
-      // Indices (SPX, NDX, DJI) round to 0 decimals; ETFs keep 2 decimals
-      const decimals = INDEX_NAMES.has(name) ? 0 : 2;
       results[name] = {
-        price: round(data.c * multiplier, decimals),
-        prevClose: round(data.pc * multiplier, decimals),
+        price: round(data.c, 2),
+        prevClose: round(data.pc, 2),
         source: 'finnhub',
       };
     });
 
     await Promise.allSettled(fetches);
   } catch (err: unknown) {
-    if (err instanceof Error && err.name !== 'AbortError') console.error('Equity fetch error:', err);
+    if (err instanceof Error && err.name !== 'AbortError') console.error('ETF fetch error:', err);
   } finally {
     clearTimeout(timer);
   }
@@ -370,8 +418,8 @@ async function fetchEquityPrices(snapshot: DashboardSnapshot | null): Promise<Re
 // without ETF tracking error, contango drag, or expense ratio distortion.
 // ~15 minute delay on Yahoo free tier, but far more accurate than ETF proxies.
 
-async function fetchCommodityPrices(): Promise<Record<string, { price: number; source: string }>> {
-  const results: Record<string, { price: number; source: string }> = {};
+async function fetchCommodityPrices(): Promise<Record<string, { price: number; prevClose: number; source: string }>> {
+  const results: Record<string, { price: number; prevClose: number; source: string }> = {};
 
   try {
     const fetches = COMMODITY_FUTURES.map(async ({ yahoo, name }) => {
@@ -381,8 +429,9 @@ async function fetchCommodityPrices(): Promise<Record<string, { price: number; s
       const data = await res.json();
       const meta = data?.chart?.result?.[0]?.meta;
       const price = meta?.regularMarketPrice ?? meta?.previousClose;
+      const prevClose = meta?.chartPreviousClose ?? meta?.previousClose;
       if (price && price > 0) {
-        results[name] = { price: round(price, 2), source: 'yahoo' };
+        results[name] = { price: round(price, 2), prevClose: prevClose ? round(prevClose, 2) : round(price, 2), source: 'yahoo' };
       }
     });
 

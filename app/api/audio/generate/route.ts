@@ -169,16 +169,34 @@ export async function POST(req: NextRequest) {
 
     console.log(`[audio] Script: ${preprocessed.characterCount} characters, ${preprocessed.sections.length} sections`);
 
-    // 5. Generate audio via TTS
+    // 5. Generate audio via TTS (gpt-4o-mini-tts with voice instructions for natural delivery)
+    // Voice rotation: cycles through candidates daily so we can A/B test with real content.
+    // Set TTS_VOICE env var to pin a specific voice and stop rotating.
+    const VOICE_ROTATION = ['onyx', 'ash', 'coral', 'sage'] as const;
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+    const rotatedVoice = VOICE_ROTATION[dayOfYear % VOICE_ROTATION.length];
+    const selectedVoice = process.env.TTS_VOICE || rotatedVoice;
+
+    console.log(`[audio] TTS voice: ${selectedVoice}${process.env.TTS_VOICE ? ' (pinned)' : ` (rotation day ${dayOfYear} → ${rotatedVoice})`}`);
+
     const ttsClient = new OpenAITTSClient(openaiApiKey, {
-      voice: 'onyx',
-      model: 'tts-1-hd',
+      voice: selectedVoice,
+      model: 'gpt-4o-mini-tts',
     });
 
     const { audio, chunks, characterCount } = await generateFullAudio(
       ttsClient,
       preprocessed.fullText,
       {
+        instructions: `Voice: warm, energized, genuinely curious — like a smart friend who's excited to share what they've been reading over morning coffee. Not a podcast host performing. Not a news anchor delivering bad news. A real person who finds this stuff fascinating and wants you to find it fascinating too.
+
+Pacing: Vary naturally. Slow down and let weight land on key insights — the "so what" moments. Move briskly through transitions. Pause briefly between sections to let the listener reset. But keep the momentum — this should feel like a conversation that's going somewhere, not a lecture.
+
+Tone: Confident and curious. Even when the content is serious (rate hikes, geopolitical crises), the energy should be "isn't it interesting that we get to think about this?" — not doom and gloom. The listener should feel sharper and more alive after listening, not drained. Warm during Inner Game. Intellectually excited during Discovery and The Model. Direct and clear during market sections.
+
+Energy: Medium-high — present, engaged, genuinely interested. Think: the best conversation at a dinner party where everyone is smart and curious. Let real enthusiasm come through. The listener chose to spend their morning with you — reward that choice with energy.
+
+Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy emphasis on every other word, monotone delivery through dense content, depressive gravity, funeral-director solemnity.`,
         onProgress: (completed, total) => {
           console.log(`[audio] TTS chunk ${completed}/${total}`);
         },
@@ -216,6 +234,7 @@ export async function POST(req: NextRequest) {
       audioUrl: blob.url,
       duration: estimatedDuration,
       fileSize: audio.length,
+      voice: selectedVoice,
       generatedAt: new Date().toISOString(),
     };
 

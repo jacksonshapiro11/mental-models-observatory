@@ -29,41 +29,52 @@ const SNAPSHOT_SECRET = process.env.SNAPSHOT_SECRET!;
 
 const TIMEOUT = 8000;
 
-// Per-asset trading day lookback (matches seed-prices.mjs)
-const PERIODS: Record<string, number> = { '1D': 1, '5D': 5, '1M': 21, '1Y': 252 };
+// Change period definitions:
+//   tradingDays = count back N entries in the asset's own date array (skips weekends/holidays)
+//   months/years = calendar offset (March 27 → Feb 27, March 27 → March 27 last year)
+// This matches Yahoo Finance: 1D and 5D are trading days, 1M and 1Y are calendar.
+const CHANGE_PERIODS: Record<string, { tradingDays?: number; days?: number; months?: number; years?: number }> = {
+  '1D': { tradingDays: 1 },
+  '5D': { days: 7 },
+  '1M': { months: 1 },
+  '1Y': { years: 1 },
+};
+// MA periods remain in trading days (industry standard)
 const MA_PERIODS: Record<string, number> = { '50D': 50, '200D': 200, '200W': 1000 };
 
 // All assets we track — matches seed-prices.mjs exactly
-const ASSETS: Record<string, { yahoo: string; actual: string | null; fallbackMultiplier: number; category: string }> = {
-  // Equities (ETF proxies → actual index for calibration)
-  SPX:    { yahoo: 'SPY',   actual: '%5EGSPC',  fallbackMultiplier: 10,    category: 'equities' },
-  NDX:    { yahoo: 'QQQ',   actual: '%5ENDX',   fallbackMultiplier: 40.95, category: 'equities' },
-  DJI:    { yahoo: 'DIA',   actual: '%5EDJI',   fallbackMultiplier: 100,   category: 'equities' },
-  IGV:    { yahoo: 'IGV',   actual: null,        fallbackMultiplier: 1,     category: 'equities' },
-  SMH:    { yahoo: 'SMH',   actual: null,        fallbackMultiplier: 1,     category: 'equities' },
-  IWM:    { yahoo: 'IWM',   actual: null,        fallbackMultiplier: 1,     category: 'equities' },
-  IWF:    { yahoo: 'IWF',   actual: null,        fallbackMultiplier: 1,     category: 'equities' },
-  IWD:    { yahoo: 'IWD',   actual: null,        fallbackMultiplier: 1,     category: 'equities' },
-  XLE:    { yahoo: 'XLE',   actual: null,        fallbackMultiplier: 1,     category: 'equities' },
-  ARKK:   { yahoo: 'ARKK',  actual: null,        fallbackMultiplier: 1,     category: 'equities' },
+// Primary: actual index/futures symbols (direct prices, no multiplier math)
+// Fallback: ETF proxy × multiplier if actual symbol fails
+const ASSETS: Record<string, { yahoo: string; fallback: string | null; fallbackMultiplier: number; category: string }> = {
+  // Equities — actual index symbols (direct prices)
+  SPX:    { yahoo: '%5EGSPC',  fallback: 'SPY',  fallbackMultiplier: 10,    category: 'equities' },
+  NDX:    { yahoo: '%5ENDX',   fallback: 'QQQ',  fallbackMultiplier: 40.95, category: 'equities' },
+  DJI:    { yahoo: '%5EDJI',   fallback: 'DIA',  fallbackMultiplier: 100,   category: 'equities' },
+  RUT:    { yahoo: '%5ERUT',   fallback: 'IWM',  fallbackMultiplier: 10,    category: 'equities' },
+  IGV:    { yahoo: 'IGV',      fallback: null,    fallbackMultiplier: 1,     category: 'equities' },
+  SMH:    { yahoo: 'SMH',      fallback: null,    fallbackMultiplier: 1,     category: 'equities' },
+  IWF:    { yahoo: 'IWF',      fallback: null,    fallbackMultiplier: 1,     category: 'equities' },
+  IWD:    { yahoo: 'IWD',      fallback: null,    fallbackMultiplier: 1,     category: 'equities' },
+  XLE:    { yahoo: 'XLE',      fallback: null,    fallbackMultiplier: 1,     category: 'equities' },
+  ARKK:   { yahoo: 'ARKK',     fallback: null,    fallbackMultiplier: 1,     category: 'equities' },
 
   // Crypto (direct price, multiplier always 1)
-  BTC:    { yahoo: 'BTC-USD',       actual: null, fallbackMultiplier: 1, category: 'crypto' },
-  ETH:    { yahoo: 'ETH-USD',       actual: null, fallbackMultiplier: 1, category: 'crypto' },
-  SOL:    { yahoo: 'SOL-USD',       actual: null, fallbackMultiplier: 1, category: 'crypto' },
-  AAVE:   { yahoo: 'AAVE-USD',      actual: null, fallbackMultiplier: 1, category: 'crypto' },
-  UNI:    { yahoo: 'UNI7083-USD',   actual: null, fallbackMultiplier: 1, category: 'crypto' },
-  LINK:   { yahoo: 'LINK-USD',      actual: null, fallbackMultiplier: 1, category: 'crypto' },
+  BTC:    { yahoo: 'BTC-USD',       fallback: null, fallbackMultiplier: 1, category: 'crypto' },
+  ETH:    { yahoo: 'ETH-USD',       fallback: null, fallbackMultiplier: 1, category: 'crypto' },
+  SOL:    { yahoo: 'SOL-USD',       fallback: null, fallbackMultiplier: 1, category: 'crypto' },
+  AAVE:   { yahoo: 'AAVE-USD',      fallback: null, fallbackMultiplier: 1, category: 'crypto' },
+  UNI:    { yahoo: 'UNI7083-USD',   fallback: null, fallbackMultiplier: 1, category: 'crypto' },
+  LINK:   { yahoo: 'LINK-USD',      fallback: null, fallbackMultiplier: 1, category: 'crypto' },
 
-  // Commodities (ETF proxies → actual futures for calibration)
-  GOLD:   { yahoo: 'GLD',   actual: 'GC%3DF',  fallbackMultiplier: 10,  category: 'commodities' },
-  SILVER: { yahoo: 'SLV',   actual: 'SI%3DF',  fallbackMultiplier: 1,   category: 'commodities' },
-  BRENT:  { yahoo: 'BNO',   actual: 'BZ%3DF',  fallbackMultiplier: 1,   category: 'commodities' },
-  COPPER: { yahoo: 'CPER',  actual: 'HG%3DF',  fallbackMultiplier: 1,   category: 'commodities' },
-  NATGAS: { yahoo: 'UNG',   actual: 'NG%3DF',  fallbackMultiplier: 1,   category: 'commodities' },
+  // Commodities — actual futures symbols (direct prices)
+  GOLD:   { yahoo: 'GC%3DF',   fallback: 'GLD',  fallbackMultiplier: 10,  category: 'commodities' },
+  SILVER: { yahoo: 'SI%3DF',   fallback: 'SLV',  fallbackMultiplier: 1,   category: 'commodities' },
+  BRENT:  { yahoo: 'BZ%3DF',   fallback: 'BNO',  fallbackMultiplier: 1,   category: 'commodities' },
+  COPPER: { yahoo: 'HG%3DF',   fallback: 'CPER', fallbackMultiplier: 1,   category: 'commodities' },
+  NATGAS: { yahoo: 'NG%3DF',   fallback: 'UNG',  fallbackMultiplier: 1,   category: 'commodities' },
 
   // Rates (Treasury yields — direct, multiplier always 1)
-  US10Y:  { yahoo: '%5ETNX', actual: null, fallbackMultiplier: 1, category: 'rates' },
+  US10Y:  { yahoo: '%5ETNX',   fallback: null,   fallbackMultiplier: 1, category: 'rates' },
 };
 
 // ─── AUTH ────────────────────────────────────────────────────────────────────
@@ -178,17 +189,32 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
   const assetPrices = buildAssetPriceArrays(history);
 
   // Step 4: Append today's prices to the arrays
-  const today = new Date().toISOString().slice(0, 10);
+  // Use the actual trading date from Yahoo's regularMarketTime (not wall-clock time).
+  // Cron runs at 6 AM ET, so Yahoo returns yesterday's closing price — and the
+  // tradingDate from Yahoo will correctly be yesterday's date.
+  // Fallback: current ET date if Yahoo didn't provide a trading date.
+  const fallbackDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+
+  // Determine the canonical snapshot date from equity trading dates (most reliable)
+  const equityDates = Object.values(todayPrices)
+    .map(d => d.tradingDate)
+    .filter((d): d is string => d != null);
+  // Most common trading date across all assets = the actual market date
+  const today = mode(equityDates) || fallbackDate;
+  console.log(`[snapshot] Using trading date: ${today} (fallback would be: ${fallbackDate})`);
+
   for (const [name, data] of Object.entries(todayPrices)) {
     if (!assetPrices[name]) {
       assetPrices[name] = { dates: [], prices: [], category: ASSETS[name]?.category || 'equities' };
     }
     const arr = assetPrices[name]!;
-    if (arr.dates.length === 0 || arr.dates[arr.dates.length - 1] !== today) {
-      arr.dates.push(today);
+    // Use the per-asset trading date if available, otherwise the canonical date
+    const assetDate = data.tradingDate || today;
+    if (arr.dates.length === 0 || arr.dates[arr.dates.length - 1] !== assetDate) {
+      arr.dates.push(assetDate);
       arr.prices.push(data.adjustedPrice);
     } else {
-      // Update today's price with the latest
+      // Update this date's price with the latest
       arr.prices[arr.prices.length - 1] = data.adjustedPrice;
     }
   }
@@ -205,7 +231,7 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
     if (arr.prices.length === 0) continue;
 
     const latest = arr.prices[arr.prices.length - 1]!;
-    const changes = calculateChanges(arr.prices);
+    const changes = calculateChanges(arr.dates, arr.prices);
     const mas = calculateMAs(arr.prices);
     const multiplier = todayPrices[name]?.multiplier ?? ASSETS[name]?.fallbackMultiplier ?? 1;
 
@@ -241,6 +267,7 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
 interface YahooPriceResult {
   adjustedPrice: number;
   multiplier: number;
+  tradingDate: string | null; // actual trading date from Yahoo response
 }
 
 async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> {
@@ -248,45 +275,64 @@ async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> 
 
   for (const [name, asset] of Object.entries(ASSETS)) {
     try {
-      const etfPrice = await fetchYahooCurrentPrice(asset.yahoo);
-      if (etfPrice == null || etfPrice <= 0) {
-        warn(`Yahoo ${name} (${asset.yahoo}): no price`);
+      // Try primary symbol first (actual index/futures — direct price, no multiplier)
+      const primary = await fetchYahooCurrentPriceWithMeta(asset.yahoo);
+      if (primary && primary.price > 0) {
+        console.log(`[snapshot] ${name}: ${asset.yahoo} = ${primary.price} (direct, date: ${primary.tradingDate})`);
+        results[name] = {
+          adjustedPrice: round(primary.price, 2),
+          multiplier: 1,
+          tradingDate: primary.tradingDate,
+        };
+        await sleep(200);
         continue;
       }
-
-      let multiplier = asset.fallbackMultiplier;
-      if (asset.actual) {
-        try {
-          const actualPrice = await fetchYahooCurrentPrice(asset.actual);
-          if (actualPrice != null && actualPrice > 0 && etfPrice > 0) {
-            multiplier = round(actualPrice / etfPrice, 4);
-            console.log(`[snapshot] Calibrate ${name}: ${asset.yahoo}=${etfPrice} × ${multiplier} = ${round(etfPrice * multiplier, 2)} (actual: ${actualPrice})`);
-          }
-        } catch (err) {
-          warn(`Yahoo calibration ${name} (${asset.actual}) failed: ${err instanceof Error ? err.message : err}`);
-        }
-      }
-
-      results[name] = {
-        adjustedPrice: round(etfPrice * multiplier, 2),
-        multiplier,
-      };
     } catch (err) {
-      warn(`Yahoo ${name} (${asset.yahoo}) failed: ${err instanceof Error ? err.message : err}`);
+      warn(`Yahoo ${name} primary (${asset.yahoo}) failed: ${err instanceof Error ? err.message : err}`);
     }
 
     await sleep(200);
+
+    // Fallback: use ETF proxy × multiplier
+    if (asset.fallback) {
+      try {
+        const fallback = await fetchYahooCurrentPriceWithMeta(asset.fallback);
+        if (fallback && fallback.price > 0) {
+          const adjusted = round(fallback.price * asset.fallbackMultiplier, 2);
+          warn(`[snapshot] ${name}: using fallback ${asset.fallback}=${fallback.price} × ${asset.fallbackMultiplier} = ${adjusted}`);
+          results[name] = {
+            adjustedPrice: adjusted,
+            multiplier: asset.fallbackMultiplier,
+            tradingDate: fallback.tradingDate,
+          };
+        }
+      } catch (err) {
+        warn(`Yahoo ${name} fallback (${asset.fallback}) failed: ${err instanceof Error ? err.message : err}`);
+      }
+      await sleep(200);
+    }
   }
 
   return results;
 }
 
-async function fetchYahooCurrentPrice(symbol: string): Promise<number | null> {
+async function fetchYahooCurrentPriceWithMeta(symbol: string): Promise<{ price: number; tradingDate: string | null } | null> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
   const res = await fetchWithTimeout(url, TIMEOUT, { 'User-Agent': 'Mozilla/5.0' });
   const data = await res.json();
-  const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-  return typeof price === 'number' && price > 0 ? price : null;
+  const meta = data?.chart?.result?.[0]?.meta;
+  const price = meta?.regularMarketPrice;
+  if (typeof price !== 'number' || price <= 0) return null;
+
+  // Extract the actual trading date from Yahoo's regularMarketTime (Unix timestamp)
+  // Convert using the exchange's timezone to get the correct trading date
+  let tradingDate: string | null = null;
+  if (meta?.regularMarketTime) {
+    const tz = meta?.exchangeTimezoneName || 'America/New_York';
+    tradingDate = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date(meta.regularMarketTime * 1000));
+  }
+
+  return { price, tradingDate };
 }
 
 // ─── READ HISTORICAL DATA FROM REDIS ─────────────────────────────────────────
@@ -380,16 +426,53 @@ function buildAssetPriceArrays(history: HistoryEntry[]): Record<string, AssetPri
 
 // ─── CALCULATION HELPERS ─────────────────────────────────────────────────────
 
-function calculateChanges(prices: number[]): Record<string, number> {
-  if (!prices || prices.length < 2) return {};
+// Calculate % changes matching Yahoo Finance conventions:
+//   tradingDays: count back N entries in the date array (1D, 5D)
+//   months/years: calendar offset with closest-trading-day lookup (1M, 1Y)
+function calculateChanges(dates: string[], prices: number[]): Record<string, number> {
+  if (!dates || !prices || prices.length < 2) return {};
 
-  const latest = prices[prices.length - 1]!;
+  const latestIdx = prices.length - 1;
+  const latest = prices[latestIdx]!;
   const changes: Record<string, number> = {};
 
-  for (const [label, daysBack] of Object.entries(PERIODS)) {
-    const idx = prices.length - 1 - daysBack;
-    if (idx >= 0 && prices[idx] != null && prices[idx]! > 0) {
-      changes[label] = round(((latest - prices[idx]!) / prices[idx]!) * 100, 2);
+  for (const [label, period] of Object.entries(CHANGE_PERIODS)) {
+    let bestIdx = -1;
+
+    if (period.tradingDays) {
+      // Simple array index lookback — each entry IS a trading day
+      bestIdx = latestIdx - period.tradingDays;
+    } else {
+      // Calendar date lookback with binary search for closest trading day
+      // Parse date components directly to avoid timezone issues
+      const dateStr = dates[latestIdx]!;
+      const parts = dateStr.split('-').map(Number);
+      let ty = parts[0]!, tm = parts[1]!, td = parts[2]!;
+      if (period.years) ty -= period.years;
+      if (period.months) {
+        tm -= period.months;
+        if (tm < 1) { ty -= 1; tm += 12; }
+      }
+      if (period.days) td -= period.days;
+      // Clamp day to valid range for target month (handles e.g. March 31 → Feb 28)
+      const maxDay = new Date(ty, tm, 0).getDate();
+      if (td > maxDay) td = maxDay;
+      const targetStr = `${ty}-${String(tm).padStart(2, '0')}-${String(td).padStart(2, '0')}`;
+
+      let lo = 0, hi = latestIdx - 1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (dates[mid]! <= targetStr) {
+          bestIdx = mid;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+    }
+
+    if (bestIdx >= 0 && prices[bestIdx] != null && prices[bestIdx]! > 0) {
+      changes[label] = round(((latest - prices[bestIdx]!) / prices[bestIdx]!) * 100, 2);
     }
   }
 
@@ -441,6 +524,14 @@ async function fetchFearGreed() {
 
 function round(value: number, decimals: number): number {
   return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals);
+}
+
+// Return the most common element in an array
+function mode(arr: string[]): string | null {
+  if (arr.length === 0) return null;
+  const counts: Record<string, number> = {};
+  for (const v of arr) counts[v] = (counts[v] || 0) + 1;
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]![0];
 }
 
 function sleep(ms: number): Promise<void> {

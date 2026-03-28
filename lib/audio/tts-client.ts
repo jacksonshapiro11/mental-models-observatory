@@ -34,26 +34,36 @@ export interface TTSProvider {
 
 export class OpenAITTSClient implements TTSProvider {
   name = 'openai';
-  maxCharsPerRequest = 4096;
+  // gpt-4o-mini-tts accepts ~2K input tokens (~8K chars for English).
+  // Using 3500 chars for safety margin with financial text (tickers/numbers tokenize differently).
+  maxCharsPerRequest = 3500;
 
   private client: OpenAI;
   private defaultVoice: string;
   private defaultModel: string;
 
-  constructor(apiKey: string, options?: { voice?: string; model?: string }) {
+  constructor(apiKey: string, options?: { voice?: string | undefined; model?: string | undefined }) {
     this.client = new OpenAI({ apiKey });
-    this.defaultVoice = options?.voice || 'onyx'; // Deep, authoritative — good for financial news
-    this.defaultModel = options?.model || 'tts-1-hd';
+    this.defaultVoice = options?.voice || 'onyx'; // Default voice — pass voice option to override per-run
+    this.defaultModel = options?.model || 'gpt-4o-mini-tts';
   }
 
   async generateAudio(text: string, options?: TTSOptions): Promise<Buffer> {
-    const response = await this.client.audio.speech.create({
-      model: options?.model || this.defaultModel,
-      voice: (options?.voice || this.defaultVoice) as 'onyx' | 'alloy' | 'echo' | 'fable' | 'nova' | 'shimmer',
+    const model = options?.model || this.defaultModel;
+    const params: Record<string, unknown> = {
+      model,
+      voice: (options?.voice || this.defaultVoice) as 'onyx' | 'alloy' | 'echo' | 'fable' | 'nova' | 'shimmer' | 'ash' | 'ballad' | 'coral' | 'sage' | 'verse',
       input: text,
       response_format: options?.format || 'mp3',
       speed: options?.speed || 1.0,
-    });
+    };
+
+    // gpt-4o-mini-tts supports natural-language voice instructions for tone/style control
+    if (options?.instructions && model.includes('gpt-4o-mini-tts')) {
+      params.instructions = options.instructions;
+    }
+
+    const response = await this.client.audio.speech.create(params as any);
 
     const arrayBuffer = await response.arrayBuffer();
     return Buffer.from(arrayBuffer);
