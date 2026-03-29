@@ -26,7 +26,7 @@
     "test:all": "npm run test:type && npm run test:lint && npm run test:format",
     "validate": "npm run test:all",
     "postinstall": "echo \"✅ Installation complete. Run 'npm run dev' to start development.\"",
-    "prepare": "husky install || echo 'Husky not installed'",
+    "prepare": "echo 'Ready'",
     "deploy:vercel": "vercel --prod",
     "deploy:preview": "vercel",
     "parse-readwise": "node scripts/parse-readwise-framework.js",
@@ -48,7 +48,7 @@
     "dotenv": "^17.2.1",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.541.0",
-    "next": "15.5.0",
+    "next": "^15.5.9",
     "openai": "^6.33.0",
     "postcss": "^8.4.31",
     "react": "19.1.0",
@@ -63,7 +63,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.5.0",
+    "eslint-config-next": "15.5.9",
     "prettier": "^3.6.2",
     "typescript": "^5"
   }
