@@ -85,7 +85,7 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
   let lede = '';
   let orientation = '';
   let headerEndIndex = 0;
-  let italicLinesAfterDate: string[] = [];
+  const italicLinesAfterDate: string[] = [];
 
   for (let i = 0; i < Math.min(lines.length, 20); i++) {
     const line = (lines[i] ?? '').trim();
