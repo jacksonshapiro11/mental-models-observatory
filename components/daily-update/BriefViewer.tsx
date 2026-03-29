@@ -690,7 +690,9 @@ function SectionContent({ section }: { section: BriefSection }) {
         </div>
       );
     }
+    case 'overnight': return <GenericSection content={section.content} />;
     case 'the-six': return <TheSixSection content={section.content} />;
+    case 'deep-read': return <GenericSection content={section.content} />;
     case 'the-take': return <TheTakeSection content={section.content} />;
     case 'asset-spotlight': return <GenericSection content={section.content} />;
     case 'inner-game': return <GenericSection content={section.content} />;
@@ -706,8 +708,10 @@ function SectionContent({ section }: { section: BriefSection }) {
 // ─── Section display titles ──────────────────────────────────────────────────
 
 const SECTION_TITLES: Record<string, string> = {
+  'overnight': 'Overnight',
   'dashboard': 'The Dashboard',
   'the-six': 'The Six',
+  'deep-read': 'Deep Read',
   'the-take': 'The Take',
   'asset-spotlight': 'Asset Spotlight',
   'inner-game': 'Inner Game',

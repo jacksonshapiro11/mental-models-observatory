@@ -15,7 +15,7 @@ export interface DailyBrief {
 
 export interface BriefSection {
   id: string;
-  type: 'dashboard' | 'the-six' | 'the-take' | 'asset-spotlight' | 'inner-game' | 'the-model' | 'discovery' | 'big-stories' | 'tomorrows-headlines' | 'watchlist' | 'worldview' | 'ref-big-stories' | 'ref-tomorrows';
+  type: 'overnight' | 'dashboard' | 'the-six' | 'deep-read' | 'the-take' | 'asset-spotlight' | 'inner-game' | 'the-model' | 'discovery' | 'big-stories' | 'tomorrows-headlines' | 'watchlist' | 'worldview' | 'ref-big-stories' | 'ref-tomorrows';
   label: string;
   shortLabel: string;
   content: string;        // Raw markdown content of this section
@@ -24,8 +24,10 @@ export interface BriefSection {
 // ─── Section definitions (order matters) ─────────────────────────────────────
 
 const SECTION_DEFS: { marker: string; id: string; type: BriefSection['type']; label: string; shortLabel: string }[] = [
+  { marker: '## ▸ OVERNIGHT', id: 'overnight', type: 'overnight', label: 'Overnight', shortLabel: 'ON' },
   { marker: '# ▸ THE DASHBOARD', id: 'dashboard', type: 'dashboard', label: 'Dashboard', shortLabel: 'Dash' },
   { marker: '# ▸ THE SIX', id: 'the-six', type: 'the-six', label: 'The Six', shortLabel: 'Six' },
+  { marker: '## Deep Read', id: 'deep-read', type: 'deep-read', label: 'Deep Read', shortLabel: 'Read' },
   { marker: '# ▸ THE TAKE', id: 'the-take', type: 'the-take', label: 'The Take', shortLabel: 'Take' },
   { marker: '# ▸ ASSET SPOTLIGHT', id: 'asset-spotlight', type: 'asset-spotlight', label: 'Asset Spotlight', shortLabel: 'Asset' },
   { marker: '# ▸ INNER GAME', id: 'inner-game', type: 'inner-game', label: 'Inner Game', shortLabel: 'Inner' },

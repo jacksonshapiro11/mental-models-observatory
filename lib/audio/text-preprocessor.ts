@@ -134,8 +134,10 @@ interface AudioSectionConfig {
 
 /** Sections to include in audio (in order). Dashboard is commentary-only (skip tables). */
 const AUDIO_SECTIONS: AudioSectionConfig[] = [
+  { marker: '## ▸ OVERNIGHT', name: 'Overnight', mode: 'full' },
   { marker: '# ▸ THE DASHBOARD', name: 'The Dashboard', mode: 'commentary-only' },
   { marker: '# ▸ THE SIX', name: 'The Six', mode: 'full' },
+  // Deep Read / Listen is SKIPPED in audio — external links don't work in audio format
   { marker: '# ▸ THE TAKE', name: 'The Take', mode: 'full' },
   { marker: '# ▸ ASSET SPOTLIGHT', name: 'Asset Spotlight', mode: 'full' },
   { marker: '# ▸ INNER GAME', name: 'Inner Game', mode: 'full' },
@@ -155,6 +157,7 @@ const LEGACY_AUDIO_SECTIONS: AudioSectionConfig[] = [
 const ALL_MARKERS = [
   ...AUDIO_SECTIONS.map(s => s.marker),
   ...LEGACY_AUDIO_SECTIONS.map(s => s.marker),
+  '## Deep Read',  // Boundary marker — section is skipped in audio but needs to be recognized
   '# ▸ WORLDVIEW UPDATES',
   '# ▸ FULL REFERENCE: BIG STORIES',
   "# ▸ FULL REFERENCE: TOMORROW'S HEADLINES",
@@ -367,8 +370,10 @@ function extractRawContent(
     const allConfigs = [...AUDIO_SECTIONS, ...LEGACY_AUDIO_SECTIONS];
     const configByName = (name: string) => allConfigs.find(c => c.name === name);
     const sectionIdToConfig: Record<string, AudioSectionConfig> = {
+      'overnight': configByName('Overnight')!,
       'dashboard': configByName('The Dashboard')!,
       'the-six': configByName('The Six')!,
+      // 'deep-read' intentionally excluded — Deep Read / Listen is skipped in audio
       'the-take': configByName('The Take')!,
       'asset-spotlight': configByName('Asset Spotlight')!,
       'inner-game': configByName('Inner Game')!,
@@ -590,6 +595,10 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'Asset Spotlight': 'This is a thesis check on one portfolio asset. Walk through the original thesis, the evidence, what changed, and the thesis adjustment. Talk through it like you\'re explaining your thinking to a friend who\'s also an investor — don\'t dumb it down. Keep the specifics: the spreads, the TVL checks, the regulatory catalysts. This section should end the Markets block on a concrete, actionable note.',
   'Inner Game': 'Read this warmly and with genuine presence. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode — let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift — the listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
   'Discovery': 'This is an original essay about a concept from science, history, or systems thinking — NOT a reading recommendation. Tell the story with genuine fascination. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read — you\'re delivering it right now. This should be the section that makes someone say "I didn\'t know that." End the episode on intellectual wonder — the listener should feel their world just got a little bigger.',
+  // Optional sections
+  'Overnight': 'Quick overnight catch-up — 3-4 key developments since last night. Keep it brisk and factual with "here\'s what happened while you were sleeping" energy. Each item gets 1-2 sentences. Natural transition into the Dashboard.',
+  'Deep Read / Listen': 'Skip this section entirely in audio — do not read it. These are external link recommendations that don\'t work in audio format.',
+
   // Legacy sections — still used for processing older briefs
   'The Big Stories': 'Run through the big stories. Cover EVERY story individually — headline, context, why it matters, what to watch.',
   "Tomorrow's Headlines": 'Cover EVERY headline. For each: what happened, what it means going forward, and the signal.',
