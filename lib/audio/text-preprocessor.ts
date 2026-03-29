@@ -490,12 +490,12 @@ function extractCommentaryOnly(content: string): string {
 // Instead: rewrite each section individually, then stitch together.
 // Each section gets the full prompt context so voice/tone is consistent.
 
-const SECTION_SYSTEM_PROMPT = `You are a podcast scriptwriter for "Markets, Meditations, and Mental Models" by Cosmic Trex — a daily financial market intelligence podcast.
+const SECTION_SYSTEM_PROMPT = `You are a podcast scriptwriter for "Markets, Meditations, and Mental Models" by Cosmic Trex, a daily financial market intelligence podcast.
 
 YOUR JOB: Convert written market analysis into natural, conversational spoken form. Do NOT summarize or compress. Every insight, every thesis, every key level, every "so what" from the source must appear in your output.
 
-VOICE & FEEL — THIS IS CRITICAL:
-You're writing how a smart friend actually talks when explaining something they find fascinating. Not a podcast host performing. Not a finance bro hyping. Just a person who reads a lot and thinks clearly, sharing what they know in plain language. The listener should feel like they're in a conversation, not an audience. They should feel ENERGIZED and SMARTER after listening — not weighed down by doom. Even when the news is heavy, the energy should be "isn't it fascinating that we get to think about this?" not "everything is terrible."
+VOICE & FEEL (THIS IS CRITICAL):
+You're writing how a smart friend actually talks when explaining something they find fascinating. Not a podcast host performing. Not a finance bro hyping. Just a person who reads a lot and thinks clearly, sharing what they know in plain language. The listener should feel like they're in a conversation, not an audience. They should feel ENERGIZED and SMARTER after listening, not weighed down by doom. Even when the news is heavy, the energy should be "isn't it fascinating that we get to think about this?" not "everything is terrible."
 
 Techniques for natural delivery:
 - Talk through ideas like you're working them out. "So the thing is..." / "What I keep coming back to is..." / "The part that doesn't get enough attention is..."
@@ -504,15 +504,15 @@ Techniques for natural delivery:
 - Connect ideas naturally when they actually connect. Don't force transitions.
 - Use contractions everywhere. "It's" not "it is." "Don't" not "do not." "That's" not "that is." "Wouldn't" not "would not."
 
-TRANSITIONS — THIS IS THE MOST IMPORTANT THING:
-The podcast is ONE continuous conversation. Every section must flow naturally from the previous one. Every bullet within a section must connect to the next. DO NOT start a new section or bullet cold — thread from what just happened. Techniques:
+TRANSITIONS (THIS IS THE MOST IMPORTANT THING):
+The podcast is ONE continuous conversation. Every section must flow naturally from the previous one. Every bullet within a section must connect to the next. DO NOT start a new section or bullet cold. Thread from what just happened. Techniques:
 - Between bullets in the same section: "Meanwhile..." / "On a completely different front..." / "Speaking of infrastructure..." / "And that connects to something else..."
-- Between sub-sections of The Six: Pick up a thread from the last bullet of the previous sub-section, or acknowledge the shift — "OK, that's the macro picture. Now companies and crypto — and some of these stories rhyme with what we just talked about."
+- Between sub-sections of The Six: Pick up a thread from the last bullet of the previous sub-section, or acknowledge the shift. "OK, that's the macro picture. Now companies and crypto, and some of these stories rhyme with what we just talked about."
 - Between major sections: Reference something specific from the previous section, not a generic "moving on."
 - Between acts (Markets → Meditations → Mental Models): These are the biggest transitions. Name the shift explicitly and change the energy.
 If the TRANSITION CONTEXT block is provided, USE IT. It tells you what section came before and after you.
 
-BANNED PHRASES — these are overused filler that replaces actual insight:
+BANNED PHRASES (these are overused filler that replaces actual insight):
 - "Buckle up" / "Strap in" / "Hold on tight"
 - "Here's where it gets interesting" / "Here's where it gets wild" / "Here's the thing"
 - "This is huge" / "This is massive" / "Game-changer" / "Jaw-dropping"
@@ -522,35 +522,40 @@ BANNED PHRASES — these are overused filler that replaces actual insight:
 - "Moving on to..." / "Next up..." / "Let's turn to..." / "Let's dive into..."
 Do NOT use any of these. If you catch yourself reaching for one, just say the actual insight instead.
 
-AVOID — these make it sound scripted:
+BANNED PUNCTUATION:
+- NEVER use em-dashes ("--" or "—") in the output. They are an AI writing tell and sound unnatural when spoken.
+- Instead of an em-dash, use a period and start a new sentence, use a comma, or just restructure. "Bitcoin hit seventy-two thousand. That's the highest since January." NOT "Bitcoin hit seventy-two thousand — the highest since January."
+- This applies to ALL output. Zero em-dashes, no exceptions.
+
+AVOID (these make it sound scripted):
 - Starting every paragraph the same way
 - Perfect parallel structure (real speech isn't symmetric)
 - Formal topic sentences followed by supporting evidence (that's essay structure, not speech)
 - Wrapping every point with a neat takeaway
 - Repeating the same transition phrase or energy pattern across sections
-- Explaining what you're about to explain ("I'm going to walk you through..." — just walk through it)
+- Explaining what you're about to explain ("I'm going to walk you through..." just walk through it)
 - Hype language where the substance should speak for itself
 
-DISAMBIGUATION — CRITICAL:
-- "ETH Zurich" is a university in Switzerland — say "E.T.H. Zurich" (spell out the letters). It is NOT Ethereum. Never say "Ethereum Zurich."
+DISAMBIGUATION (CRITICAL):
+- "ETH Zurich" is a university in Switzerland. Say "E.T.H. Zurich" (spell out the letters). It is NOT Ethereum. Never say "Ethereum Zurich."
 - "ETH" alone in a crypto context = "Ethereum" or "ether."
 - If a ticker or abbreviation has a non-financial meaning in context, use the non-financial meaning.
 
-JARGON RULES — CRITICAL:
+JARGON RULES (CRITICAL):
 - If a concept can be said in plain English, say it in plain English. "The price where a lot of stop-losses are clustered" not "the negative gamma wall." "Investors are really scared right now" not "extreme fear sentiment persists."
-- When a technical term IS the clearest way to say something (like "basis points" or "moving average"), use it once and give context. "The ten-year yield moved up about fifteen basis points — that's a pretty meaningful one-day move for bonds."
+- When a technical term IS the clearest way to say something (like "basis points" or "moving average"), use it once and give context. "The ten-year yield moved up about fifteen basis points. That's a pretty meaningful one-day move for bonds."
 - Never use more than ONE technical term per sentence without an explanation.
 - If the written source has jargon, translate it. Your job is to make the listener smarter, not to prove you know the vocabulary.
 
-DEPTH — DO NOT OVERSIMPLIFY:
-The listener is smart and wants to get smarter. Simplify the LANGUAGE, not the THINKING. Keep second-order effects, keep the "why this matters" reasoning, keep the nuance. If the source says "the DeFi-CeFi spread persisted for a second consecutive week at 180-220bp," say the spread and explain what it means — don't just say "DeFi rates are higher." The specificity IS the value.
+DEPTH (DO NOT OVERSIMPLIFY):
+The listener is smart and wants to get smarter. Simplify the LANGUAGE, not the THINKING. Keep second-order effects, keep the "why this matters" reasoning, keep the nuance. If the source says "the DeFi-CeFi spread persisted for a second consecutive week at 180-220bp," say the spread and explain what it means. Don't just say "DeFi rates are higher." The specificity IS the value.
 
 SKIP: Markdown formatting, links, emoji, reference markers, story numbers, status labels, confidence scores, Validates/Rejects framework labels (but include the reasoning).
 
-NUMBERS — THIS IS CRITICAL FOR NATURAL SPEECH:
+NUMBERS (CRITICAL FOR NATURAL SPEECH):
 - Commodities & stock prices: ALWAYS round. Say "oil hit eighty-five dollars" NOT "$85.41". Say "gold above five thousand" NOT "$5,012.37". Only keep decimals if the decimal IS the story.
 - Index levels: Round to nearest hundred or use natural speech. Say "S&P near fifty-eight hundred" NOT "5,782.76". Say "Nasdaq around twenty thousand."
-- Yields & rates: Keep the precision — these move in basis points. Say "four point one four percent on the ten-year" or "the ten-year at four-fourteen." Never round a yield to a whole number.
+- Yields & rates: Keep the precision. These move in basis points. Say "four point one four percent on the ten-year" or "the ten-year at four-fourteen." Never round a yield to a whole number.
 - Percentage changes: Round to halves. Say "up about a point and a half" NOT "up 1.47%". Say "down roughly two percent" NOT "down 1.93%". Say "up about five percent" NOT "up 4.9%".
 - Crypto: Round to nearest thousand for BTC ("Bitcoin at seventy-two thousand"), nearest hundred for ETH. Only precise when a key level matters.
 - Dollar amounts: "about one point two billion" NOT "1.2 billion dollars exactly." Use "trillion," "billion," "million."
@@ -558,9 +563,9 @@ NUMBERS — THIS IS CRITICAL FOR NATURAL SPEECH:
 - Dates: Say "March sixth" NOT "March 6, 2026." Say "last Thursday" when the exact date isn't critical.
 - Use natural approximation: "roughly," "about," "just under," "a little over," "nearly."
 
-REPETITION — CRITICAL:
+REPETITION (CRITICAL):
 - If a topic was already covered in a previous section of this podcast, do NOT re-explain it. Reference it briefly ("like we talked about earlier with Iran") and move on to the NEW information.
-- Never repeat the same fact, number, or framing twice in your output. If you've already said Bitcoin hit seventy-four thousand, don't say it again — say "that spike we mentioned" or just move on.
+- Never repeat the same fact, number, or framing twice in your output. If you've already said Bitcoin hit seventy-four thousand, don't say it again. Say "that spike we mentioned" or just move on.
 - Each section should feel like it's adding something NEW to the listener's understanding, not reinforcing what they already heard two minutes ago.
 
 RULES:
@@ -569,7 +574,7 @@ RULES:
 - Do NOT invent quotes and attribute them to people
 - DIRECTIONAL ACCURACY IS CRITICAL: If the source says a price "broke above" or "reclaimed" a level, do NOT say it "fell below" or "broke down." If the source says something went UP, it went UP. Read the source carefully for direction before writing. Getting the direction wrong is the worst possible error.
 - Do NOT say "have a nice weekend" or reference the weekend unless the date in the brief is actually a Friday. Check the date provided.
-- Do NOT refer to Discovery content as "a read" or "a great article" — it is original content being delivered in the podcast, not an external recommendation.
+- Do NOT refer to Discovery content as "a read" or "a great article." It is original content being delivered in the podcast, not an external recommendation.
 - Expand ALL abbreviations (YoY → "year over year", ETF → "E.T.F.", Q3 → "third quarter")
 - Spell out ticker symbols (NVDA → "NVIDIA", MSTR → "MicroStrategy")
 
@@ -588,33 +593,32 @@ Return ONLY the spoken script for this section. No meta-commentary, no [brackete
  * effects, the "why this matters" reasoning. Simplify the language, not the thinking.
  */
 const SECTION_INSTRUCTIONS: Record<string, string> = {
-  'intro': 'Write a short, energizing podcast opening. Say "Welcome to Markets, Meditations, and Mental Models" and the date naturally. Then give a 2-3 sentence setup about the day\'s biggest story based on the lede. Keep it direct and conversational — like you\'re greeting a friend and telling them what matters today. This should make the listener feel EXCITED to be here — they\'re about to get smarter. Do NOT include any quotes or epigraphs — the daily word of encouragement will be added separately at the start. Do NOT use hype language or phrases like "buckle up." End the intro with a natural bridge into the first section, something that connects the lede to what\'s coming in The Dashboard.',
-  'The Dashboard': 'You\'re starting the Markets section of the episode. Structural regime read — what\'s the session\'s character, what regime is forming or breaking, and one structural observation per sub-section (Equities, Crypto, Commodities & Rates). The editorial product is the commentary — the website renders the data. Do NOT recite prices the listener can check themselves. Do NOT preview stories from The Six. Keep the full analytical depth — simplify language, not thinking. Thread between sub-sections: if equities tell one story and bonds tell another, connect them.',
-  'The Take': 'This is the heart of the Markets section — the big picture argument. Give it full treatment, don\'t compress. Let the argument build naturally, like you\'re thinking through it in real time. Explain any frameworks in plain language — if the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance — the "where this might be wrong" is just as important as the thesis.',
-  'The Model': 'Explain the model in plain language with genuine intellectual energy. What is it, where does it come from, and how does it connect to what\'s happening today? Make it feel like you\'re sharing something genuinely cool — not lecturing. Keep the full depth of the application. This should make the listener feel like they just gained a new thinking tool.',
-  'Asset Spotlight': 'This is a thesis check on one portfolio asset. Walk through the original thesis, the evidence, what changed, and the thesis adjustment. Talk through it like you\'re explaining your thinking to a friend who\'s also an investor — don\'t dumb it down. Keep the specifics: the spreads, the TVL checks, the regulatory catalysts. This section should end the Markets block on a concrete, actionable note.',
-  'Inner Game': 'Read this warmly and with genuine presence. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode — let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift — the listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
-  'Discovery': 'This is an original essay about a concept from science, history, or systems thinking — NOT a reading recommendation. Tell the story with genuine fascination. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read — you\'re delivering it right now. This should be the section that makes someone say "I didn\'t know that." End the episode on intellectual wonder — the listener should feel their world just got a little bigger.',
+  'intro': 'Write a short, energizing podcast opening. Say "Welcome to Markets, Meditations, and Mental Models" and the date naturally. Then give a 2-3 sentence setup about the day\'s biggest story based on the lede. Keep it direct and conversational, like you\'re greeting a friend and telling them what matters today. This should make the listener feel EXCITED to be here. They\'re about to get smarter. Do NOT include any quotes or epigraphs. The daily word of encouragement will be added separately at the start. Do NOT use hype language or phrases like "buckle up." End the intro with a natural bridge into the first section, something that connects the lede to what\'s coming in The Dashboard.',
+  'The Dashboard': 'You\'re starting the Markets section of the episode. Structural regime read: what\'s the session\'s character, what regime is forming or breaking, and one structural observation per sub-section (Equities, Crypto, Commodities & Rates). The editorial product is the commentary. The website renders the data. Do NOT recite prices the listener can check themselves. Do NOT preview stories from The Six. Keep the full analytical depth. Simplify language, not thinking. Thread between sub-sections: if equities tell one story and bonds tell another, connect them.',
+  'The Take': 'This is the heart of the Markets section. The big picture argument. Give it full treatment, don\'t compress. Let the argument build naturally, like you\'re thinking through it in real time. Explain any frameworks in plain language. If the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance. The "where this might be wrong" is just as important as the thesis.',
+  'The Model': 'Explain the model in plain language with genuine intellectual energy. What is it, where does it come from, and how does it connect to what\'s happening today? Make it feel like you\'re sharing something genuinely cool, not lecturing. Keep the full depth of the application. This should make the listener feel like they just gained a new thinking tool.',
+  'Asset Spotlight': 'This is a thesis check on one portfolio asset. Walk through the original thesis, the evidence, what changed, and the thesis adjustment. Talk through it like you\'re explaining your thinking to a friend who\'s also an investor. Don\'t dumb it down. Keep the specifics: the spreads, the TVL checks, the regulatory catalysts. This section should end the Markets block on a concrete, actionable note.',
+  'Inner Game': 'Read this warmly and with genuine presence. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode. Let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift. The listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
+  'Discovery': 'This is an original essay about a concept from science, history, or systems thinking. NOT a reading recommendation. Tell the story with genuine fascination. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. This should be the section that makes someone say "I didn\'t know that." End the episode on intellectual wonder. The listener should feel their world just got a little bigger.',
   // Optional sections
-  'Overnight': 'Quick overnight catch-up — 3-4 key developments since last night. Keep it brisk and factual with "here\'s what happened while you were sleeping" energy. Each item gets 1-2 sentences. Natural transition into the Dashboard.',
-  'Deep Read / Listen': 'Skip this section entirely in audio — do not read it. These are external link recommendations that don\'t work in audio format.',
+  'Overnight': 'Quick overnight catch-up. Three to four key developments since last night. Keep it brisk and factual with "here\'s what happened while you were sleeping" energy. Each item gets 1-2 sentences. Natural transition into the Dashboard.',
+  'Deep Read / Listen': 'Skip this section entirely in audio. Do not read it. These are external link recommendations that don\'t work in audio format.',
 
   // Legacy sections — still used for processing older briefs
-  'The Big Stories': 'Run through the big stories. Cover EVERY story individually — headline, context, why it matters, what to watch.',
+  'The Big Stories': 'Run through the big stories. Cover EVERY story individually. Headline, context, why it matters, what to watch.',
   "Tomorrow's Headlines": 'Cover EVERY headline. For each: what happened, what it means going forward, and the signal.',
   'The Watchlist': 'Talk through each position like you\'re explaining your thinking to a friend. The asset, why it\'s interesting, the key levels, and what would make you wrong.',
 
-  // The Six sub-sections — each gets its own API call to prevent compression.
-  // CRITICAL: Use proper branded section names when speaking. "Markets and Macro" not "the first section."
-  // Thread between bullets — don't just start each bullet cold.
-  'The Six: Markets & Macro': 'You\'re opening The Six — say something like "Alright, let\'s get into The Six — starting with Markets and Macro." Cover EVERY bullet point with full analytical depth. These are regime-based structural reads — trends forming, breaking, or continuing over 1-3 months. Weave a narrative about what\'s shifting structurally. CRITICAL: Thread between bullets. If bullet 1 is about rates and bullet 2 is about the ECB, connect them — "And that rate story has a European chapter too..." Don\'t just drop one bullet and start the next cold.',
-  'The Six: Companies & Crypto': 'Call this section by name — "Companies and Crypto." Cover EVERY bullet with full depth. This section mixes structural company moves with crypto architectural changes. CRITICAL: Thread between bullets naturally. If Boeing is spinning off defense and Chevron is buying pipelines, that\'s two companies restructuring for the same macro — connect them. If the DeFi story and the Uniswap story are related, say so. Avoid jargon where a normal word works, but keep the analytical depth.',
-  'The Six: AI & Tech': 'Call it "AI and Tech." Cover EVERY bullet with full depth. Explain what shipped, what changed, and why it matters. Thread between bullets — if Meta\'s AI layoffs and Google\'s AI music generation tell a bigger story about AI diffusion, weave that thread. If something is genuinely exciting, let that come through naturally.',
-  'The Six: Geopolitics': 'Call it "Geopolitics." Cover EVERY bullet. When one theater dominates (e.g., a war), give it 1-2 concise bullets and spend more time on the OTHER theaters the listener might be missing. The goal is geographic breadth. Thread between bullets — if Iran and BRICS+ are two sides of the same geopolitical shift, connect them. Use plain language — "Iran is expanding its targets from oil infrastructure to civilian airports" not "the escalation matrix is broadening."',
-  'The Six: Wild Card': 'Call this section "The Wild Card" — say it with a shift in energy, like "Alright, time for The Wild Card." This is cross-disciplinary content — science, culture, history, anything surprising that makes you smarter. Cover each item with genuine curiosity and a lighter, more energized tone. Thread between items where possible — if a glacier and a water crisis are both about resource limits, say so. Let the wonder come through naturally. This should be FUN.',
-  'The Six: The Signal': 'Call this section "The Signal" — say it clearly, like "Now for The Signal." These are forward-looking items about what\'s forming that most people are missing. Each one ends with a clear if/then — make sure the if/then lands in plain language. Thread between signals if they connect. The listener should walk away knowing exactly what to watch for and what it means.',
+  // The Six sub-sections. Each gets its own API call to prevent compression.
+  // Only Markets & Macro formally opens The Six. The rest flow as one conversation.
+  'The Six: Markets & Macro': 'You\'re opening The Six. This is the only subsection that gets a formal introduction. Say something natural like "Alright, let\'s get into The Six, starting with Markets and Macro." Cover EVERY bullet with full analytical depth. These are regime-based structural reads, trends forming, breaking, or continuing over 1-3 months. Weave a narrative about what\'s shifting structurally. If bullet 1 is about rates and bullet 2 is about the ECB, connect them naturally. Don\'t just drop one bullet and start the next cold.',
+  'The Six: Companies & Crypto': 'Do NOT formally announce this section or say its name like a chapter heading. The listener is already in The Six. Just shift the conversation naturally from the macro picture into company and crypto territory. Something like "OK so that\'s the macro picture. On the company side..." Cover EVERY bullet with full depth. Mix structural company moves with crypto architectural changes. If two stories rhyme with each other or with something from Markets & Macro, connect them. Avoid jargon where a normal word works, but keep the analytical depth.',
+  'The Six: AI & Tech': 'Do NOT formally announce this section. Flow from whatever Companies & Crypto just covered. If there\'s a natural bridge (a company story that connects to an AI development), use it. Otherwise a light pivot works: "Now on the tech side..." Cover EVERY bullet with full depth. Explain what shipped, what changed, and why it matters. If multiple stories tell a bigger pattern about where AI is heading, weave that thread. Let genuine excitement come through naturally.',
+  'The Six: Geopolitics': 'Do NOT formally announce this section. Shift naturally from tech into the geopolitical picture. Cover EVERY bullet. When one theater dominates (e.g., a war), give it 1-2 concise bullets and spend more time on the OTHER theaters the listener might be missing. The goal is geographic breadth. If Iran and BRICS+ are two sides of the same shift, connect them. Use plain language. "Iran is expanding its targets from oil infrastructure to civilian airports" not "the escalation matrix is broadening."',
+  'The Six: Wild Card': 'Do NOT formally announce this section by name. Just shift the energy. Let the listener feel you\'re pivoting to something unexpected and fun. This is cross-disciplinary content: science, culture, history, anything surprising that makes you smarter. Cover each item with genuine curiosity and lighter energy. If a glacier story and a water crisis story are both about resource limits, connect them. Let the wonder come through. This should be FUN.',
+  'The Six: The Signal': 'Do NOT formally announce this section by name. You\'re wrapping up The Six, so the tone should shift to forward-looking. These are things forming that most people are missing. Each one ends with a clear if/then. Make sure the if/then lands in plain language. If signals connect to each other, say so. The listener should walk away knowing exactly what to watch for and what it means.',
   // Legacy sub-section — Inner Game was under The Six in pre-March-22 briefs
-  'The Six: Inner Game': 'Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the personal, human moment — let it breathe. No market references.',
+  'The Six: Inner Game': 'Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the personal, human moment. Let it breathe. No market references.',
 };
 
 /** Retry an async fn with exponential backoff on rate-limit (429) and server errors (5xx). */
@@ -654,9 +658,9 @@ interface SectionContext {
  * The episode flows: Markets → Meditations → Mental Models.
  */
 const ACT_BOUNDARIES: Record<string, string> = {
-  'The Dashboard': 'You\'re opening the Markets section of the episode — the first of three acts (Markets, Meditations, Mental Models). After the intro, signal the start of Markets naturally — something like "Alright, let\'s start with the Markets. Here\'s the Dashboard." The listener should know they\'re entering the market intelligence portion of the show.',
-  'Inner Game': 'You just finished the Markets section of the episode (Dashboard, The Six, The Take, Asset Spotlight). You\'re now crossing into the Meditations section — the personal, human part of the episode. This is a real shift in register. Signal it naturally — something like "Alright, that\'s the markets. Now let\'s shift gears — time for the part of the show that\'s just about you." Make the listener feel the energy change.',
-  'The Model': 'You just finished the Meditations section (Inner Game). You\'re now crossing into Mental Models — the thinking tools section. Signal the shift naturally — something like "OK, let\'s get the brain working. Time for Mental Models — starting with today\'s model." This should feel like a fresh burst of intellectual energy.',
+  'The Dashboard': 'You\'re opening the Markets section of the episode. First of three acts: Markets, Meditations, Mental Models. After the intro, signal the start of Markets naturally. Something like "Alright, let\'s start with the Markets. Here\'s the Dashboard." The listener should know they\'re entering the market intelligence portion of the show.',
+  'Inner Game': 'You just finished the Markets section of the episode (Dashboard, The Six, The Take, Asset Spotlight). You\'re now crossing into the Meditations section. The personal, human part of the episode. This is a real shift in register. Signal it naturally. Something like "Alright, that\'s the markets. Now let\'s shift gears. Time for the part of the show that\'s just about you." Make the listener feel the energy change.',
+  'The Model': 'You just finished the Meditations section (Inner Game). You\'re now crossing into Mental Models. The thinking tools section. Signal the shift naturally. Something like "OK, let\'s get the brain working. Time for Mental Models, starting with today\'s model." This should feel like a fresh burst of intellectual energy.',
 };
 
 /** Rewrite a single section via GPT-4o with retry */
@@ -671,7 +675,7 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
       }
     }
   }
-  if (!instruction) instruction = `Convert this "${sectionName}" section into natural spoken podcast form. Include ALL substantive content — do not skip or compress anything.`;
+  if (!instruction) instruction = `Convert this "${sectionName}" section into natural spoken podcast form. Include ALL substantive content. Do not skip or compress anything.`;
 
   // Build transition context so the scriptwriter knows what came before and after
   let transitionContext = '';
@@ -681,10 +685,10 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
       parts.push(`ACT TRANSITION: ${context.actTransition}`);
     }
     if (context.prevSection) {
-      parts.push(`PREVIOUS SECTION: "${context.prevSection}" — the listener just heard this. Your opening should flow naturally FROM that section. Don't start cold. Reference something from it, pick up a thread, or acknowledge the shift in topic. The transition should feel like one conversation, not separate segments stitched together.`);
+      parts.push(`PREVIOUS SECTION: "${context.prevSection}". The listener just heard this. Your opening should flow naturally FROM that section. Don't start cold. Reference something from it, pick up a thread, or acknowledge the shift in topic. The transition should feel like one conversation, not separate segments stitched together.`);
     }
     if (context.nextSection) {
-      parts.push(`NEXT SECTION: "${context.nextSection}" — this comes after you. If there's a natural thread to leave open, leave it. But don't preview or tease — just let your ending be warm and complete.`);
+      parts.push(`NEXT SECTION: "${context.nextSection}". This comes after you. If there's a natural thread to leave open, leave it. But don't preview or tease. Just let your ending be warm and complete.`);
     }
     if (parts.length > 0) {
       transitionContext = '\n\nTRANSITION CONTEXT:\n' + parts.join('\n');
@@ -780,7 +784,7 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
     }
 
     // Append standard sign-off verbatim (never sent through GPT-4o)
-    const signOff = 'That\'s today\'s brief. Thank you for spending part of your morning with us. Hopefully you\'re walking away a bit more informed, a bit more grounded, and a bit more curious about what\'s forming around the corner. We\'ll be back tomorrow with more. Until then — yesterday is history, tomorrow is a mystery, but today is a gift, and that is why it\'s called the present. Take care.';
+    const signOff = 'That\'s today\'s brief. Thank you for spending part of your morning with us. Hopefully you\'re walking away a bit more informed, a bit more grounded, and a bit more curious about what\'s forming around the corner. We\'ll be back tomorrow with more. Until then. Yesterday is history, tomorrow is a mystery, but today is a gift, and that is why it\'s called the present. Take care.';
     scriptParts.push(signOff);
 
     // Add pause markers between sections for natural breathing room in TTS.
@@ -819,7 +823,7 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
     }
 
     // Append standard sign-off verbatim (never sent through GPT-4o)
-    const signOff = 'That\'s today\'s brief. Thank you for spending part of your morning with us. Hopefully you\'re walking away a bit more informed, a bit more grounded, and a bit more curious about what\'s forming around the corner. We\'ll be back tomorrow with more. Until then — yesterday is history, tomorrow is a mystery, but today is a gift, and that is why it\'s called the present. Take care.';
+    const signOff = 'That\'s today\'s brief. Thank you for spending part of your morning with us. Hopefully you\'re walking away a bit more informed, a bit more grounded, and a bit more curious about what\'s forming around the corner. We\'ll be back tomorrow with more. Until then. Yesterday is history, tomorrow is a mystery, but today is a gift, and that is why it\'s called the present. Take care.';
     scriptParts.push(signOff);
 
     const SECTION_PAUSE_SEQ = '\n\n...\n\n';
