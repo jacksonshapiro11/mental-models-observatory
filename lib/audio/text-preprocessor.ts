@@ -245,6 +245,12 @@ function expandMovingAverages(text: string): string {
   return result;
 }
 
+function expandYearAbbreviations(text: string): string {
+  // "10Y" → "10-year", "2Y" → "2-year", "30Y" → "30-year" (bond/yield context)
+  // Must NOT match "10Y MA" (already handled by expandMovingAverages)
+  return text.replace(/\b(\d+)Y\b(?!\s*MA)/g, '$1-year');
+}
+
 function expandAbbreviations(text: string): string {
   for (const [abbr, spoken] of Object.entries(FINANCIAL_ABBREVIATIONS)) {
     const regex = new RegExp(`\\b${abbr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
@@ -292,6 +298,7 @@ function regexNormalize(text: string): string {
   text = expandCurrency(text);
   text = expandBasisPoints(text);
   text = expandMovingAverages(text);
+  text = expandYearAbbreviations(text);
   text = expandMultipliers(text);
   text = expandQuarters(text);
   text = expandPercentages(text);
@@ -520,7 +527,13 @@ BANNED PHRASES (these are overused filler that replaces actual insight):
 - "Without further ado" / "That said" / "Having said that"
 - "At the end of the day"
 - "Moving on to..." / "Next up..." / "Let's turn to..." / "Let's dive into..."
+- "Switching gears" / "Let's shift gears" / "Now let's shift" (find a fresh transition every time)
+- "That's the [section name]" / "That wraps up" / "And that's" (no section sign-offs. Just move to the next topic.)
+- "Now we're diving into The Six" / "Let's dive into The Six" (The Six is only introduced ONCE at the very start by Markets & Macro. Never re-announce it mid-flow.)
 Do NOT use any of these. If you catch yourself reaching for one, just say the actual insight instead.
+
+FIDELITY TO SOURCE TEXT (CRITICAL):
+Stay close to the written brief. The written text was carefully crafted. Your job is to make it sound natural when spoken, NOT to rewrite it from scratch. Keep the specific language, the specific numbers, the specific framing. Do not paraphrase loosely or over-simplify. If the brief says "the DeFi-CeFi lending rate spread surviving 51 consecutive days of extreme fear," say that. Do not compress it to "DeFi rates are holding up." The specificity IS the value. Simplify delivery (contractions, pacing, natural rhythm) but preserve the substance word-for-word where possible.
 
 BANNED PUNCTUATION:
 - NEVER use em-dashes ("--" or "—") in the output. They are an AI writing tell and sound unnatural when spoken.
@@ -599,7 +612,7 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'The Model': 'Explain the model in plain language with genuine intellectual energy. What is it, where does it come from, and how does it connect to what\'s happening today? Make it feel like you\'re sharing something genuinely cool, not lecturing. Keep the full depth of the application. This should make the listener feel like they just gained a new thinking tool.',
   'Asset Spotlight': 'This is a thesis check on one portfolio asset. Walk through the original thesis, the evidence, what changed, and the thesis adjustment. Talk through it like you\'re explaining your thinking to a friend who\'s also an investor. Don\'t dumb it down. Keep the specifics: the spreads, the TVL checks, the regulatory catalysts. This section should end the Markets block on a concrete, actionable note.',
   'Inner Game': 'Read this warmly and with genuine presence. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode. Let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift. The listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
-  'Discovery': 'This is an original essay about a concept from science, history, or systems thinking. NOT a reading recommendation. Tell the story with genuine fascination. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. This should be the section that makes someone say "I didn\'t know that." End the episode on intellectual wonder. The listener should feel their world just got a little bigger.',
+  'Discovery': 'This is an original essay. NOT a reading recommendation, NOT a list of cool facts (that was Wild Card). Discovery is ONE deep narrative with a single through-line argument. The energy here is slower, more reflective, more intellectually weighty than Wild Card. Tell the story with fascination but let it build. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. Stay very close to the written text. The essay was carefully constructed. End the episode on intellectual wonder.',
   // Optional sections
   'Overnight': 'Quick overnight catch-up. Three to four key developments since last night. Keep it brisk and factual with "here\'s what happened while you were sleeping" energy. Each item gets 1-2 sentences. Natural transition into the Dashboard.',
   'Deep Read / Listen': 'Skip this section entirely in audio. Do not read it. These are external link recommendations that don\'t work in audio format.',
@@ -615,8 +628,8 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'The Six: Companies & Crypto': 'Do NOT formally announce this section or say its name like a chapter heading. The listener is already in The Six. Just shift the conversation naturally from the macro picture into company and crypto territory. Something like "OK so that\'s the macro picture. On the company side..." Cover EVERY bullet with full depth. Mix structural company moves with crypto architectural changes. If two stories rhyme with each other or with something from Markets & Macro, connect them. Avoid jargon where a normal word works, but keep the analytical depth.',
   'The Six: AI & Tech': 'Do NOT formally announce this section. Flow from whatever Companies & Crypto just covered. If there\'s a natural bridge (a company story that connects to an AI development), use it. Otherwise a light pivot works: "Now on the tech side..." Cover EVERY bullet with full depth. Explain what shipped, what changed, and why it matters. If multiple stories tell a bigger pattern about where AI is heading, weave that thread. Let genuine excitement come through naturally.',
   'The Six: Geopolitics': 'Do NOT formally announce this section. Shift naturally from tech into the geopolitical picture. Cover EVERY bullet. When one theater dominates (e.g., a war), give it 1-2 concise bullets and spend more time on the OTHER theaters the listener might be missing. The goal is geographic breadth. If Iran and BRICS+ are two sides of the same shift, connect them. Use plain language. "Iran is expanding its targets from oil infrastructure to civilian airports" not "the escalation matrix is broadening."',
-  'The Six: Wild Card': 'Do NOT formally announce this section by name. Just shift the energy. Let the listener feel you\'re pivoting to something unexpected and fun. This is cross-disciplinary content: science, culture, history, anything surprising that makes you smarter. Cover each item with genuine curiosity and lighter energy. If a glacier story and a water crisis story are both about resource limits, connect them. Let the wonder come through. This should be FUN.',
-  'The Six: The Signal': 'Do NOT formally announce this section by name. You\'re wrapping up The Six, so the tone should shift to forward-looking. These are things forming that most people are missing. Each one ends with a clear if/then. Make sure the if/then lands in plain language. If signals connect to each other, say so. The listener should walk away knowing exactly what to watch for and what it means.',
+  'The Six: Wild Card': 'Do NOT say "the wild card" or announce this section by name at any point. Not at the start, not at the end. No "that\'s the wild card" sign-offs either. Just shift the energy lighter and cover each item with genuine curiosity. This is cross-disciplinary: science, culture, history. If items connect, say so. Stay close to the written text. Do not over-simplify or paraphrase loosely. The specificity is the value.',
+  'The Six: The Signal': 'Do NOT say "the signal" or announce this section by name. You\'re wrapping up The Six, so the tone shifts to forward-looking. These are things forming that most people are missing. Each one ends with a clear if/then. Make sure the if/then lands in plain language. If signals connect, say so. Stay close to the written text. Do not over-simplify.',
   // Legacy sub-section — Inner Game was under The Six in pre-March-22 briefs
   'The Six: Inner Game': 'Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the personal, human moment. Let it breathe. No market references.',
 };
@@ -659,7 +672,7 @@ interface SectionContext {
  */
 const ACT_BOUNDARIES: Record<string, string> = {
   'The Dashboard': 'You\'re opening the Markets section of the episode. First of three acts: Markets, Meditations, Mental Models. After the intro, signal the start of Markets naturally. Something like "Alright, let\'s start with the Markets. Here\'s the Dashboard." The listener should know they\'re entering the market intelligence portion of the show.',
-  'Inner Game': 'You just finished the Markets section of the episode (Dashboard, The Six, The Take, Asset Spotlight). You\'re now crossing into the Meditations section. The personal, human part of the episode. This is a real shift in register. Signal it naturally. Something like "Alright, that\'s the markets. Now let\'s shift gears. Time for the part of the show that\'s just about you." Make the listener feel the energy change.',
+  'Inner Game': 'You just finished the Markets section of the episode (Dashboard, The Six, The Take, Asset Spotlight). You\'re now crossing into the Meditations section. The personal, human part of the episode. This is a real shift in register. Signal it naturally but do NOT say "switching gears" or "shift gears." Find a fresh way to mark the transition every time. Make the listener feel the energy change.',
   'The Model': 'You just finished the Meditations section (Inner Game). You\'re now crossing into Mental Models. The thinking tools section. Signal the shift naturally. Something like "OK, let\'s get the brain working. Time for Mental Models, starting with today\'s model." This should feel like a fresh burst of intellectual energy.',
 };
 
