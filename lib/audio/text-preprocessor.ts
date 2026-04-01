@@ -842,7 +842,7 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
 
   // The intro (index 0) covers the lede — its facts propagate to all subsequent sections
   cumulativeFacts.set(0, []);
-  let runningFacts = [...ledeFacts];
+  const runningFacts = [...ledeFacts];
 
   for (let i = 1; i < tasks.length; i++) {
     // This section should know about all facts from earlier sections
@@ -913,7 +913,7 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
 
     const scriptParts: string[] = [];
     // Sequential path: build dedup facts incrementally as we go
-    let seqRunningFacts = [...ledeFacts];
+    const seqRunningFacts = [...ledeFacts];
     for (let ti = 0; ti < tasks.length; ti++) {
       const task = tasks[ti]!;
       console.log(`[audio] [sequential] Section ${task.index + 1}: ${task.name}...`);
