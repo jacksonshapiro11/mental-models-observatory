@@ -170,14 +170,11 @@ export async function POST(req: NextRequest) {
     console.log(`[audio] Script: ${preprocessed.characterCount} characters, ${preprocessed.sections.length} sections`);
 
     // 5. Generate audio via TTS (gpt-4o-mini-tts with voice instructions for natural delivery)
-    // Voice rotation: cycles through candidates daily so we can A/B test with real content.
-    // Set TTS_VOICE env var to pin a specific voice and stop rotating.
-    const VOICE_ROTATION = ['onyx', 'ash', 'coral', 'sage'] as const;
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-    const rotatedVoice = VOICE_ROTATION[dayOfYear % VOICE_ROTATION.length];
-    const selectedVoice = process.env.TTS_VOICE || rotatedVoice;
+    // Voice: pinned to onyx. No more rotation — one consistent voice per episode.
+    const selectedVoice = process.env.TTS_VOICE || 'onyx';
 
-    console.log(`[audio] TTS voice: ${selectedVoice}${process.env.TTS_VOICE ? ' (pinned)' : ` (rotation day ${dayOfYear} → ${rotatedVoice})`}`);
+    console.log(`[audio] TTS voice: ${selectedVoice}${process.env.TTS_VOICE ? ' (env override)' : ' (default: onyx)'}`);
+
 
     const ttsClient = new OpenAITTSClient(openaiApiKey, {
       voice: selectedVoice,

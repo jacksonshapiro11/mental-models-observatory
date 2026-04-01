@@ -499,7 +499,7 @@ function extractCommentaryOnly(content: string): string {
 
 const SECTION_SYSTEM_PROMPT = `You are a podcast scriptwriter for "Markets, Meditations, and Mental Models" by Cosmic Trex, a daily financial market intelligence podcast.
 
-YOUR JOB: Convert written market analysis into natural, conversational spoken form. Do NOT summarize or compress. Every insight, every thesis, every key level, every "so what" from the source must appear in your output.
+YOUR JOB: Convert written market analysis into natural, conversational spoken form. Every KEY insight, thesis, and "so what" from the source must appear in your output. But be EFFICIENT. The target episode length is 28-32 minutes total across all sections. That means each section must be tight. Deliver the insight in the fewest words that preserve the substance. Cut redundant context, excessive setup, and throat-clearing. Get to the point, make it land, move on.
 
 VOICE & FEEL (THIS IS CRITICAL):
 You're writing how a smart friend actually talks when explaining something they find fascinating. Not a podcast host performing. Not a finance bro hyping. Just a person who reads a lot and thinks clearly, sharing what they know in plain language. The listener should feel like they're in a conversation, not an audience. They should feel ENERGIZED and SMARTER after listening, not weighed down by doom. Even when the news is heavy, the energy should be "isn't it fascinating that we get to think about this?" not "everything is terrible."
@@ -560,8 +560,8 @@ JARGON RULES (CRITICAL):
 - Never use more than ONE technical term per sentence without an explanation.
 - If the written source has jargon, translate it. Your job is to make the listener smarter, not to prove you know the vocabulary.
 
-DEPTH (DO NOT OVERSIMPLIFY):
-The listener is smart and wants to get smarter. Simplify the LANGUAGE, not the THINKING. Keep second-order effects, keep the "why this matters" reasoning, keep the nuance. If the source says "the DeFi-CeFi spread persisted for a second consecutive week at 180-220bp," say the spread and explain what it means. Don't just say "DeFi rates are higher." The specificity IS the value.
+DEPTH (SMART BUT EFFICIENT):
+The listener is smart and wants to get smarter. Simplify the LANGUAGE, not the THINKING. Keep second-order effects and "why this matters" reasoning. But be CONCISE. The target total episode is 28-32 minutes. Every sentence must earn its place. If a point can land in 2 sentences instead of 4, use 2. Cut setup sentences that delay the insight. Get to the "so what" fast. The specificity IS the value, but verbosity is not.
 
 SKIP: Markdown formatting, links, emoji, reference markers, story numbers, status labels, confidence scores, Validates/Rejects framework labels (but include the reasoning).
 
@@ -576,10 +576,15 @@ NUMBERS (CRITICAL FOR NATURAL SPEECH):
 - Dates: Say "March sixth" NOT "March 6, 2026." Say "last Thursday" when the exact date isn't critical.
 - Use natural approximation: "roughly," "about," "just under," "a little over," "nearly."
 
-REPETITION (CRITICAL):
-- If a topic was already covered in a previous section of this podcast, do NOT re-explain it. Reference it briefly ("like we talked about earlier with Iran") and move on to the NEW information.
-- Never repeat the same fact, number, or framing twice in your output. If you've already said Bitcoin hit seventy-four thousand, don't say it again. Say "that spike we mentioned" or just move on.
+REPETITION (CRITICAL — THIS IS THE #1 LISTENER COMPLAINT):
+- If a topic, fact, or data point was already covered in a previous section of this podcast (check the ALREADY COVERED list in TRANSITION CONTEXT), do NOT re-explain it. Reference it with a brief callback ("like we covered earlier") and move IMMEDIATELY to the NEW information this section adds.
+- Never repeat the same fact, number, percentage, or framing twice in your output. If the intro already said rate hike odds collapsed from 52% to 2%, the Dashboard and Markets & Macro must NOT say that again. One mention is enough. After the second mention, the listener is annoyed.
 - Each section should feel like it's adding something NEW to the listener's understanding, not reinforcing what they already heard two minutes ago.
+- When in doubt, CUT the repeated fact entirely rather than re-stating it. The listener remembers.
+
+SECTION NAMING (CRITICAL):
+- Unless you are Markets & Macro (which formally opens The Six), do NOT announce section names. Do NOT say "the wild card," "the signal," "geopolitics section," "companies and crypto section," etc. The listener should experience ONE flowing conversation, not a checklist of labeled segments.
+- Do NOT reference other section names either. Do NOT say "back in markets and macro" or "as we covered in the dashboard" by section name. Just say "earlier" or "a few minutes ago."
 
 RULES:
 - Do NOT add information not in the source
@@ -606,7 +611,7 @@ Return ONLY the spoken script for this section. No meta-commentary, no [brackete
  * effects, the "why this matters" reasoning. Simplify the language, not the thinking.
  */
 const SECTION_INSTRUCTIONS: Record<string, string> = {
-  'intro': 'Write a short, energizing podcast opening. Say "Welcome to Markets, Meditations, and Mental Models" and the date naturally. Then give a 2-3 sentence setup about the day\'s biggest story based on the lede. Keep it direct and conversational, like you\'re greeting a friend and telling them what matters today. This should make the listener feel EXCITED to be here. They\'re about to get smarter. Do NOT include any quotes or epigraphs. The daily word of encouragement will be added separately at the start. Do NOT use hype language or phrases like "buckle up." End the intro with a natural bridge into the first section, something that connects the lede to what\'s coming in The Dashboard.',
+  'intro': 'Write a SHORT, energizing podcast opening. Say "Welcome to Markets, Meditations, and Mental Models" and the date naturally. Then give a 2-3 sentence setup about the day\'s biggest story based on the lede. Keep it under 30 seconds when spoken. Direct and conversational, like greeting a friend. Do NOT include any quotes or epigraphs. The daily word of encouragement will be added separately. Do NOT use hype language. End with a natural bridge into The Dashboard.',
   'The Dashboard': 'You\'re starting the Markets section of the episode. Structural regime read: what\'s the session\'s character, what regime is forming or breaking, and one structural observation per sub-section (Equities, Crypto, Commodities & Rates). The editorial product is the commentary. The website renders the data. Do NOT recite prices the listener can check themselves. Do NOT preview stories from The Six. Keep the full analytical depth. Simplify language, not thinking. Thread between sub-sections: if equities tell one story and bonds tell another, connect them.',
   'The Take': 'This is the heart of the Markets section. The big picture argument. Give it full treatment, don\'t compress. Let the argument build naturally, like you\'re thinking through it in real time. Explain any frameworks in plain language. If the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance. The "where this might be wrong" is just as important as the thesis.',
   'The Model': 'Explain the model in plain language with genuine intellectual energy. What is it, where does it come from, and how does it connect to what\'s happening today? Make it feel like you\'re sharing something genuinely cool, not lecturing. Keep the full depth of the application. This should make the listener feel like they just gained a new thinking tool.',
@@ -618,17 +623,17 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'Deep Read / Listen': 'Skip this section entirely in audio. Do not read it. These are external link recommendations that don\'t work in audio format.',
 
   // Legacy sections — still used for processing older briefs
-  'The Big Stories': 'Run through the big stories. Cover EVERY story individually. Headline, context, why it matters, what to watch.',
-  "Tomorrow's Headlines": 'Cover EVERY headline. For each: what happened, what it means going forward, and the signal.',
+  'The Big Stories': 'Run through the big stories. Cover every story individually but efficiently. Headline, context, why it matters, what to watch.',
+  "Tomorrow's Headlines": 'Cover every headline efficiently. For each: what happened, what it means going forward, and the signal.',
   'The Watchlist': 'Talk through each position like you\'re explaining your thinking to a friend. The asset, why it\'s interesting, the key levels, and what would make you wrong.',
 
   // The Six sub-sections. Each gets its own API call to prevent compression.
   // Only Markets & Macro formally opens The Six. The rest flow as one conversation.
-  'The Six: Markets & Macro': 'You\'re opening The Six. This is the only subsection that gets a formal introduction. Say something natural like "Alright, let\'s get into The Six, starting with Markets and Macro." Cover EVERY bullet with full analytical depth. These are regime-based structural reads, trends forming, breaking, or continuing over 1-3 months. Weave a narrative about what\'s shifting structurally. If bullet 1 is about rates and bullet 2 is about the ECB, connect them naturally. Don\'t just drop one bullet and start the next cold.',
-  'The Six: Companies & Crypto': 'Do NOT formally announce this section or say its name like a chapter heading. The listener is already in The Six. Just shift the conversation naturally from the macro picture into company and crypto territory. Something like "OK so that\'s the macro picture. On the company side..." Cover EVERY bullet with full depth. Mix structural company moves with crypto architectural changes. If two stories rhyme with each other or with something from Markets & Macro, connect them. Avoid jargon where a normal word works, but keep the analytical depth.',
-  'The Six: AI & Tech': 'Do NOT formally announce this section. Flow from whatever Companies & Crypto just covered. If there\'s a natural bridge (a company story that connects to an AI development), use it. Otherwise a light pivot works: "Now on the tech side..." Cover EVERY bullet with full depth. Explain what shipped, what changed, and why it matters. If multiple stories tell a bigger pattern about where AI is heading, weave that thread. Let genuine excitement come through naturally.',
-  'The Six: Geopolitics': 'Do NOT formally announce this section. Shift naturally from tech into the geopolitical picture. Cover EVERY bullet. When one theater dominates (e.g., a war), give it 1-2 concise bullets and spend more time on the OTHER theaters the listener might be missing. The goal is geographic breadth. If Iran and BRICS+ are two sides of the same shift, connect them. Use plain language. "Iran is expanding its targets from oil infrastructure to civilian airports" not "the escalation matrix is broadening."',
-  'The Six: Wild Card': 'Do NOT say "the wild card" or announce this section by name at any point. Not at the start, not at the end. No "that\'s the wild card" sign-offs either. Just shift the energy lighter and cover each item with genuine curiosity. This is cross-disciplinary: science, culture, history. If items connect, say so. Stay close to the written text. Do not over-simplify or paraphrase loosely. The specificity is the value.',
+  'The Six: Markets & Macro': 'You\'re opening The Six. This is the only subsection that gets a formal introduction. Say something natural like "Alright, let\'s get into The Six, starting with Markets and Macro." Cover every bullet EFFICIENTLY, 3-5 sentences each. These are regime-based structural reads. Weave a narrative about what\'s shifting structurally. Connect bullets naturally, don\'t start each one cold. Skip any facts already covered in the intro or Dashboard (check ALREADY COVERED list).',
+  'The Six: Companies & Crypto': 'Do NOT formally announce this section or say its name like a chapter heading. The listener is already in The Six. Just shift naturally from macro into company territory. Cover every bullet EFFICIENTLY. Each bullet gets its headline, why it matters, and what to watch, in 3-5 sentences. If two stories rhyme, connect them. Avoid jargon where a normal word works, but keep the analytical depth.',
+  'The Six: AI & Tech': 'Do NOT formally announce this section. Flow naturally from Companies & Crypto. Cover every bullet EFFICIENTLY, 3-5 sentences each. Explain what shipped, what changed, and why it matters. If multiple stories tell a bigger pattern, weave that thread briefly. Let genuine excitement come through naturally.',
+  'The Six: Geopolitics': 'Do NOT formally announce this section. Shift naturally from tech into the geopolitical picture. Cover every bullet EFFICIENTLY, 3-5 sentences each. Do NOT skip or merge bullets. When one theater dominates (e.g., a war), keep each bullet concise but PRESENT. The goal is geographic breadth. If Iran and BRICS+ are two sides of the same shift, connect them. Use plain language. "Iran is expanding its targets from oil infrastructure to civilian airports" not "the escalation matrix is broadening."',
+  'The Six: Wild Card': 'CRITICAL: Do NOT say "the wild card", "wild card section", "wild card", or announce this section by name at ANY point. Not at the start, not at the end, not in the middle. No "that\'s the wild card" sign-offs either. Do NOT say "markets and macro" or reference any other section name. Just shift the energy lighter and more curious. The listener should not know they\'ve entered a named section. Cover each item with genuine curiosity. This is cross-disciplinary: science, culture, history. If items connect, say so. Stay close to the written text. Do not over-simplify or paraphrase loosely. The specificity is the value.',
   'The Six: The Signal': 'Do NOT say "the signal" or announce this section by name. You\'re wrapping up The Six, so the tone shifts to forward-looking. These are things forming that most people are missing. Each one ends with a clear if/then. Make sure the if/then lands in plain language. If signals connect, say so. Stay close to the written text. Do not over-simplify.',
   // Legacy sub-section — Inner Game was under The Six in pre-March-22 briefs
   'The Six: Inner Game': 'Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the personal, human moment. Let it breathe. No market references.',
@@ -664,6 +669,8 @@ interface SectionContext {
   nextSection?: string | undefined;
   /** e.g. "You're now entering the Meditations section of the episode." */
   actTransition?: string | undefined;
+  /** Key facts/data points already covered in earlier sections — DO NOT repeat these */
+  alreadyCovered?: string[] | undefined;
 }
 
 /**
@@ -703,6 +710,9 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
     if (context.nextSection) {
       parts.push(`NEXT SECTION: "${context.nextSection}". This comes after you. If there's a natural thread to leave open, leave it. But don't preview or tease. Just let your ending be warm and complete.`);
     }
+    if (context.alreadyCovered && context.alreadyCovered.length > 0) {
+      parts.push(`ALREADY COVERED (DO NOT REPEAT THESE — the listener has already heard them):\n${context.alreadyCovered.map(f => `- ${f}`).join('\n')}\nIf any of these facts appear in your source content, either skip them entirely or reference them with a brief callback like "as we mentioned earlier" and move immediately to NEW information. Do NOT re-state the numbers, percentages, or framing. The listener remembers.`);
+    }
     if (parts.length > 0) {
       transitionContext = '\n\nTRANSITION CONTEXT:\n' + parts.join('\n');
     }
@@ -732,6 +742,72 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
   }
 }
 
+/**
+ * Extract key facts/data points from a section's source text for cross-section deduplication.
+ * Looks for specific patterns: named percentages, named price levels, named events with numbers.
+ * Returns human-readable fact strings that can be injected into subsequent sections' context.
+ */
+function extractKeyFacts(text: string): string[] {
+  const facts: string[] = [];
+  if (!text) return facts;
+
+  // Match "X% to Y%" or "from X% to Y%" patterns (e.g., "rate hike odds from 52% to 2.2%")
+  const pctShiftPattern = /(?:from\s+)?([\d.]+%)\s+(?:to|down to|up to)\s+([\d.]+%)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = pctShiftPattern.exec(text)) !== null) {
+    const idx = match.index;
+    const contextStart = Math.max(0, idx - 80);
+    const contextEnd = Math.min(text.length, idx + match[0].length + 30);
+    const surrounding = text.slice(contextStart, contextEnd).replace(/[\n\r]+/g, ' ').trim();
+    facts.push(surrounding);
+  }
+
+  // Match large percentage gains/losses (e.g., "+58%", "58% monthly gain")
+  const bigPctPattern = /(?:\+|-)?(\d{2,3})%\s+(?:monthly|weekly|daily|annual|ytd|gain|loss|increase|decrease|drop|surge|spike|rise|fall)/gi;
+  while ((match = bigPctPattern.exec(text)) !== null) {
+    const idx = match.index;
+    const contextStart = Math.max(0, idx - 60);
+    const contextEnd = Math.min(text.length, idx + match[0].length + 20);
+    const surrounding = text.slice(contextStart, contextEnd).replace(/[\n\r]+/g, ' ').trim();
+    facts.push(surrounding);
+  }
+
+  // Match specific price levels with context (e.g., "$115.35", "6,426")
+  const priceLevelPattern = /\$[\d,]+\.?\d*\s*(?:\/(?:gallon|barrel|lb))?/g;
+  while ((match = priceLevelPattern.exec(text)) !== null) {
+    const idx = match.index;
+    const contextStart = Math.max(0, idx - 50);
+    const contextEnd = Math.min(text.length, idx + match[0].length + 30);
+    const surrounding = text.slice(contextStart, contextEnd).replace(/[\n\r]+/g, ' ').trim();
+    if (surrounding.length > 20) {
+      facts.push(surrounding);
+    }
+  }
+
+  // Match "largest/biggest/first since/in X years/history" superlatives
+  const superlativePattern = /(?:largest|biggest|highest|lowest|worst|best|first|record)\s+(?:since|in)\s+[\w\s,'-]+/gi;
+  while ((match = superlativePattern.exec(text)) !== null) {
+    const fact = match[0].replace(/[\n\r]+/g, ' ').trim();
+    if (fact.length > 15 && fact.length < 120) {
+      facts.push(fact);
+    }
+  }
+
+  // Deduplicate very similar facts (substring containment)
+  const unique: string[] = [];
+  for (const fact of facts) {
+    const dominated = unique.some(existing =>
+      existing.includes(fact) || fact.includes(existing)
+    );
+    if (!dominated) {
+      unique.push(fact);
+    }
+  }
+
+  // Cap at 15 facts to avoid bloating the prompt
+  return unique.slice(0, 15);
+}
+
 /** Rewrite the full brief as a podcast script. Tries parallel first, falls back to sequential. */
 async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string, epigraph: string): Promise<string> {
   const client = new OpenAI({ apiKey: openaiApiKey });
@@ -753,6 +829,29 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
     tasks.push({ index: i + 1, name: sec.name, content: sec.content });
   }
 
+  // ─── Cross-section deduplication ───────────────────────────────────────
+  // Extract key facts from the lede (which the intro covers first). Any section
+  // that repeats these facts should reference them briefly, not re-explain.
+  // Also detect facts that appear in multiple sections' source content.
+  const ledeFacts = extractKeyFacts(parsed.lede);
+  console.log(`[audio] Lede key facts for dedup: ${ledeFacts.length} facts`);
+
+  // Build a map: for each section index, which facts were already stated in earlier sections
+  const sectionSourceTexts = tasks.map(t => t.content);
+  const cumulativeFacts: Map<number, string[]> = new Map();
+
+  // The intro (index 0) covers the lede — its facts propagate to all subsequent sections
+  cumulativeFacts.set(0, []);
+  let runningFacts = [...ledeFacts];
+
+  for (let i = 1; i < tasks.length; i++) {
+    // This section should know about all facts from earlier sections
+    cumulativeFacts.set(i, [...runningFacts]);
+    // Extract facts from this section's source to propagate forward
+    const thisSectionFacts = extractKeyFacts(tasks[i]!.content);
+    runningFacts.push(...thisSectionFacts);
+  }
+
   // Strategy 1: Parallel (fast — all sections at once)
   try {
     console.log(`[audio] Rewriting ${tasks.length} sections in parallel via GPT-4o...`);
@@ -767,6 +866,7 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
           prevSection: prevTask?.name,
           nextSection: nextTask?.name,
           actTransition: ACT_BOUNDARIES[task.name],
+          alreadyCovered: cumulativeFacts.get(task.index),
         };
         const script = await rewriteSection(client, task.name, task.content, context);
         console.log(`[audio]   → ${script.length} chars`);
@@ -812,6 +912,8 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
     console.warn(`[audio] Parallel rewrite failed (${parallelErr}), falling back to sequential...`);
 
     const scriptParts: string[] = [];
+    // Sequential path: build dedup facts incrementally as we go
+    let seqRunningFacts = [...ledeFacts];
     for (let ti = 0; ti < tasks.length; ti++) {
       const task = tasks[ti]!;
       console.log(`[audio] [sequential] Section ${task.index + 1}: ${task.name}...`);
@@ -821,10 +923,13 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
         prevSection: prevTask?.name,
         nextSection: nextTask?.name,
         actTransition: ACT_BOUNDARIES[task.name],
+        alreadyCovered: ti > 0 ? [...seqRunningFacts] : [],
       };
       const script = await rewriteSection(client, task.name, task.content, context);
       scriptParts.push(script);
       console.log(`[audio]   → ${script.length} chars`);
+      // Accumulate facts from this section for downstream dedup
+      seqRunningFacts.push(...extractKeyFacts(task.content));
       // Small delay between sequential calls
       await new Promise(r => setTimeout(r, 300));
     }
