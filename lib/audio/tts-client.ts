@@ -35,8 +35,9 @@ export interface TTSProvider {
 export class OpenAITTSClient implements TTSProvider {
   name = 'openai';
   // gpt-4o-mini-tts accepts ~2K input tokens (~8K chars for English).
-  // Using 3500 chars for safety margin with financial text (tickers/numbers tokenize differently).
-  maxCharsPerRequest = 3500;
+  // Using 4500 chars — reduces chunk boundaries vs 3500 (fewer cadence shifts)
+  // while staying safely under the 8K limit for financial text (which tokenizes heavier).
+  maxCharsPerRequest = 4500;
 
   private client: OpenAI;
   private defaultVoice: string;

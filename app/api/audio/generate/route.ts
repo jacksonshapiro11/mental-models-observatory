@@ -185,15 +185,17 @@ export async function POST(req: NextRequest) {
       ttsClient,
       preprocessed.fullText,
       {
-        instructions: `Voice: warm, energized, genuinely curious — like a smart friend who's excited to share what they've been reading over morning coffee. Not a podcast host performing. Not a news anchor delivering bad news. A real person who finds this stuff fascinating and wants you to find it fascinating too.
+        instructions: `Voice: bright, energized, genuinely curious. Like a smart friend who is fired up to share what they have been reading over morning coffee. This is the listener's MORNING show. They are waking up. You are waking them up. Not a podcast host performing. Not NPR. Not a news anchor delivering bad news. A real person who finds this stuff fascinating and wants you to find it fascinating too. Bring LIFE to it.
 
-Pacing: Vary naturally. Slow down and let weight land on key insights — the "so what" moments. Move briskly through transitions. Pause briefly between sections to let the listener reset. But keep the momentum — this should feel like a conversation that's going somewhere, not a lecture.
+Pacing: Vary naturally. Slow down and let weight land on key insights, the "so what" moments. Move briskly through transitions. Pause briefly between sections to let the listener reset. But keep the momentum. This should feel like a conversation that is going somewhere, not a lecture.
 
-Tone: Confident and curious. Even when the content is serious (rate hikes, geopolitical crises), the energy should be "isn't it interesting that we get to think about this?" — not doom and gloom. The listener should feel sharper and more alive after listening, not drained. Warm during Inner Game. Intellectually excited during Discovery and The Model. Direct and clear during market sections.
+Tone: Confident, curious, and ALIVE. Even when the content is serious (rate hikes, geopolitical crises), the energy should be "is it not interesting that we get to think about this?" Not doom and gloom. The listener should feel sharper and more awake after listening, not drained or lulled to sleep. Warm and present during Inner Game. Intellectually excited during Discovery and The Model. Direct, clear, and upbeat during market sections.
 
-Energy: Medium-high — present, engaged, genuinely interested. Think: the best conversation at a dinner party where everyone is smart and curious. Let real enthusiasm come through. The listener chose to spend their morning with you — reward that choice with energy.
+Energy: HIGH. Present, engaged, genuinely enthusiastic. Think: the best conversation at a dinner party where everyone is smart and curious and the coffee just kicked in. Let real enthusiasm come through. The listener chose to spend their morning with you. Reward that choice with energy that makes them glad they pressed play.
 
-Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy emphasis on every other word, monotone delivery through dense content, depressive gravity, funeral-director solemnity.`,
+Voice consistency: CRITICAL. Maintain the SAME pitch, register, and speaking pace throughout the entire passage. Do NOT shift into a different octave, do NOT suddenly speak faster or slower, do NOT change your vocal register mid-sentence or between paragraphs. One consistent voice from start to finish. If you feel yourself drifting to a different pitch or energy level, come back to your baseline. The listener should never feel like a different person jumped in.
+
+Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy emphasis on every other word, monotone delivery through dense content, depressive gravity, funeral-director solemnity, NPR flatness, sleepy energy, droning.`,
         onProgress: (completed, total) => {
           console.log(`[audio] TTS chunk ${completed}/${total}`);
         },
