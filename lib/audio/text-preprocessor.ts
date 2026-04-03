@@ -512,9 +512,10 @@ Techniques for natural delivery:
 - Use contractions everywhere. "It's" not "it is." "Don't" not "do not." "That's" not "that is." "Wouldn't" not "would not."
 
 TRANSITIONS:
-Transitions BETWEEN sections are already written and injected separately. Do NOT write your own section intro or outro. Just write the section content. But WITHIN your section, every bullet must connect to the next. Do NOT start a new bullet cold. Thread them naturally:
+Within your section, every bullet must connect to the next. Do NOT start a new bullet cold. Thread them naturally:
 - "Meanwhile..." / "On a completely different front..." / "Speaking of infrastructure..." / "And that connects to something else..."
 - If two stories rhyme, connect them. If they don't, acknowledge the shift briefly and move on.
+Write your section with full depth and energy. A short structural transition phrase will be added before your section to orient the listener, but your content should still read as a complete, substantive segment.
 
 BANNED PHRASES (these are overused filler that replaces actual insight):
 - "Buckle up" / "Strap in" / "Hold on tight"
@@ -613,8 +614,8 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'The Take': 'INTRODUCE THE TAKE. Start with something like "For today\'s Take, we\'re discussing [topic/headline from the content]." Give the listener a one-sentence setup of what question or argument you\'re about to unpack. THEN build the argument naturally, like you\'re thinking through it in real time. This is the heart of the Markets section. Give it full treatment, don\'t compress. Explain any frameworks in plain language. If the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance. The "where this might be wrong" is just as important as the thesis.',
   'The Model': 'Explain the model in plain language with genuine intellectual energy. What is it, where does it come from, and how does it connect to what\'s happening today? Make it feel like you\'re sharing something genuinely cool, not lecturing. Keep the full depth of the application. This should make the listener feel like they just gained a new thinking tool.',
   'Asset Spotlight': 'INTRODUCE THE ASSET. Start with something like "The asset we\'re taking a closer look at today is [asset name from the content]." Then immediately add: "As always, this is not financial advice, just an expression of our themes through an asset." THEN walk through the original thesis, the evidence, what changed, and the thesis adjustment. Talk through it like you\'re explaining your thinking to a friend who\'s also an investor. Don\'t dumb it down. Keep the specifics: the spreads, the TVL checks, the regulatory catalysts. This section should end the Markets block on a concrete note.',
-  'Inner Game': 'Read this warmly and with genuine presence. The transition into this section has already been spoken. Just start with the content. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode. Let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift. The listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
-  'Discovery': 'The transition into this section has already been spoken. Just start with the content. This is an original essay. NOT a reading recommendation, NOT a list of cool facts (that was Wild Card). Discovery is ONE deep narrative with a single through-line argument. The energy here is slower, more reflective, more intellectually weighty than Wild Card. Tell the story with fascination but let it build. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. Stay very close to the written text. The essay was carefully constructed. End the episode on intellectual wonder.',
+  'Inner Game': 'Read this warmly and with genuine presence. A short spoken transition into this section will be added separately. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode. Let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift. The listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
+  'Discovery': 'A short spoken transition into this section will be added separately. This is an original essay. NOT a reading recommendation, NOT a list of cool facts (that was Wild Card). Discovery is ONE deep narrative with a single through-line argument. The energy here is slower, more reflective, more intellectually weighty than Wild Card. Tell the story with fascination but let it build. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. Stay very close to the written text. The essay was carefully constructed. End the episode on intellectual wonder.',
   // Optional sections
   'Overnight': 'Quick overnight catch-up. Three to four key developments since last night. Keep it brisk and factual with "here\'s what happened while you were sleeping" energy. Each item gets 1-2 sentences. Natural transition into the Dashboard.',
   'Deep Read / Listen': 'Skip this section entirely in audio. Do not read it. These are external link recommendations that don\'t work in audio format.',
@@ -626,11 +627,11 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
 
   // The Six sub-sections. Each gets its own API call to prevent compression.
   // Only Markets & Macro formally opens The Six. The rest flow as one conversation.
-  'The Six: Markets & Macro': 'The transition into The Six has already been spoken. Just start with the content. Cover every bullet. Give each bullet what it needs to land clearly. These are regime-based structural reads. Weave a narrative about what\'s shifting structurally. Connect bullets naturally, don\'t start each one cold. Skip any facts already covered in the intro or Dashboard (check ALREADY COVERED list). If something can be said more concisely without losing clarity or substance, compress it. But never skip substance to save time.',
+  'The Six: Markets & Macro': 'A short spoken transition into The Six will be added separately. Cover every bullet. Give each bullet what it needs to land clearly. These are regime-based structural reads. Weave a narrative about what\'s shifting structurally. Connect bullets naturally, don\'t start each one cold. Skip any facts already covered in the intro or Dashboard (check ALREADY COVERED list). If something can be said more concisely without losing clarity or substance, compress it. But never skip substance to save time.',
   'The Six: Companies & Crypto': 'Do NOT formally announce this section or say its name like a chapter heading. The listener is already in The Six. Just shift naturally from macro into company territory. Cover every bullet. Each bullet gets its headline, why it matters, and what to watch. Give each bullet what it needs to land. If two stories rhyme, connect them. Avoid jargon where a normal word works, but keep the analytical depth.',
   'The Six: AI & Tech': 'Do NOT formally announce this section. Flow naturally from Companies & Crypto. Cover every bullet. Give each bullet what it needs. Explain what shipped, what changed, and why it matters. If multiple stories tell a bigger pattern, weave that thread briefly. Let genuine excitement come through naturally.',
   'The Six: Geopolitics': 'Do NOT formally announce this section. Shift naturally from tech into the geopolitical picture. Cover every bullet. Give each bullet what it needs. Do NOT skip or merge bullets. When one theater dominates (e.g., a war), keep each bullet concise but PRESENT. The goal is geographic breadth. If Iran and BRICS+ are two sides of the same shift, connect them. Use plain language. "Iran is expanding its targets from oil infrastructure to civilian airports" not "the escalation matrix is broadening."',
-  'The Six: Wild Card': 'The transition into this section has already been spoken. Just start with the content. Energy should be lighter and more curious. Do NOT say "markets and macro" or reference any other section name. Cover each item with genuine curiosity and fascination. This is cross-disciplinary: science, culture, history. If items connect, say so. Stay close to the written text. Do not over-simplify or paraphrase loosely. The specificity is the value.',
+  'The Six: Wild Card': 'A short spoken transition into this section will be added separately. Energy should be lighter and more curious. Do NOT say "markets and macro" or reference any other section name. Cover each item with genuine curiosity and fascination. This is cross-disciplinary: science, culture, history. If items connect, say so. Stay close to the written text. Do not over-simplify or paraphrase loosely. The specificity is the value.',
   'The Six: The Signal': 'Do NOT say "the signal" or announce this section by name. You\'re wrapping up The Six, so the tone shifts to forward-looking. These are things forming that most people are missing. Each one ends with a clear if/then. Make sure the if/then lands in plain language. Give each signal what it needs to land clearly. If signals connect, say so. Stay close to the written text. Do not over-simplify.',
   // Legacy sub-section — Inner Game was under The Six in pre-March-22 briefs
   'The Six: Inner Game': 'Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the personal, human moment. Let it breathe. No market references.',
@@ -660,7 +661,7 @@ async function withRetry<T>(
   throw new Error('Unreachable');
 }
 
-/** Context passed to each section for dedup awareness */
+/** Context passed to each section for position and dedup awareness */
 interface SectionContext {
   prevSection?: string | undefined;
   nextSection?: string | undefined;
@@ -685,15 +686,18 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
   }
   if (!instruction) instruction = `Convert this "${sectionName}" section into natural spoken podcast form. Include ALL substantive content. Do not skip or compress anything.`;
 
-  // Build context for dedup awareness. Transitions between sections are handled
-  // deterministically — injected as plain text AFTER scriptwriting. The scriptwriter
-  // only needs to know what facts were already covered so it doesn't repeat them.
-  // It should NOT try to write its own transition in or out — just write the section content.
+  // Build context for dedup and section awareness.
+  // Transitions between sections are also injected deterministically after scriptwriting,
+  // but the scriptwriter still needs to know where it sits in the episode to write
+  // with appropriate depth and energy.
   let transitionContext = '';
   if (context) {
     const parts: string[] = [];
     if (context.prevSection) {
-      parts.push(`PREVIOUS SECTION: "${context.prevSection}". A spoken transition into your section has already been written separately. Do NOT write your own transition or opening announcement. Just start with the content.`);
+      parts.push(`PREVIOUS SECTION: "${context.prevSection}". The listener just heard this section before yours.`);
+    }
+    if (context.nextSection) {
+      parts.push(`NEXT SECTION: "${context.nextSection}".`);
     }
     if (context.alreadyCovered && context.alreadyCovered.length > 0) {
       parts.push(`ALREADY COVERED (DO NOT REPEAT THESE — the listener has already heard them):\n${context.alreadyCovered.map(f => `- ${f}`).join('\n')}\nIf any of these facts appear in your source content, either skip them entirely or reference them with a brief callback like "as we mentioned earlier" and move immediately to NEW information. Do NOT re-state the numbers, percentages, or framing. The listener remembers.`);
