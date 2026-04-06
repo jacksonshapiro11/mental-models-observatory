@@ -147,10 +147,10 @@ const AUDIO_SECTIONS: AudioSectionConfig[] = [
 
 // Legacy section markers — kept so the pipeline can still process older briefs
 // that were published before the 3-act restructure (March 2026)
+// NOTE: The Watchlist is EXCLUDED — it's internal-only content, never for audio.
 const LEGACY_AUDIO_SECTIONS: AudioSectionConfig[] = [
   { marker: '# ▸ THE BIG STORIES', name: 'The Big Stories', mode: 'full' },
   { marker: "# ▸ TOMORROW'S HEADLINES", name: "Tomorrow's Headlines", mode: 'full' },
-  { marker: '# ▸ THE WATCHLIST', name: 'The Watchlist', mode: 'full' },
 ];
 
 /** All known section markers (for finding boundaries) */
@@ -161,6 +161,8 @@ const ALL_MARKERS = [
   '# ▸ WORLDVIEW UPDATES',
   '# ▸ FULL REFERENCE: BIG STORIES',
   "# ▸ FULL REFERENCE: TOMORROW'S HEADLINES",
+  '# ▸ THE WATCHLIST',  // Boundary only — Watchlist is internal, never included in audio
+  '## Watchlist Pulse',  // Alternate format — also internal only
 ];
 
 /**
@@ -283,6 +285,8 @@ function cleanFormatting(text: string): string {
   text = text.replace(/\bformer President\s+Trump\b/gi, 'President Trump');
   text = text.replace(/~/g, 'approximately ');
   text = text.replace(/\s*—\s*/g, ', ');
+  // Remove markdown escape sequences (e.g., "\-" → "-", "\*" → "*")
+  text = text.replace(/\\([*\-_~`#>|])/g, '$1');
   text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
   text = text.replace(/\*\*(.+?)\*\*/g, '$1');
   text = text.replace(/\*(.+?)\*/g, '$1');
@@ -609,13 +613,13 @@ Return ONLY the spoken script for this section. No meta-commentary, no [brackete
  * effects, the "why this matters" reasoning. Simplify the language, not the thinking.
  */
 const SECTION_INSTRUCTIONS: Record<string, string> = {
-  'intro': 'Write a SHORT, energizing podcast opening. Say "Welcome to Markets, Meditations, and Mental Models" and the date naturally. Then give a 2-3 sentence setup about the day\'s biggest story based on the lede. Keep it under 30 seconds when spoken. Direct and conversational, like greeting a friend. Do NOT include any quotes or epigraphs. The daily word of encouragement will be added separately. Do NOT use hype language. End with a natural bridge into The Dashboard.',
-  'The Dashboard': 'Structural regime read: what\'s the session\'s character, what regime is forming or breaking, and one structural observation per sub-section (Equities, Crypto, Commodities & Rates). The editorial product is the commentary. The website renders the data. Do NOT recite prices the listener can check themselves. Do NOT preview stories from The Six. Keep the full analytical depth. Simplify language, not thinking. Thread between sub-sections: if equities tell one story and bonds tell another, connect them.',
-  'The Take': 'INTRODUCE THE TAKE. Start with something like "For today\'s Take, we\'re discussing [topic/headline from the content]." Give the listener a one-sentence setup of what question or argument you\'re about to unpack. THEN build the argument naturally, like you\'re thinking through it in real time. This is the heart of the Markets section. Give it full treatment, don\'t compress. Explain any frameworks in plain language. If the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance. The "where this might be wrong" is just as important as the thesis.',
-  'The Model': 'Explain the model in plain language with genuine intellectual energy. What is it, where does it come from, and how does it connect to what\'s happening today? Make it feel like you\'re sharing something genuinely cool, not lecturing. Keep the full depth of the application. This should make the listener feel like they just gained a new thinking tool.',
-  'Asset Spotlight': 'INTRODUCE THE ASSET. Start with something like "The asset we\'re taking a closer look at today is [asset name from the content]." Then immediately add: "As always, this is not financial advice, just an expression of our themes through an asset." THEN walk through the original thesis, the evidence, what changed, and the thesis adjustment. Talk through it like you\'re explaining your thinking to a friend who\'s also an investor. Don\'t dumb it down. Keep the specifics: the spreads, the TVL checks, the regulatory catalysts. This section should end the Markets block on a concrete note.',
-  'Inner Game': 'Read this warmly and with genuine presence. A short spoken transition into this section will be added separately. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode. Let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift. The listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
-  'Discovery': 'A short spoken transition into this section will be added separately. This is an original essay. NOT a reading recommendation, NOT a list of cool facts (that was Wild Card). Discovery is ONE deep narrative with a single through-line argument. The energy here is slower, more reflective, more intellectually weighty than Wild Card. Tell the story with fascination but let it build. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. Stay very close to the written text. The essay was carefully constructed. End the episode on intellectual wonder.',
+  'intro': 'Write a SHORT, energizing podcast opening. Say "Welcome to Markets, Meditations, and Mental Models" and the date naturally. Then give a 2-3 sentence setup about the day\'s biggest story based on the lede. Keep it under 30 seconds when spoken. Direct and conversational, like greeting a friend. Do NOT include any quotes or epigraphs. The daily word of encouragement will be added separately. Do NOT use hype language. Do NOT introduce or preview The Dashboard at the end. A separate transition will handle that.',
+  'The Dashboard': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the content. Structural regime read: what\'s the session\'s character, what regime is forming or breaking, and one structural observation per sub-section (Equities, Crypto, Commodities & Rates). The editorial product is the commentary. The website renders the data. Do NOT recite prices the listener can check themselves. Do NOT preview stories from The Six. Keep the full analytical depth. Simplify language, not thinking. Thread between sub-sections: if equities tell one story and bonds tell another, connect them.',
+  'The Take': 'Do NOT introduce or announce this section by name. A separate transition handles that. Start with the topic: "We\'re looking at [topic/headline from the content]." Give the listener a one-sentence setup of what question or argument you\'re about to unpack. THEN build the argument naturally, like you\'re thinking through it in real time. This is the heart of the Markets section. Give it full treatment, don\'t compress. Explain any frameworks in plain language. If the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance. The "where this might be wrong" is just as important as the thesis.',
+  'The Model': 'Do NOT introduce or announce this section. A separate transition handles that. Just start explaining the model in plain language with genuine intellectual energy. What is it, where does it come from, and how does it connect to what\'s happening today? Make it feel like you\'re sharing something genuinely cool, not lecturing. Keep the full depth of the application. This should make the listener feel like they just gained a new thinking tool.',
+  'Asset Spotlight': 'Do NOT introduce or announce this section by name. A separate transition handles that. Start with: "Today we\'re looking at [asset name from the content]. As always, this is not financial advice, just an expression of our themes through an asset." THEN walk through the original thesis, the evidence, what changed, and the thesis adjustment. Talk through it like you\'re explaining your thinking to a friend who\'s also an investor. Don\'t dumb it down. Keep the specifics: the spreads, the TVL checks, the regulatory catalysts. This section should end the Markets block on a concrete note.',
+  'Inner Game': 'Do NOT introduce or announce this section. A separate transition handles that. Just start reading warmly and with genuine presence. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode. Let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift. The listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
+  'Discovery': 'Do NOT introduce or announce this section. A separate transition handles that. Just start telling the story. This is an original essay. NOT a reading recommendation, NOT a list of cool facts (that was Wild Card). Discovery is ONE deep narrative with a single through-line argument. The energy here is slower, more reflective, more intellectually weighty than Wild Card. Tell the story with fascination but let it build. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. Stay very close to the written text. The essay was carefully constructed. End the episode on intellectual wonder.',
   // Optional sections
   'Overnight': 'Quick overnight catch-up. Three to four key developments since last night. Keep it brisk and factual with "here\'s what happened while you were sleeping" energy. Each item gets 1-2 sentences. Natural transition into the Dashboard.',
   'Deep Read / Listen': 'Skip this section entirely in audio. Do not read it. These are external link recommendations that don\'t work in audio format.',
@@ -623,16 +627,16 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   // Legacy sections — still used for processing older briefs
   'The Big Stories': 'Run through the big stories. Cover every story individually but efficiently. Headline, context, why it matters, what to watch.',
   "Tomorrow's Headlines": 'Cover every headline efficiently. For each: what happened, what it means going forward, and the signal.',
-  'The Watchlist': 'Talk through each position like you\'re explaining your thinking to a friend. The asset, why it\'s interesting, the key levels, and what would make you wrong.',
+  // Watchlist is EXCLUDED from audio — it's internal-only content.
 
   // The Six sub-sections. Each gets its own API call to prevent compression.
   // Only Markets & Macro formally opens The Six. The rest flow as one conversation.
-  'The Six: Markets & Macro': 'A short spoken transition into The Six will be added separately. Cover every bullet. Give each bullet what it needs to land clearly. These are regime-based structural reads. Weave a narrative about what\'s shifting structurally. Connect bullets naturally, don\'t start each one cold. Skip any facts already covered in the intro or Dashboard (check ALREADY COVERED list). If something can be said more concisely without losing clarity or substance, compress it. But never skip substance to save time.',
-  'The Six: Companies & Crypto': 'Do NOT formally announce this section or say its name like a chapter heading. The listener is already in The Six. Just shift naturally from macro into company territory. Cover every bullet. Each bullet gets its headline, why it matters, and what to watch. Give each bullet what it needs to land. If two stories rhyme, connect them. Avoid jargon where a normal word works, but keep the analytical depth.',
-  'The Six: AI & Tech': 'Do NOT formally announce this section. Flow naturally from Companies & Crypto. Cover every bullet. Give each bullet what it needs. Explain what shipped, what changed, and why it matters. If multiple stories tell a bigger pattern, weave that thread briefly. Let genuine excitement come through naturally.',
-  'The Six: Geopolitics': 'Do NOT formally announce this section. Shift naturally from tech into the geopolitical picture. Cover every bullet. Give each bullet what it needs. Do NOT skip or merge bullets. When one theater dominates (e.g., a war), keep each bullet concise but PRESENT. The goal is geographic breadth. If Iran and BRICS+ are two sides of the same shift, connect them. Use plain language. "Iran is expanding its targets from oil infrastructure to civilian airports" not "the escalation matrix is broadening."',
-  'The Six: Wild Card': 'A short spoken transition into this section will be added separately. Energy should be lighter and more curious. Do NOT say "markets and macro" or reference any other section name. Cover each item with genuine curiosity and fascination. This is cross-disciplinary: science, culture, history. If items connect, say so. Stay close to the written text. Do not over-simplify or paraphrase loosely. The specificity is the value.',
-  'The Six: The Signal': 'Do NOT say "the signal" or announce this section by name. You\'re wrapping up The Six, so the tone shifts to forward-looking. These are things forming that most people are missing. Each one ends with a clear if/then. Make sure the if/then lands in plain language. Give each signal what it needs to land clearly. If signals connect, say so. Stay close to the written text. Do not over-simplify.',
+  'The Six: Markets & Macro': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the first bullet. Cover every bullet. Give each bullet what it needs to land clearly. These are regime-based structural reads. Weave a narrative about what\'s shifting structurally. Connect bullets naturally, don\'t start each one cold. Skip any facts already covered in the intro or Dashboard (check ALREADY COVERED list). If something can be said more concisely without losing clarity or substance, compress it. But never skip substance to save time.',
+  'The Six: Companies & Crypto': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the first bullet. Cover every bullet. Each bullet gets its headline, why it matters, and what to watch. Give each bullet what it needs to land. If two stories rhyme, connect them. Avoid jargon where a normal word works, but keep the analytical depth.',
+  'The Six: AI & Tech': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the first bullet. Cover every bullet. Give each bullet what it needs. Explain what shipped, what changed, and why it matters. If multiple stories tell a bigger pattern, weave that thread briefly. Let genuine excitement come through naturally.',
+  'The Six: Geopolitics': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the first bullet. Cover every bullet. Give each bullet what it needs. Do NOT skip or merge bullets. When one theater dominates (e.g., a war), keep each bullet concise but PRESENT. The goal is geographic breadth. If Iran and BRICS+ are two sides of the same shift, connect them. Use plain language. "Iran is expanding its targets from oil infrastructure to civilian airports" not "the escalation matrix is broadening."',
+  'The Six: Wild Card': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the first item. Energy should be lighter and more curious. Cover each item with genuine curiosity and fascination. This is cross-disciplinary: science, culture, history. If items connect, say so. Stay close to the written text. Do not over-simplify or paraphrase loosely. The specificity is the value.',
+  'The Six: The Signal': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the first signal. Tone shifts to forward-looking. These are things forming that most people are missing. Each one ends with a clear if/then. Make sure the if/then lands in plain language. Give each signal what it needs to land clearly. If signals connect, say so. Stay close to the written text. Do not over-simplify.',
   // Legacy sub-section — Inner Game was under The Six in pre-March-22 briefs
   'The Six: Inner Game': 'Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the personal, human moment. Let it breathe. No market references.',
 };
@@ -782,6 +786,18 @@ function extractKeyFacts(text: string): string[] {
     }
   }
 
+  // Extract topic-level subjects from bolded headlines (e.g., "**Liberation Day turned one year old**")
+  // This catches repetition where the same TOPIC appears across sections with different numbers.
+  const boldPattern = /\*\*([^*]{15,120})\*\*/g;
+  while ((match = boldPattern.exec(text)) !== null) {
+    const headline = match[1]!.replace(/[\n\r]+/g, ' ').trim();
+    // Extract the core subject (first ~60 chars, up to the first comma or period)
+    const core = headline.split(/[,.]/, 1)[0]!.trim();
+    if (core.length > 10) {
+      facts.push(`TOPIC: ${core}`);
+    }
+  }
+
   // Deduplicate very similar facts (substring containment)
   const unique: string[] = [];
   for (const fact of facts) {
@@ -793,8 +809,8 @@ function extractKeyFacts(text: string): string[] {
     }
   }
 
-  // Cap at 15 facts to avoid bloating the prompt
-  return unique.slice(0, 15);
+  // Cap at 20 facts to avoid bloating the prompt (increased from 15 to accommodate topics)
+  return unique.slice(0, 20);
 }
 
 /** Rewrite the full brief as a podcast script. Tries parallel first, falls back to sequential. */
@@ -852,8 +868,8 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
     'The Six: Geopolitics': 'Now to the geopolitical picture.',
     'The Six: Wild Card': 'Now getting into today\'s Wild Cards. The coolest things we found happening around the globe.',
     'The Six: The Signal': 'And wrapping up The Six with The Signal. Things that are forming that most people aren\'t watching yet.',
-    'The Take': '', // The Take intro is handled by the section instruction itself (includes headline)
-    'Asset Spotlight': '', // Asset Spotlight intro is handled by the section instruction itself (includes asset name + disclaimer)
+    'The Take': 'Now let\'s take a deep dive into one of the biggest stories we\'re monitoring. For today\'s Take.',
+    'Asset Spotlight': 'Now for today\'s Asset Spotlight.',
     'Inner Game': 'That\'s all we have for today\'s markets. Let\'s take a deep breath, and settle into today\'s meditation.',
     'The Model': 'OK, let\'s get the brain working. Time for Mental Models.',
     'Discovery': 'And finally, today\'s Discovery.',

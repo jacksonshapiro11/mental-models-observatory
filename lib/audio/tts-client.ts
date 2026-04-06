@@ -73,7 +73,7 @@ export class OpenAITTSClient implements TTSProvider {
 
 // ─── Retry helper ───────────────────────────────────────────────────────────
 
-/** Retry an async fn with exponential backoff. Retries on rate-limit (429) and server errors (5xx). */
+/** Retry an async fn with exponential backoff. Retries on rate-limit (429), server errors (5xx), and network errors. */
 async function withRetry<T>(
   fn: () => Promise<T>,
   { maxRetries = 3, baseDelayMs = 2000, label = '' } = {}
@@ -83,14 +83,16 @@ async function withRetry<T>(
       return await fn();
     } catch (err: any) {
       const status = err?.status ?? err?.response?.status;
-      const isRetryable = status === 429 || (status >= 500 && status < 600);
+      const code = err?.code ?? err?.cause?.code;
+      const isNetworkError = code === 'ECONNRESET' || code === 'ETIMEDOUT' || code === 'ECONNREFUSED' || code === 'UND_ERR_SOCKET' || err?.message === 'terminated';
+      const isRetryable = status === 429 || (status >= 500 && status < 600) || isNetworkError;
 
       if (!isRetryable || attempt === maxRetries) {
         throw err;
       }
 
       const delay = baseDelayMs * Math.pow(2, attempt);
-      console.warn(`[audio] ${label} attempt ${attempt + 1} failed (${status}), retrying in ${delay}ms...`);
+      console.warn(`[audio] ${label} attempt ${attempt + 1} failed (${status || code || 'network error'}), retrying in ${delay}ms...`);
       await new Promise(r => setTimeout(r, delay));
     }
   }
@@ -181,7 +183,7 @@ export async function generateFullAudio(
   options?: GenerateFullAudioOptions
 ): Promise<{ audio: Buffer; chunks: number; characterCount: number }> {
   const chunks = chunkText(text, provider.maxCharsPerRequest);
-  const concurrency = (options as any)?.concurrency ?? 5;
+  const concurrency = (options as any)?.concurrency ?? 3;
 
   // Launch all TTS requests in parallel, throttled by concurrency limit
   let completed = 0;
