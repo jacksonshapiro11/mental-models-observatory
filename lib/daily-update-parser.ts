@@ -15,7 +15,7 @@ export interface DailyBrief {
 
 export interface BriefSection {
   id: string;
-  type: 'overnight' | 'dashboard' | 'the-six' | 'deep-read' | 'the-take' | 'asset-spotlight' | 'inner-game' | 'the-model' | 'discovery' | 'big-stories' | 'tomorrows-headlines' | 'watchlist' | 'worldview' | 'ref-big-stories' | 'ref-tomorrows';
+  type: 'overnight' | 'dashboard' | 'the-six' | 'deep-read' | 'the-take' | 'inner-game' | 'the-model' | 'discovery' | 'big-stories' | 'tomorrows-headlines' | 'watchlist' | 'worldview' | 'ref-big-stories' | 'ref-tomorrows';
   label: string;
   shortLabel: string;
   content: string;        // Raw markdown content of this section
@@ -29,7 +29,6 @@ const SECTION_DEFS: { marker: string; id: string; type: BriefSection['type']; la
   { marker: '# ▸ THE SIX', id: 'the-six', type: 'the-six', label: 'The Six', shortLabel: 'Six' },
   { marker: '## Deep Read', id: 'deep-read', type: 'deep-read', label: 'Deep Read', shortLabel: 'Read' },
   { marker: '# ▸ THE TAKE', id: 'the-take', type: 'the-take', label: 'The Take', shortLabel: 'Take' },
-  { marker: '# ▸ ASSET SPOTLIGHT', id: 'asset-spotlight', type: 'asset-spotlight', label: 'Asset Spotlight', shortLabel: 'Asset' },
   { marker: '# ▸ INNER GAME', id: 'inner-game', type: 'inner-game', label: 'Inner Game', shortLabel: 'Inner' },
   { marker: '# ▸ THE MODEL', id: 'the-model', type: 'the-model', label: 'The Model', shortLabel: 'Model' },
   { marker: '# ▸ DISCOVERY', id: 'discovery', type: 'discovery', label: 'Discovery', shortLabel: 'Discovery' },
@@ -86,6 +85,7 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
   let orientation = '';
   let headerEndIndex = 0;
   const italicLinesAfterDate: string[] = [];
+  let plainRecap = '';  // Plain-text daily recap paragraph (not bold, not italic)
 
   for (let i = 0; i < Math.min(lines.length, 20); i++) {
     const line = (lines[i] ?? '').trim();
@@ -102,23 +102,33 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
     if (headerEndIndex > 0 && i > headerEndIndex && line.startsWith('**') && !lede) {
       lede = line;
     }
+    // Capture plain-text recap paragraph (not italic, not bold, not heading, not empty)
+    if (headerEndIndex > 0 && i > headerEndIndex && !plainRecap &&
+        line.length > 30 && !line.startsWith('*') && !line.startsWith('#') && !line.startsWith('---')) {
+      plainRecap = line;
+    }
     // Collect italic paragraphs after the date, before first ---
+    // Skip the "Most publications" boilerplate orientation text
     if (headerEndIndex > 0 && i > headerEndIndex && line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
-      italicLinesAfterDate.push(line.slice(1, -1));
+      const inner = line.slice(1, -1);
+      if (!inner.startsWith('Most publications')) {
+        italicLinesAfterDate.push(inner);
+      }
     }
     if (line === '---' && headerEndIndex > 0) {
       break;
     }
   }
 
-  // If lede was captured from bold TLDR line, orientation is first italic line
-  // Otherwise fall back to old behavior (first italic = lede, second = orientation)
-  if (lede) {
-    orientation = italicLinesAfterDate[0] || '';
-  } else {
-    lede = italicLinesAfterDate[0] || '';
-    orientation = italicLinesAfterDate[1] || '';
+  // Priority: bold TLDR > plain-text recap > first italic line
+  if (!lede && plainRecap) {
+    lede = plainRecap;
   }
+  if (!lede && italicLinesAfterDate.length > 0) {
+    lede = italicLinesAfterDate[0] || '';
+  }
+  // Orientation is no longer rendered but keep parsing for backward compat
+  orientation = '';
 
   // Split into sections
   const sections: BriefSection[] = [];
@@ -219,8 +229,9 @@ export function getAllBriefDates(): string[] {
   if (!fs.existsSync(CONTENT_DIR)) return [];
 
   return fs.readdirSync(CONTENT_DIR)
-    .filter(f => f.endsWith('.md'))
+    .filter(f => f.endsWith('.md') && !f.includes('-light'))
     .map(f => f.replace('.md', ''))
     .sort()
     .reverse();
 }
+

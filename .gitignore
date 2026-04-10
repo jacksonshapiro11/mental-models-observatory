@@ -174,3 +174,21 @@ scripts/output/
 
 # Turbo
 .turbo
+
+# Subscriber data (contains PII — never commit)
+data/subscribers.json
+
+# Working files & mockups (never commit)
+mockup-*.html
+section-mockups.md
+signal-drafts.md
+test-audio-output.mp3
+test-audio-script.txt
+ui-staging/
+.next-old/
+*.backup.tsx
+*.md.bak
+CF-Industries-Deep-Research.md
+QUICK_START_VOTING.md
+SECTION_VOTE_INTEGRATION.md
+Podcast Picture.png

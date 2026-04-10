@@ -27,6 +27,9 @@ const AUDIO_KEYS = {
   EPISODE_INDEX: 'audio:episodes',
   /** Individual episode metadata: audio:episode:YYYY-MM-DD */
   EPISODE_PREFIX: 'audio:episode:',
+  /** Brief Light episodes — separate index and prefix */
+  LIGHT_EPISODE_INDEX: 'audio:episodes:light',
+  LIGHT_EPISODE_PREFIX: 'audio:episode:light:',
 };
 
 // ─── Redis helpers ──────────────────────────────────────────────────────────
@@ -54,6 +57,29 @@ export async function writeEpisodeMetadata(episode: EpisodeMetadata): Promise<vo
 export async function readEpisodeMetadata(date: string): Promise<EpisodeMetadata | null> {
   const r = getRedis();
   const key = AUDIO_KEYS.EPISODE_PREFIX + date;
+  const raw = await r.get(key);
+  if (!raw) return null;
+  return typeof raw === 'string' ? JSON.parse(raw) : raw as EpisodeMetadata;
+}
+
+// ─── Brief Light episode helpers ────────────────────────────────────────────
+
+/** Store Brief Light episode metadata after audio generation */
+export async function writeLightEpisodeMetadata(episode: EpisodeMetadata): Promise<void> {
+  const r = getRedis();
+  const key = AUDIO_KEYS.LIGHT_EPISODE_PREFIX + episode.date;
+  const score = new Date(episode.date).getTime();
+
+  await Promise.all([
+    r.set(key, JSON.stringify(episode)),
+    r.zadd(AUDIO_KEYS.LIGHT_EPISODE_INDEX, { score, member: episode.date }),
+  ]);
+}
+
+/** Read Brief Light episode metadata for a specific date */
+export async function readLightEpisodeMetadata(date: string): Promise<EpisodeMetadata | null> {
+  const r = getRedis();
+  const key = AUDIO_KEYS.LIGHT_EPISODE_PREFIX + date;
   const raw = await r.get(key);
   if (!raw) return null;
   return typeof raw === 'string' ? JSON.parse(raw) : raw as EpisodeMetadata;

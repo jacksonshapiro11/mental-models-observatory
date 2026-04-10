@@ -2,33 +2,45 @@
 
 /**
  * THE DAILY BRIEF — Live Financial Dashboard
+ * Zine Terminal design system · cosmictrex.com
  *
- * A production-grade live pricing dashboard for cosmictrex.com
- * 
  * Architecture:
  * - Client-side React component polling a Next.js API route every 60s
  * - API route aggregates: Binance (crypto) + Finnhub (equities) + CoinGecko (market metrics) + Alternative.me (Fear & Greed)
  * - Daily reference prices (for % changes, MAs) fetched once/day and cached server-side
  * - All API keys hidden server-side; CDN caches responses for 60s
- * 
- * Drop this component into your Next.js pages/components directory.
- * Pair with the API routes in /api/dashboard/live.js and /api/dashboard/snapshot.js
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
-const REFRESH_INTERVAL = 60_000; // 60 seconds
+const REFRESH_INTERVAL = 60_000;
 const API_ENDPOINT = '/api/dashboard/live';
 
-// ─── STYLES ─────────────────────────────────────────────────────────────────
+// ─── CT DESIGN TOKENS ───────────────────────────────────────────────────────
+const CT = {
+  dark: '#0D0D0D',
+  yellow: '#FFE600',
+  pink: '#FF2E63',
+  greenData: '#00FF41',
+  greenDisc: '#00885a',
+  // Dark surface shades
+  surface1: '#141416',
+  surface2: '#1a1a1e',
+  border: '#222',
+  borderSubtle: '#333',
+  // Text on dark
+  textPrimary: '#f0f0ec',
+  textSecondary: '#aaa',
+  textMuted: '#666',
+  textDim: '#555',
+};
+
+// ─── STYLES (CT design system) ──────────────────────────────────────────────
 const styles = {
   container: {
-    fontFamily: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace",
-    background: '#0a0a0b',
-    color: '#e4e4e7',
-    padding: '24px',
-    borderRadius: '12px',
+    fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+    color: CT.textPrimary,
     maxWidth: '1200px',
     margin: '0 auto',
     overflowX: 'hidden',
@@ -37,77 +49,72 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '24px',
-    paddingBottom: '16px',
-    borderBottom: '1px solid #1e1e22',
-  },
-  title: {
-    fontSize: '11px',
-    fontWeight: 600,
-    letterSpacing: '2px',
-    textTransform: 'uppercase',
-    color: '#71717a',
+    marginBottom: '20px',
+    paddingBottom: '12px',
+    borderBottom: `1px solid ${CT.border}`,
   },
   freshness: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    fontSize: '11px',
-    color: '#71717a',
+    fontSize: '10px',
+    color: CT.textMuted,
+    letterSpacing: '0.04em',
   },
   dot: (status) => ({
     width: '6px',
     height: '6px',
     borderRadius: '50%',
-    background: status === 'live' ? '#22c55e' : status === 'stale' ? '#eab308' : '#ef4444',
-    boxShadow: status === 'live' ? '0 0 6px #22c55e' : 'none',
+    background: status === 'live' ? CT.greenData : status === 'stale' ? CT.yellow : CT.pink,
+    boxShadow: status === 'live' ? `0 0 8px ${CT.greenData}` : 'none',
   }),
   sectionLabel: {
     fontSize: '10px',
     fontWeight: 600,
-    letterSpacing: '2.5px',
+    letterSpacing: '0.08em',
     textTransform: 'uppercase',
-    color: '#52525b',
-    marginBottom: '12px',
-    marginTop: '28px',
+    color: CT.textMuted,
+    marginBottom: '10px',
+    marginTop: '24px',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
-    fontSize: '13px',
+    fontSize: '12px',
   },
   th: {
     textAlign: 'right',
-    padding: '6px 12px',
-    fontSize: '10px',
-    fontWeight: 500,
-    letterSpacing: '1px',
+    padding: '6px 10px',
+    fontSize: '9px',
+    fontWeight: 600,
+    letterSpacing: '0.08em',
     textTransform: 'uppercase',
-    color: '#52525b',
-    borderBottom: '1px solid #1e1e22',
+    color: CT.textDim,
+    borderBottom: `1px solid ${CT.border}`,
   },
   thLeft: {
     textAlign: 'left',
-    padding: '6px 12px',
-    fontSize: '10px',
-    fontWeight: 500,
-    letterSpacing: '1px',
+    padding: '6px 10px',
+    fontSize: '9px',
+    fontWeight: 600,
+    letterSpacing: '0.08em',
     textTransform: 'uppercase',
-    color: '#52525b',
-    borderBottom: '1px solid #1e1e22',
+    color: CT.textDim,
+    borderBottom: `1px solid ${CT.border}`,
   },
   td: {
     textAlign: 'right',
-    padding: '8px 12px',
-    borderBottom: '1px solid #111113',
+    padding: '7px 10px',
+    borderBottom: `1px solid ${CT.surface1}`,
     fontVariantNumeric: 'tabular-nums',
+    color: CT.textSecondary,
   },
   tdLeft: {
     textAlign: 'left',
-    padding: '8px 12px',
-    borderBottom: '1px solid #111113',
+    padding: '7px 10px',
+    borderBottom: `1px solid ${CT.surface1}`,
     fontWeight: 600,
-    color: '#fafafa',
+    color: CT.textPrimary,
   },
   ticker: {
     display: 'flex',
@@ -115,18 +122,18 @@ const styles = {
     gap: '8px',
   },
   tickerDot: (color) => ({
-    width: '4px',
-    height: '16px',
-    borderRadius: '2px',
+    width: '3px',
+    height: '14px',
+    borderRadius: '1px',
     background: color,
   }),
   change: (value) => ({
-    color: value > 0 ? '#22c55e' : value < 0 ? '#ef4444' : '#71717a',
+    color: value > 0 ? CT.greenData : value < 0 ? CT.pink : CT.textMuted,
     fontWeight: value !== 0 ? 500 : 400,
   }),
   maCell: {
-    color: '#71717a',
-    fontSize: '12px',
+    color: CT.textDim,
+    fontSize: '11px',
   },
   metricsRow: {
     display: 'flex',
@@ -134,7 +141,7 @@ const styles = {
     gap: '16px',
     marginTop: '8px',
     padding: '12px 0',
-    borderTop: '1px solid #1e1e22',
+    borderTop: `1px solid ${CT.border}`,
   },
   metric: {
     display: 'flex',
@@ -142,70 +149,73 @@ const styles = {
     gap: '2px',
   },
   metricLabel: {
-    fontSize: '10px',
-    letterSpacing: '1px',
+    fontSize: '9px',
+    letterSpacing: '0.08em',
     textTransform: 'uppercase',
-    color: '#52525b',
+    color: CT.textDim,
+    fontWeight: 600,
   },
   metricValue: {
     fontSize: '13px',
     fontWeight: 500,
     fontVariantNumeric: 'tabular-nums',
+    color: CT.textPrimary,
   },
   contextNote: {
-    fontSize: '12px',
-    color: '#71717a',
-    lineHeight: 1.5,
+    fontSize: '13px',
+    fontFamily: "'Source Sans 3', system-ui, sans-serif",
+    color: CT.textSecondary,
+    lineHeight: 1.65,
     marginTop: '12px',
-    padding: '12px',
-    background: '#111113',
-    borderRadius: '6px',
-    borderLeft: '2px solid #27272a',
+    padding: '12px 14px',
+    background: CT.surface1,
+    borderLeft: `2px solid ${CT.yellow}`,
+    fontStyle: 'italic',
   },
   analysisTimestamp: {
-    fontSize: '11px',
-    color: '#52525b',
+    fontSize: '10px',
+    color: CT.textDim,
     marginTop: '16px',
     paddingTop: '12px',
-    borderTop: '1px solid #1e1e22',
+    borderTop: `1px solid ${CT.border}`,
     fontStyle: 'italic',
+    letterSpacing: '0.03em',
   },
   tabBar: {
     display: 'flex',
-    gap: '4px',
+    gap: '2px',
   },
   tab: (active) => ({
-    padding: '4px 12px',
+    padding: '4px 10px',
     fontSize: '10px',
     fontWeight: 600,
-    letterSpacing: '1.5px',
+    letterSpacing: '0.06em',
     textTransform: 'uppercase',
-    color: active ? '#e4e4e7' : '#52525b',
-    background: active ? '#1e1e22' : 'transparent',
-    border: '1px solid',
-    borderColor: active ? '#27272a' : 'transparent',
-    borderRadius: '6px',
+    color: active ? CT.yellow : CT.textMuted,
+    background: active ? CT.surface2 : 'transparent',
+    border: `1px solid ${active ? CT.borderSubtle : 'transparent'}`,
+    borderRadius: '0',
     cursor: 'pointer',
     transition: 'all 0.15s ease',
-    fontFamily: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace",
+    fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
   }),
   errorBanner: {
-    padding: '12px',
+    padding: '10px 12px',
     background: '#1c1007',
-    border: '1px solid #854d0e',
-    borderRadius: '6px',
-    fontSize: '12px',
-    color: '#fbbf24',
+    border: `1px solid ${CT.yellow}`,
+    fontSize: '11px',
+    color: CT.yellow,
     marginBottom: '16px',
+    letterSpacing: '0.03em',
   },
   loading: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: '48px',
-    color: '#52525b',
-    fontSize: '12px',
-    letterSpacing: '2px',
+    color: CT.textMuted,
+    fontSize: '11px',
+    letterSpacing: '0.08em',
     textTransform: 'uppercase',
   },
 };
@@ -253,7 +263,7 @@ function getFreshnessStatus(timestamp) {
 
 function PriceRow({ asset, data, color, priceOpts = {} }) {
   const { price, changes = {}, mas = {} } = data || {};
-  
+
   return (
     <tr>
       <td style={styles.tdLeft}>
@@ -291,8 +301,6 @@ function PriceRow({ asset, data, color, priceOpts = {} }) {
 }
 
 // ─── MOBILE SCROLL WRAPPER ──────────────────────────────────────────────────
-// Allows wide tables to scroll horizontally on small screens without
-// touching any of the table rendering logic.
 
 const scrollWrapper = {
   overflowX: 'auto',
@@ -326,7 +334,6 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
     } catch (err) {
       console.error('Dashboard fetch failed:', err);
       setError(err.message);
-      // Keep showing stale data if we have it
     } finally {
       setLoading(false);
     }
@@ -354,17 +361,14 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={styles.title}>▸ The Dashboard</div>
-          <div style={styles.tabBar}>
-            <button style={styles.tab(activeTab === 'equities')} onClick={() => setActiveTab('equities')}>Equities</button>
-            <button style={styles.tab(activeTab === 'crypto')} onClick={() => setActiveTab('crypto')}>Crypto</button>
-            <button style={styles.tab(activeTab === 'commodities')} onClick={() => setActiveTab('commodities')}>Commodities</button>
-          </div>
+        <div style={styles.tabBar}>
+          <button style={styles.tab(activeTab === 'equities')} onClick={() => setActiveTab('equities')}>Equities</button>
+          <button style={styles.tab(activeTab === 'crypto')} onClick={() => setActiveTab('crypto')}>Crypto</button>
+          <button style={styles.tab(activeTab === 'commodities')} onClick={() => setActiveTab('commodities')}>Commodities</button>
         </div>
         <div style={styles.freshness}>
           <div style={styles.dot(status)} />
-          <span>{status === 'live' ? 'Live' : status === 'stale' ? 'Stale' : 'Disconnected'}</span>
+          <span>{status === 'live' ? 'LIVE' : status === 'stale' ? 'STALE' : 'OFF'}</span>
           <span>· {timeAgo(lastFetch)}</span>
         </div>
       </div>
@@ -396,7 +400,7 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
                   <tr key={name}>
                     <td style={styles.tdLeft}>
                       <div style={styles.ticker}>
-                        <div style={styles.tickerDot('#3b82f6')} />
+                        <div style={styles.tickerDot(CT.yellow)} />
                         {name}
                       </div>
                     </td>
@@ -430,16 +434,16 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
             </tr>
           </thead>
           <tbody>
-            <PriceRow asset="S&P 500" data={equities.SPX} color="#3b82f6" priceOpts={{ prefix: '', decimals: 0 }} />
-            <PriceRow asset="Nasdaq 100" data={equities.NDX} color="#8b5cf6" priceOpts={{ prefix: '', decimals: 0 }} />
-            <PriceRow asset="Dow" data={equities.DJI} color="#06b6d4" priceOpts={{ prefix: '', decimals: 0 }} />
-            <PriceRow asset="Russell 2000" data={equities.RUT} color="#10b981" priceOpts={{ prefix: '', decimals: 0 }} />
-            <PriceRow asset="IGV (SaaS)" data={equities.IGV} color="#f472b6" priceOpts={{ prefix: '$', decimals: 2 }} />
-            <PriceRow asset="SMH (Semis)" data={equities.SMH} color="#a78bfa" priceOpts={{ prefix: '$', decimals: 2 }} />
-            <PriceRow asset="Growth (IWF)" data={equities.IWF} color="#22d3ee" priceOpts={{ prefix: '$', decimals: 2 }} />
-            <PriceRow asset="Value (IWD)" data={equities.IWD} color="#fb923c" priceOpts={{ prefix: '$', decimals: 2 }} />
-            <PriceRow asset="XLE (Energy)" data={equities.XLE} color="#84cc16" priceOpts={{ prefix: '$', decimals: 2 }} />
-            <PriceRow asset="ARKK" data={equities.ARKK} color="#e879f9" priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="S&P 500" data={equities.SPX} color={CT.yellow} priceOpts={{ prefix: '', decimals: 0 }} />
+            <PriceRow asset="Nasdaq 100" data={equities.NDX} color={CT.pink} priceOpts={{ prefix: '', decimals: 0 }} />
+            <PriceRow asset="Dow" data={equities.DJI} color={CT.textSecondary} priceOpts={{ prefix: '', decimals: 0 }} />
+            <PriceRow asset="Russell 2000" data={equities.RUT} color={CT.greenDisc} priceOpts={{ prefix: '', decimals: 0 }} />
+            <PriceRow asset="IGV (SaaS)" data={equities.IGV} color="#8b5cf6" priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="SMH (Semis)" data={equities.SMH} color={CT.pink} priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="Growth (IWF)" data={equities.IWF} color={CT.greenData} priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="Value (IWD)" data={equities.IWD} color={CT.yellow} priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="XLE (Energy)" data={equities.XLE} color={CT.greenDisc} priceOpts={{ prefix: '$', decimals: 2 }} />
+            <PriceRow asset="ARKK" data={equities.ARKK} color="#8b5cf6" priceOpts={{ prefix: '$', decimals: 2 }} />
           </tbody>
         </table>
       </ScrollableTable>
@@ -472,12 +476,12 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
             </tr>
           </thead>
           <tbody>
-            <PriceRow asset="BTC" data={crypto.BTC} color="#f59e0b" />
-            <PriceRow asset="ETH" data={crypto.ETH} color="#6366f1" />
-            <PriceRow asset="SOL" data={crypto.SOL} color="#14b8a6" />
-            <PriceRow asset="AAVE" data={crypto.AAVE} color="#9333ea" />
-            <PriceRow asset="UNI" data={crypto.UNI} color="#ec4899" />
-            <PriceRow asset="LINK" data={crypto.LINK} color="#2563eb" />
+            <PriceRow asset="BTC" data={crypto.BTC} color={CT.yellow} />
+            <PriceRow asset="ETH" data={crypto.ETH} color="#8b5cf6" />
+            <PriceRow asset="SOL" data={crypto.SOL} color={CT.greenDisc} />
+            <PriceRow asset="AAVE" data={crypto.AAVE} color={CT.pink} />
+            <PriceRow asset="UNI" data={crypto.UNI} color={CT.pink} />
+            <PriceRow asset="LINK" data={crypto.LINK} color={CT.yellow} />
           </tbody>
         </table>
       </ScrollableTable>
@@ -508,10 +512,10 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
             <span style={styles.metricLabel}>Fear & Greed</span>
             <span style={{
               ...styles.metricValue,
-              color: (meta.cryptoMeta.fearGreed?.value || 50) < 25 ? '#ef4444' :
-                     (meta.cryptoMeta.fearGreed?.value || 50) < 45 ? '#f59e0b' :
-                     (meta.cryptoMeta.fearGreed?.value || 50) < 55 ? '#71717a' :
-                     (meta.cryptoMeta.fearGreed?.value || 50) < 75 ? '#22c55e' : '#22c55e',
+              color: (meta.cryptoMeta.fearGreed?.value || 50) < 25 ? CT.pink :
+                     (meta.cryptoMeta.fearGreed?.value || 50) < 45 ? CT.yellow :
+                     (meta.cryptoMeta.fearGreed?.value || 50) < 55 ? CT.textMuted :
+                     (meta.cryptoMeta.fearGreed?.value || 50) < 75 ? CT.greenData : CT.greenData,
             }}>
               {meta.cryptoMeta.fearGreed?.value ?? '—'} ({meta.cryptoMeta.fearGreed?.label ?? '—'})
             </span>
@@ -559,8 +563,8 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
               <span style={styles.metricLabel}>BTC Funding</span>
               <span style={{
                 ...styles.metricValue,
-                color: meta.cryptoMeta.btcFundingRate > 0.01 ? '#22c55e' :
-                       meta.cryptoMeta.btcFundingRate < -0.01 ? '#ef4444' : '#71717a',
+                color: meta.cryptoMeta.btcFundingRate > 0.01 ? CT.greenData :
+                       meta.cryptoMeta.btcFundingRate < -0.01 ? CT.pink : CT.textMuted,
               }}>
                 {meta.cryptoMeta.btcFundingRate > 0 ? '+' : ''}{(meta.cryptoMeta.btcFundingRate * 100).toFixed(4)}%
               </span>
@@ -589,10 +593,10 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
       {meta.cryptoMeta?.trending && meta.cryptoMeta.trending.length > 0 && (
         <div style={{ ...styles.metricsRow, flexDirection: 'column', gap: '4px' }}>
           <span style={styles.metricLabel}>Trending (24h)</span>
-          <span style={{ fontSize: '12px', color: '#a1a1aa', lineHeight: 1.6 }}>
+          <span style={{ fontSize: '12px', color: CT.textSecondary, lineHeight: 1.6 }}>
             {meta.cryptoMeta.trending.map((t, i) => (
               <span key={i}>
-                <span style={{ color: '#e4e4e7', fontWeight: 500 }}>{t.symbol}</span>
+                <span style={{ color: CT.textPrimary, fontWeight: 500 }}>{t.symbol}</span>
                 {i < meta.cryptoMeta.trending.length - 1 ? ' · ' : ''}
               </span>
             ))}
@@ -607,8 +611,8 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
 
       {/* Commodities & Rates */}
       <div style={styles.sectionLabel}>Commodities & Rates</div>
-      <div style={{ fontSize: '0.8em', color: '#a1a1aa', padding: '4px 0 8px', lineHeight: 1.4 }}>
-        Prices reflect front-month futures contracts and may diverge from spot prices, particularly for oil and natural gas.
+      <div style={{ fontSize: '11px', color: CT.textDim, padding: '4px 0 8px', lineHeight: 1.4, letterSpacing: '0.02em' }}>
+        Prices reflect front-month futures contracts and may diverge from spot prices.
       </div>
       <ScrollableTable>
         <table style={styles.table}>
@@ -626,12 +630,12 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
             </tr>
           </thead>
           <tbody>
-            <PriceRow asset="Gold" data={commodities.GOLD} color="#eab308" />
-            <PriceRow asset="Silver" data={commodities.SILVER} color="#a1a1aa" />
-            <PriceRow asset="Brent" data={commodities.BRENT} color="#78716c" />
-            <PriceRow asset="Copper" data={commodities.COPPER} color="#d97706" />
-            <PriceRow asset="Nat Gas" data={commodities.NATGAS} color="#059669" />
-            <PriceRow asset="10Y" data={rates.US10Y} color="#f43f5e" priceOpts={{ prefix: '', suffix: '%' }} />
+            <PriceRow asset="Gold" data={commodities.GOLD} color={CT.yellow} />
+            <PriceRow asset="Silver" data={commodities.SILVER} color={CT.textSecondary} />
+            <PriceRow asset="Brent" data={commodities.BRENT} color={CT.pink} />
+            <PriceRow asset="Copper" data={commodities.COPPER} color={CT.yellow} />
+            <PriceRow asset="Nat Gas" data={commodities.NATGAS} color={CT.greenDisc} />
+            <PriceRow asset="10Y" data={rates.US10Y} color={CT.pink} priceOpts={{ prefix: '', suffix: '%' }} />
           </tbody>
         </table>
       </ScrollableTable>

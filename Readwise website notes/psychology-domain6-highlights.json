@@ -13,7 +13,7 @@
         "relevanceScore": 9.5,
         "qualityScore": 9.2,
         "insightType": "definition",
-        "curatorReason": "Perfect description of the fundamental difference between System 1 and System 2, including the finite nature of attention and the gorilla experiment"
+        "curatorReason": "Most of our thinking is automatic and effortless, but when we focus deeply we become blind to everything else. Your attention is finite, so intense focus on one thing means missing what's around you, like the famous gorilla experiment."
       },
       {
         "readwiseId": 511964972,
@@ -25,7 +25,7 @@
         "relevanceScore": 9.3,
         "qualityScore": 9.0,
         "insightType": "mechanism",
-        "curatorReason": "Explains the finite nature of cognitive resources and provides concrete examples like judges and the bat-ball problem"
+        "curatorReason": "Self control depletes like a battery that needs recharging. Judges grant more paroles after lunch because hunger and fatigue drain your mental reserves. Most people fail the bat and ball problem not because it's hard, but because they're too lazy to think it through."
       },
       {
         "readwiseId": 762339598,
@@ -37,7 +37,7 @@
         "relevanceScore": 9.0,
         "qualityScore": 8.8,
         "insightType": "mechanism",
-        "curatorReason": "Provides neurological foundation for the dual-process theory with three-layer brain model"
+        "curatorReason": "Your brain has three layers: automatic reactions, emotional guidance, and rational control. When you feel bad, emotions tell your body to stress eat. When you think rationally, your neocortex can override those emotional impulses."
       },
       {
         "readwiseId": 511086181,
@@ -49,7 +49,7 @@
         "relevanceScore": 8.9,
         "qualityScore": 8.7,
         "insightType": "application",
-        "curatorReason": "Practical wisdom about when to engage System 2 thinking and the asymmetry in recognizing mistakes"
+        "curatorReason": "You're much better at spotting others' mistakes than your own. The practical fix is to learn which situations typically trip you up, then invest extra thinking effort when stakes are high."
       },
       {
         "readwiseId": 511964800,
@@ -61,7 +61,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.5,
         "insightType": "example",
-        "curatorReason": "Illustrates how System 2 activates when encountering anomalies that violate our mental models"
+        "curatorReason": "Your brain builds mental models about how the world works and alerts you when something breaks the pattern. Even when you hear about a large mouse and small elephant, your old belief persists. Anomalies trigger conscious attention."
       },
       {
         "readwiseId": 661292925,
@@ -73,7 +73,7 @@
         "relevanceScore": 8.7,
         "qualityScore": 8.6,
         "insightType": "application",
-        "curatorReason": "Clear warning about when the dual-process theory becomes practically important"
+        "curatorReason": "Gut instinct works well for familiar problems but fails in unfamiliar domains. The real skill is knowing which situations demand gut instinct and which demand deliberate analysis."
       },
       {
         "readwiseId": 511086188,
@@ -85,7 +85,7 @@
         "relevanceScore": 8.6,
         "qualityScore": 8.5,
         "insightType": "mechanism",
-        "curatorReason": "Shows how emotional state affects system operation"
+        "curatorReason": "Bad moods break your intuition. When you're unhappy or uncomfortable, you can't trust your gut feelings because your emotional state is clouding the signal."
       },
       {
         "readwiseId": 597494238,
@@ -97,7 +97,7 @@
         "relevanceScore": 8.5,
         "qualityScore": 8.7,
         "insightType": "practice",
-        "curatorReason": "Practical technique for managing physiological state that affects thinking systems"
+        "curatorReason": "Slow breathing at 5 to 6.5 breaths per minute directly strengthens your autonomic nervous system's control over heart rate and blood pressure. It's a concrete tool for managing your physical state, which shapes your mental clarity."
       },
       {
         "readwiseId": 697294571,
@@ -109,7 +109,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.6,
         "insightType": "example",
-        "curatorReason": "Real-world illustration of the finite nature of System 2 thinking in academic work"
+        "curatorReason": "Lab scientists can work all day because much of their work is manual. Theoreticians hit a wall after 2-3 hours of hard thinking because deep reasoning burns through your mental fuel quickly."
       },
       {
         "readwiseId": 622137677,
@@ -121,7 +121,7 @@
         "relevanceScore": 8.9,
         "qualityScore": 9.0,
         "insightType": "contrast",
-        "curatorReason": "Shows how expertise changes the balance between System 1 and System 2 thinking"
+        "curatorReason": "Experts think forward from action to consequence; novices think backward searching for what to do. Expertise shifts thinking from System 2 searching to System 1 pattern matching."
       }
     ]
   },
@@ -139,7 +139,7 @@
         "relevanceScore": 9.8,
         "qualityScore": 9.5,
         "insightType": "comprehensive",
-        "curatorReason": "Comprehensive overview of multiple biases with practical examples and mechanisms"
+        "curatorReason": "Snap judgments feel confident and work fine when stakes are low. System 1 automatically believes what it hears first, then rationalizes backward. People who heard only one side were more confident than those who heard both sides."
       },
       {
         "readwiseId": 511963951,
@@ -151,7 +151,7 @@
         "relevanceScore": 9.5,
         "qualityScore": 9.0,
         "insightType": "definition",
-        "curatorReason": "Clear explanation of availability heuristic with media example"
+        "curatorReason": "If you can easily recall news stories about plane crashes, you overestimate how likely they are. Media coverage creates the illusion of frequency because vivid examples come to mind first."
       },
       {
         "readwiseId": 511963929,
@@ -163,7 +163,7 @@
         "relevanceScore": 9.4,
         "qualityScore": 8.9,
         "insightType": "definition",
-        "curatorReason": "Explains affect heuristic and availability cascade with concrete examples"
+        "curatorReason": "You feel good about something so you assume it's safe. You feel scared of something rare but gruesome so you overestimate its danger compared to mundane killers like heart disease. Emotions substitute for reasoning."
       },
       {
         "readwiseId": 661292916,
@@ -175,7 +175,7 @@
         "relevanceScore": 9.0,
         "qualityScore": 8.5,
         "insightType": "definition",
-        "curatorReason": "Clear, concise definition of confirmation bias"
+        "curatorReason": "You notice information that confirms what you already believe and skip information that contradicts it. This unconscious filter runs constantly and feels like objective reality."
       },
       {
         "readwiseId": 511086183,
@@ -187,7 +187,7 @@
         "relevanceScore": 9.2,
         "qualityScore": 9.3,
         "insightType": "example",
-        "curatorReason": "Powerful illustration of inattentional blindness and meta-cognitive blindness"
+        "curatorReason": "You can stare directly at a gorilla and not see it if you're focused on counting basketball passes. Worse, you don't realize you missed it. Your blind spots are invisible to you."
       },
       {
         "readwiseId": 511086182,
@@ -199,7 +199,7 @@
         "relevanceScore": 9.3,
         "qualityScore": 9.1,
         "insightType": "mechanism",
-        "curatorReason": "Captures the core mechanism of cognitive substitution"
+        "curatorReason": "Your brain swaps hard questions for easy ones without your awareness. Asked 'How much should I invest?' you unconsciously answer 'How much do I trust this person?' and never notice the switch."
       },
       {
         "readwiseId": 806741295,
@@ -211,7 +211,7 @@
         "relevanceScore": 9.6,
         "qualityScore": 9.4,
         "insightType": "comprehensive",
-        "curatorReason": "Comprehensive taxonomy of 12 major cognitive biases and logical fallacies"
+        "curatorReason": "Twelve systematic ways knowledge gets distorted: your limited viewpoint, language choices, conflating maps with reality, undefined criteria, truth definitions, historical theories being partially right, using your favorite tool, looking where it's easy, the observer effect, investigator assumptions, reductionism, and the need for certainty."
       },
       {
         "readwiseId": 515357877,
@@ -223,7 +223,7 @@
         "relevanceScore": 9.1,
         "qualityScore": 8.8,
         "insightType": "practice",
-        "curatorReason": "Practical framework for detecting and counteracting personal biases"
+        "curatorReason": "Apply five tests to catch yourself: double standard test (am I judging myself differently), outside view (what would I decide fresh), yes man test (do others have real opinions or just echo yours), selective skeptic test (do I only criticize opposing views), status quo test (am I loss averse to changing)."
       },
       {
         "readwiseId": 511349721,
@@ -235,7 +235,7 @@
         "relevanceScore": 8.9,
         "qualityScore": 8.7,
         "insightType": "mechanism",
-        "curatorReason": "Explains outcome bias and post-hoc rationalization with vivid metaphor"
+        "curatorReason": "After the fact, you invent stories connecting your decisions to outcomes. You cherry pick data and assume correlation means causation just to feel like your choices matter. Your brain pounds square pegs into round holes."
       },
       {
         "readwiseId": 639385073,
@@ -247,7 +247,7 @@
         "relevanceScore": 9.0,
         "qualityScore": 8.9,
         "insightType": "comprehensive",
-        "curatorReason": "Munger's systematic approach to understanding multiple biases and their systemic nature"
+        "curatorReason": "Fix incentives instead of blaming people. Your hand feels warm in cold water and vice versa because of contrast, not absolute temperature. People resist change and commitment hardens belief. Teaching something even wrong strengthens belief in it."
       }
     ]
   },
@@ -265,7 +265,7 @@
         "relevanceScore": 10.0,
         "qualityScore": 9.8,
         "insightType": "framework",
-        "curatorReason": "The complete framework exactly as described in the model"
+        "curatorReason": "Ask yourself these eight questions before high stakes decisions: Am I thinking fast or slow? Too stressed? Is it reversible? What if it were someone else's choice? Will I regret it in a year? What would I tell a friend? How good is the evidence? What's the other side?"
       },
       {
         "readwiseId": 661292975,
@@ -277,7 +277,7 @@
         "relevanceScore": 9.0,
         "qualityScore": 8.7,
         "insightType": "application",
-        "curatorReason": "Elaborates on Question 3 about decision reversibility"
+        "curatorReason": "Reversible decisions deserve speed and experimentation. Irreversible decisions that can't be unwound usually turn out to be the ones that matter most."
       },
       {
         "readwiseId": 517894744,
@@ -289,7 +289,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.9,
         "insightType": "application",
-        "curatorReason": "Practical application of the reversibility framework in business contexts"
+        "curatorReason": "One way doors close after you pass through them, so move fast. Two way doors you can step back from, so you can afford to slow down. Great decision makers design their lives so they're always facing good one way doors."
       },
       {
         "readwiseId": 622137687,
@@ -301,7 +301,7 @@
         "relevanceScore": 8.7,
         "qualityScore": 8.8,
         "insightType": "mechanism",
-        "curatorReason": "Explains how expert decision-makers systematically approach decisions with checklists"
+        "curatorReason": "Expert decision makers don't have superhuman judgment. They have checklists of what to watch for and mechanisms to bring those checklists to mind when decisions matter."
       },
       {
         "readwiseId": 511349691,
@@ -313,7 +313,7 @@
         "relevanceScore": 8.6,
         "qualityScore": 8.5,
         "insightType": "practice",
-        "curatorReason": "Practical implementation of systematic decision-making documentation"
+        "curatorReason": "Write down your decision criteria before you decide, not after. This stops you from rationalizing backward and lets you learn from your decisions."
       },
       {
         "readwiseId": 597481159,
@@ -325,7 +325,7 @@
         "relevanceScore": 8.9,
         "qualityScore": 8.7,
         "insightType": "mechanism",
-        "curatorReason": "Addresses Question 2 about stress affecting thinking with physiological explanation"
+        "curatorReason": "Stress shrinks your thinking to immediate threats and cuts blood flow to your brain. Check your physiological state first. If you're sympathetic activated, wait before high stakes decisions."
       },
       {
         "readwiseId": 722448058,
@@ -337,7 +337,7 @@
         "relevanceScore": 8.5,
         "qualityScore": 8.6,
         "insightType": "application",
-        "curatorReason": "Practical framework for organizational decision-making that incorporates external perspective"
+        "curatorReason": "Bring peers and one senior person into decisions for outside perspective, but don't let the senior person decide. Don't paralyze yourself. If unclear, the person with most at stake decides. Debate is essential."
       },
       {
         "readwiseId": 525350729,
@@ -349,7 +349,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.8,
         "insightType": "example",
-        "curatorReason": "Real-world application of Question 5 (temporal perspective) in a major life decision"
+        "curatorReason": "Bezos left a good Wall Street job by asking: at 80, will I regret missing the Wall Street bonus or regret missing this technology wave. The answer was obvious. Project forward to your deathbed, not your next paycheck."
       },
       {
         "readwiseId": 661292978,
@@ -361,7 +361,7 @@
         "relevanceScore": 8.7,
         "qualityScore": 8.5,
         "insightType": "mechanism",
-        "curatorReason": "Explains how cognitive load affects decision quality over time"
+        "curatorReason": "Each decision you make drains your cognitive resources. By decision number ten you're worse at deciding than you were at decision one. Batch decisions and protect energy."
       },
       {
         "readwiseId": 511349960,
@@ -373,7 +373,7 @@
         "relevanceScore": 8.6,
         "qualityScore": 8.7,
         "insightType": "counterpoint",
-        "curatorReason": "Important insight about how decision quality paradoxically decreases when stakes are highest"
+        "curatorReason": "You learn by practice at low stakes. High stakes decisions you haven't practiced, so you often get them wrong. Your worst decisions happen exactly where you need your best ones."
       }
     ]
   },
@@ -383,4 +383,16 @@
     "curatedHighlights": [
       {
         "readwiseId": 511961717,
-        "text": "Mental accounting we view things differently based on a reference point. If we are given a ticket to a game and the weathers bad we're less likely to go then had we bought that ticket likewise
+        "text": "Mental accounting we view things differently based on a reference point. If we are given a ticket to a game and the weathers bad we're less likely to go then had we bought that ticket likewise",
+        "book": {
+          "title": "Thinking Fast and Slow",
+          "author": "Daniel Kahneman"
+        },
+        "relevanceScore": 9.0,
+        "qualityScore": 8.9,
+        "insightType": "definition",
+        "curatorReason": "You treat a free ticket differently than a purchased one. You're more likely to go to the game if you paid for the ticket, even if the weather is identical. Your reference point shifts the value."
+      }
+    ]
+  }
+]

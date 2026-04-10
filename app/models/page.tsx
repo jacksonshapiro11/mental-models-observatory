@@ -2,221 +2,266 @@
 
 import { getAllDomains, getAllModels } from '@/lib/data';
 import { ProgressTracker } from '@/lib/progress-tracker';
-import { ArrowRight, CheckCircle, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+
+type DomainTreatment = 'A' | 'B' | 'C' | 'D';
+
+// Treatment styling
+const TREATMENTS: Record<DomainTreatment, { bg: string; border: string; card: string; text: string; cardBorder: string }> = {
+  A: {
+    bg: 'bg-white',
+    border: 'border-ct-pink',
+    card: 'bg-[#FAFAF6]',
+    text: 'text-text-primary',
+    cardBorder: 'border-[#e8e8e4]',
+  },
+  B: {
+    bg: 'bg-ct-dark',
+    border: 'border-ct-yellow',
+    card: 'bg-[#141416]',
+    text: 'text-white',
+    cardBorder: 'border-[#222]',
+  },
+  C: {
+    bg: 'bg-ct-yellow',
+    border: 'border-ct-dark',
+    card: 'bg-white',
+    text: 'text-ct-dark',
+    cardBorder: 'border-2 border-ct-dark',
+  },
+  D: {
+    bg: 'bg-[#E8FFF5]',
+    border: 'border-[#00885a]',
+    card: 'bg-white',
+    text: 'text-text-primary',
+    cardBorder: 'border-[0.5px] border-[#e8e8e4]',
+  },
+};
+
+function getTreatmentForIndex(index: number): DomainTreatment {
+  const treatments: DomainTreatment[] = ['A', 'B', 'C', 'D'];
+  return treatments[index % 4] as DomainTreatment;
+}
+
+function ModelCard({ model, treatment, domainIndex }: { model: any; treatment: DomainTreatment; domainIndex: number }) {
+  const treatment_style = TREATMENTS[treatment as DomainTreatment];
+  const accentColor = ['#FF2E63', '#FFE600', '#00885a', '#7C5CFC'][domainIndex % 4];
+
+  const cardClass = treatment === 'B' ? 'text-[#eee]' : 'text-text-primary';
+  const descClass = treatment === 'B' ? 'text-[#888]' : 'text-text-secondary';
+  const labelClass = treatment === 'B' ? 'text-[#555]' : 'text-text-muted';
+
+  return (
+    <Link
+      href={`/models/${model.slug}`}
+      className={`group block ${treatment_style.card} ${treatment_style.cardBorder} border rounded-sm overflow-hidden hover:shadow-lg transition-all duration-300`}
+    >
+      {/* Top accent bar */}
+      <div className="h-[3px] w-full" style={{ backgroundColor: accentColor }}></div>
+
+      {/* Content */}
+      <div className="p-3">
+        <div className={`text-[9px] uppercase tracking-wider font-medium mb-1.5 ${labelClass}`}>
+          {model.domain}
+        </div>
+        <h3 className={`text-[13px] font-medium mb-2 group-hover:opacity-75 transition-opacity ${cardClass}`}>
+          {model.name}
+        </h3>
+        <p className={`text-[11px] leading-[1.4] mb-2.5 line-clamp-3 ${descClass}`}>
+          {model.description}
+        </p>
+
+        {/* Tags */}
+        <div className="flex gap-1 flex-wrap mb-2">
+          {model.tags?.slice(0, 2).map((tag: string) => (
+            <span
+              key={tag}
+              className={`text-[9px] font-mono px-1.5 py-0.5 rounded-sm ${
+                treatment === 'B'
+                  ? 'bg-[#1a1a1d] text-[#888] border border-[#222]'
+                  : treatment === 'C'
+                  ? 'bg-ct-yellow text-ct-dark border border-ct-dark'
+                  : 'bg-[#e8e8e4] text-[#666]'
+              }`}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className={`text-[9px] font-mono uppercase ${treatment === 'B' ? 'text-[#555]' : 'text-text-muted'}`}>
+          {model.difficulty || 'intermediate'}
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 export default function ModelsPage() {
   const models = getAllModels();
   const domains = getAllDomains();
-  
+
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDomain, setSelectedDomain] = useState('');
-  const [selectedDifficulty, setSelectedDifficulty] = useState('');
   const [viewedModelSlugs, setViewedModelSlugs] = useState<string[]>([]);
-  
+
   // Load viewed models from progress tracker
   useEffect(() => {
     const progress = ProgressTracker.getProgress();
     setViewedModelSlugs(progress.modelsViewed.map(m => m.slug));
   }, []);
 
-  // Filtered models
-  const filteredModels = useMemo(() => {
-    return models.filter(model => {
-      // Search filter
-      const matchesSearch = searchQuery === '' || 
-        model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        model.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        model.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-      
-      // Domain filter
-      const matchesDomain = selectedDomain === '' || model.domainSlug === selectedDomain;
-      
-      // Difficulty filter
-      const matchesDifficulty = selectedDifficulty === '' || model.difficulty === selectedDifficulty;
-      
-      return matchesSearch && matchesDomain && matchesDifficulty;
+  // Group models by domain
+  const modelsByDomain = useMemo(() => {
+    const grouped: Record<string, typeof models> = {};
+    const sortedDomains = domains
+      .filter(d => models.some(m => m.domainSlug === d.slug))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    sortedDomains.forEach(domain => {
+      const domainModels = models.filter(m => m.domainSlug === domain.slug);
+      if (selectedDomain === '' || domain.slug === selectedDomain) {
+        grouped[domain.slug] = domainModels.filter(
+          m =>
+            searchQuery === '' ||
+            m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            m.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            m.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+      }
     });
-  }, [models, searchQuery, selectedDomain, selectedDifficulty]);
+    return grouped;
+  }, [models, domains, searchQuery, selectedDomain]);
+
+  const allFilteredModels = Object.values(modelsByDomain).flat();
+  const domainArray = Object.keys(modelsByDomain).map(slug => domains.find(d => d.slug === slug)!);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl">
-            Mental Models
-          </h1>
-          <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
-            Discover powerful thinking frameworks across all domains of knowledge. 
-            Each model includes principles, examples, and practical applications.
+    <div className="min-h-screen">
+      {/* 1. DARK HERO */}
+      <section className="bg-ct-dark px-4 py-6 border-b-[3px] border-ct-yellow">
+        <div className="max-w-4xl mx-auto">
+          <div className="font-mono text-[10px] text-ct-yellow uppercase tracking-wider mb-2">The observatory</div>
+          <h1 className="text-[22px] font-medium text-white mb-1.5">Mental models observatory</h1>
+          <p className="text-[13px] text-[#666] leading-[1.5] mb-4">
+            Thinking frameworks across all domains of knowledge. Referenced daily in the brief — explored deeper here.
           </p>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="mb-8 space-y-4">
-          <div className="max-w-2xl mx-auto">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search mental models..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input pl-10 w-full"
-              />
-            </div>
-          </div>
-          
-          <div className="flex flex-wrap gap-4 justify-center">
-            <select 
-              className="input w-auto"
-              value={selectedDomain}
-              onChange={(e) => setSelectedDomain(e.target.value)}
-            >
-              <option value="">All Domains</option>
-              {domains.map((domain) => (
-                <option key={domain.id} value={domain.slug}>
-                  {domain.name}
-                </option>
-              ))}
-            </select>
-            <select 
-              className="input w-auto"
-              value={selectedDifficulty}
-              onChange={(e) => setSelectedDifficulty(e.target.value)}
-            >
-              <option value="">All Levels</option>
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
-            </select>
+          <div className="flex gap-4 font-mono text-[12px]">
+            <span>
+              <span className="text-ct-yellow font-medium">{models.length}</span>{' '}
+              <span className="text-[#555]">models</span>
+            </span>
+            <span>
+              <span className="text-ct-yellow font-medium">{domains.length}</span>{' '}
+              <span className="text-[#555]">domains</span>
+            </span>
           </div>
         </div>
+      </section>
 
-        {/* Results count */}
-        {(searchQuery || selectedDomain || selectedDifficulty) && (
-          <div className="text-center mb-6">
-            <p className="text-sm text-gray-600">
-              Showing {filteredModels.length} of {models.length} models
-            </p>
-          </div>
-        )}
+      {/* 2. YELLOW SEARCH BAR */}
+      <section className="bg-ct-yellow px-4 py-3 border-b-[3px] border-ct-dark">
+        <div className="max-w-4xl mx-auto flex items-center gap-2 bg-white border-2 border-ct-dark px-3 py-2.5 rounded-sm">
+          <Search className="w-4 h-4 text-[#999]" />
+          <input
+            type="text"
+            placeholder="Search models, domains, or applications..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 text-[14px] text-ct-dark bg-transparent outline-none placeholder-[#888]"
+          />
+          <span className="font-mono text-[11px] text-[#888]">{allFilteredModels.length}</span>
+        </div>
+      </section>
 
-        {/* Models Grid */}
-        {filteredModels.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredModels.map((model) => {
-              const isViewed = viewedModelSlugs.includes(model.slug);
-              
-              return (
-              <Link
-                key={model.id}
-                href={`/models/${model.slug}`}
-                className={`group card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 relative ${
-                  isViewed ? 'ring-2 ring-green-400' : ''
-                }`}
+      {/* 3. WHITE FILTER CHIPS */}
+      <section className="bg-white px-4 py-3 border-b border-[#e8e8e4]">
+        <div className="max-w-4xl mx-auto flex gap-1.5 overflow-x-auto pb-1.5 no-scrollbar">
+          <button
+            onClick={() => setSelectedDomain('')}
+            className={`px-2.5 py-1 text-[11px] font-medium whitespace-nowrap rounded-sm transition-all ${
+              selectedDomain === ''
+                ? 'bg-ct-pink text-white'
+                : 'bg-white text-[#666] border border-[#ddd]'
+            }`}
+          >
+            All
+          </button>
+          {domainArray.map((domain, idx) => (
+            <button
+              key={domain.slug}
+              onClick={() => setSelectedDomain(domain.slug)}
+              className={`px-2.5 py-1 text-[11px] font-medium whitespace-nowrap rounded-sm transition-all ${
+                selectedDomain === domain.slug
+                  ? 'bg-ct-dark text-ct-yellow'
+                  : 'bg-white text-[#666] border border-[#ddd]'
+              }`}
+            >
+              {domain.name}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* 4. DOMAIN SECTIONS WITH ALTERNATING TREATMENTS */}
+      <div>
+        {allFilteredModels.length > 0 ? (
+          domainArray.map((domain, domainIndex) => {
+            const treatment = getTreatmentForIndex(domainIndex);
+            const treatment_style = TREATMENTS[treatment];
+            const domainModels = modelsByDomain[domain.slug] || [];
+
+            return (
+              <section
+                key={domain.slug}
+                className={`${treatment_style.bg} px-4 py-4 border-t-[3px] ${treatment_style.border}`}
               >
-                {/* Reviewed Badge */}
-                {isViewed && (
-                  <div className="absolute top-0 right-0 bg-green-500 text-white px-3 py-1 rounded-bl-lg rounded-tr-lg flex items-center gap-1 text-xs font-bold shadow-lg z-10">
-                    <CheckCircle className="h-3 w-3" />
-                    REVIEWED
+                <div className="max-w-4xl mx-auto">
+                  <div
+                    className={`text-[10px] tracking-[0.08em] uppercase font-medium mb-3 ${
+                      treatment === 'B' ? 'text-ct-yellow' : 'text-[#999]'
+                    }`}
+                  >
+                    {domain.name}{' '}
+                    <span className={`font-mono ${treatment === 'B' ? 'text-[#555]' : 'text-[#666]'}`}>
+                      {domainModels.length}
+                    </span>
                   </div>
-                )}
-                
-                <div className={`card-header ${isViewed ? 'bg-green-50' : ''}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className={`card-title text-lg group-hover:text-blue-600 transition-colors ${isViewed ? 'text-green-800' : ''}`}>
-                        {model.name}
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {model.domain}
-                      </p>
-                    </div>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      model.difficulty === 'beginner' ? 'bg-green-100 text-green-800' :
-                      model.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {model.difficulty}
-                    </div>
-                  </div>
-                </div>
-                <div className="card-content">
-                  <p className="text-gray-600 text-sm mb-4">
-                    {model.description}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {model.tags.slice(0, 3).map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs"
-                      >
-                        {tag}
-                      </span>
+
+                  {/* 2-column grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {domainModels.map((model, idx) => (
+                      <ModelCard
+                        key={model.slug}
+                        model={model}
+                        treatment={treatment}
+                        domainIndex={domainIndex}
+                      />
                     ))}
-                    {model.tags.length > 3 && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">
-                        +{model.tags.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center text-blue-600 group-hover:text-blue-700 transition-colors">
-                    <span className="text-sm font-medium">{isViewed ? 'Review again' : 'Learn more'}</span>
-                    <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </div>
                 </div>
-              </Link>
-              );
-            })}
-          </div>
+              </section>
+            );
+          })
         ) : (
-          <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-              <Search className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No models found</h3>
-            <p className="text-gray-600 mb-4">
+          <section className="bg-white px-4 py-16 text-center">
+            <Search className="w-12 h-12 text-[#ccc] mx-auto mb-4" />
+            <h3 className="text-base font-medium text-text-primary mb-2">No models found</h3>
+            <p className="text-[13px] text-text-secondary mb-6">
               Try adjusting your search or filters
             </p>
             <button
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedDomain('');
-                setSelectedDifficulty('');
-              }}
-              className="btn btn-secondary"
+              onClick={() => setSelectedDomain('')}
+              className="px-4 py-2 bg-ct-dark text-ct-yellow text-sm font-medium rounded-sm hover:opacity-90 transition-opacity"
             >
-              Clear all filters
+              Clear filters
             </button>
-          </div>
+          </section>
         )}
-
-        {/* Stats */}
-        <div className="mt-16 text-center">
-          <div className="inline-flex items-center space-x-8 bg-white rounded-lg px-8 py-4 shadow-sm">
-            <div>
-              <div className="text-2xl font-bold text-gray-900">{models.length}</div>
-              <div className="text-sm text-gray-600">Mental Models</div>
-            </div>
-            <div className="w-px h-8 bg-gray-200"></div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900">{domains.length}</div>
-              <div className="text-sm text-gray-600">Domains</div>
-            </div>
-            <div className="w-px h-8 bg-gray-200"></div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900">
-                {models.filter(m => m.difficulty === 'beginner').length}
-              </div>
-              <div className="text-sm text-gray-600">Beginner Friendly</div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

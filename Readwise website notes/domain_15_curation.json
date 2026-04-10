@@ -13,7 +13,7 @@
         "relevanceScore": 9.8,
         "qualityScore": 9.5,
         "insightType": "foundational definition",
-        "curatorReason": "Shannon's definitive information theory - information resolves uncertainty, signal through noise principle"
+        "curatorReason": "Information's core purpose is resolving uncertainty. The less predictable something is, the more information it contains; a U after a Q tells you nothing because it's always there."
       },
       {
         "readwiseId": 518577530,
@@ -24,7 +24,7 @@
         "relevanceScore": 9.6,
         "qualityScore": 9.2,
         "insightType": "systems application",
-        "curatorReason": "Perfect example of signal vs noise in system design with car dealership feedback loops"
+        "curatorReason": "A car dealership's advertising creates feedback loops: more ads trigger more customer visits, but too much noise about discounts drowns out signal about actual car quality."
       },
       {
         "readwiseId": 546245738,
@@ -35,7 +35,7 @@
         "relevanceScore": 9.7,
         "qualityScore": 9.4,
         "insightType": "frequency paradox",
-        "curatorReason": "Brilliant insight showing how more frequent data observation increases noise ratio - counterintuitive but crucial"
+        "curatorReason": "Checking a metric constantly amplifies noise relative to signal. Daily stock prices are 99% noise; yearly returns contain mostly signal."
       },
       {
         "readwiseId": 546245816,
@@ -46,7 +46,7 @@
         "relevanceScore": 9.4,
         "qualityScore": 9.0,
         "insightType": "practical warning",
-        "curatorReason": "Shows the paradox that more information can reduce understanding - vital for information diet"
+        "curatorReason": "More data streams can reduce clarity by forcing you to process irrelevant variation. Limiting your information diet is sometimes smarter than expanding it."
       },
       {
         "readwiseId": 556030268,
@@ -57,7 +57,7 @@
         "relevanceScore": 9.2,
         "qualityScore": 8.8,
         "insightType": "practical application",
-        "curatorReason": "Actionable insight about curating information flows to improve thinking quality"
+        "curatorReason": "Your thinking quality depends on what information you let in. Curate your inputs deliberately or noise will dictate your perspective."
       },
       {
         "readwiseId": 511965428,
@@ -68,7 +68,7 @@
         "relevanceScore": 9.0,
         "qualityScore": 8.7,
         "insightType": "technical foundation",
-        "curatorReason": "Shannon's 5-part communication system and information vs meaning distinction"
+        "curatorReason": "Shannon's five-part communication model separates information content from meaning. The same words can carry different information depending on what the receiver already knows."
       },
       {
         "readwiseId": 889447941,
@@ -79,7 +79,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.6,
         "insightType": "competitive advantage",
-        "curatorReason": "Different types of information advantage - finding, weighing, access, and unique interpretation"
+        "curatorReason": "Information advantage comes from four sources: finding signals others miss, weighing them correctly, accessing data faster, or interpreting the same facts differently."
       },
       {
         "readwiseId": 511968431,
@@ -90,7 +90,7 @@
         "relevanceScore": 8.6,
         "qualityScore": 8.4,
         "insightType": "complex systems",
-        "curatorReason": "Strange attractors as signal in chaotic dynamic systems - patterns emerge from noise"
+        "curatorReason": "In chaotic systems, strange attractors reveal hidden order beneath apparent randomness. Patterns do emerge from noise if you know what to look for."
       },
       {
         "readwiseId": 518578186,
@@ -101,7 +101,7 @@
         "relevanceScore": 8.7,
         "qualityScore": 8.5,
         "insightType": "leverage point",
-        "curatorReason": "Information flows as key leverage point in system design - creates accountability and transparency"
+        "curatorReason": "Transparency about what's actually happening is the highest-leverage intervention in a system. When information flows freely, people adapt and stay accountable."
       },
       {
         "readwiseId": 581369184,
@@ -112,7 +112,7 @@
         "relevanceScore": 8.5,
         "qualityScore": 8.3,
         "insightType": "focus application",
-        "curatorReason": "Henry Singleton's singular focus removing noise to focus on signal - practical example of information filtering"
+        "curatorReason": "Henry Singleton focused obsessively on capital allocation returns while ignoring market noise and personal ego. His singularity of focus was his edge."
       }
     ]
   },
@@ -130,7 +130,7 @@
         "relevanceScore": 9.7,
         "qualityScore": 9.3,
         "insightType": "core mechanism",
-        "curatorReason": "Definitive explanation of availability bias and how media stories distort probability perception"
+        "curatorReason": "We judge likelihood by how easily examples come to mind, not actual frequency. A plane crash gets wall-to-wall coverage so flying feels dangerous; car crashes kill more people but feel ordinary."
       },
       {
         "readwiseId": 661292898,
@@ -141,7 +141,7 @@
         "relevanceScore": 9.5,
         "qualityScore": 9.0,
         "insightType": "definition",
-        "curatorReason": "Clear, concise definition of availability bias and how recent information distorts objective reality"
+        "curatorReason": "The most recent or memorable cases dominate your probability estimates, even when they're statistical outliers. Recency bias makes yesterday's events feel like today's facts."
       },
       {
         "readwiseId": 661292899,
@@ -152,7 +152,7 @@
         "relevanceScore": 9.3,
         "qualityScore": 8.8,
         "insightType": "modern application",
-        "curatorReason": "Shows how personalized algorithms and filter bubbles amplify availability bias in digital age"
+        "curatorReason": "Personalized algorithms and filter bubbles don't just show you information; they exponentially amplify availability bias by showing you what confirms what you've already seen."
       },
       {
         "readwiseId": 511086184,
@@ -163,7 +163,7 @@
         "relevanceScore": 9.2,
         "qualityScore": 8.9,
         "insightType": "media mechanism",
-        "curatorReason": "Direct connection between media coverage and perceived importance - core availability cascade mechanism"
+        "curatorReason": "Media coverage itself determines what you think is important. If it's in the news constantly, your brain treats it as more likely and more significant."
       },
       {
         "readwiseId": 511964588,
@@ -174,7 +174,7 @@
         "relevanceScore": 9.0,
         "qualityScore": 8.7,
         "insightType": "cognitive mechanism",
-        "curatorReason": "What you see is all there is - explains how limited information creates overconfidence"
+        "curatorReason": "You can only work with the information in front of you. When your knowledge is incomplete, confidence grows fastest, not slowest, because you don't see what you're missing."
       },
       {
         "readwiseId": 627534802,
@@ -185,7 +185,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.5,
         "insightType": "scale effects",
-        "curatorReason": "Law of large numbers means rare events happen daily globally - availability cascade fuel"
+        "curatorReason": "With billions of people, statistically rare events happen daily somewhere. Media picks them up because they're novel, so they feel like growing trends when they're just probability at scale."
       },
       {
         "readwiseId": 511963880,
@@ -196,7 +196,7 @@
         "relevanceScore": 8.6,
         "qualityScore": 8.4,
         "insightType": "prediction framework",
-        "curatorReason": "Shows when to rely on base rates vs intuition - distinguishes normal vs power law environments"
+        "curatorReason": "Base rates work in normal distributions where averages predict outcomes. In power law distributions, history tells you almost nothing, so intuition often beats the base rate."
       },
       {
         "readwiseId": 661292916,
@@ -207,7 +207,7 @@
         "relevanceScore": 8.7,
         "qualityScore": 8.3,
         "insightType": "related bias",
-        "curatorReason": "Confirmation bias as complement to availability - both distort information processing"
+        "curatorReason": "Confirmation bias partners with availability bias: you notice information confirming what you know is memorable, so memorable information confirms what you know."
       },
       {
         "readwiseId": 696046546,
@@ -218,7 +218,7 @@
         "relevanceScore": 8.5,
         "qualityScore": 8.6,
         "insightType": "decision framework",
-        "curatorReason": "Information availability as key dimension in decision-making under uncertainty"
+        "curatorReason": "When making uncertain decisions, what information you have access to matters as much as what the information actually says. Unequal information access is a hidden source of advantage."
       },
       {
         "readwiseId": 661292972,
@@ -229,7 +229,7 @@
         "relevanceScore": 8.4,
         "qualityScore": 8.2,
         "insightType": "information overload",
-        "curatorReason": "Too much information can complicate rather than improve decisions - connects to availability cascades"
+        "curatorReason": "Adding more data sources can muddy your judgment rather than sharpen it. Your brain gets paralyzed trying to reconcile conflicting signals instead of choosing direction."
       }
     ]
   },
@@ -247,7 +247,7 @@
         "relevanceScore": 9.8,
         "qualityScore": 9.5,
         "insightType": "core theory",
-        "curatorReason": "Perfect articulation of predictive processing theory - we experience predictions, not direct reality"
+        "curatorReason": "You don't perceive reality directly. Your brain generates predictions from past patterns, and you experience those predictions. What you call seeing is your mind's best guess."
       },
       {
         "readwiseId": 848098441,
@@ -258,7 +258,7 @@
         "relevanceScore": 9.6,
         "qualityScore": 9.2,
         "insightType": "technical mechanism",
-        "curatorReason": "Detailed explanation of how meditation affects predictive hierarchies and precision weighting"
+        "curatorReason": "Meditation weakens the precision weighting your brain assigns to predictions. Thoughts lose their automatic pull because you're no longer heavily investing in which prediction comes next."
       },
       {
         "readwiseId": 806741100,
@@ -269,7 +269,7 @@
         "relevanceScore": 9.4,
         "qualityScore": 9.0,
         "insightType": "neuroscience integration",
-        "curatorReason": "Shows recurrent processing and integrated information theory connecting to predictive processing"
+        "curatorReason": "Integrated information theory and recurrent processing show how consciousness emerges: feedback loops between brain regions generate the sense of a unified experience."
       },
       {
         "readwiseId": 515356983,
@@ -280,7 +280,7 @@
         "relevanceScore": 9.2,
         "qualityScore": 8.8,
         "insightType": "paradigm filtering",
-        "curatorReason": "Paradigms as transformation glasses - we see what our conceptual experience teaches us to see"
+        "curatorReason": "Paradigms act like prescription lenses on your perception. Two scientists with different frameworks literally see different things when looking at the same data."
       },
       {
         "readwiseId": 582266269,
@@ -291,7 +291,7 @@
         "relevanceScore": 9.0,
         "qualityScore": 8.7,
         "insightType": "belief construction",
-        "curatorReason": "Connectionist knowledge and belief web - how our predictive models are built from connections"
+        "curatorReason": "Your beliefs form from connections between concepts, not isolated facts. Change the connections and you change what things mean, even without new information."
       },
       {
         "readwiseId": 511350010,
@@ -302,7 +302,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.6,
         "insightType": "information processing",
-        "curatorReason": "Sleep cycles as information processing stages - reception, reflection, integration model"
+        "curatorReason": "Sleep orchestrates how information integrates. You receive experiences, then sleep lets you reflect and consolidate them into stable predictions about how the world works."
       },
       {
         "readwiseId": 728174207,
@@ -313,7 +313,7 @@
         "relevanceScore": 8.7,
         "qualityScore": 8.5,
         "insightType": "AI parallel",
-        "curatorReason": "AI feature clustering shows how predictive models organize conceptual similarity"
+        "curatorReason": "Neural networks cluster similar concepts in the same regions of their processing space. The brain likely does the same, organizing predictions around conceptual similarity."
       },
       {
         "readwiseId": 542153596,
@@ -324,7 +324,7 @@
         "relevanceScore": 8.6,
         "qualityScore": 8.8,
         "insightType": "experiential construction",
-        "curatorReason": "Different belief templates create different meanings from same experience - classic predictive processing example"
+        "curatorReason": "The same traffic jam feels like a conspiracy when you're late and a normal Tuesday when you're calm. Your belief frame, not the traffic, creates the experience."
       },
       {
         "readwiseId": 820097307,
@@ -335,7 +335,7 @@
         "relevanceScore": 8.5,
         "qualityScore": 8.4,
         "insightType": "computational theory",
-        "curatorReason": "Superposition hypothesis shows how neural networks compress and predict - mirrors predictive processing"
+        "curatorReason": "Neural networks use superposition to compress many concepts into single neurons, then predict which one is relevant. Your brain uses similar compression for predictive efficiency."
       },
       {
         "readwiseId": 841674025,
@@ -346,7 +346,7 @@
         "relevanceScore": 8.4,
         "qualityScore": 8.3,
         "insightType": "deconstruction method",
-        "curatorReason": "Cessation as complete shutdown of predictive processing - ultimate demonstration of constructed experience"
+        "curatorReason": "When meditation fully suspends predictive processing, you experience raw sensation without the narrative your brain normally wraps around it. That absence is the proof of what you normally construct."
       }
     ]
   }

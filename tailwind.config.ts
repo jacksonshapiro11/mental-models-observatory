@@ -7,155 +7,38 @@ const config: Config = {
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './lib/**/*.{js,ts,jsx,tsx,mdx}',
   ],
-  safelist: [
-    // Espresso-gold theme utilities
-    'text-[var(--espresso-h1)]',
-    'text-[var(--espresso-body)]',
-    'text-[var(--espresso-accent)]',
-    'bg-[var(--espresso-cta-bg)]',
-    'text-[var(--espresso-cta-text)]',
-    'bg-[var(--espresso-surface)]',
-    'bg-[var(--espresso-bg-dark)]',
-    'bg-[var(--espresso-bg-medium)]',
-    'bg-[var(--espresso-bg-light)]',
-    'border-[color:rgba(212,175,55,0.35)]',
-    'border-[var(--espresso-accent)]/20',
-    'border-[var(--espresso-accent)]/30',
-    'border-[var(--espresso-accent)]/40',
-    'hover:bg-[#c49f2e]',
-    'hover:border-[color:rgba(212,175,55,0.5)]',
-    'hover:bg-[var(--espresso-surface)]/40',
-    'hover:bg-[var(--espresso-surface)]/80',
-    'hover:border-[var(--espresso-accent)]/40',
-  ],
   theme: {
     extend: {
-      // DESIGN SYSTEM FOUNDATION
+      // ZINE TERMINAL COLOR PALETTE
       colors: {
-        // Tier-based Knowledge Architecture
-        foundational: {
-          50: '#eff6ff',
-          100: '#dbeafe', 
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#1e40af', // Primary foundational knowledge
-          700: '#1d4ed8',
-          800: '#1e3a8a',
-          900: '#1e293b',
-          950: '#0f172a',
+        ct: {
+          dark: '#0D0D0D',
+          yellow: '#FFE600',
+          pink: '#FF2E63',
+          'green-data': '#00FF41',
+          'green-disc': '#00885a',
         },
-        practical: {
-          50: '#fef2f2',
-          100: '#fee2e2',
-          200: '#fecaca', 
-          300: '#fca5a5',
-          400: '#f87171',
-          500: '#ef4444',
-          600: '#dc2626', // Primary practical knowledge
-          700: '#b91c1c',
-          800: '#991b1b',
-          900: '#7f1d1d',
-          950: '#450a0a',
+        surface: {
+          terminal: '#0D0D0D',
+          reading: '#FFFFFF',
+          take: '#FFFDF0',
+          warm: '#F8F8F4',
+          'dark-card': '#141416',
         },
-        specialized: {
-          50: '#ecfdf5',
-          100: '#d1fae5',
-          200: '#a7f3d0',
-          300: '#6ee7b7', 
-          400: '#34d399',
-          500: '#10b981',
-          600: '#059669', // Primary specialized knowledge
-          700: '#047857',
-          800: '#065f46',
-          900: '#064e3b',
-          950: '#022c22',
-        },
-        accent: {
-          50: '#fffbeb',
-          100: '#fef3c7',
-          200: '#fde68a',
-          300: '#fcd34d',
-          400: '#fbbf24',
-          500: '#f59e0b', // Primary accent
-          600: '#d97706',
-          700: '#b45309',
-          800: '#92400e',
-          900: '#78350f',
-          950: '#451a03',
-        },
-        // Sophisticated Neutral Palette
-        neutral: {
-          0: '#ffffff',
-          25: '#fafafa', // Background primary
-          50: '#f9fafb', // Background accent
-          100: '#f3f4f6',
-          200: '#e5e7eb', // Border light
-          300: '#d1d5db', // Border medium
-          400: '#9ca3af', // Text tertiary
-          500: '#6b7280', // Text secondary
-          600: '#4b5563',
-          700: '#374151',
-          800: '#1f2937', // Text primary
-          900: '#111827',
-          950: '#030712',
-        },
-        // Semantic Colors
-        success: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
-        },
-        warning: {
-          50: '#fffbeb',
-          100: '#fef3c7',
-          200: '#fde68a',
-          300: '#fcd34d',
-          400: '#fbbf24',
-          500: '#f59e0b',
-          600: '#d97706',
-          700: '#b45309',
-          800: '#92400e',
-          900: '#78350f',
-        },
-        error: {
-          50: '#fef2f2',
-          100: '#fee2e2',
-          200: '#fecaca',
-          300: '#fca5a5',
-          400: '#f87171',
-          500: '#ef4444',
-          600: '#dc2626',
-          700: '#b91c1c',
-          800: '#991b1b',
-          900: '#7f1d1d',
-        },
-        info: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+        text: {
+          primary: '#111111',
+          secondary: '#555555',
+          muted: '#999999',
+          'on-dark': '#DDDDDD',
+          'on-dark-muted': '#888888',
         },
       },
 
       // TYPOGRAPHY SYSTEM
       fontFamily: {
-        sans: ['Inter Variable', 'Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Monaco', 'Cascadia Code', 'Segoe UI Mono', 'Roboto Mono', 'monospace'],
+        sans: ['Source Sans 3', 'system-ui', 'sans-serif'],
+        serif: ['Fraunces', 'Georgia', 'serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
       },
       fontSize: {
         'display': ['3.5rem', { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '700' }],
@@ -298,7 +181,7 @@ const config: Config = {
               content: '""',
             },
             blockquote: {
-              borderLeftColor: '#3b82f6',
+              borderLeftColor: '#FFE600',
               borderLeftWidth: '0.25rem',
               fontStyle: 'normal',
               paddingLeft: '1.5rem',

@@ -1,444 +1,130 @@
 'use client';
 
-import Button from '@/components/ui/Button';
-import InputComponents from '@/components/ui/Input';
-import {
-    BookOpen,
-    Brain,
-    ChevronDown,
-    FileText,
-    Home,
-    Info,
-    Menu,
-    Newspaper,
-    Search,
-    Target,
-    X
-} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import { Menu, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 interface NavigationProps {
-  currentPath?: string;
-  transparent?: boolean;
+  variant?: 'light' | 'dark';
+  className?: string;
 }
 
-const tierMenuItems = [
-  {
-    tier: 1,
-    label: 'Foundational',
-    description: 'Core thinking frameworks',
-    href: '/domains?tier=1',
-    color: 'text-foundational-600'
-  },
-  {
-    tier: 2,
-    label: 'Practical',
-    description: 'Applied decision-making tools',
-    href: '/domains?tier=2',
-    color: 'text-practical-600'
-  },
-  {
-    tier: 3,
-    label: 'Specialized',
-    description: 'Domain-specific models',
-    href: '/domains?tier=3',
-    color: 'text-specialized-600'
-  }
+const NAV_LINKS = [
+  { label: 'Brief', href: '/daily-update' },
+  { label: 'Super Brief', href: '/super-brief' },
+  { label: 'Archive', href: '/archive' },
+  { label: 'Models', href: '/models' },
+  { label: 'About', href: '/about' },
 ];
 
-export function Navigation({ currentPath, transparent = false }: NavigationProps) {
+export function Navigation({ variant = 'light', className = '' }: NavigationProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [tierDropdownOpen, setTierDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchExpanded, setSearchExpanded] = useState(false);
 
-  const effectivePath = currentPath || pathname;
-
-  // Close mobile menu when route changes
+  // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
-    setTierDropdownOpen(false);
   }, [pathname]);
 
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setTierDropdownOpen(false);
-    };
-
-    if (tierDropdownOpen) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-    return undefined;
-  }, [tierDropdownOpen]);
-
-  const isActive = (path: string) => {
-    if (path === '/') return effectivePath === '/';
-    return effectivePath?.startsWith(path);
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/';
+    return pathname.startsWith(href);
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`;
+  const bgClass = variant === 'light'
+    ? 'bg-white'
+    : 'bg-transparent';
+
+  const textClass = variant === 'light'
+    ? 'text-[#555555]'
+    : 'text-[#888888]';
+
+  const navLinkClass = (href: string) => {
+    const active = isActive(href);
+    const baseClass = `font-mono text-xs transition-colors hover:text-ct-yellow`;
+
+    if (variant === 'light') {
+      return `${baseClass} ${active ? 'text-ct-dark border-b-2 border-ct-dark font-bold' : 'text-[#555555]'}`;
+    } else {
+      return `${baseClass} ${active ? 'text-white border-b border-ct-yellow' : 'text-[#888888]'}`;
     }
   };
-
-  const navClasses = `
-    sticky top-0 z-50 w-full transition-all duration-300
-    ${transparent 
-      ? 'bg-transparent' 
-      : 'bg-white/95 dark:bg-[var(--espresso-accent)] backdrop-blur-sm border-b border-neutral-200 dark:border-[var(--espresso-accent)]/30'
-    }
-  `;
 
   return (
-    <nav className={navClasses}>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-foundational-500 to-accent-500 dark:from-[var(--espresso-cta-text)] dark:to-[var(--espresso-cta-text)] flex items-center justify-center">
-              <Brain className="h-4 w-4 text-white dark:text-[var(--espresso-accent)]" />
-            </div>
-            <span className="text-xl font-bold text-neutral-800 dark:text-[var(--espresso-cta-text)] hidden sm:block">
-              Cosmic Trex
-            </span>
-            <span className="text-xl font-bold text-neutral-800 dark:text-[var(--espresso-cta-text)] sm:hidden">
-              CT
-            </span>
+    <nav className={`h-[44px] ${bgClass} ${className}`}>
+      <div className="h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between max-w-screen-2xl mx-auto">
+        {/* Logo Area */}
+        <Link
+          href="/"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
+          {/* CT Pill */}
+          <div className="bg-ct-dark text-ct-yellow px-2 py-0.5 rounded font-mono text-xs font-bold">
+            CT
           </div>
+          {/* cosmic_trex text - hidden on very small screens */}
+          <span className={`font-mono text-xs font-bold hidden sm:block ${variant === 'light' ? 'text-ct-dark' : 'text-white'}`}>
+            cosmic_trex
+          </span>
+        </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
-            {/* Home */}
+        {/* Desktop Navigation Links */}
+        <div className="hidden md:flex items-center gap-6">
+          {NAV_LINKS.map((link) => (
             <Link
-              href="/"
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                isActive('/') && effectivePath === '/'
-                  ? 'text-foundational-600 dark:text-[var(--espresso-cta-text)] bg-foundational-50 dark:bg-[var(--espresso-cta-text)]/20'
-                  : 'text-neutral-600 dark:text-[var(--espresso-cta-text)] hover:text-neutral-800 dark:hover:text-[var(--espresso-cta-text)]/80 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-cta-text)]/10'
-              }`}
+              key={link.href}
+              href={link.href}
+              className={navLinkClass(link.href)}
             >
-              <Home className="w-4 h-4 md:hidden" />
-              <span className="hidden md:block">Home</span>
+              {link.label}
             </Link>
-
-            {/* Explore with tier dropdown */}
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setTierDropdownOpen(!tierDropdownOpen);
-                }}
-                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive('/domains')
-                    ? 'text-foundational-600 dark:text-[var(--espresso-cta-text)] bg-foundational-50 dark:bg-[var(--espresso-cta-text)]/20'
-                    : 'text-neutral-600 dark:text-[var(--espresso-cta-text)] hover:text-neutral-800 dark:hover:text-[var(--espresso-cta-text)]/80 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-cta-text)]/10'
-                }`}
-              >
-                <span>Explore</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${tierDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {/* Tier dropdown */}
-              {tierDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-[var(--espresso-bg-medium)] rounded-lg shadow-lg border border-neutral-200 dark:border-[var(--espresso-accent)]/30 py-2 z-50">
-                  <div className="px-3 py-2 border-b border-neutral-100 dark:border-[var(--espresso-accent)]/20">
-                    <p className="text-xs font-medium text-neutral-500 dark:text-[var(--espresso-body)]/70 uppercase tracking-wide">
-                      Browse by Tier
-                    </p>
-                  </div>
-                  
-                  {tierMenuItems.map((item) => (
-                    <Link
-                      key={item.tier}
-                      href={item.href}
-                      className="block px-3 py-2 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-accent)]/10 transition-colors"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-2 h-2 rounded-full bg-gradient-to-br ${
-                          item.tier === 1 ? 'from-foundational-400 to-foundational-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)]' :
-                          item.tier === 2 ? 'from-practical-400 to-practical-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)]' :
-                          'from-specialized-400 to-specialized-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)]'
-                        }`} />
-                        <div>
-                          <p className={`text-sm font-medium ${item.color} dark:text-[var(--espresso-h1)]`}>
-                            Tier {item.tier}: {item.label}
-                          </p>
-                          <p className="text-xs text-neutral-500 dark:text-[var(--espresso-body)]/70">
-                            {item.description}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                  
-                  <div className="border-t border-neutral-100 dark:border-[var(--espresso-accent)]/20 mt-2 pt-2">
-                    <Link
-                      href="/domains"
-                      className="block px-3 py-2 text-sm text-foundational-600 dark:text-[var(--espresso-accent)] hover:bg-foundational-50 dark:hover:bg-[var(--espresso-accent)]/10 transition-colors"
-                    >
-                      View All Domains →
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Models */}
-            <Link
-              href="/models"
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                isActive('/models')
-                  ? 'text-foundational-600 dark:text-[var(--espresso-cta-text)] bg-foundational-50 dark:bg-[var(--espresso-cta-text)]/20'
-                  : 'text-neutral-600 dark:text-[var(--espresso-cta-text)] hover:text-neutral-800 dark:hover:text-[var(--espresso-cta-text)]/80 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-cta-text)]/10'
-              }`}
-            >
-              Models
-            </Link>
-
-            {/* Daily Update */}
-            <Link
-              href="/daily-update"
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                isActive('/daily-update')
-                  ? 'text-foundational-600 dark:text-[var(--espresso-cta-text)] bg-foundational-50 dark:bg-[var(--espresso-cta-text)]/20'
-                  : 'text-neutral-600 dark:text-[var(--espresso-cta-text)] hover:text-neutral-800 dark:hover:text-[var(--espresso-cta-text)]/80 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-cta-text)]/10'
-              }`}
-            >
-              Daily Update
-            </Link>
-
-            {/* Blog */}
-            <Link
-              href="/blog"
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                isActive('/blog')
-                  ? 'text-foundational-600 dark:text-[var(--espresso-cta-text)] bg-foundational-50 dark:bg-[var(--espresso-cta-text)]/20'
-                  : 'text-neutral-600 dark:text-[var(--espresso-cta-text)] hover:text-neutral-800 dark:hover:text-[var(--espresso-cta-text)]/80 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-cta-text)]/10'
-              }`}
-            >
-              Blog
-            </Link>
-
-            {/* About */}
-            <Link
-              href="/about"
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                isActive('/about')
-                  ? 'text-foundational-600 dark:text-[var(--espresso-cta-text)] bg-foundational-50 dark:bg-[var(--espresso-cta-text)]/20'
-                  : 'text-neutral-600 dark:text-[var(--espresso-cta-text)] hover:text-neutral-800 dark:hover:text-[var(--espresso-cta-text)]/80 hover:bg-neutral-50 dark:hover:bg-[var(--espresso-cta-text)]/10'
-              }`}
-            >
-              About
-            </Link>
-          </div>
-
-          {/* Search, Blog, Home Button, and Mobile Menu */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2">
-            {/* Blog Button */}
-            <Link
-              href="/blog"
-              className="flex items-center space-x-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-foundational-500 dark:bg-black text-white rounded-lg hover:bg-foundational-600 dark:hover:bg-gray-900 transition-colors font-medium shadow-md dark:shadow-lg text-sm"
-            >
-              <FileText className="w-4 h-4" />
-              <span className="hidden sm:block">Blog</span>
-            </Link>
-            {/* Home Button - Far Right */}
-            <Link
-              href="/"
-              className="flex items-center space-x-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-foundational-500 dark:bg-black text-white rounded-lg hover:bg-foundational-600 dark:hover:bg-gray-900 transition-colors font-medium shadow-md dark:shadow-lg text-sm"
-            >
-              <Home className="w-4 h-4" />
-              <span className="hidden sm:block">Home</span>
-            </Link>
-            {/* Desktop Search */}
-            <div className="hidden md:block">
-              <form onSubmit={handleSearch} className="relative">
-                <div className={`flex items-center transition-all duration-300 ${
-                  searchExpanded ? 'w-80' : 'w-64'
-                }`}>
-                  <InputComponents.SearchInput
-                     placeholder="Search models, domains..."
-                     value={searchQuery}
-                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => setSearchExpanded(true)}
-                    onBlur={() => setSearchExpanded(false)}
-                    className="pl-10 pr-4"
-                  />
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-[var(--espresso-cta-text)]/70" />
-                </div>
-              </form>
-            </div>
-
-            {/* Mobile search button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden h-8 w-8 p-0"
-              onClick={() => {
-                // Navigate to search page on mobile
-                window.location.href = '/search';
-              }}
-            >
-              <Search className="w-4 h-4 dark:text-[var(--espresso-cta-text)]" />
-            </Button>
-
-            {/* Mobile menu button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden h-8 w-8 p-0"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle mobile menu"
-            >
-              {mobileMenuOpen ? (
-                <X className="w-4 h-4 dark:text-[var(--espresso-cta-text)]" />
-              ) : (
-                <Menu className="w-4 h-4 dark:text-[var(--espresso-cta-text)]" />
-              )}
-            </Button>
-          </div>
+          ))}
+          {/* Subscribe Button */}
+          <Link
+            href="/subscribe"
+            className="font-mono text-xs font-bold text-ct-pink hover:opacity-80 transition-opacity"
+          >
+            Subscribe
+          </Link>
         </div>
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-neutral-200 dark:border-[var(--espresso-accent)]/30 bg-white dark:bg-[var(--espresso-bg-medium)]">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {/* Mobile search */}
-              <div className="px-3 py-2">
-                <form onSubmit={handleSearch}>
-                  <div className="relative">
-                     <InputComponents.SearchInput
-                       placeholder="Search..."
-                       value={searchQuery}
-                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-[var(--espresso-body)]/70" />
-                  </div>
-                </form>
-              </div>
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="md:hidden p-1 hover:opacity-80 transition-opacity"
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? (
+            <X size={20} className={variant === 'light' ? 'text-ct-dark' : 'text-white'} />
+          ) : (
+            <Menu size={20} className={variant === 'light' ? 'text-ct-dark' : 'text-white'} />
+          )}
+        </button>
+      </div>
 
-              {/* Mobile nav links */}
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className={`md:hidden border-t ${variant === 'light' ? 'border-gray-200 bg-white' : 'border-gray-800 bg-black/50'}`}>
+          <div className="px-4 sm:px-6 py-4 space-y-3">
+            {NAV_LINKS.map((link) => (
               <Link
-                href="/"
-                className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
-                  isActive('/') && effectivePath === '/'
-                    ? 'text-foundational-600 dark:text-[var(--espresso-accent)] bg-foundational-50 dark:bg-[var(--espresso-accent)]/20'
-                    : 'text-neutral-600 dark:text-[var(--espresso-h1)]'
-                }`}
+                key={link.href}
+                href={link.href}
+                className={`block font-mono text-xs transition-colors ${navLinkClass(link.href)}`}
               >
-                <Home className="w-5 h-5" />
-                <span>Home</span>
+                {link.label}
               </Link>
-
-              <Link
-                href="/domains"
-                className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
-                  isActive('/domains')
-                    ? 'text-foundational-600 dark:text-[var(--espresso-accent)] bg-foundational-50 dark:bg-[var(--espresso-accent)]/20'
-                    : 'text-neutral-600 dark:text-[var(--espresso-h1)]'
-                }`}
-              >
-                <Target className="w-5 h-5" />
-                <span>Domains</span>
-              </Link>
-
-              <Link
-                href="/models"
-                className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
-                  isActive('/models')
-                    ? 'text-foundational-600 dark:text-[var(--espresso-accent)] bg-foundational-50 dark:bg-[var(--espresso-accent)]/20'
-                    : 'text-neutral-600 dark:text-[var(--espresso-h1)]'
-                }`}
-              >
-                <BookOpen className="w-5 h-5" />
-                <span>Models</span>
-              </Link>
-
-              <Link
-                href="/daily-update"
-                className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
-                  isActive('/daily-update')
-                    ? 'text-foundational-600 dark:text-[var(--espresso-accent)] bg-foundational-50 dark:bg-[var(--espresso-accent)]/20'
-                    : 'text-neutral-600 dark:text-[var(--espresso-h1)]'
-                }`}
-              >
-                <Newspaper className="w-5 h-5" />
-                <span>Daily Update</span>
-              </Link>
-
-              <Link
-                href="/blog"
-                className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
-                  isActive('/blog')
-                    ? 'text-foundational-600 dark:text-[var(--espresso-accent)] bg-foundational-50 dark:bg-[var(--espresso-accent)]/20'
-                    : 'text-neutral-600 dark:text-[var(--espresso-h1)]'
-                }`}
-              >
-                <FileText className="w-5 h-5" />
-                <span>Blog</span>
-              </Link>
-
-              <Link
-                href="/about"
-                className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
-                  isActive('/about')
-                    ? 'text-foundational-600 dark:text-[var(--espresso-accent)] bg-foundational-50 dark:bg-[var(--espresso-accent)]/20'
-                    : 'text-neutral-600 dark:text-[var(--espresso-h1)]'
-                }`}
-              >
-                <Info className="w-5 h-5" />
-                <span>About</span>
-              </Link>
-
-              {/* Mobile tier links */}
-              <div className="pt-4 border-t border-neutral-200 dark:border-[var(--espresso-accent)]/20 mt-4">
-                <div className="px-3 py-2">
-                  <p className="text-xs font-medium text-neutral-500 dark:text-[var(--espresso-body)]/70 uppercase tracking-wide">
-                    Browse by Tier
-                  </p>
-                </div>
-                {tierMenuItems.map((item) => (
-                  <Link
-                    key={item.tier}
-                    href={item.href}
-                    className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm"
-                  >
-                    <div className={`w-2 h-2 rounded-full bg-gradient-to-br ${
-                      item.tier === 1 ? 'from-foundational-400 to-foundational-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)]' :
-                      item.tier === 2 ? 'from-practical-400 to-practical-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)]' :
-                      'from-specialized-400 to-specialized-600 dark:from-[var(--espresso-accent)] dark:to-[var(--espresso-accent)]'
-                    }`} />
-                    <div>
-                      <p className={`font-medium ${item.color} dark:text-[var(--espresso-h1)]`}>
-                        {item.label}
-                      </p>
-                      <p className="text-xs text-neutral-500 dark:text-[var(--espresso-body)]/70">
-                        {item.description}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
+            ))}
+            <Link
+              href="/subscribe"
+              className="block font-mono text-xs font-bold text-ct-pink hover:opacity-80 transition-opacity"
+            >
+              Subscribe
+            </Link>
           </div>
-        )}
-      </div>
-
-      {/* Progress indicator for framework exploration */}
-      <div className="h-1 bg-neutral-100 dark:bg-[var(--espresso-accent)]/20">
-        <div 
-          className="h-full bg-gradient-to-r from-foundational-500 via-practical-500 to-specialized-500 dark:from-[var(--espresso-accent)] dark:via-[var(--espresso-accent)] dark:to-[var(--espresso-accent)] transition-all duration-500"
-          style={{ width: '0%' }} // This would be calculated based on user progress
-        />
-      </div>
+        </div>
+      )}
     </nav>
   );
 }

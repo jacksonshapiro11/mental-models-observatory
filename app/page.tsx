@@ -1,141 +1,410 @@
-'use client';
-
-import IntelligentProfileSetup from '@/components/personalization/IntelligentProfileSetup';
-import QuickStartModal from '@/components/ui/QuickStartModal';
 import { getAllDomains, getAllModels } from '@/lib/data';
-import { UserProfileManager } from '@/lib/user-profile';
-import { UserProfile } from '@/types/user';
-import { ArrowRight, BookOpen, Brain, Compass, HelpCircle, Target, Users } from 'lucide-react';
+import { getSignalData } from '@/lib/signal-data';
+import { getRecentLifeNotes } from '@/lib/life-notes';
 import Link from 'next/link';
-import { useState } from 'react';
+import { TerminalData } from '@/components/landing/TerminalData';
+import { Footer } from '@/components/layout/Footer';
+import { SubscribeForm } from '@/components/subscribe/SubscribeForm';
 
 export default function HomePage() {
   const allDomains = getAllDomains();
   const allModels = getAllModels();
-  
-  // Onboarding state
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showQuickStart, setShowQuickStart] = useState(false);
+  const domainCount = allDomains.length;
+  const modelCount = allModels.length;
+  const signalData = getSignalData();
+  const lifeNotes = getRecentLifeNotes(3);
 
-  const handleProfileComplete = (profile: UserProfile) => {
-    UserProfileManager.setProfile(profile);
-    // Redirect to results page instead of hiding onboarding
-    window.location.href = '/guide/results';
-  };
+  const archiveTakes = [
+    {
+      title: "The Hormuz Chokepoint: When Geography Is Destiny",
+      date: "2026-04-08",
+      excerpt: "480 ships queued, insurance not repriced. Why markets miss geopolitical inflection points."
+    },
+    {
+      title: "Why Your Brain Loves Stories (And Markets Don't)",
+      date: "2026-04-07",
+      excerpt: "Narrative fallacy in trading. How narrative overrides data in real time."
+    },
+    {
+      title: "The Death of the 60/40 Portfolio",
+      date: "2026-04-06",
+      excerpt: "Correlation changes everything. Three years of data that broke a century of assumptions."
+    }
+  ];
 
-  const handleProfileSkip = () => {
-    setShowOnboarding(false);
-  };
-
-  if (showOnboarding) {
-    return <IntelligentProfileSetup onComplete={handleProfileComplete} onSkip={handleProfileSkip} />;
-  }
+  const domains = [
+    { name: "Physics", count: 9, examples: "Entropy, Leverage, Compounding" },
+    { name: "Systems", count: 12, examples: "Feedback loops, Emergence, Cascades" },
+    { name: "Psychology", count: 8, examples: "Bias, Narrative, Time preference" },
+    { name: "Strategy", count: 11, examples: "Positioning, Game theory, Innovation" }
+  ];
 
   return (
-    <div className="min-h-screen">
-      {/* Quick Start Modal */}
-      <QuickStartModal isOpen={showQuickStart} onClose={() => setShowQuickStart(false)} />
+    <div className="min-h-screen bg-white">
+      {/* 1. SPLIT-SCREEN HERO */}
+      <section className="border-b-2 border-ct-dark">
+        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px] lg:min-h-screen">
+          {/* Left: Terminal */}
+          <div className="bg-ct-dark p-6 sm:p-8 lg:p-12 flex flex-col justify-between">
+            {/* Terminal header dots */}
+            <div>
+              <div className="flex gap-2 mb-8">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              </div>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-foundational-50 via-neutral-25 to-accent-50 dark:from-[var(--espresso-bg-dark)] dark:via-[var(--espresso-bg-medium)] dark:to-[var(--espresso-bg-light)] py-6 sm:py-12 lg:py-16 transition-colors duration-300">
-        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              {/* Terminal prompt */}
+              <div className="font-mono text-sm text-ct-green-data space-y-4">
+                <div className="text-text-on-dark">
+                  <span className="text-ct-green-data">&gt;</span> cosmic_trex --status
+                </div>
+
+                {/* Market data - live from API */}
+                <TerminalData />
+
+                {/* Signal detected — from daily signal data */}
+                <div className="border-t border-ct-green-data pt-6 mt-6">
+                  <div className="text-ct-green-data mb-2 font-mono text-sm">SIGNAL DETECTED</div>
+                  <div className="text-text-on-dark-muted space-y-1 text-xs font-mono">
+                    {(signalData?.signals ?? []).map((signal, i) => (
+                      <div key={i}>
+                        <span className={
+                          signal.color === 'green' ? 'text-ct-green-data' :
+                          signal.color === 'red' ? 'text-ct-pink' :
+                          'text-ct-yellow'
+                        }>&gt;</span> {signal.terminalLine}
+                      </div>
+                    ))}
+                  </div>
+                  {signalData?.updatedAt && (
+                    <div className="text-[#333] mt-3 text-[9px] font-mono">
+                      signals: {new Date(signalData.updatedAt).toLocaleDateString()} · prices: live
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Zine */}
+          <div className="bg-ct-yellow p-6 sm:p-8 lg:p-12 flex flex-col justify-center">
+            <div>
+              <div className="inline-block bg-ct-pink text-white px-3 py-1 text-xs font-mono font-semibold mb-6 rounded-sm">
+                DAILY INTELLIGENCE
+              </div>
+
+              <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-ct-dark leading-tight mb-4">
+                {signalData?.headline || "Your morning briefing is rewritten headlines. This isn't."}
+              </h1>
+
+              <p className="font-body text-base sm:text-lg text-ct-dark leading-relaxed mb-8 max-w-lg">
+                {signalData?.tldr || "Markets, meditations, and mental models. 8 minutes. 50+ expert sources. Cross-domain thinking that compounds."}
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="mb-8 space-y-2">
+                <Link
+                  href="/daily-update"
+                  className="inline-block bg-ct-dark text-ct-yellow px-6 py-3 font-semibold hover:bg-ct-pink hover:text-white transition-colors"
+                >
+                  Read today's brief →
+                </Link>
+                <div className="pt-2">
+                  <Link
+                    href="/super-brief"
+                    className="inline-block bg-ct-pink text-white px-6 py-3 font-semibold hover:bg-ct-dark hover:text-ct-yellow transition-colors text-sm"
+                  >
+                    Read the super brief →
+                  </Link>
+                </div>
+              </div>
+
+              {/* Email signup */}
+              <SubscribeForm
+                source="hero"
+                inputClassName="flex-1 bg-white border-2 border-ct-dark px-4 py-3 font-body text-sm focus:outline-none focus:bg-ct-dark focus:text-ct-yellow"
+                buttonClassName="bg-ct-dark text-ct-yellow px-6 py-3 font-sans font-semibold text-sm hover:bg-ct-pink hover:text-white transition-colors"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. LIFE NOTES / VOICE STRIP */}
+      <section className="border-t-[3px] border-ct-pink border-b-[3px] border-b-ct-green-data bg-white py-12 sm:py-16">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <div className="font-mono text-sm text-ct-pink font-semibold mb-8 tracking-wide">
+            HOW WE START MORNINGS
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {lifeNotes.map((note, idx) => (
+              <div key={idx} className="border-l-4 border-ct-yellow pl-6">
+                <p className="font-serif italic text-lg text-ct-text-primary leading-relaxed mb-4">
+                  "{note.text}"
+                </p>
+                <div className="font-body text-sm text-text-secondary">
+                  <div className="text-text-muted text-xs">{note.date}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 3. CONTENT SPLIT (DATA LAYER / THINKING LAYER) */}
+      <section className="bg-white">
+        <div className="grid grid-cols-1 lg:grid-cols-2">
+          {/* Left: Data Layer */}
+          <div className="bg-ct-dark p-6 sm:p-8 lg:p-12">
+            <div className="font-mono text-xs text-text-on-dark-muted uppercase tracking-wider mb-8 font-semibold">
+              Data Layer
+            </div>
+
+            <div className="space-y-6">
+              {/* Markets Card */}
+              <div className="bg-surface-dark-card border border-ct-green-data/30 p-6 rounded-sm">
+                <div className="font-mono text-xs text-ct-green-data uppercase tracking-wider font-semibold mb-2">
+                  MARKETS
+                </div>
+                <h3 className="font-serif text-xl font-bold text-white mb-2">
+                  Hormuz Blockade Signals Geopolitical Shift
+                </h3>
+                <p className="font-body text-sm text-text-on-dark-muted leading-relaxed">
+                  480 ships queued, insurance unpriced. Oil markets haven't repriced tail risk. This is a systemic signal.
+                </p>
+              </div>
+
+              {/* Crypto Card */}
+              <div className="bg-surface-dark-card border border-ct-green-data/30 p-6 rounded-sm">
+                <div className="font-mono text-xs text-ct-green-data uppercase tracking-wider font-semibold mb-2">
+                  CRYPTO
+                </div>
+                <h3 className="font-serif text-xl font-bold text-white mb-2">
+                  Bitcoin Breaks $65K on Institutional Inflows
+                </h3>
+                <p className="font-body text-sm text-text-on-dark-muted leading-relaxed">
+                  Fund flows suggest conviction shift, not retail speculation. ETF volumes confirm institutional repositioning.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Thinking Layer */}
+          <div className="bg-white p-6 sm:p-8 lg:p-12">
+            <div className="font-mono text-xs text-ct-pink uppercase tracking-wider mb-8 font-semibold">
+              Thinking Layer
+            </div>
+
+            <div className="space-y-8">
+              {/* Inner Game */}
+              <div>
+                <div className="inline-block bg-ct-pink text-white px-2 py-1 text-xs font-mono font-semibold mb-3 rounded-sm">
+                  INNER GAME
+                </div>
+                <h3 className="font-serif text-xl font-bold text-ct-dark mb-2">
+                  Narrative Fallacy in Markets
+                </h3>
+                <p className="font-body text-sm text-text-secondary leading-relaxed">
+                  Your brain constructs coherent stories from random data. Markets punish narrative traders. This is why contrarian positioning compounds.
+                </p>
+              </div>
+
+              <div className="border-t border-ct-dark"></div>
+
+              {/* Discovery */}
+              <div>
+                <div className="inline-block bg-ct-dark text-white px-2 py-1 text-xs font-mono font-semibold mb-3 rounded-sm">
+                  DISCOVERY
+                </div>
+                <h3 className="font-serif text-xl font-bold text-ct-dark mb-2">
+                  Cross-Domain Pattern Recognition
+                </h3>
+                <p className="font-body text-sm text-text-secondary leading-relaxed">
+                  The same feedback loops that crash ecosystems crash markets. The same cultural inflection points that precede civil shifts precede market rotations.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. THREE-LAYER PRODUCT SECTION */}
+      <section className="bg-ct-dark border-t-4 border-ct-yellow py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <h2 className="font-mono text-lg sm:text-xl text-ct-yellow font-semibold text-center mb-12 sm:mb-16 uppercase tracking-wider">
+            One site. Three layers of intelligence.
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+            {/* 01: The Brief */}
+            <div className="bg-surface-dark-card border border-ct-green-data/30 p-8 rounded-sm">
+              <div className="text-3xl font-serif font-bold text-ct-green-data mb-4">01</div>
+              <h3 className="font-serif text-xl font-bold text-white mb-2">The Brief</h3>
+              <div className="inline-block bg-ct-green-data text-ct-dark px-2 py-1 text-xs font-mono font-semibold mb-4 rounded-sm">
+                LIVE DAILY
+              </div>
+              <p className="font-body text-sm text-text-on-dark-muted leading-relaxed mb-6">
+                Markets. Meditations. Mental models. Delivered every morning, cross-domain thinking in 8 minutes.
+              </p>
+              <div className="font-mono text-xs text-ct-green-data">50+ editions</div>
+            </div>
+
+            {/* 02: The Observatory */}
+            <div className="bg-surface-dark-card border border-ct-yellow/30 p-8 rounded-sm">
+              <div className="text-3xl font-serif font-bold text-ct-yellow mb-4">02</div>
+              <h3 className="font-serif text-xl font-bold text-white mb-2">The Observatory</h3>
+              <div className="inline-block bg-purple-600 text-white px-2 py-1 text-xs font-mono font-semibold mb-4 rounded-sm">
+                BROWSE
+              </div>
+              <p className="font-body text-sm text-text-on-dark-muted leading-relaxed mb-6">
+                Explore {modelCount} mental models across {domainCount} knowledge domains. Build mental scaffolding.
+              </p>
+              <div className="font-mono text-xs text-ct-yellow">{modelCount} models / {domainCount} domains</div>
+            </div>
+
+            {/* 03: The Library */}
+            <div className="bg-surface-dark-card border border-ct-pink/30 p-8 rounded-sm">
+              <div className="text-3xl font-serif font-bold text-ct-pink mb-4">03</div>
+              <h3 className="font-serif text-xl font-bold text-white mb-2">The Library</h3>
+              <div className="inline-block bg-ct-yellow text-ct-dark px-2 py-1 text-xs font-mono font-semibold mb-4 rounded-sm">
+                EXPLORE
+              </div>
+              <p className="font-body text-sm text-text-on-dark-muted leading-relaxed mb-6">
+                50+ hand-curated sources. Books, papers, podcasts. The research behind every model.
+              </p>
+              <div className="font-mono text-xs text-ct-pink">100+ sources</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. OBSERVATORY PEEK */}
+      <section className="bg-ct-yellow py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-ct-dark text-center mb-12">
+            From the Observatory — {modelCount} models, {domainCount} domains
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {domains.map((domain, idx) => (
+              <div key={idx} className="bg-white border-2 border-ct-dark p-6 rounded-sm">
+                <h3 className="font-serif text-lg font-bold text-ct-dark mb-1">
+                  {domain.name}
+                </h3>
+                <p className="font-mono text-sm text-text-secondary mb-4">
+                  {domain.count} models
+                </p>
+                <p className="font-body text-xs text-text-muted leading-relaxed">
+                  {domain.examples}
+                </p>
+              </div>
+            ))}
+          </div>
+
           <div className="text-center">
-               <h1 className="mx-auto max-w-4xl text-3xl font-bold tracking-tight text-neutral-800 dark:text-[var(--espresso-h1)] sm:text-5xl lg:text-7xl mb-4 sm:mb-6 transition-colors duration-300">
-                 Cosmic{' '}
-                 <span className="gradient-text dark:text-[var(--espresso-accent)]">Trex</span>
-               </h1>
-               <p className="mx-auto mt-2 max-w-xl text-sm sm:text-base text-neutral-500 dark:text-[var(--espresso-body)]/70 italic mb-4 sm:mb-6 transition-colors duration-300">
-                 Where ancient wisdom meets the cutting edge
-               </p>
-               <p className="mx-auto mt-4 sm:mt-6 max-w-2xl text-base sm:text-lg lg:text-xl text-neutral-600 dark:text-[var(--espresso-body)] mb-6 sm:mb-8 transition-colors duration-300">
-                 The cost of information has approached zero, but the core truths of humanity and the world remain the same. Now more than ever, we need a focused and curated start to our learning journey as we risk getting lost in the dark forest of infinite self-reinforcing content. We have compiled the big ideas from the big disciplines backed up by 5000 pages of hand curated sources to help you start wide and go deep with the society altering ideas that will fill your life with meaning, purpose, and direction while giving you an edge in any pursuit.
-               </p>
-
-               {/* What is this button - centered and prominent */}
-               <div className="mb-6">
-                 <button
-                   onClick={() => setShowQuickStart(true)}
-                   className="btn btn-outline btn-lg group"
-                   aria-label="What is this?"
-                 >
-                   <HelpCircle className="h-5 w-5 mr-2" />
-                   What is this?
-                 </button>
-               </div>
-               
-               {/* Primary CTA - Always Personalization First */}
-               <div className="mt-8 space-y-4">
-                 <div className="mb-6">
-                   <button
-                     onClick={() => setShowOnboarding(true)}
-                     className="btn btn-primary btn-lg sm:btn-xl group mb-3"
-                   >
-                     <Compass className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
-                     Get My Personalized Guide
-                     <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-x-1" />
-                   </button>
-                   <p className="text-sm text-neutral-500 dark:text-[var(--espresso-body)]/70">Answer 5 questions • Get tailored learning paths • No signup required</p>
-                 </div>
-                 
-                 {/* Secondary Options */}
-                 <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                   <Link
-                     href="/knowledge-domains"
-                     className="btn btn-outline btn-lg"
-                   >
-                     Explore All Domains
-                   </Link>
-                   
-                   <span className="text-neutral-400 hidden sm:block">or</span>
-                   
-                   <Link
-                     href="/models"
-                     className="btn btn-ghost btn-lg"
-                   >
-                     Browse All Models
-                   </Link>
-                 </div>
-               </div>
+            <Link
+              href="/models"
+              className="font-sans font-semibold text-ct-dark hover:text-ct-pink transition-colors inline-flex items-center gap-2"
+            >
+              Explore all {modelCount} models
+              <span className="text-lg">→</span>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-10 sm:py-16 bg-neutral-50 dark:bg-[var(--espresso-surface)]/20 transition-colors duration-300">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-foundational-100 dark:bg-[var(--espresso-accent)]/20">
-                <Brain className="h-6 w-6 text-foundational-600 dark:text-[var(--espresso-accent)]" />
+      {/* 6. ARCHIVE STRIP */}
+      <section className="border-t-4 border-ct-dark bg-white py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="font-mono text-sm text-ct-pink font-semibold mb-12 tracking-wide">
+            FROM THE ARCHIVE
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            {archiveTakes.map((take, idx) => (
+              <div key={idx} className="bg-surface-take border border-ct-dark/10 p-6 rounded-sm">
+                <div className="inline-block bg-ct-pink text-white px-2 py-1 text-xs font-mono font-semibold mb-3 rounded-sm">
+                  THE TAKE
+                </div>
+                <h3 className="font-serif text-lg font-bold text-ct-dark mb-2 leading-tight">
+                  {take.title}
+                </h3>
+                <p className="font-body text-sm text-text-secondary leading-relaxed mb-4">
+                  {take.excerpt}
+                </p>
+                <div className="font-mono text-xs text-text-muted">
+                  {take.date}
+                </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">{allModels.length}</div>
-              <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Mental Models</div>
+            ))}
+          </div>
+
+          <div className="text-center">
+            <Link
+              href="/archive"
+              className="font-sans font-semibold text-ct-dark hover:text-ct-pink transition-colors inline-flex items-center gap-2"
+            >
+              Browse the full archive
+              <span className="text-lg">→</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. STATS BAR */}
+      <section className="bg-ct-dark border-t-4 border-ct-yellow py-12 sm:py-16">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center">
+            <div>
+              <div className="font-mono text-2xl sm:text-3xl font-bold text-ct-yellow mb-1">
+                50+
+              </div>
+              <div className="font-mono text-xs text-text-on-dark-muted">EDITIONS</div>
             </div>
-            <div className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-specialized-100 dark:bg-[var(--espresso-accent)]/20">
-                <Target className="h-6 w-6 text-specialized-600 dark:text-[var(--espresso-accent)]" />
+            <div>
+              <div className="font-mono text-2xl sm:text-3xl font-bold text-ct-yellow mb-1">
+                {modelCount}
               </div>
-              <div className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">{allDomains.length}</div>
-              <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Knowledge Domains</div>
+              <div className="font-mono text-xs text-text-on-dark-muted">MODELS</div>
             </div>
-            <div className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-practical-100 dark:bg-[var(--espresso-accent)]/20">
-                <BookOpen className="h-6 w-6 text-practical-600 dark:text-[var(--espresso-accent)]" />
+            <div>
+              <div className="font-mono text-2xl sm:text-3xl font-bold text-ct-yellow mb-1">
+                50+
               </div>
-              <div className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">100+</div>
-              <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Source References</div>
+              <div className="font-mono text-xs text-text-on-dark-muted">SOURCES</div>
             </div>
-            <div className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-accent-100 dark:bg-[var(--espresso-accent)]/20">
-                <Users className="h-6 w-6 text-accent-600 dark:text-[var(--espresso-accent)]" />
+            <div>
+              <div className="font-mono text-2xl sm:text-3xl font-bold text-ct-yellow mb-1">
+                8m
               </div>
-              <div className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-[var(--espresso-h1)]">Growing</div>
-              <div className="text-sm text-neutral-600 dark:text-[var(--espresso-body)]">Community</div>
+              <div className="font-mono text-xs text-text-on-dark-muted">DAILY</div>
             </div>
           </div>
         </div>
       </section>
+
+      {/* 8. FINAL CTA */}
+      <section className="bg-ct-pink py-16 sm:py-20">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6 text-center">
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-white mb-4 leading-tight">
+            Tomorrow morning, read something with teeth
+          </h2>
+          <p className="font-body text-lg text-white/90 mb-8">
+            Markets, meditations, mental models. Free.
+          </p>
+
+          <SubscribeForm
+            source="footer-cta"
+            inputClassName="flex-1 bg-white/20 border-2 border-white px-4 py-3 font-body text-sm text-white placeholder-white/60 focus:outline-none focus:bg-white focus:text-ct-pink"
+            buttonClassName="bg-white text-ct-pink px-6 py-3 font-sans font-semibold text-sm hover:bg-ct-dark hover:text-ct-yellow transition-colors whitespace-nowrap"
+            noteClassName="text-xs text-white/70 font-body"
+          />
+        </div>
+      </section>
+
+      <Footer />
     </div>
   );
 }
