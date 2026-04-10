@@ -139,7 +139,6 @@ const AUDIO_SECTIONS: AudioSectionConfig[] = [
   { marker: '# ▸ THE SIX', name: 'The Six', mode: 'full' },
   // Deep Read / Listen is SKIPPED in audio — external links don't work in audio format
   { marker: '# ▸ THE TAKE', name: 'The Take', mode: 'full' },
-  { marker: '# ▸ ASSET SPOTLIGHT', name: 'Asset Spotlight', mode: 'full' },
   { marker: '# ▸ INNER GAME', name: 'Inner Game', mode: 'full' },
   { marker: '# ▸ THE MODEL', name: 'The Model', mode: 'full' },
   { marker: '# ▸ DISCOVERY', name: 'Discovery', mode: 'full' },
@@ -297,6 +296,21 @@ function cleanFormatting(text: string): string {
   return text;
 }
 
+/** Remove doubled expansions like "the Dollar Index, the Dollar Index" caused by
+ *  GPT-4o expanding a ticker AND the regex layer expanding it again. */
+function deduplicateExpansions(text: string): string {
+  // Catch patterns like "the X, the X" or "the X the X" (with optional comma/dash between)
+  for (const name of Object.values(TICKER_NAMES)) {
+    if (!name.startsWith('the ')) continue;
+    // Escape for regex
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Match "the X[,;—] the X" or "the X the X" (adjacent)
+    const doublePattern = new RegExp(`${escaped}[,;\\s—-]*${escaped}`, 'gi');
+    text = text.replace(doublePattern, name);
+  }
+  return text;
+}
+
 /** Apply all regex-based normalizations */
 function regexNormalize(text: string): string {
   text = expandCurrency(text);
@@ -309,6 +323,7 @@ function regexNormalize(text: string): string {
   text = expandTickers(text);
   text = expandAbbreviations(text);
   text = cleanFormatting(text);
+  text = deduplicateExpansions(text);
   return text;
 }
 
@@ -386,7 +401,6 @@ function extractRawContent(
       'the-six': configByName('The Six')!,
       // 'deep-read' intentionally excluded — Deep Read / Listen is skipped in audio
       'the-take': configByName('The Take')!,
-      'asset-spotlight': configByName('Asset Spotlight')!,
       'inner-game': configByName('Inner Game')!,
       'the-model': configByName('The Model')!,
       'discovery': configByName('Discovery')!,
@@ -519,7 +533,9 @@ TRANSITIONS:
 Within your section, every bullet must connect to the next. Do NOT start a new bullet cold. Thread them naturally:
 - "Meanwhile..." / "On a completely different front..." / "Speaking of infrastructure..." / "And that connects to something else..."
 - If two stories rhyme, connect them. If they don't, acknowledge the shift briefly and move on.
-Write your section with full depth and energy. A short structural transition phrase will be added before your section to orient the listener, but your content should still read as a complete, substantive segment.
+
+CRITICAL — NO SECTION INTRODUCTIONS:
+A deterministic transition phrase is prepended to your section AFTER you write it. You are writing ONLY the content body. Do NOT write any opening that introduces, announces, or frames the section. No "Let's look at..." No "In today's markets..." No "Here's what's happening in..." No "For today's [section name]..." Just start with the first substantive point. Your first sentence should be a FACT, an INSIGHT, or a STORY — never a meta-statement about what you're about to discuss. If your first sentence could be deleted without losing any information, it's an intro and must be cut.
 
 BANNED PHRASES (these are overused filler that replaces actual insight):
 - "Buckle up" / "Strap in" / "Hold on tight"
@@ -613,11 +629,10 @@ Return ONLY the spoken script for this section. No meta-commentary, no [brackete
  * effects, the "why this matters" reasoning. Simplify the language, not the thinking.
  */
 const SECTION_INSTRUCTIONS: Record<string, string> = {
-  'intro': 'Write a SHORT, energizing podcast opening. Say "Welcome to Markets, Meditations, and Mental Models" and the date naturally. Then give a 2-3 sentence setup about the day\'s biggest story based on the lede. Keep it under 30 seconds when spoken. Direct and conversational, like greeting a friend. Do NOT include any quotes or epigraphs. The daily word of encouragement will be added separately. Do NOT use hype language. Do NOT introduce or preview The Dashboard at the end. A separate transition will handle that.',
+  'intro': 'Write a SHORT, energizing podcast opening. Say "Welcome to Markets, Meditations, and Mental Models" and the date naturally. Then say the episode title (the Daily Title from the brief — it appears as an H3 below the date). Then give the Intro Summary from the brief (the 2-3 italic sentences below the Daily Title). Keep it under 45 seconds when spoken. Direct and conversational, like greeting a friend. Do NOT include any quotes or epigraphs. The daily word of encouragement will be added separately. Do NOT use hype language. Do NOT introduce or preview The Dashboard at the end. A separate transition will handle that.',
   'The Dashboard': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the content. Structural regime read: what\'s the session\'s character, what regime is forming or breaking, and one structural observation per sub-section (Equities, Crypto, Commodities & Rates). The editorial product is the commentary. The website renders the data. Do NOT recite prices the listener can check themselves. Do NOT preview stories from The Six. Keep the full analytical depth. Simplify language, not thinking. Thread between sub-sections: if equities tell one story and bonds tell another, connect them.',
   'The Take': 'Do NOT introduce or announce this section by name. A separate transition handles that. Start with the topic: "We\'re looking at [topic/headline from the content]." Give the listener a one-sentence setup of what question or argument you\'re about to unpack. THEN build the argument naturally, like you\'re thinking through it in real time. This is the heart of the Markets section. Give it full treatment, don\'t compress. Explain any frameworks in plain language. If the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance. The "where this might be wrong" is just as important as the thesis.',
   'The Model': 'Do NOT introduce or announce this section. A separate transition handles that. Just start explaining the model in plain language with genuine intellectual energy. What is it, where does it come from, and how does it connect to what\'s happening today? Make it feel like you\'re sharing something genuinely cool, not lecturing. Keep the full depth of the application. This should make the listener feel like they just gained a new thinking tool.',
-  'Asset Spotlight': 'Do NOT introduce or announce this section by name. A separate transition handles that. Start with: "Today we\'re looking at [asset name from the content]. As always, this is not financial advice, just an expression of our themes through an asset." THEN walk through the original thesis, the evidence, what changed, and the thesis adjustment. Talk through it like you\'re explaining your thinking to a friend who\'s also an investor. Don\'t dumb it down. Keep the specifics: the spreads, the TVL checks, the regulatory catalysts. This section should end the Markets block on a concrete note.',
   'Inner Game': 'Do NOT introduce or announce this section. A separate transition handles that. Just start reading warmly and with genuine presence. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode. Let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift. The listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
   'Discovery': 'Do NOT introduce or announce this section. A separate transition handles that. Just start telling the story. This is an original essay. NOT a reading recommendation, NOT a list of cool facts (that was Wild Card). Discovery is ONE deep narrative with a single through-line argument. The energy here is slower, more reflective, more intellectually weighty than Wild Card. Tell the story with fascination but let it build. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. Stay very close to the written text. The essay was carefully constructed. End the episode on intellectual wonder.',
   // Optional sections
@@ -869,7 +884,6 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
     'The Six: Wild Card': 'Now getting into today\'s Wild Cards. The coolest things we found happening around the globe.',
     'The Six: The Signal': 'And wrapping up The Six with The Signal. Things that are forming that most people aren\'t watching yet.',
     'The Take': 'Now let\'s take a deep dive into one of the biggest stories we\'re monitoring. For today\'s Take.',
-    'Asset Spotlight': 'Now for today\'s Asset Spotlight.',
     'Inner Game': 'That\'s all we have for today\'s markets. Let\'s take a deep breath, and settle into today\'s meditation.',
     'The Model': 'OK, let\'s get the brain working. Time for Mental Models.',
     'Discovery': 'And finally, today\'s Discovery.',

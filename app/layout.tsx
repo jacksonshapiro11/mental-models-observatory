@@ -1,23 +1,35 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import Link from 'next/link';
+import { Source_Sans_3, Fraunces, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
-import { ThemeProvider } from '@/lib/theme-context';
-import ThemeToggle from '@/components/ui/ThemeToggle';
-import ContactModal from '@/components/ContactModal';
+import { Navigation } from '@/components/layout/Navigation';
 
-const inter = Inter({ 
+const sourceSans = Source_Sans_3({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-body',
   display: 'swap',
+  weight: ['300', '400', '500', '600', '700'],
+});
+
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
 });
 
 export const metadata: Metadata = {
   title: {
-    default: 'Cosmic Trex — Where Ancient Wisdom Meets the Cutting Edge',
+    default: 'Cosmic Trex — Markets, Meditations & Mental Models',
     template: '%s | Cosmic Trex',
   },
-  description: 'Markets, Meditations, and Mental Models — your daily guide to an increasingly complex world.',
+  description: 'Daily financial intelligence brief. Trading floor credibility meets editorial edge.',
   keywords: ['mental models', 'thinking frameworks', 'markets', 'daily brief', 'investing', 'meditation', 'decision making'],
   authors: [{ name: 'Cosmic Trex' }],
   creator: 'Cosmic Trex',
@@ -35,14 +47,14 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: '/',
-    title: 'Cosmic Trex — Where Ancient Wisdom Meets the Cutting Edge',
-    description: 'Markets, Meditations, and Mental Models — your daily guide to an increasingly complex world.',
+    title: 'Cosmic Trex — Markets, Meditations & Mental Models',
+    description: 'Daily financial intelligence brief. Trading floor credibility meets editorial edge.',
     siteName: 'Cosmic Trex',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Cosmic Trex — Where Ancient Wisdom Meets the Cutting Edge',
-    description: 'Markets, Meditations, and Mental Models — your daily guide to an increasingly complex world.',
+    title: 'Cosmic Trex — Markets, Meditations & Mental Models',
+    description: 'Daily financial intelligence brief. Trading floor credibility meets editorial edge.',
   },
   robots: {
     index: true,
@@ -63,48 +75,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`${inter.className} h-full bg-neutral-25 text-neutral-800 antialiased`}>
-        <ThemeProvider>
-          <div className="flex min-h-full flex-col">
-            <header className="site-header sticky top-0 z-[70] px-4 py-3 bg-[#2563eb] text-white transition-colors duration-300">
-              <div className="flex justify-between items-center flex-wrap gap-2">
-                <Link href="/" className="flex flex-col min-w-0 shrink">
-                  <h1 className="text-lg sm:text-xl font-bold leading-tight truncate">Cosmic Trex</h1>
-                  <span className="text-[10px] sm:text-xs opacity-80 leading-tight hidden sm:block">Where ancient wisdom meets the cutting edge</span>
-                </Link>
-                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                  <ThemeToggle />
-                  <ContactModal />
-                  <Link
-                    href="/daily-update"
-                    className="bg-black dark:bg-black text-white dark:text-white px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg text-xs sm:text-sm whitespace-nowrap"
-                  >
-                    Daily Brief
-                  </Link>
-                  <Link
-                    href="/blog"
-                    className="bg-black dark:bg-black text-white dark:text-white px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg text-xs sm:text-sm hidden sm:block"
-                  >
-                    Blog
-                  </Link>
-                  <Link
-                    href="/"
-                    className="bg-black dark:bg-black text-white dark:text-white px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-900 transition-colors font-semibold shadow-md dark:shadow-lg text-xs sm:text-sm hidden sm:block"
-                  >
-                    Home
-                  </Link>
-                </div>
-              </div>
-            </header>
-            <main id="main-content" className="flex-1 p-4">
-              {children}
-            </main>
-            <footer className="p-4 bg-gray-800 dark:bg-[var(--espresso-bg-dark)] text-white dark:text-[var(--espresso-body)] transition-colors duration-300">
-              <p>© 2026 Cosmic Trex</p>
-            </footer>
-          </div>
-        </ThemeProvider>
+    <html
+      lang="en"
+      className={`${sourceSans.variable} ${fraunces.variable} ${jetbrainsMono.variable}`}
+      style={{
+        '--font-body': 'var(--font-body)',
+        '--font-display': 'var(--font-display)',
+        '--font-mono': 'var(--font-mono)',
+      } as React.CSSProperties & Record<string, string>}
+    >
+      <body className="antialiased">
+        <Navigation variant="light" className="sticky top-0 z-50" />
+        {children}
       </body>
     </html>
   );

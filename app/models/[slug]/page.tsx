@@ -1,12 +1,7 @@
-'use client';
-
+import { getAllModels, getModelBySlug } from '@/lib/data';
 import ReadwiseHighlights from '@/components/content/ReadwiseHighlights';
-import { getModelBySlug, getRelatedModels } from '@/lib/data';
-import { ProgressTracker } from '@/lib/progress-tracker';
-import { ArrowLeft, ArrowRight, BookOpen, Lightbulb, Target, Users } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 interface ModelPageProps {
   params: Promise<{
@@ -14,218 +9,189 @@ interface ModelPageProps {
   }>;
 }
 
-export default function ModelPage({ params }: ModelPageProps) {
-  const [model, setModel] = useState<any>(null);
-  const [relatedModels, setRelatedModels] = useState<any[]>([]);
-  const [slug, setSlug] = useState<string>('');
-  const [startTime] = useState(Date.now());
+export function generateStaticParams() {
+  const models = getAllModels();
+  return models.map(m => ({ slug: m.slug }));
+}
 
-  useEffect(() => {
-    const loadData = async () => {
-      const resolvedParams = await params;
-      const modelData = getModelBySlug(resolvedParams.slug);
-      const relatedData = getRelatedModels(resolvedParams.slug);
-      
-      if (!modelData) {
-        notFound();
-      }
-      
-      setModel(modelData);
-      setRelatedModels(relatedData);
-      setSlug(resolvedParams.slug);
-      
-      // Track model view
-      ProgressTracker.trackModelView(resolvedParams.slug, 0, false);
-    };
-    
-    loadData();
-  }, [params]);
-  
-  // Track time spent when user leaves the page
-  useEffect(() => {
-    return () => {
-      if (slug) {
-        const timeSpent = Math.floor((Date.now() - startTime) / 1000); // in seconds
-        const completed = timeSpent > 60; // Consider completed if spent more than 1 minute
-        ProgressTracker.trackModelView(slug, timeSpent, completed);
-      }
-    };
-  }, [slug, startTime]);
+function getRelatedModels(currentSlug: string, currentDomain: string, currentTags: string[], allModels: any[]) {
+  return allModels
+    .filter(m => m.slug !== currentSlug)
+    .map(m => ({
+      ...m,
+      relevance:
+        (m.domain === currentDomain ? 3 : 0) +
+        (m.tags || []).filter((t: string) => currentTags.includes(t)).length * 2,
+      sharedTags: (m.tags || []).filter((t: string) => currentTags.includes(t)),
+    }))
+    .sort((a, b) => b.relevance - a.relevance)
+    .slice(0, 3);
+}
+
+export default async function ModelDetailPage({ params }: ModelPageProps) {
+  const { slug } = await params;
+  const allModels = getAllModels();
+  const model = allModels.find(m => m.slug === slug);
 
   if (!model) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    notFound();
   }
 
-  return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12">
-        {/* Breadcrumb */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Link href="/models" className="hover:text-gray-900 transition-colors">
-              Models
-            </Link>
-            <span>→</span>
-            <Link 
-              href={`/domains/${model.domainSlug}`} 
-              className="hover:text-gray-900 transition-colors"
-            >
-              {model.domain}
-            </Link>
-            <span>→</span>
-            <span className="text-gray-900">{model.name}</span>
-          </div>
-        </div>
+  const relatedModels = getRelatedModels(slug, model.domain, model.tags || [], allModels);
+  const modelIndex = allModels.indexOf(model) + 1;
 
-        {/* Header */}
-        <div className="mb-12">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-              model.difficulty === 'beginner' ? 'bg-green-100 text-green-800' :
-              model.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
-              'bg-red-100 text-red-800'
-            }`}>
-              {model.difficulty}
-            </div>
-            <Link 
-              href={`/domains/${model.domainSlug}`}
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-            >
-              {model.domain}
-            </Link>
+  return (
+    <div className="min-h-screen">
+      {/* 1. DARK HERO */}
+      <section className="bg-ct-dark px-4 py-5 border-b-[3px] border-ct-pink">
+        <div className="max-w-2xl mx-auto">
+          <Link
+            href="/models"
+            className="font-mono text-[10px] text-[#555] flex items-center gap-1 mb-4 no-underline hover:text-[#777]"
+          >
+            <span className="text-ct-yellow">←</span> Back to observatory
+          </Link>
+          <div className="text-[10px] tracking-[0.08em] uppercase text-ct-pink font-medium mb-2">
+            {model.domain}
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl mb-4">
+          <h1 className="font-serif text-[22px] font-medium text-white leading-[1.25] mb-3">
             {model.name}
           </h1>
-          <p className="text-xl text-gray-600">
-            {model.description}
+          <div className="flex gap-3 font-mono text-[10px]">
+            <span className="text-[#555]">
+              Level: <span className="text-[#888]">{model.difficulty || 'intermediate'}</span>
+            </span>
+            <span className="text-[#555]">
+              Model <span className="text-[#888]">#{modelIndex}</span>
+            </span>
+          </div>
+          {model.tags?.length > 0 && (
+            <div className="flex gap-1 mt-2 flex-wrap">
+              {model.tags.map((t: string) => (
+                <span
+                  key={t}
+                  className="text-[9px] font-mono px-2 py-0.5 bg-[#1a1a1d] text-[#888] border border-[#222] rounded-sm"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 2. WHITE DESCRIPTION */}
+      <section className="bg-white px-4 py-5">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-[10px] tracking-[0.08em] uppercase text-[#999] mb-2.5">Description</div>
+          <p className="text-[14px] text-[#333] leading-[1.7]">{model.description}</p>
+        </div>
+      </section>
+
+      {/* 3. LIGHT SURFACE APPLICATIONS */}
+      {model.applications?.length > 0 && (
+        <section className="bg-[#F8F8F4] px-4 py-4 border-t border-[#e8e8e4]">
+          <div className="max-w-2xl mx-auto">
+            <div className="text-[10px] tracking-[0.08em] uppercase text-[#999] mb-2.5">
+              Applications
+            </div>
+            {model.applications.map((app: string, i: number) => (
+              <div
+                key={i}
+                className="bg-white border-l-2 border-ct-yellow px-3 py-2.5 mb-1.5 text-[13px] text-[#444] leading-[1.5] italic font-serif"
+              >
+                {app}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 4. DARK BACKLINKS */}
+      <section className="bg-ct-dark px-4 py-4 border-b-[3px] border-ct-yellow">
+        <div className="max-w-2xl mx-auto">
+          <div className="font-mono text-[10px] text-ct-yellow uppercase tracking-wider mb-3">
+            Referenced in the brief
+          </div>
+          <p className="text-[11px] text-[#555] italic">
+            Backlinks to brief references will populate as this model is used.
           </p>
         </div>
+      </section>
 
-        {/* Core Principles */}
-        <section className="mb-12">
-          <div className="flex items-center mb-6">
-            <Target className="h-6 w-6 text-blue-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">Core Principles</h2>
-          </div>
-          <div className="space-y-4">
-            {model.principles.map((principle: string, index: number) => (
-              <div key={index} className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
-                  {index + 1}
-                </div>
-                <p className="text-gray-700">{principle}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Examples */}
-        {model.examples && model.examples.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center mb-6">
-              <Lightbulb className="h-6 w-6 text-yellow-600 mr-3" />
-              <h2 className="text-2xl font-bold text-gray-900">Examples</h2>
-            </div>
-            <div className="grid grid-cols-1 gap-4">
-              {model.examples.map((example: string, index: number) => (
-                <div key={index} className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-700">{example}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Applications */}
-        <section className="mb-12">
-          <div className="flex items-center mb-6">
-            <Users className="h-6 w-6 text-green-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">Applications</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {model.applications.map((application: string, index: number) => (
-              <div key={index} className="bg-neutral-50 dark:bg-transparent border border-neutral-200 dark:border-[var(--espresso-accent)]/25 rounded-lg p-4">
-                <p className="text-neutral-800 dark:text-[var(--espresso-body)] font-medium">{application}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Curated Insights from Readwise */}
-        <section className="mb-12">
-          <div className="flex items-center mb-6">
-            <BookOpen className="h-6 w-6 text-purple-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">Curated Insights from Readwise</h2>
+      {/* 5. WHITE SOURCE MATERIAL — Readwise Highlights */}
+      <section className="bg-white px-4 py-4 border-b border-[#e8e8e4]">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-[10px] tracking-[0.08em] uppercase text-[#999] mb-2.5">
+            Source material
           </div>
           <ReadwiseHighlights modelSlug={slug} />
-        </section>
+        </div>
+      </section>
 
-        {/* Tags */}
-        <section className="mb-12">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Related Topics</h3>
-          <div className="flex flex-wrap gap-2">
-            {model.tags.map((tag: string) => (
-              <span
-                key={tag}
-                className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
-              >
-                {tag}
-              </span>
-            ))}
+      {/* 6. YELLOW RELATED MODELS */}
+      <section className="bg-ct-yellow px-4 py-4 border-b-[3px] border-ct-dark">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-[10px] tracking-[0.08em] uppercase text-ct-dark font-medium mb-3">
+            Related models
           </div>
-        </section>
+          {relatedModels.map((rm: any) => (
+            <Link
+              key={rm.slug}
+              href={`/models/${rm.slug}`}
+              className="block bg-white border-2 border-ct-dark p-3 mb-1.5 no-underline hover:shadow-md transition-shadow"
+            >
+              <div className="text-[9px] uppercase tracking-wider text-[#888] mb-0.5">{rm.domain}</div>
+              <div className="text-[13px] font-medium text-ct-dark mb-0.5">{rm.name}</div>
+              <div className="text-[11px] text-[#555] leading-[1.4] line-clamp-2">
+                {rm.description}
+              </div>
+              {rm.sharedTags?.length > 0 && (
+                <div className="flex gap-1 mt-1.5 flex-wrap">
+                  {rm.sharedTags.map((t: string) => (
+                    <span
+                      key={t}
+                      className="text-[9px] font-mono px-1.5 py-0.5 bg-ct-yellow border border-ct-dark text-ct-dark rounded-sm"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Link>
+          ))}
+        </div>
+      </section>
 
-        {/* Related Models */}
-        {relatedModels.length > 0 && (
-          <section className="mb-12">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Related Models</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {relatedModels.slice(0, 4).map((relatedModel) => (
-                <Link
-                  key={relatedModel.id}
-                  href={`/models/${relatedModel.slug}`}
-                  className="group card hover:shadow-md transition-all duration-200"
-                >
-                  <div className="card-content">
-                    <h4 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                      {relatedModel.name}
-                    </h4>
-                    <p className="text-gray-600 text-sm mt-1">{relatedModel.domain}</p>
-                    <p className="text-gray-600 text-sm mt-2">{relatedModel.description}</p>
-                    <div className="flex items-center text-blue-600 group-hover:text-blue-700 transition-colors mt-3">
-                      <span className="text-sm font-medium">Learn more</span>
-                      <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-1" />
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Navigation */}
-        <div className="flex items-center justify-between pt-8 border-t border-gray-200">
+      {/* 7. DARK EXPLORE GRID */}
+      <section className="bg-ct-dark px-4 py-4">
+        <div className="max-w-2xl mx-auto grid grid-cols-2 gap-2">
           <Link
-            href={`/domains/${model.domainSlug}`}
-            className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+            href={`/models?domain=${encodeURIComponent(model.domain)}`}
+            className="py-2.5 border border-[#222] rounded-sm text-center font-mono text-[11px] text-ct-yellow no-underline hover:bg-[#1a1a1d] transition-colors"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to {model.domain}
+            All {model.domain} →
+          </Link>
+          <Link
+            href="/daily-update"
+            className="py-2.5 border border-[#222] rounded-sm text-center font-mono text-[11px] text-ct-pink no-underline hover:bg-[#1a1a1d] transition-colors"
+          >
+            Today's brief →
           </Link>
           <Link
             href="/models"
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 transition-colors"
+            className="py-2.5 border border-[#222] rounded-sm text-center font-mono text-[11px] text-ct-green-data no-underline hover:bg-[#1a1a1d] transition-colors"
           >
-            All Models
-            <ArrowRight className="ml-2 h-4 w-4" />
+            All {allModels.length} models →
+          </Link>
+          <Link
+            href={`/models/${allModels[Math.floor(Math.random() * allModels.length)]?.slug || 'pareto-principle'}`}
+            className="py-2.5 border border-[#222] rounded-sm text-center font-mono text-[11px] text-[#ddd] no-underline hover:bg-[#1a1a1d] transition-colors"
+          >
+            Random model →
           </Link>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

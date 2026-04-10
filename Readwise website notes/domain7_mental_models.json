@@ -13,7 +13,7 @@
         "relevanceScore": 9.8,
         "qualityScore": 9.5,
         "insightType": "definition",
-        "curatorReason": "Perfect articulation of inside vs outside view with concrete example and explanation of base rates"
+        "curatorReason": "Your team feels the project will take 2 years based on their skills. Similar teams took 7-10 years with 40% failure rates. The inside view focuses on what you see now; the outside view checks what history shows. Plans nearly always hit the unknown unknowns the inside view can't foresee."
       },
       {
         "readwiseId": 515357859,
@@ -25,7 +25,7 @@
         "relevanceScore": 9.0,
         "qualityScore": 8.8,
         "insightType": "practice",
-        "curatorReason": "Concise explanation of probabilistic thinking vs binary thinking with practical calibration advice"
+        "curatorReason": "Stop thinking in certainties. Instead of will-it-happen or won't-it, assign a percentage to each outcome. Then calculate what payoff you need relative to that risk. This turns gut feeling into a calibrated bet."
       },
       {
         "readwiseId": 639917722,
@@ -37,7 +37,7 @@
         "relevanceScore": 9.2,
         "qualityScore": 9.0,
         "insightType": "mechanism",
-        "curatorReason": "Excellent integration of probabilistic thinking with base rates and learning from outcomes"
+        "curatorReason": "A bullish market makes everyone look smart. You made $100 from a stock trade but someone else made it through arbitrage. The lucky wins that come from market tailwinds hide actual decision quality. Separate luck from skill by understanding the actual causal factors."
       },
       {
         "readwiseId": 511963926,
@@ -49,19 +49,19 @@
         "relevanceScore": 9.0,
         "qualityScore": 8.7,
         "insightType": "example",
-        "curatorReason": "Classic example demonstrating how representativeness bias causes base rate neglect with clear numerical illustration"
+        "curatorReason": "You meet a shy person and ask whether they're a social scientist or computer scientist. Shyness resembles the computer scientist stereotype, so you guess computer scientist. But there are 10x more social scientists, so the base rate says otherwise. Your brain picks resemblance over numbers."
       },
       {
         "readwiseId": 511963880,
         "text": "Prediction correlation between 2 measures is = shared factors among determinants. If correlation is 30% we can come up with a guess like this 1. Start with the average 2. Given the information use intensity matching to see the full effect. Match evidence to predictive variable 3. Estimate your evidence between the correlation between the 2 variables. Ie get the correlation between the 2 vars 4. If the correlation is .3 move 30% from step 2 to step 1 This helps you build on your intuitive prediction by lowering the bias when you make the prediction. Non regressive to the mean will be biased based on the evidence unless the correlation is 100% This is an approximation on statistical evidence but in some situations where tail events are really valuable and the data doesn't follow a mean distribution we need to overweight our predictions and underweight regress to the mean because there is huge value in the in linear effects. Using regression the the mean hurts your ability to hit home runs but helps you hit singles and take walks. For vc intuition is more important than mean regression for making bank loans it's the opposite. The value of this most is you get to measure and think about of how you know",
         "book": {
-          "title": "Thinking Fast and Slow", 
+          "title": "Thinking Fast and Slow",
           "author": "Daniel Kahneman"
         },
         "relevanceScore": 8.8,
         "qualityScore": 8.5,
         "insightType": "mechanism",
-        "curatorReason": "Detailed formula for probabilistic prediction that balances intuition with base rates"
+        "curatorReason": "Start with the average outcome. If your evidence correlates 30% with the result, move 30% of the way from average toward your guess. When seeking home runs, your intuition can beat mean regression. When seeking safety, let the base rate pull you back."
       },
       {
         "readwiseId": 511963975,
@@ -73,7 +73,7 @@
         "relevanceScore": 9.1,
         "qualityScore": 8.9,
         "insightType": "example",
-        "curatorReason": "Perfect illustration of how small sample sizes mislead us and why we must consider base rates"
+        "curatorReason": "Rural Republican towns appear to have both the lowest and highest cancer rates. This isn't about politics or rural life; it's just that small populations bounce around more. Next year those same towns might flip. Small samples mislead you into false patterns."
       },
       {
         "readwiseId": 515357877,
@@ -85,7 +85,7 @@
         "relevanceScore": 8.9,
         "qualityScore": 9.2,
         "insightType": "practice",
-        "curatorReason": "Comprehensive toolkit for overcoming biases that prevent proper probabilistic thinking"
+        "curatorReason": "Apply the double standard test: Are you judging your beliefs more gently than opposing ones? Apply the selective skeptic test: Do you only attack ideas you disagree with? These checks reveal where base rate thinking breaks down."
       },
       {
         "readwiseId": 511963908,
@@ -97,7 +97,7 @@
         "relevanceScore": 8.7,
         "qualityScore": 8.6,
         "insightType": "example",
-        "curatorReason": "Demonstrates conjunction fallacy and why specific scenarios seem more probable than general ones"
+        "curatorReason": "A flood that kills 1000 people is less likely than a flood by any cause. Yet the detailed flood-from-earthquake scenario feels more real and plausible. Your brain picks the more vivid story over the simpler math."
       },
       {
         "readwiseId": 511963951,
@@ -109,7 +109,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.4,
         "insightType": "mechanism",
-        "curatorReason": "Clear explanation of how availability heuristic distorts probability assessments"
+        "curatorReason": "You judge how likely something is by how easily examples come to mind, not by actual frequency. Media saturates stories of violent crime; quiet statistical realities stay quiet. Easy-to-recall events feel common; frequent quiet events feel rare."
       },
       {
         "readwiseId": 780432998,
@@ -121,7 +121,7 @@
         "relevanceScore": 8.6,
         "qualityScore": 9.0,
         "insightType": "counterpoint",
-        "curatorReason": "Important warning against overconfidence in our own objectivity when making probabilistic assessments"
+        "curatorReason": "Thinking of yourself as objective makes you trust your reasoning too much. Your biases are hardest to see when you assume they're not there."
       }
     ]
   },
@@ -139,7 +139,7 @@
         "relevanceScore": 9.5,
         "qualityScore": 9.2,
         "insightType": "application",
-        "curatorReason": "Perfect description of barbell strategy for asymmetric risk management"
+        "curatorReason": "Put most assets in safe positions to avoid ruin. Put some in small, high-upside bets. This barbell dodges the middle ground that kills you slowly with moderate risk and capped upside."
       },
       {
         "readwiseId": 545155036,
@@ -151,7 +151,7 @@
         "relevanceScore": 9.8,
         "qualityScore": 9.0,
         "insightType": "application",
-        "curatorReason": "Perfect real-world example of seeking asymmetric payoffs with concrete Twitter example"
+        "curatorReason": "Write 1000 tweets and each one could go viral. Worst case: you become a better writer. You're putting 1000 lottery tickets in your pocket while building a transferable skill. Play games with uncapped upside and zero real downside."
       },
       {
         "readwiseId": 511961823,
@@ -163,7 +163,7 @@
         "relevanceScore": 9.3,
         "qualityScore": 8.8,
         "insightType": "mechanism",
-        "curatorReason": "Explains prospect theory and why broad framing enables better expected value decisions"
+        "curatorReason": "One game, 2-to-1 odds against you? You'll refuse even if the math says take it. Play 1000 games and your fear disappears because the math converges. Broad framing reveals the real expected value. Narrow framing hides it."
       },
       {
         "readwiseId": 518563846,
@@ -175,7 +175,7 @@
         "relevanceScore": 9.0,
         "qualityScore": 8.5,
         "insightType": "definition",
-        "curatorReason": "Core concept of asymmetric risk with scale effects and power law dynamics"
+        "curatorReason": "A boulder kills differently than a pile of pebbles. Many systems scale nonlinearly with power laws. Risk and payoff don't scale proportionally, so size and concentration matter enormously."
       },
       {
         "readwiseId": 511349689,
@@ -187,7 +187,7 @@
         "relevanceScore": 8.9,
         "qualityScore": 8.7,
         "insightType": "application",
-        "curatorReason": "Practical portfolio construction advice for asymmetric payoffs"
+        "curatorReason": "Make a few good bets that don't move together. Balance them. Size them thoughtfully. This is the clearest path to big upside with contained downside."
       },
       {
         "readwiseId": 518564456,
@@ -199,7 +199,7 @@
         "relevanceScore": 9.1,
         "qualityScore": 8.6,
         "insightType": "practice",
-        "curatorReason": "Clear advice on seeking optionality and embracing positive convexity"
+        "curatorReason": "Cheap or free options are always worth taking. The tail outcomes drive everything. An average outcome with no upside is worse than a lower average with big upside swings."
       },
       {
         "readwiseId": 518559414,
@@ -211,7 +211,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.9,
         "insightType": "principle",
-        "curatorReason": "Fundamental principle of managing downside risk while seeking upside"
+        "curatorReason": "A margin of safety means you don't need to predict perfectly. The world runs on odds, not certainties. Avoid ruin first; the rest follows."
       },
       {
         "readwiseId": 511349884,
@@ -223,7 +223,7 @@
         "relevanceScore": 8.7,
         "qualityScore": 8.8,
         "insightType": "application",
-        "curatorReason": "Investment perspective on different types of asymmetric payoffs and risk-reward profiles"
+        "curatorReason": "Growth bets have dramatic upside when right, huge downside when wrong. Value bets have smaller, steadier gains. Which asymmetry fits your stomach matters more than which is theoretically better."
       },
       {
         "readwiseId": 518563795,
@@ -235,7 +235,7 @@
         "relevanceScore": 8.9,
         "qualityScore": 8.4,
         "insightType": "counterpoint",
-        "curatorReason": "Important warning about negative convexity - situations to avoid when seeking asymmetric payoffs"
+        "curatorReason": "Light traffic saves you 5 minutes. Heavy traffic costs you 50. The downside is larger than the upside. Avoid situations with negative convexity; they bite you harder than they help you."
       },
       {
         "readwiseId": 511349937,
@@ -247,7 +247,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 9.1,
         "insightType": "principle",
-        "curatorReason": "Counterintuitive insight about where the biggest payoffs actually come from"
+        "curatorReason": "The biggest payoffs come from places nobody expected them. What everyone agrees will be huge often disappoints. Where nobody is looking is where the asymmetry lives."
       }
     ]
   },
@@ -265,7 +265,7 @@
         "relevanceScore": 9.5,
         "qualityScore": 9.3,
         "insightType": "definition",
-        "curatorReason": "Fundamental equation that separates decision quality from luck-driven outcomes"
+        "curatorReason": "Your life is the sum of your decision quality plus luck. You control one. The other controls you. Learn to tell them apart."
       },
       {
         "readwiseId": 511349718,
@@ -277,7 +277,7 @@
         "relevanceScore": 9.7,
         "qualityScore": 9.5,
         "insightType": "definition",
-        "curatorReason": "Core principle that great decisions come from process, not outcomes, with epistemic humility"
+        "curatorReason": "A great decision is great because of the process, not the outcome. A good process admits what you don't know. It starts with uncertainty, not confidence."
       },
       {
         "readwiseId": 511349720,
@@ -289,7 +289,7 @@
         "relevanceScore": 9.4,
         "qualityScore": 8.9,
         "insightType": "example",
-        "curatorReason": "Concrete example of resulting fallacy with memorable sports reference"
+        "curatorReason": "Pete Carroll made a good decision, bad outcome. Poker players call it resulting: confusing a bad hand with a bad play. Don't change your strategy because one swing went wrong."
       },
       {
         "readwiseId": 511349717,
@@ -301,7 +301,7 @@
         "relevanceScore": 9.6,
         "qualityScore": 9.1,
         "insightType": "definition",
-        "curatorReason": "Clear delineation between controllable decision quality and uncontrollable luck"
+        "curatorReason": "Two things: decision quality and luck. Everything else is noise. The hardest skill is telling which is which."
       },
       {
         "readwiseId": 511349721,
@@ -313,7 +313,7 @@
         "relevanceScore": 9.2,
         "qualityScore": 8.8,
         "insightType": "mechanism",
-        "curatorReason": "Explains the psychological traps we fall into when judging decisions by outcomes"
+        "curatorReason": "Working backward from results, you'll find a causal story that fits. You'll see correlation as causation. You'll hammer square pegs into round holes to make the outcome feel inevitable and deserved."
       },
       {
         "readwiseId": 511963893,
@@ -325,7 +325,7 @@
         "relevanceScore": 8.9,
         "qualityScore": 8.7,
         "insightType": "mechanism",
-        "curatorReason": "Statistical foundation for understanding why we often mistake regression for causal factors"
+        "curatorReason": "Everyone reverts to the mean. Someone does unusually well, then criticism doesn't help them. Praise doesn't hurt them. They just revert. That's regression, not causation."
       },
       {
         "readwiseId": 511349949,
@@ -337,7 +337,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.6,
         "insightType": "mechanism",
-        "curatorReason": "Practical tool for separating skill from luck using regression rates"
+        "curatorReason": "Skill-heavy activities revert slowly to the mean. Luck-heavy activities revert fast. The speed of reversion tells you whether someone was skilled or lucky."
       },
       {
         "readwiseId": 511963849,
@@ -349,7 +349,7 @@
         "relevanceScore": 9.0,
         "qualityScore": 9.2,
         "insightType": "mechanism",
-        "curatorReason": "Explains hindsight bias and how it distorts our ability to evaluate past decisions fairly"
+        "curatorReason": "After the outcome, you're sure you knew it would happen that way. But your memory isn't a record. It's rewritten by the result. The worse the outcome, the stronger the rewriting. Hindsight bias blinds you to how much you didn't know."
       },
       {
         "readwiseId": 511349722,
@@ -361,7 +361,7 @@
         "relevanceScore": 8.7,
         "qualityScore": 8.5,
         "insightType": "definition",
-        "curatorReason": "Concise definition of hindsight bias that corrupts outcome evaluation"
+        "curatorReason": "Once you know the outcome, it feels inevitable. But it wasn't. Your memory rewrites the past to match the present."
       },
       {
         "readwiseId": 780432996,
@@ -373,12 +373,12 @@
         "relevanceScore": 9.1,
         "qualityScore": 9.0,
         "insightType": "practice",
-        "curatorReason": "Ideal mindset for maintaining decision quality focus despite negative outcomes"
+        "curatorReason": "Aim for this state: If it goes wrong, you nod and say I knew that card could come up and I'd play it the same way. This separates the decision from the result."
       }
     ]
   },
   {
-    "modelId": "decision-fatigue-cognitive-resource-management", 
+    "modelId": "decision-fatigue-cognitive-resource-management",
     "modelTitle": "Decision Fatigue & Cognitive Resource Management",
     "curatedHighlights": [
       {
@@ -391,7 +391,7 @@
         "relevanceScore": 9.8,
         "qualityScore": 9.0,
         "insightType": "definition",
-        "curatorReason": "Perfect definition of decision fatigue from the source you referenced"
+        "curatorReason": "Each decision depletes you. The 100th decision of the day is worse than the first. Fatigue degrades decision quality."
       },
       {
         "readwiseId": 511964972,
@@ -403,7 +403,7 @@
         "relevanceScore": 9.5,
         "qualityScore": 9.2,
         "insightType": "mechanism",
-        "curatorReason": "Comprehensive explanation of cognitive resource depletion with famous judges/parole example"
+        "curatorReason": "Judges grant parole more after lunch than before. Hungry, tired, or cognitively depleted, you take shortcuts. Your willpower is finite and refuels slowly."
       },
       {
         "readwiseId": 525348062,
@@ -415,7 +415,7 @@
         "relevanceScore": 9.0,
         "qualityScore": 8.8,
         "insightType": "practice",
-        "curatorReason": "Practical strategies for automating decisions to preserve cognitive resources"
+        "curatorReason": "Automate good decisions now so you don't have to decide later when you're tired. Set up your environment to make the right choice the easy choice."
       },
       {
         "readwiseId": 517894744,
@@ -427,7 +427,7 @@
         "relevanceScore": 9.3,
         "qualityScore": 8.9,
         "insightType": "application",
-        "curatorReason": "Framework for allocating cognitive resources based on decision reversibility"
+        "curatorReason": "Two way doors you can reverse: decide fast. One way doors are irreversible: take time. Nearly everything can be fixed except integrity breaches."
       },
       {
         "readwiseId": 541660366,
@@ -439,7 +439,7 @@
         "relevanceScore": 9.1,
         "qualityScore": 8.7,
         "insightType": "principle",
-        "curatorReason": "Key insight about decision importance hierarchy and resource allocation"
+        "curatorReason": "Most of your daily decisions don't matter. A few big decisions drive everything. Your whole life comes down to maybe five to ten of them. Save your cognitive fuel for those."
       },
       {
         "readwiseId": 525348068,
@@ -451,7 +451,7 @@
         "relevanceScore": 8.9,
         "qualityScore": 8.6,
         "insightType": "practice",
-        "curatorReason": "Practical approach to managing decision load through habit formation and leverage points"
+        "curatorReason": "One moment defines your day: do you hit snooze? Make the first two minutes easy so the rest follows. Start tiny and layer on once it's automatic."
       },
       {
         "readwiseId": 842979379,
@@ -463,7 +463,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 9.0,
         "insightType": "application",
-        "curatorReason": "Systematic approach to reducing decision load through process optimization and automation"
+        "curatorReason": "Question every requirement. Delete aggressively. Only then simplify and automate. Each cut saves cognitive load and decision fatigue."
       },
       {
         "readwiseId": 669205990,
@@ -475,7 +475,7 @@
         "relevanceScore": 9.2,
         "qualityScore": 8.5,
         "insightType": "practice",
-        "curatorReason": "Comprehensive system for managing cognitive load through organization and prioritization"
+        "curatorReason": "Get all the noise out of your head first. Then pick 3-5 big tasks. Save your mental fuel for what matters. Overloading your list drains you faster."
       },
       {
         "readwiseId": 755905523,
@@ -487,7 +487,7 @@
         "relevanceScore": 8.7,
         "qualityScore": 9.1,
         "insightType": "practice",
-        "curatorReason": "Kahneman's personal checklist for managing cognitive resources in important decisions"
+        "curatorReason": "Before a big decision: Are you stressed? Is it reversible? What would you tell a friend? What's the evidence? Use this checklist when you're fatigued."
       },
       {
         "readwiseId": 838104193,
@@ -499,7 +499,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.8,
         "insightType": "principle",
-        "curatorReason": "Importance of routines in preserving cognitive resources for important decisions"
+        "curatorReason": "A routine removes the need to decide what comes next. When you're depleted, your routine carries you through."
       },
       {
         "readwiseId": 661292977,
@@ -511,7 +511,7 @@
         "relevanceScore": 8.6,
         "qualityScore": 8.4,
         "insightType": "mechanism",
-        "curatorReason": "Explains how too many options depletes cognitive resources and creates decision paralysis"
+        "curatorReason": "Too many options create anxiety and paralyze you. Fewer good options are better than many mediocre ones."
       }
     ]
   }

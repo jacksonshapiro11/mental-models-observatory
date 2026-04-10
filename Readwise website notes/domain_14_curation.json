@@ -13,7 +13,7 @@
         "relevanceScore": 9.8,
         "qualityScore": 9.4,
         "insightType": "core definition",
-        "curatorReason": "Perfect articulation of language as reverse compression algorithm and the distinction between words and objects"
+        "curatorReason": "Language compresses a chair's infinite complexity (atoms, history, possibility) into a single word. The word points to the thing, but is not the thing."
       },
       {
         "readwiseId": 542261295,
@@ -24,7 +24,7 @@
         "relevanceScore": 9.6,
         "qualityScore": 9.2,
         "insightType": "communication limits",
-        "curatorReason": "Excellent explanation of lossy compression in language communication and bandwidth limitations"
+        "curatorReason": "Every time you speak, you lose information. Bandwidth is finite, so language forces you to choose which details matter and which to discard."
       },
       {
         "readwiseId": 735079485,
@@ -35,7 +35,7 @@
         "relevanceScore": 9.4,
         "qualityScore": 8.9,
         "insightType": "semantics vs meaning",
-        "curatorReason": "Frege's fundamental distinction between reference and meaning - crucial for understanding language limitations"
+        "curatorReason": "The Morning Star and Evening Star both refer to Venus, but they mean different things. Reference is what the word points to; meaning is how it gets there."
       },
       {
         "readwiseId": 735079452,
@@ -46,7 +46,7 @@
         "relevanceScore": 9.2,
         "qualityScore": 8.7,
         "insightType": "philosophical framework",
-        "curatorReason": "Ordinary language philosophy perspective on clarification vs science and logical geography of concepts"
+        "curatorReason": "Most philosophical confusion comes from using words carelessly, not from actual metaphysical puzzles. Clarifying how we use language often dissolves the problem."
       },
       {
         "readwiseId": 518578268,
@@ -57,7 +57,7 @@
         "relevanceScore": 9.0,
         "qualityScore": 8.8,
         "insightType": "practical application",
-        "curatorReason": "Shows how language bounds understanding and the importance of precise word choice in systems thinking"
+        "curatorReason": "The words you choose bound what you can think. System dynamics looks invisible until you have language to see it; then it becomes obvious."
       },
       {
         "readwiseId": 511965503,
@@ -68,7 +68,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.6,
         "insightType": "cognitive science",
-        "curatorReason": "Chomsky's revolution showing language as complex grammatical system vs. behaviorist stimulus-response"
+        "curatorReason": "Chomsky showed grammar is not habit but structure. Children learn language so fast because they're building a complex system, not copying sounds."
       },
       {
         "readwiseId": 728154084,
@@ -79,7 +79,7 @@
         "relevanceScore": 8.6,
         "qualityScore": 8.4,
         "insightType": "communication principles",
-        "curatorReason": "Grice's razor - practical framework for clear communication that cuts through noise to meaning"
+        "curatorReason": "Grice's razor: don't say more than you need to, don't say what you don't believe, make your meaning clear. Violate this and you create noise, not communication."
       },
       {
         "readwiseId": 511965816,
@@ -90,7 +90,7 @@
         "relevanceScore": 8.7,
         "qualityScore": 8.8,
         "insightType": "systems integration",
-        "curatorReason": "Shows how mental models and language enable level 2 conversations and human-computer symbiosis"
+        "curatorReason": "When two minds share mental models and language, they can think together at a level neither could alone. Symbols are the bridge that makes this possible."
       },
       {
         "readwiseId": 584017731,
@@ -101,7 +101,7 @@
         "relevanceScore": 8.5,
         "qualityScore": 8.3,
         "insightType": "learning application",
-        "curatorReason": "Practical guidance on thinking about language use, meaning of words, and building mental models through reading"
+        "curatorReason": "Reading forces you to wrestle with someone else's words and build your own meaning from them. This effort is what makes reading transform how you think."
       },
       {
         "readwiseId": 806741202,
@@ -112,7 +112,7 @@
         "relevanceScore": 8.4,
         "qualityScore": 8.1,
         "insightType": "historical context",
-        "curatorReason": "Shows symbolic communication as crucial step in human development and complexity creation"
+        "curatorReason": "Humans alone use symbols to represent things not present. This one leap from gesture to symbol opened the door to all complexity and culture."
       }
     ]
   },
@@ -130,7 +130,7 @@
         "relevanceScore": 9.7,
         "qualityScore": 9.3,
         "insightType": "core distinction",
-        "curatorReason": "Perfectly captures the difference between descriptive knowledge and true understanding - chair example is illuminating"
+        "curatorReason": "You can know every property of a chair (four legs, seat, height) and still not understand chairs until you sit in one. Description and experience are different knowledge."
       },
       {
         "readwiseId": 735079485,
@@ -141,7 +141,7 @@
         "relevanceScore": 9.5,
         "qualityScore": 9.0,
         "insightType": "philosophical foundation",
-        "curatorReason": "Frege's reference vs meaning distinction - foundational for understanding semantics vs experiential knowledge"
+        "curatorReason": "The Morning Star and Evening Star refer to the same planet but mean different things to observers in different times. Same object, different knowledge."
       },
       {
         "readwiseId": 735079452,
@@ -152,7 +152,7 @@
         "relevanceScore": 9.2,
         "qualityScore": 8.8,
         "insightType": "philosophical application",
-        "curatorReason": "Shows how names are rigid designators but don't capture essence - words vs deeper meaning distinction"
+        "curatorReason": "Proper names pick out the thing itself, but they don't tell you what the thing is like. A name is a label that lets you talk about something without understanding it."
       },
       {
         "readwiseId": 735079480,
@@ -163,7 +163,7 @@
         "relevanceScore": 8.9,
         "qualityScore": 8.6,
         "insightType": "linguistic philosophy",
-        "curatorReason": "Wittgenstein's insight that philosophical problems often stem from language misunderstanding vs. true meaning"
+        "curatorReason": "Philosophy tangles itself with words. Untangle the language and the problem vanishes. Most confusion is semantic, not substantive."
       },
       {
         "readwiseId": 661293433,
@@ -174,7 +174,7 @@
         "relevanceScore": 8.7,
         "qualityScore": 8.4,
         "insightType": "practical wisdom",
-        "curatorReason": "Shows how everyone has preconceptions about words like 'good' but these mental models vary and need development"
+        "curatorReason": "Everyone thinks they understand 'good,' but your actual conception differs from mine. We have the word, not necessarily the shared understanding."
       },
       {
         "readwiseId": 511965428,
@@ -185,7 +185,7 @@
         "relevanceScore": 8.8,
         "qualityScore": 8.7,
         "insightType": "information theory",
-        "curatorReason": "Shannon's information vs meaning distinction - 'will you marry me' vs complex legal document example"
+        "curatorReason": "A marriage proposal is three words; a legal contract is thousands. Both transmit information, but meaning is not about length. Meaning resolves uncertainty."
       },
       {
         "readwiseId": 521153978,
@@ -196,7 +196,7 @@
         "relevanceScore": 8.6,
         "qualityScore": 8.5,
         "insightType": "technical framework",
-        "curatorReason": "Information theory foundations showing how information resolves uncertainty vs mere transmission"
+        "curatorReason": "Information reduces surprise. If you already knew something, being told it carries zero information. Meaning comes from what you didn't expect."
       },
       {
         "readwiseId": 518567943,
@@ -207,7 +207,7 @@
         "relevanceScore": 8.4,
         "qualityScore": 8.2,
         "insightType": "domain dependence",
-        "curatorReason": "Shows how same concept (lifting) means different things in different domains - semantics vs contextual meaning"
+        "curatorReason": "Lifting weights means growing muscle; lifting in the gym means paying attention to form. The word stays the same, the meaning shifts with context."
       },
       {
         "readwiseId": 511967956,
@@ -218,7 +218,7 @@
         "relevanceScore": 8.3,
         "qualityScore": 8.3,
         "insightType": "systems perspective",
-        "curatorReason": "Mental structures as competing rules with hierarchy - shows how understanding emerges from rule systems"
+        "curatorReason": "Your mind holds competing rules in hierarchy. Understanding emerges when you build a system of concepts, not when you memorize isolated definitions."
       },
       {
         "readwiseId": 525341599,
@@ -229,7 +229,7 @@
         "relevanceScore": 8.5,
         "qualityScore": 8.6,
         "insightType": "epistemological foundation",
-        "curatorReason": "Shows active interpretation vs passive reception - we create meaning through stories and theories"
+        "curatorReason": "You don't receive meaning passively. You build it actively through stories and theories. The same facts mean different things under different frameworks."
       }
     ]
   }

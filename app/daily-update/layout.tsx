@@ -3,11 +3,9 @@ export default function DailyUpdateLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // The BriefViewer handles its own full-bleed dark background,
-  // so we remove the default padding from the parent layout's <main>.
-  // We use negative margin to counter the p-4 on <main id="main-content">.
+  // BriefViewer handles its own full-bleed backgrounds — no wrapper padding needed.
   return (
-    <div className="-m-4">
+    <div>
       {children}
     </div>
   );
