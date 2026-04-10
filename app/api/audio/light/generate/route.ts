@@ -197,6 +197,7 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses, breathy emphasis, mo
       access: 'public',
       contentType: 'audio/mpeg',
       addRandomSuffix: false,
+      allowOverwrite: true,
       ...(process.env.public_READ_WRITE_TOKEN ? { token: process.env.public_READ_WRITE_TOKEN } : {}),
     });
 
