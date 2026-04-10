@@ -1098,6 +1098,87 @@ export async function preprocessBriefForTTS(
 
 // ─── Exports for testing ────────────────────────────────────────────────────
 
+// ─── Brief Light preprocessor ──────────────────────────────────────────────
+
+/**
+ * Preprocess a Brief Light for TTS. Builds the script directly from
+ * Brief Light sections (bypasses AUDIO_SECTIONS matching which only
+ * works for the full brief's section markers).
+ */
+export async function preprocessBriefLightForTTS(
+  brief: {
+    date: string;
+    displayDate: string;
+    epigraph: string;
+    sections: { id: string; label: string; content: string }[];
+  },
+  options: PreprocessOptions = {}
+): Promise<PreprocessedBrief> {
+  // Build raw content from all Brief Light sections
+  const sectionTexts = brief.sections.map(s => {
+    // Strip markdown formatting for audio
+    const cleaned = s.content
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/^#{1,4}\s+/gm, '')
+      .trim();
+    return `${s.label}:\n${cleaned}`;
+  });
+
+  const rawContent = sectionTexts.join('\n\n');
+  console.log(`[audio:light] Raw content from ${brief.sections.length} sections: ${rawContent.length} characters`);
+  console.log(`[audio:light] Sections: ${brief.sections.map(s => s.label).join(', ')}`);
+
+  // Extract epigraph
+  const epigraph = brief.epigraph
+    ? brief.epigraph.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1')
+    : '';
+
+  let fullText: string;
+
+  if (!options.skipLlmCleanup && options.openaiApiKey) {
+    try {
+      console.log('[audio:light] Rewriting as Super Brief podcast script (GPT-4o)...');
+      const client = new OpenAI({ apiKey: options.openaiApiKey });
+
+      // Build a parsed structure that rewriteAsScript expects
+      const parsed: ParsedBriefForAudio = {
+        displayDate: brief.displayDate,
+        lede: brief.sections[0]?.content?.split('\n')[0] || '',
+        sections: brief.sections.map(s => ({
+          name: s.label,
+          content: s.content,
+          mode: 'full' as const,
+        })),
+      };
+
+      const script = await rewriteAsScript(parsed, options.openaiApiKey, epigraph);
+      fullText = regexNormalize(script);
+      console.log(`[audio:light] Script: ${fullText.length} characters`);
+    } catch (err) {
+      console.warn('[audio:light] Scriptwriter failed, falling back to regex-only:', err);
+      fullText = regexNormalize(rawContent);
+    }
+  } else {
+    fullText = regexNormalize(rawContent);
+  }
+
+  const sections = brief.sections.map(s => ({
+    id: s.id,
+    label: s.label,
+    text: '',
+  }));
+
+  return {
+    fullText,
+    sections,
+    characterCount: fullText.length,
+  };
+}
+
+// ─── Exports for testing ────────────────────────────────────────────────────
+
 export const _test = {
   expandCurrency,
   expandBasisPoints,

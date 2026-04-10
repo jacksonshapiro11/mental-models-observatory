@@ -18,17 +18,13 @@
 // Allow up to 5 minutes for audio generation
 export const maxDuration = 300;
 
-import fs from 'fs';
-import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import OpenAI from 'openai';
 import { getBriefLightByDate, getLatestBriefLight } from '@/lib/brief-light-parser';
-import { preprocessBriefForTTS } from '@/lib/audio/text-preprocessor';
+import { preprocessBriefLightForTTS } from '@/lib/audio/text-preprocessor';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
 import { writeLightEpisodeMetadata, readLightEpisodeMetadata } from '@/lib/audio/podcast-feed';
-
-const CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates');
 
 // ─── Auth ───────────────────────────────────────────────────────────────────
 
@@ -142,26 +138,24 @@ export async function POST(req: NextRequest) {
 
     console.log(`[audio:light] Generating Super Brief audio for ${brief.date}...`);
 
-    // 3. Load raw markdown
+    // 3. Prepare for TTS
     const openaiApiKey = process.env.OPENAI_API_KEY!;
-    const mdPath = path.join(CONTENT_DIR, `${brief.date}-light.md`);
-    const rawMarkdown = fs.existsSync(mdPath) ? fs.readFileSync(mdPath, 'utf-8') : undefined;
 
-    // 4. Preprocess for TTS — adapt BriefLight shape to what preprocessBriefForTTS expects
-    const briefForTTS = {
-      date: brief.date,
-      displayDate: brief.displayDate,
-      epigraph: brief.epigraph,
-      lede: '',  // Brief Light has no lede
-      sections: brief.sections.map(s => ({ id: s.id, label: s.label, content: s.content })),
-    };
-    const preprocessOpts: Parameters<typeof preprocessBriefForTTS>[1] = {
-      openaiApiKey,
-      skipLlmCleanup: false,
-    };
-    if (rawMarkdown) preprocessOpts.rawMarkdown = rawMarkdown;
-
-    const preprocessed = await preprocessBriefForTTS(briefForTTS, preprocessOpts);
+    // 4. Preprocess for TTS — use dedicated Brief Light preprocessor
+    //    (The main preprocessBriefForTTS looks for full-brief section markers
+    //     like "# ▸ THE SIX" which don't exist in the light format)
+    const preprocessed = await preprocessBriefLightForTTS(
+      {
+        date: brief.date,
+        displayDate: brief.displayDate,
+        epigraph: brief.epigraph,
+        sections: brief.sections.map(s => ({ id: s.id, label: s.label, content: s.content })),
+      },
+      {
+        openaiApiKey,
+        skipLlmCleanup: false,
+      }
+    );
 
     console.log(`[audio:light] Script: ${preprocessed.characterCount} characters, ${preprocessed.sections.length} sections`);
 
@@ -212,7 +206,7 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses, breathy emphasis, mo
     const estimatedDuration = Math.round(audio.length / (128000 / 8));
 
     // 8. Generate episode title + store metadata in Redis (light namespace)
-    const titleInput = brief.sections[0]?.content?.slice(0, 500) || (rawMarkdown ? rawMarkdown.slice(0, 500) : '');
+    const titleInput = brief.sections[0]?.content?.slice(0, 500) || '';
     const episodeTitle = await generateEpisodeTitle(titleInput, brief.displayDate, openaiApiKey);
     console.log(`[audio:light] Episode title: ${episodeTitle}`);
 
