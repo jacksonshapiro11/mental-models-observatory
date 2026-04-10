@@ -630,6 +630,7 @@ Return ONLY the spoken script for this section. No meta-commentary, no [brackete
  */
 const SECTION_INSTRUCTIONS: Record<string, string> = {
   'intro': 'Write a SHORT, energizing podcast opening. Say "Welcome to Markets, Meditations, and Mental Models" and the date naturally. Then say the episode title (the Daily Title from the brief — it appears as an H3 below the date). Then give the Intro Summary from the brief (the 2-3 italic sentences below the Daily Title). Keep it under 45 seconds when spoken. Direct and conversational, like greeting a friend. Do NOT include any quotes or epigraphs. The daily word of encouragement will be added separately. Do NOT use hype language. Do NOT introduce or preview The Dashboard at the end. A separate transition will handle that.',
+  'light-intro': 'Write a SHORT, punchy podcast opening for the Super Brief. Say "Welcome to the Super Brief by Cosmic Trex" and the date naturally. Then tease the top 1-2 stories in one sentence. Keep it under 20 seconds when spoken. Fast, direct, energized. No hype language. No quotes. Jump right in.',
   'The Dashboard': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the content. Structural regime read: what\'s the session\'s character, what regime is forming or breaking, and one structural observation per sub-section (Equities, Crypto, Commodities & Rates). The editorial product is the commentary. The website renders the data. Do NOT recite prices the listener can check themselves. Do NOT preview stories from The Six. Keep the full analytical depth. Simplify language, not thinking. Thread between sub-sections: if equities tell one story and bonds tell another, connect them.',
   'The Take': 'Do NOT introduce or announce this section by name. A separate transition handles that. Start with the topic: "We\'re looking at [topic/headline from the content]." Give the listener a one-sentence setup of what question or argument you\'re about to unpack. THEN build the argument naturally, like you\'re thinking through it in real time. This is the heart of the Markets section. Give it full treatment, don\'t compress. Explain any frameworks in plain language. If the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance. The "where this might be wrong" is just as important as the thesis.',
   'The Model': 'Do NOT introduce or announce this section. A separate transition handles that. Just start explaining the model in plain language with genuine intellectual energy. What is it, where does it come from, and how does it connect to what\'s happening today? Make it feel like you\'re sharing something genuinely cool, not lecturing. Keep the full depth of the application. This should make the listener feel like they just gained a new thinking tool.',
@@ -654,6 +655,12 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'The Six: The Signal': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the first signal. Tone shifts to forward-looking. These are things forming that most people are missing. Each one ends with a clear if/then. Make sure the if/then lands in plain language. Give each signal what it needs to land clearly. If signals connect, say so. Stay close to the written text. Do not over-simplify.',
   // Legacy sub-section — Inner Game was under The Six in pre-March-22 briefs
   'The Six: Inner Game': 'Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the personal, human moment. Let it breathe. No market references.',
+
+  // Brief Light (Super Brief) sections
+  'The Update': 'Cover every story. Each one gets its headline, the key numbers, why it matters, and the "so what." Thread stories together naturally when they connect. Do NOT skip any story. Stay close to the source text. The specificity is the value. Get to the insight fast. No throat-clearing.',
+  'Markets Minute': 'Quick, punchy market read. What\'s the character of today\'s session? Connect the dots between equities, crypto, commodities, and rates. If divergences tell a story, say so. Round prices naturally for speech. This should feel brisk but insightful.',
+  'Interesting Things': 'Lighter energy, genuine curiosity. These are fascinating things outside the main market stories. Science, health, breakthroughs. Give each one what it needs to land. If items connect, say so. Stay close to the written text.',
+  'The Meditation': 'Warm, present, reflective. Include the full quote and attribution. Then deliver the teaching and the practical action. Let it breathe. No rushing. This is the human moment. The listener should feel grounded after hearing it.',
 };
 
 /** Retry an async fn with exponential backoff on rate-limit (429) and server errors (5xx). */
@@ -1100,10 +1107,67 @@ export async function preprocessBriefForTTS(
 
 // ─── Brief Light preprocessor ──────────────────────────────────────────────
 
+// ─── Brief Light pronunciation dictionary ──────────────────────────────────
+// Words that TTS mispronounces or that confuse listeners in audio context.
+
+const LIGHT_PRONUNCIATIONS: Record<string, string> = {
+  'Morpho': 'MORE-fo',
+  'MORPHO': 'MORE-fo',
+  'Hormuz': 'hor-MOOZ',
+  'Ghalibaf': 'gah-lee-BAHF',
+  'Witkoff': 'WIT-koff',
+  'DeepSeek': 'Deep Seek',
+  'Ascend': 'Ascend',
+  'Giffen': 'GIFF-en',
+  'DeFi': 'Dee-Fi',
+  'CeFi': 'See-Fi',
+  'TVL': 'T.V.L.',
+  'AUM': 'assets under management',
+  'ReArm': 'Re-Arm',
+  'QT': 'quantitative tightening',
+  'bps': 'basis points',
+};
+
+function applyLightPronunciations(text: string): string {
+  for (const [word, pronunciation] of Object.entries(LIGHT_PRONUNCIATIONS)) {
+    // Only replace standalone words (not inside other words)
+    const pattern = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+    text = text.replace(pattern, pronunciation);
+  }
+  return text;
+}
+
+// ─── Brief Light section ordering & transitions ────────────────────────────
+
+/** Desired section order for audio. Markets context first, then stories, then reflection. */
+const LIGHT_SECTION_ORDER = [
+  'markets-minute',
+  'the-update',
+  'interesting-things',
+  'the-meditation',
+  'the-model',
+];
+
+const LIGHT_SECTION_TRANSITIONS: Record<string, string> = {
+  'markets-minute': '', // First section after intro, no transition needed
+  'the-update': 'Alright, here\'s what\'s driving the conversation today.',
+  'interesting-things': 'A couple things that caught our eye outside the main stories.',
+  'the-meditation': 'OK. Let\'s take a breath. Time for today\'s meditation.',
+  'the-model': 'And finally, today\'s mental model.',
+};
+
+const LIGHT_SECTION_INSTRUCTIONS: Record<string, string> = {
+  'The Update': 'Cover every story. Each one gets its headline, the key numbers, why it matters, and the "so what." Thread stories together naturally when they connect. Do NOT skip any story. Stay close to the source text. The specificity is the value. Get to the insight fast. No throat-clearing.',
+  'Markets Minute': 'Quick, punchy market read. What\'s the character of today\'s session? Connect the dots between equities, crypto, commodities, and rates. If divergences tell a story, say so. Round prices naturally for speech. This should feel brisk but insightful.',
+  'Interesting Things': 'Lighter energy, genuine curiosity. These are fascinating things outside the main market stories. Science, health, breakthroughs. Give each one what it needs to land. If items connect, say so. Stay close to the written text.',
+  'The Meditation': 'Warm, present, reflective. Include the full quote and attribution. Then deliver the teaching and the practical action. Let it breathe. No rushing. This is the human moment. The listener should feel grounded after hearing it.',
+  'The Model': 'Explain the model in plain language with intellectual energy. What is it, how does it work, and how does it connect to what\'s happening right now? Make it feel like sharing a new thinking tool, not lecturing. Stay close to the source.',
+};
+
 /**
- * Preprocess a Brief Light for TTS. Builds the script directly from
- * Brief Light sections (bypasses AUDIO_SECTIONS matching which only
- * works for the full brief's section markers).
+ * Preprocess a Brief Light for TTS. Dedicated pipeline that handles
+ * Brief Light section ordering, transitions, and instructions natively
+ * (does NOT reuse the full brief's rewriteAsScript which expects different markers).
  */
 export async function preprocessBriefLightForTTS(
   brief: {
@@ -1114,21 +1178,19 @@ export async function preprocessBriefLightForTTS(
   },
   options: PreprocessOptions = {}
 ): Promise<PreprocessedBrief> {
-  // Build raw content from all Brief Light sections
-  const sectionTexts = brief.sections.map(s => {
-    // Strip markdown formatting for audio
-    const cleaned = s.content
-      .replace(/\*\*(.+?)\*\*/g, '$1')
-      .replace(/\*(.+?)\*/g, '$1')
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-      .replace(/^#{1,4}\s+/gm, '')
-      .trim();
-    return `${s.label}:\n${cleaned}`;
-  });
+  // Reorder sections according to LIGHT_SECTION_ORDER
+  const ordered = LIGHT_SECTION_ORDER
+    .map(id => brief.sections.find(s => s.id === id))
+    .filter((s): s is { id: string; label: string; content: string } => !!s);
 
-  const rawContent = sectionTexts.join('\n\n');
-  console.log(`[audio:light] Raw content from ${brief.sections.length} sections: ${rawContent.length} characters`);
-  console.log(`[audio:light] Sections: ${brief.sections.map(s => s.label).join(', ')}`);
+  // Add any sections not in the order list at the end
+  for (const s of brief.sections) {
+    if (!LIGHT_SECTION_ORDER.includes(s.id)) {
+      ordered.push(s);
+    }
+  }
+
+  console.log(`[audio:light] Sections (ordered): ${ordered.map(s => s.label).join(' → ')}`);
 
   // Extract epigraph
   const epigraph = brief.epigraph
@@ -1139,32 +1201,67 @@ export async function preprocessBriefLightForTTS(
 
   if (!options.skipLlmCleanup && options.openaiApiKey) {
     try {
-      console.log('[audio:light] Rewriting as Super Brief podcast script (GPT-4o)...');
+      console.log('[audio:light] Rewriting as Super Brief podcast script (GPT-4o, per-section)...');
       const client = new OpenAI({ apiKey: options.openaiApiKey });
 
-      // Build a parsed structure that rewriteAsScript expects
-      const parsed: ParsedBriefForAudio = {
-        displayDate: brief.displayDate,
-        lede: brief.sections[0]?.content?.split('\n')[0] || '',
-        sections: brief.sections.map(s => ({
-          name: s.label,
-          content: s.content,
-          mode: 'full' as const,
-        })),
-      };
+      // Build intro
+      const introContent = `DATE: ${brief.displayDate}\nHEADLINE: ${ordered[0]?.content?.split('\n')[0] || ''}`;
+      const introScript = await rewriteSection(client, 'light-intro', introContent, {});
 
-      const script = await rewriteAsScript(parsed, options.openaiApiKey, epigraph);
-      fullText = regexNormalize(script);
+      // Rewrite each section individually with section-specific instructions
+      const sectionScripts: string[] = [];
+
+      // Prepend epigraph + intro
+      const cleanEpigraph = epigraph.replace(/\*+/g, '').replace(/[_~`]/g, '').trim();
+      if (cleanEpigraph) {
+        sectionScripts.push(`${cleanEpigraph}\n\n${introScript}`);
+      } else {
+        sectionScripts.push(introScript);
+      }
+
+      // Process each section
+      for (let i = 0; i < ordered.length; i++) {
+        const section = ordered[i]!;
+        const prevSection = i > 0 ? ordered[i - 1]?.label : 'intro';
+        const nextSection = i < ordered.length - 1 ? ordered[i + 1]?.label : undefined;
+
+        const context: SectionContext = {
+          prevSection,
+          nextSection,
+        };
+
+        console.log(`[audio:light] Section: ${section.label}...`);
+        const script = await rewriteSection(client, section.label, section.content, context);
+        console.log(`[audio:light]   → ${script.length} chars`);
+
+        // Prepend transition if one exists
+        const transition = LIGHT_SECTION_TRANSITIONS[section.id] || '';
+        if (transition) {
+          sectionScripts.push(`${transition}\n\n${script}`);
+        } else {
+          sectionScripts.push(script);
+        }
+      }
+
+      // Sign-off (shorter for super brief)
+      const signOff = 'That\'s today\'s Super Brief. Quick, sharp, and hopefully you\'re walking away with something useful. We\'ll be back tomorrow. Until then, stay curious.';
+      sectionScripts.push(signOff);
+
+      // Stitch with pause markers
+      const SECTION_PAUSE = '\n\n...\n\n';
+      fullText = regexNormalize(applyLightPronunciations(sectionScripts.join(SECTION_PAUSE)));
       console.log(`[audio:light] Script: ${fullText.length} characters`);
     } catch (err) {
       console.warn('[audio:light] Scriptwriter failed, falling back to regex-only:', err);
-      fullText = regexNormalize(rawContent);
+      const rawContent = ordered.map(s => `${s.label}:\n${s.content}`).join('\n\n');
+      fullText = regexNormalize(applyLightPronunciations(rawContent));
     }
   } else {
-    fullText = regexNormalize(rawContent);
+    const rawContent = ordered.map(s => `${s.label}:\n${s.content}`).join('\n\n');
+    fullText = regexNormalize(applyLightPronunciations(rawContent));
   }
 
-  const sections = brief.sections.map(s => ({
+  const sections = ordered.map(s => ({
     id: s.id,
     label: s.label,
     text: '',
