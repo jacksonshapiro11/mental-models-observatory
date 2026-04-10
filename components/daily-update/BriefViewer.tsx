@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import Link from 'next/link';
 import type { DailyBrief, BriefSection } from '@/lib/daily-update-parser';
 import LiveDashboard from '@/components/dashboard/LiveDashboard';
 import { MobileKPICards } from '@/components/dashboard/MobileKPICards';
@@ -1475,12 +1476,12 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
         <div className="bg-ct-dark px-4 py-8 border-t-[3px] border-ct-yellow text-center">
           <p className="text-[12px] font-mono text-ct-green-data font-medium mb-1">✓ Fully caught up</p>
           <p className="text-[10px] font-mono text-text-on-dark-muted mb-4">
-            Edition {brief.date} · <a href="/archive" className="text-ct-pink hover:text-ct-yellow">Archive</a>
+            Edition {brief.date} · <Link href="/archive" className="text-ct-pink hover:text-ct-yellow">Archive</Link>
           </p>
           <div className="flex gap-4 justify-center text-[10px] font-medium font-mono">
-            <a className="text-ct-yellow" href="/archive">Yesterday →</a>
-            <a className="text-ct-pink" href="/archive">Archive →</a>
-            <a className="text-ct-green-data" href="/models">Models →</a>
+            <Link className="text-ct-yellow" href="/archive">Yesterday →</Link>
+            <Link className="text-ct-pink" href="/archive">Archive →</Link>
+            <Link className="text-ct-green-data" href="/models">Models →</Link>
           </div>
         </div>
       </div>
