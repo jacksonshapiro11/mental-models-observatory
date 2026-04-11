@@ -159,7 +159,7 @@ export function SplitFlapSignals({
     }, 50);
 
     return () => clearInterval(ticker);
-  }, [resolveRatio >= 1]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resolveRatio >= 1]);
 
   // ─── On mount: resolve in ─────────────────────────────────────────────
 
@@ -168,7 +168,7 @@ export function SplitFlapSignals({
     setResolveRatio(0);
     runResolve();
     return () => { mounted.current = false; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [runResolve]);
 
   // ─── Rotation timer ───────────────────────────────────────────────────
 

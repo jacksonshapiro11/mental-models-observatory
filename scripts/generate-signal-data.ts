@@ -48,7 +48,7 @@ function extractSection(content: string, marker: string): string {
 
 function extractTitle(sectionContent: string): string {
   const match = sectionContent.match(/^###\s+(.+)$/m);
-  return match ? match[1].trim() : '';
+  return match && match[1] ? match[1].trim() : '';
 }
 
 function extractFirstParagraph(sectionContent: string, minLen = 40): string {
@@ -141,7 +141,7 @@ function main() {
       if (line.startsWith('- **') && currentDomain) {
         // Extract the bold lead as terminal line
         const boldMatch = line.match(/- \*\*(.+?)\*\*/);
-        const boldLead = boldMatch ? boldMatch[1].trim() : '';
+        const boldLead = boldMatch && boldMatch[1] ? boldMatch[1].trim() : '';
 
         // Terminal line: use bold lead, truncated
         let terminalLine = boldLead;
@@ -180,25 +180,25 @@ function main() {
   const takeContent = extractSection(content, '# ▸ THE TAKE');
   const takeTitle = extractTitle(takeContent);
   const takeSubtitleMatch = takeContent.match(/^####\s+(.+)$/m);
-  const takeSubtitle = takeSubtitleMatch ? takeSubtitleMatch[1].trim() : '';
+  const takeSubtitle = takeSubtitleMatch && takeSubtitleMatch[1] ? takeSubtitleMatch[1].trim() : '';
   const takePreview = extractFirstParagraph(takeContent);
 
   // Extract framework line if present
   let framework = '';
   const fwMatch = takeContent.match(/\*\*Framework:\*\*\s*(.+)/i)
     || takeContent.match(/\*\*[^*]*Framework[^*]*:\*\*\s*(.+)/i);
-  if (fwMatch) framework = fwMatch[1].trim();
+  if (fwMatch && fwMatch[1]) framework = fwMatch[1].trim();
 
   // ─── Extract Inner Game ───────────────────────────────────────────────
   const innerContent = extractSection(content, '# ▸ INNER GAME');
   let innerQuote = '';
   let innerAttribution = '';
   const quoteMatch = innerContent.match(/\*"([^*]+)"\*/);
-  if (quoteMatch) {
+  if (quoteMatch && quoteMatch[1]) {
     innerQuote = quoteMatch[1].trim();
     const afterQ = innerContent.slice(innerContent.indexOf(quoteMatch[0]) + quoteMatch[0].length);
     const attrMatch = afterQ.match(/[—–-]\s*(.+?)(?:\n|$)/);
-    if (attrMatch) innerAttribution = attrMatch[1].replace(/\*/g, '').trim();
+    if (attrMatch && attrMatch[1]) innerAttribution = attrMatch[1].replace(/\*/g, '').trim();
   }
   if (!innerQuote) {
     // Use first substantial paragraph
@@ -208,12 +208,13 @@ function main() {
 
   // Action: look for "Today's practice:" or last paragraph
   let innerAction = '';
-  const actionMatch = innerContent.match(/\*\*Today's practice:\*\*\s*(.+?)(?:\n\n|$)/s);
-  if (actionMatch) {
+  const actionMatch = innerContent.match(/\*\*Today's practice:\*\*\s*([^\n]+)/);
+  if (actionMatch && actionMatch[1]) {
     innerAction = actionMatch[1].trim();
   } else {
     const paras = innerContent.split('\n\n').filter(p => p.trim().length > 30);
-    if (paras.length > 1) innerAction = paras[paras.length - 1]?.trim() || '';
+    const lastPara = paras.length > 1 ? paras[paras.length - 1] : undefined;
+    if (lastPara) innerAction = lastPara.trim();
   }
 
   // ─── Extract The Model ────────────────────────────────────────────────
