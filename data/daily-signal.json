@@ -4,13 +4,13 @@
   "format": "full",
   "lifeNote": "The things that matter most rarely announce themselves. They just show up and wait to see if you're paying attention.",
   "headline": "The Bypass That Wasn't",
-  "tldr": "March CPI hit +0.9% MoM — the largest monthly surge since 2022, driven by a 10.9% energy shock — but the YoY headline of 3.3% landed below the feared 3.7%, and core held at 2.6%, a tenth below forecast. Rate cut odds surged to 85% for June. Then Iran hit Saudi Arabia's East-West pipeline, the very infrastructure designed to bypass the Hormuz chokepoint, while the Strait itself remains effectively closed. Both the primary route and the contingency are now compromised.",
+  "tldr": "March CPI hit +0.9% MoM — the largest monthly surge since 2022, driven by a 10.9% energy shock. The YoY headline printed 3.3%, in line with expectations, and core held at 2.6%. Rate cut odds surged to 85% for June. Then Iran hit Saudi Arabia's East-West pipeline, the very infrastructure designed to bypass the Hormuz chokepoint, while the Strait itself remains effectively closed. Both the primary route and the contingency are now compromised.",
   "signals": [
     {
-      "text": "March CPI came in at +0.9% MoM and 3.3% YoY — the feared monster print arrived, but the annual number landed below the consensus 3.7% expectation, triggering the rate cut repricing we opened with. The monthly surge is real and driven almost entirely by a 10.9% energy surge (gasoline +21.2%),…",
-      "color": "yellow",
+      "text": "March CPI came in at +0.9% MoM and 3.3% YoY — in line with expectations, but the monthly surge is the largest since 2022. The +0.9% monthly print is driven almost entirely by a 10.9% energy surge (gasoline +21.2%), which accounted for nearly three-quarters of the monthly increase. Strip out…",
+      "color": "green",
       "domain": "Markets & Macro",
-      "terminalLine": "March CPI came in at +0.9% MoM and 3.3% YoY — the feared monster..."
+      "terminalLine": "March CPI came in at +0.9% MoM and 3.3% YoY — in line with..."
     },
     {
       "text": "The semis-versus-software divergence hit a record this week, and the structural explanation has nothing to do with sentiment. SOXX at an all-time high (+108% in one year) while IGV sits at a 52-week low (-14%). Bilello documented the contrast: since Exxon replaced Salesforce in the Dow in August…",
@@ -57,8 +57,8 @@
   "model": {
     "name": "Language as Thought Constraint: The Sapir-Whorf Hypothesis and Why the Words You Use Determine What You Can See",
     "slug": "language-as-thought-constraint-the-sapir-whorf-hypothesis-and-why-the-words-you-use-determine-what-you-can-see",
-    "preview": "\"Cooler than feared.\" That was the universal framing of this morning's CPI print. The monthly number hit +0.9%, matching the consensus fear — the largest monthly surge since 2022. But the annual headline of 3.3% landed below the feared 3.7%, and that's the number the market chose to celebrate. Rate cut odds surged. Equities rallied. The language of the reaction shaped the market's behavior more than the data itself. But step back from the framing: annual inflation is 3.3%, its highest since May 2024, driven almost entirely by a 10.9% energy surge, and the monthly print was a genuine shock at +0.9%. Core at 2.6% actually came in below forecast. The market had two numbers to choose from — the monthly monster and the annual beat — and the language picked the one that fit the relief narrative. The frame \"cooler than feared\" erased the structural question entirely. The language determined the perception, not the other way around."
+    "preview": "March CPI printed exactly where expectations had it: +0.9% MoM and 3.3% YoY. The numbers matched. But the market's reaction didn't match the numbers — rate cut odds surged to 85% for June, equities rallied, and the framing across every terminal and headline was relief. The language of the reaction shaped the market's behavior more than the data itself. Step back from the framing: annual inflation is 3.3%, its highest since May 2024, driven almost entirely by a 10.9% energy surge, and the monthly print was the largest since 2022. Core at 2.6% came in a tenth below forecast, which is real. But the headline matched expectations exactly. The market chose to frame an in-line print as good news during a war-driven energy shock that worsens in April. The language determined the perception, not the other way around."
   },
-  "updatedAt": "2026-04-11T14:05:41.874Z",
+  "updatedAt": "2026-04-11T23:04:44.983Z",
   "briefUrl": "/daily-update"
 }
