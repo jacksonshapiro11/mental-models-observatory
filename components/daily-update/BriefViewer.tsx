@@ -1358,6 +1358,12 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
             Markets, Meditations &amp; Mental Models — Daily Brief
           </div>
 
+          {brief.dailyTitle && (
+            <h1 className="text-[22px] font-medium text-ct-dark leading-[1.2] mb-2 font-serif">
+              {brief.dailyTitle}
+            </h1>
+          )}
+
           {brief.epigraph && (
             <div className="font-serif italic text-[14px] text-[#333] leading-[1.5] mb-3">
               &ldquo;{brief.epigraph}&rdquo;

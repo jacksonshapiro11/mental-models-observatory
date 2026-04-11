@@ -271,20 +271,20 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
           <div className="font-mono text-[11px] font-medium text-[#555] uppercase tracking-[0.08em] mb-3">
             Markets, Meditations &amp; Mental Models — Super Brief
           </div>
+          {brief.dailyTitle && (
+            <h1 className="text-[22px] font-medium text-ct-dark leading-[1.2] mb-2 font-serif">
+              {brief.dailyTitle}
+            </h1>
+          )}
           {brief.epigraph && (
             <div className="font-serif italic text-[14px] text-[#333] leading-[1.5] mb-3">
               &ldquo;{brief.epigraph}&rdquo;
             </div>
           )}
-          {heroSignal && (
-            <>
-              <h1 className="text-[18px] font-medium text-ct-dark leading-[1.25] mb-2 font-serif">
-                {heroSignal.headline}
-              </h1>
-              <p className="text-[13px] text-[#444] leading-[1.55]">
-                {heroSignal.body.split('.').slice(0, 2).join('.')}.
-              </p>
-            </>
+          {brief.lede && (
+            <p className="text-[13px] text-[#444] leading-[1.55] italic mb-2">
+              <RichText text={brief.lede} />
+            </p>
           )}
 
           {/* Audio player */}
@@ -335,8 +335,8 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
               />
               <div>
                 <div className="text-[12px] text-[#ccc] leading-[1.45]">
-                  <strong className="text-white font-medium">{sig.headline}.</strong>{' '}
-                  {sig.body.split('.').slice(0, 2).join('.')}.
+                  <strong className="text-white font-medium"><RichText text={sig.headline} /></strong>{' '}
+                  <RichText text={sig.body} />
                 </div>
                 <div className="font-mono text-[9px] text-[#555] mt-0.5">{sig.domain}</div>
               </div>

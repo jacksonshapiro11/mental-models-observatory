@@ -1,58 +1,64 @@
 {
-  "date": "2026-04-10",
-  "edition": 44,
+  "date": "2026-04-11",
+  "edition": 45,
   "format": "full",
-  "lifeNote": "Your nervous system doesn't know the difference between a real threat and a notification. Treat it accordingly.",
-  "headline": "Ceasefire fractures as Israel kills 254 in Lebanon; Amazon proves $15B AI revenue at 260x growth",
-  "tldr": "Israel killed 254 people in Lebanon hours after the ceasefire was announced, oil slipped back below $100 as the Islamabad talks begin today, Amazon revealed a $15 billion AI revenue run rate while committing $200 billion in capex, and Trump told NATO they weren't there when he needed them. The ceasefire is fracturing before the ink dries.",
+  "lifeNote": "The things that matter most rarely announce themselves. They just show up and wait to see if you're paying attention.",
+  "headline": "The Bypass That Wasn't",
+  "tldr": "March CPI hit +0.9% MoM — the largest monthly surge since 2022, driven by a 10.9% energy shock — but the YoY headline of 3.3% landed below the feared 3.7%, and core held at 2.6%, a tenth below forecast. Rate cut odds surged to 85% for June. Then Iran hit Saudi Arabia's East-West pipeline, the very infrastructure designed to bypass the Hormuz chokepoint, while the Strait itself remains effectively closed. Both the primary route and the contingency are now compromised.",
   "signals": [
     {
-      "text": "Israel launched 'Operation Eternal Darkness' within hours of the ceasefire announcement, killing 254 people across Lebanon in approximately 100 airstrikes using 50 fighter jets and 160 munitions. The dispute over whether Lebanon was included in the ceasefire is now the central fracture line heading into today's Islamabad talks.",
-      "color": "red",
-      "domain": "Geopolitics",
-      "terminalLine": "Israel kills 254 in Lebanon post-ceasefire"
-    },
-    {
-      "text": "Amazon CEO Andy Jassy revealed AWS's AI revenue run rate has hit $15 billion, growing at 260 times the rate AWS experienced at a comparable stage, with customer commitments already covering a 'substantial portion' of the $200 billion in 2026 capex. This converts the AI capex debate from speculation to demonstrated arithmetic.",
-      "color": "green",
-      "domain": "AI & Tech",
-      "terminalLine": "AWS AI revenue hits $15B at 260x growth"
-    },
-    {
-      "text": "The Islamabad talks begin today with VP Vance, Witkoff, and Kushner leading the US side and Iran's Parliament Speaker Ghalibaf and FM Araghchi leading the Iranian side. The ceasefire expires April 22, giving both sides less than two weeks to reach terms, with Lebanon escalation threatening to collapse the entire framework.",
-      "color": "yellow",
-      "domain": "Geopolitics",
-      "terminalLine": "Islamabad talks begin today; ceasefire expires Apr 22"
-    },
-    {
-      "text": "Morgan Stanley launched MSBT, its spot Bitcoin ETF, at a 0.14% expense ratio that undercuts BlackRock's IBIT (0.25%) and every other US spot BTC fund, placing MSBT in the top 1% of all ETF launches by initial performance. This targets the traditional wealth management client who would never open a Coinbase account.",
-      "color": "green",
-      "domain": "Crypto",
-      "terminalLine": "Morgan Stanley Bitcoin ETF undercuts BlackRock at 0.14%"
-    },
-    {
-      "text": "FOMC minutes revealed the Fed is genuinely split, with a 'vast majority' noting inflation progress could be 'slower than previously expected' while some officials emphasized rate decisions as 'two-sided,' explicitly acknowledging both cut and hike possibilities. Oil bouncing back above $100 means the ceasefire hasn't resolved the Fed's bind.",
+      "text": "March CPI came in at +0.9% MoM and 3.3% YoY — the feared monster print arrived, but the annual number landed below the consensus 3.7% expectation, triggering the rate cut repricing we opened with. The monthly surge is real and driven almost entirely by a 10.9% energy surge (gasoline +21.2%),…",
       "color": "yellow",
       "domain": "Markets & Macro",
-      "terminalLine": "Fed split on rates; inflation slower, but oil complicates"
+      "terminalLine": "March CPI came in at +0.9% MoM and 3.3% YoY — the feared monster..."
+    },
+    {
+      "text": "The semis-versus-software divergence hit a record this week, and the structural explanation has nothing to do with sentiment. SOXX at an all-time high (+108% in one year) while IGV sits at a 52-week low (-14%). Bilello documented the contrast: since Exxon replaced Salesforce in the Dow in August…",
+      "color": "red",
+      "domain": "Markets & Macro",
+      "terminalLine": "The semis-versus-software divergence hit a record this week, and..."
+    },
+    {
+      "text": "After-tax corporate profit margins hit 16.2% in Q4 2025, near the highest level in modern history, which tells you the consumer stress data and the earnings data are describing two different economies. Eric Basmajian documented the peak. Tavi Costa's framing cuts through: \"Rates down. Dollar…",
+      "color": "green",
+      "domain": "Markets & Macro",
+      "terminalLine": "After-tax corporate profit margins hit 16.2% in Q4 2025, near the..."
+    },
+    {
+      "text": "Brookfield Wealth Solutions completed its £2.4 billion ($3.2 billion) acquisition of Just Group, a UK retirement services provider managing over 700,000 customers and £30 billion in pension savings. This is the third major alternative asset manager acquiring a retirement/insurance platform in…",
+      "color": "yellow",
+      "domain": "Companies & Crypto",
+      "terminalLine": "Brookfield Wealth Solutions completed its £2.4 billion ($3.2..."
+    },
+    {
+      "text": "Jamie Dimon's annual shareholder letter called blockchain, stablecoins, and tokenization \"direct competitors to traditional banking\" while the on-chain real-world-asset market crossed $26.4 billion (up 300% YoY), with private credit now at $14 billion in tokenized loans. This is the week the…",
+      "color": "yellow",
+      "domain": "Companies & Crypto",
+      "terminalLine": "Jamie Dimon's annual shareholder letter called blockchain,..."
+    },
+    {
+      "text": "The Solana Foundation launched STRIDE, a structured security program offering monitoring, evaluation, and threat protection to every protocol in the Solana ecosystem, alongside Firedancer's $1 million bug bounty audit competition running through May 9. Protocols with over $10 million in TVL that…",
+      "color": "green",
+      "domain": "Companies & Crypto",
+      "terminalLine": "The Solana Foundation launched STRIDE, a structured security..."
     }
   ],
   "take": {
-    "title": "The $200 Billion Validation",
-    "subtitle": "Why Amazon's Letter Changes the AI Capex Debate from Speculation to Arithmetic",
-    "preview": "For two years, the AI capex buildout has been a bet. Amazon just answered: $15 billion annualized AI revenue at AWS, growing at 260x the rate AWS experienced at a comparable stage, with customer commitments already covering a 'substantial portion' of the $200 billion in 2026 capex. This is not a projection. It's a disclosed run rate. Microsoft reports April 29. Google reports April 30. If either discloses an AI revenue run rate within the same order of magnitude as Amazon's $15 billion, the AI capex debate ends.",
-    "framework": "Revenue Validation Framework: when a dominant platform discloses revenue at scale that converts capex debate from 'is this real?' to 'who else can do this?', the entire upstream and downstream chain reprices."
+    "title": "The Day the Bypass Broke: Why Iran's Saudi Strikes Changed the Energy Map More Than the Ceasefire",
+    "subtitle": "",
+    "preview": "For three days, the market has been trading a ceasefire narrative. Oil dropped 17% on Day 1. Equities rallied 2.5%. The VIX fell below its pre-war level. The story was simple: war paused, risk off, back to normal. Then Iran hit the one piece of infrastructure that made \"back to normal\" physically possible.",
+    "framework": ""
   },
   "innerGame": {
-    "quote": "When we are no longer able to change a situation, we are challenged to change ourselves.",
-    "attribution": "Viktor Frankl, Man's Search for Meaning",
-    "action": "Write down, in one sentence, the reason you're doing what you're doing this week. Not the task list. The reason behind it. Then carry that sentence with you through one difficult moment today. Not as motivation. As a compass."
+    "quote": "It is the mark of an educated mind to be able to entertain a thought without accepting it.",
+    "attribution": "Aristotle, Nicomachean Ethics",
+    "action": "Identify one belief you hold about your work, your market thesis, your relationships, or yourself that you haven't questioned in at least a month. State it plainly. Then spend five minutes actively building the case against it. Not to destroy it. To test whether it's load-bearing or decorative. If the belief survives the challenge, it comes back stronger. If it doesn't survive, you just saved yourself from building on a cracked foundation."
   },
   "model": {
-    "name": "Giffen Goods",
-    "slug": "giffen-goods-demand-paradox",
-    "preview": "A Giffen good is a product where demand RISES as price increases, violating the basic law of supply and demand. The mechanism requires three conditions: (1) the good must be a staple that consumers can't easily substitute, (2) it must consume a large share of the consumer's budget, and (3) the price increase must be large enough that consumers can't afford the higher-quality alternative they'd normally choose. The Giffen mechanism explains why consumer spending data can look 'resilient' while the underlying household economics are deteriorating."
+    "name": "Language as Thought Constraint: The Sapir-Whorf Hypothesis and Why the Words You Use Determine What You Can See",
+    "slug": "language-as-thought-constraint-the-sapir-whorf-hypothesis-and-why-the-words-you-use-determine-what-you-can-see",
+    "preview": "\"Cooler than feared.\" That was the universal framing of this morning's CPI print. The monthly number hit +0.9%, matching the consensus fear — the largest monthly surge since 2022. But the annual headline of 3.3% landed below the feared 3.7%, and that's the number the market chose to celebrate. Rate cut odds surged. Equities rallied. The language of the reaction shaped the market's behavior more than the data itself. But step back from the framing: annual inflation is 3.3%, its highest since May 2024, driven almost entirely by a 10.9% energy surge, and the monthly print was a genuine shock at +0.9%. Core at 2.6% actually came in below forecast. The market had two numbers to choose from — the monthly monster and the annual beat — and the language picked the one that fit the relief narrative. The frame \"cooler than feared\" erased the structural question entirely. The language determined the perception, not the other way around."
   },
-  "updatedAt": "2026-04-10T06:30:00Z",
+  "updatedAt": "2026-04-11T14:05:41.874Z",
   "briefUrl": "/daily-update"
 }

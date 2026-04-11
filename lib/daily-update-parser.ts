@@ -6,6 +6,7 @@ import path from 'path';
 export interface DailyBrief {
   date: string;           // "2026-02-23"
   displayDate: string;    // "Monday, February 23, 2026"
+  dailyTitle: string;     // "The Bypass That Wasn't" — editorial headline
   epigraph: string;       // Italic line after title
   lede: string;           // Italic summary paragraph
   orientation: string;    // "New here?" guide paragraph (optional)
@@ -81,6 +82,7 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
   // Extract epigraph (first italic line after brief title)
   let epigraph = '';
   let displayDate = '';
+  let dailyTitle = '';
   let lede = '';
   let orientation = '';
   let headerEndIndex = 0;
@@ -97,6 +99,10 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
     if (line.startsWith('## ') && !displayDate) {
       displayDate = line.replace('## ', '');
       headerEndIndex = i + 1;
+    }
+    // Daily Title: ### The Bypass That Wasn't
+    if (line.startsWith('### ') && !dailyTitle && !line.includes('▸')) {
+      dailyTitle = line.replace('### ', '');
     }
     // Capture bold TLDR line (e.g. "**News TLDR:** ...")
     if (headerEndIndex > 0 && i > headerEndIndex && line.startsWith('**') && !lede) {
@@ -189,6 +195,7 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
   return {
     date: dateSlug,
     displayDate,
+    dailyTitle,
     epigraph,
     lede,
     orientation,

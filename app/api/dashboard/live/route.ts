@@ -21,7 +21,7 @@ import {
   type ManualFields,
   type CoinGeckoGlobal,
 } from '@/lib/upstash';
-import { fetchDXY, type DXYResult } from '@/lib/dxy';
+import { fetchDXY, fetchDXYFromYahoo, type DXYResult } from '@/lib/dxy';
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 
@@ -110,11 +110,23 @@ export async function GET() {
       ...(etfPrices.status === 'fulfilled' ? etfPrices.value : {}),
     };
 
+    // DXY: try Finnhub first, fall back to Yahoo Finance if Finnhub fails
+    let dxyData: DXYResult | null = dxyResult.status === 'fulfilled' ? dxyResult.value : null;
+    if (!dxyData) {
+      console.log('[live] DXY Finnhub failed, trying Yahoo Finance fallback...');
+      try {
+        dxyData = await fetchDXYFromYahoo(TIMEOUT);
+        if (dxyData) console.log(`[live] DXY Yahoo fallback succeeded: ${dxyData.value}`);
+      } catch (err) {
+        console.warn('[live] DXY Yahoo fallback also failed:', err);
+      }
+    }
+
     const response = buildResponse({
       cryptoPrices: cryptoPrices.status === 'fulfilled' ? cryptoPrices.value : {},
       equityPrices: mergedEquityPrices,
       commodityPrices: commodityPrices.status === 'fulfilled' ? commodityPrices.value : {},
-      dxy: dxyResult.status === 'fulfilled' ? dxyResult.value : null,
+      dxy: dxyData,
       coinGecko: coinGeckoGlobal.status === 'fulfilled' ? coinGeckoGlobal.value : null,
       snapshot: snapshotData,
       manual: manualData,

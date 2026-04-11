@@ -12,7 +12,7 @@
  * Protected by SNAPSHOT_SECRET header or query param.
  */
 
-import { fetchDXY } from '@/lib/dxy';
+import { fetchDXY, fetchDXYFromYahoo } from '@/lib/dxy';
 import {
   writeManualFields,
   writePriceHistory,
@@ -241,11 +241,22 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
     }
   }
 
-  // Step 6: Fetch metadata (DXY via Finnhub, Fear & Greed)
+  // Step 6: Fetch metadata (DXY via Finnhub → Yahoo fallback, Fear & Greed)
   const [dxyResult, fgResult] = await Promise.allSettled([
     FINNHUB_KEY ? fetchDXY(FINNHUB_KEY, TIMEOUT) : Promise.resolve(null),
     fetchFearGreed(),
   ]);
+
+  let dxyData = dxyResult.status === 'fulfilled' ? dxyResult.value : null;
+  if (!dxyData) {
+    console.log('[snapshot] DXY Finnhub failed, trying Yahoo Finance fallback...');
+    try {
+      dxyData = await fetchDXYFromYahoo(TIMEOUT);
+      if (dxyData) console.log(`[snapshot] DXY Yahoo fallback: ${dxyData.value}`);
+    } catch (err) {
+      console.warn('[snapshot] DXY Yahoo fallback failed:', err);
+    }
+  }
 
   return {
     generatedAt: now,
@@ -254,7 +265,7 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
     crypto,
     commodities,
     rates,
-    dxy: dxyResult.status === 'fulfilled' ? dxyResult.value : null,
+    dxy: dxyData,
     fearGreed: fgResult.status === 'fulfilled' ? fgResult.value : null,
     errors: [],
     _warnings: [..._warnings],

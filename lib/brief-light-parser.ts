@@ -15,6 +15,8 @@ const CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates');
 export interface BriefLight {
   date: string;           // "2026-04-06"
   displayDate: string;    // "Monday, April 6, 2026"
+  dailyTitle: string;     // "The Bypass That Wasn't" — editorial headline
+  lede: string;           // Intro summary (2-3 italic sentences shared with full brief)
   epigraph: string;       // Opening quote
   sections: BriefLightSection[];
   raw: string;            // Full markdown
@@ -41,15 +43,18 @@ const LIGHT_SECTION_MARKERS = [
 export function parseBriefLight(markdown: string, dateSlug: string): BriefLight {
   const lines = markdown.split('\n');
 
-  // Extract epigraph and display date from header
+  // Extract epigraph, display date, daily title, and lede from header
   let epigraph = '';
   let displayDate = '';
+  let dailyTitle = '';
+  let lede = '';
+  let foundTitle = false;
 
-  for (let i = 0; i < Math.min(lines.length, 15); i++) {
+  for (let i = 0; i < Math.min(lines.length, 25); i++) {
     const line = (lines[i] ?? '').trim();
 
-    // Italic epigraph line: *"quote"*
-    if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && !epigraph) {
+    // Italic epigraph line: *"quote"* — appears before the date
+    if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && !epigraph && !foundTitle) {
       epigraph = line.slice(1, -1);
       epigraph = epigraph.replace(/^[""\u201C\u201D]+/, '').replace(/[""\u201C\u201D]+$/, '').trim();
     }
@@ -58,6 +63,21 @@ export function parseBriefLight(markdown: string, dateSlug: string): BriefLight 
     if (line.startsWith('## ') && !displayDate && !line.includes('▸')) {
       displayDate = line.replace('## ', '');
     }
+
+    // Daily Title: ### The Bypass That Wasn't
+    if (line.startsWith('### ') && !dailyTitle && !line.includes('▸')) {
+      dailyTitle = line.replace('### ', '');
+      foundTitle = true;
+    }
+
+    // Lede: italic summary paragraph(s) after the Daily Title, before first section
+    // These are *italic text* lines that appear after ### title and before ## ▸
+    if (foundTitle && line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && !lede) {
+      lede = line.slice(1, -1);
+    }
+
+    // Stop at first section marker
+    if (line.includes('## ▸')) break;
   }
 
   // Parse sections
@@ -100,6 +120,8 @@ export function parseBriefLight(markdown: string, dateSlug: string): BriefLight 
   return {
     date: dateSlug,
     displayDate,
+    dailyTitle,
+    lede,
     epigraph,
     sections,
     raw: markdown,

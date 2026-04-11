@@ -1,10 +1,15 @@
 import { getAllDomains, getAllModels } from '@/lib/data';
 import { getSignalData } from '@/lib/signal-data';
 import { getRecentLifeNotes } from '@/lib/life-notes';
+import { getRecentArchiveTakes, getLatestInnerGame, getLatestDiscovery, getEditionCount } from '@/lib/landing-data';
 import Link from 'next/link';
 import { TerminalData } from '@/components/landing/TerminalData';
+import { SplitFlapSignals } from '@/components/landing/SplitFlapSignals';
 import { Footer } from '@/components/layout/Footer';
 import { SubscribeForm } from '@/components/subscribe/SubscribeForm';
+
+// Revalidate every 60 seconds — picks up new brief data without manual redeploy
+export const revalidate = 60;
 
 export default function HomePage() {
   const allDomains = getAllDomains();
@@ -14,30 +19,30 @@ export default function HomePage() {
   const signalData = getSignalData();
   const lifeNotes = getRecentLifeNotes(3);
 
-  const archiveTakes = [
-    {
-      title: "The Hormuz Chokepoint: When Geography Is Destiny",
-      date: "2026-04-08",
-      excerpt: "480 ships queued, insurance not repriced. Why markets miss geopolitical inflection points."
-    },
-    {
-      title: "Why Your Brain Loves Stories (And Markets Don't)",
-      date: "2026-04-07",
-      excerpt: "Narrative fallacy in trading. How narrative overrides data in real time."
-    },
-    {
-      title: "The Death of the 60/40 Portfolio",
-      date: "2026-04-06",
-      excerpt: "Correlation changes everything. Three years of data that broke a century of assumptions."
-    }
-  ];
+  // Dynamic content from actual published briefs
+  const archiveTakes = getRecentArchiveTakes(3);
+  const innerGame = signalData?.innerGame ?? getLatestInnerGame();
+  const discovery = signalData?.model ?? getLatestDiscovery();
+  const editionCount = getEditionCount();
 
-  const domains = [
-    { name: "Physics", count: 9, examples: "Entropy, Leverage, Compounding" },
-    { name: "Systems", count: 12, examples: "Feedback loops, Emergence, Cascades" },
-    { name: "Psychology", count: 8, examples: "Bias, Narrative, Time preference" },
-    { name: "Strategy", count: 11, examples: "Positioning, Game theory, Innovation" }
-  ];
+  // Build Data Layer cards from signal data (real signals, not hardcoded)
+  const dataLayerCards = (signalData?.signals ?? []).slice(0, 2).map(signal => ({
+    domain: signal.domain.toUpperCase(),
+    title: signal.terminalLine,
+    body: signal.text.length > 180
+      ? signal.text.slice(0, 177).replace(/\s+\S*$/, '') + '…'
+      : signal.text,
+  }));
+
+  // Domain breakdown from actual model library
+  const domainBreakdown = allDomains.slice(0, 4).map(domain => {
+    const models = allModels.filter(m => m.domain === domain.name);
+    return {
+      name: domain.name,
+      count: models.length,
+      examples: models.slice(0, 3).map(m => m.name).join(', '),
+    };
+  });
 
   return (
     <div className="min-h-screen bg-white">
@@ -63,20 +68,10 @@ export default function HomePage() {
                 {/* Market data - live from API */}
                 <TerminalData />
 
-                {/* Signal detected — from daily signal data */}
+                {/* Signal detected — rotating split-flap display */}
                 <div className="border-t border-ct-green-data pt-6 mt-6">
                   <div className="text-ct-green-data mb-2 font-mono text-sm">SIGNAL DETECTED</div>
-                  <div className="text-text-on-dark-muted space-y-1 text-xs font-mono">
-                    {(signalData?.signals ?? []).map((signal, i) => (
-                      <div key={i}>
-                        <span className={
-                          signal.color === 'green' ? 'text-ct-green-data' :
-                          signal.color === 'red' ? 'text-ct-pink' :
-                          'text-ct-yellow'
-                        }>&gt;</span> {signal.terminalLine}
-                      </div>
-                    ))}
-                  </div>
+                  <SplitFlapSignals signals={signalData?.signals ?? []} />
                   {signalData?.updatedAt && (
                     <div className="text-[#333] mt-3 text-[9px] font-mono">
                       signals: {new Date(signalData.updatedAt).toLocaleDateString()} · prices: live
@@ -99,7 +94,7 @@ export default function HomePage() {
               </h1>
 
               <p className="font-body text-base sm:text-lg text-ct-dark leading-relaxed mb-8 max-w-lg">
-                {signalData?.tldr || "Markets, meditations, and mental models. 8 minutes. 50+ expert sources. Cross-domain thinking that compounds."}
+                {signalData?.tldr || "Markets, meditations, and mental models. Delivered every morning, cross-domain thinking in 8 minutes."}
               </p>
 
               {/* CTA Buttons */}
@@ -142,7 +137,7 @@ export default function HomePage() {
             {lifeNotes.map((note, idx) => (
               <div key={idx} className="border-l-4 border-ct-yellow pl-6">
                 <p className="font-serif italic text-lg text-ct-text-primary leading-relaxed mb-4">
-                  "{note.text}"
+                  &ldquo;{note.text}&rdquo;
                 </p>
                 <div className="font-body text-sm text-text-secondary">
                   <div className="text-text-muted text-xs">{note.date}</div>
@@ -156,75 +151,86 @@ export default function HomePage() {
       {/* 3. CONTENT SPLIT (DATA LAYER / THINKING LAYER) */}
       <section className="bg-white">
         <div className="grid grid-cols-1 lg:grid-cols-2">
-          {/* Left: Data Layer */}
+          {/* Left: Data Layer — dynamic from signal data */}
           <div className="bg-ct-dark p-6 sm:p-8 lg:p-12">
             <div className="font-mono text-xs text-text-on-dark-muted uppercase tracking-wider mb-8 font-semibold">
               Data Layer
             </div>
 
             <div className="space-y-6">
-              {/* Markets Card */}
-              <div className="bg-surface-dark-card border border-ct-green-data/30 p-6 rounded-sm">
-                <div className="font-mono text-xs text-ct-green-data uppercase tracking-wider font-semibold mb-2">
-                  MARKETS
+              {dataLayerCards.map((card, idx) => (
+                <div key={idx} className="bg-surface-dark-card border border-ct-green-data/30 p-6 rounded-sm">
+                  <div className="font-mono text-xs text-ct-green-data uppercase tracking-wider font-semibold mb-2">
+                    {card.domain}
+                  </div>
+                  <h3 className="font-serif text-xl font-bold text-white mb-2">
+                    {card.title}
+                  </h3>
+                  <p className="font-body text-sm text-text-on-dark-muted leading-relaxed">
+                    {card.body}
+                  </p>
                 </div>
-                <h3 className="font-serif text-xl font-bold text-white mb-2">
-                  Hormuz Blockade Signals Geopolitical Shift
-                </h3>
-                <p className="font-body text-sm text-text-on-dark-muted leading-relaxed">
-                  480 ships queued, insurance unpriced. Oil markets haven't repriced tail risk. This is a systemic signal.
-                </p>
-              </div>
-
-              {/* Crypto Card */}
-              <div className="bg-surface-dark-card border border-ct-green-data/30 p-6 rounded-sm">
-                <div className="font-mono text-xs text-ct-green-data uppercase tracking-wider font-semibold mb-2">
-                  CRYPTO
-                </div>
-                <h3 className="font-serif text-xl font-bold text-white mb-2">
-                  Bitcoin Breaks $65K on Institutional Inflows
-                </h3>
-                <p className="font-body text-sm text-text-on-dark-muted leading-relaxed">
-                  Fund flows suggest conviction shift, not retail speculation. ETF volumes confirm institutional repositioning.
-                </p>
-              </div>
+              ))}
             </div>
           </div>
 
-          {/* Right: Thinking Layer */}
+          {/* Right: Thinking Layer — dynamic from latest brief */}
           <div className="bg-white p-6 sm:p-8 lg:p-12">
             <div className="font-mono text-xs text-ct-pink uppercase tracking-wider mb-8 font-semibold">
               Thinking Layer
             </div>
 
             <div className="space-y-8">
-              {/* Inner Game */}
-              <div>
-                <div className="inline-block bg-ct-pink text-white px-2 py-1 text-xs font-mono font-semibold mb-3 rounded-sm">
-                  INNER GAME
+              {/* Inner Game — from signal data or latest brief */}
+              {innerGame && (
+                <div>
+                  <div className="inline-block bg-ct-pink text-white px-2 py-1 text-xs font-mono font-semibold mb-3 rounded-sm">
+                    INNER GAME
+                  </div>
+                  {('quote' in innerGame && innerGame.quote) ? (
+                    <>
+                      <p className="font-serif text-lg italic text-ct-dark mb-2 leading-relaxed">
+                        &ldquo;{innerGame.quote}&rdquo;
+                      </p>
+                      {innerGame.attribution && (
+                        <p className="font-body text-sm text-text-muted mb-3">
+                          — {innerGame.attribution}
+                        </p>
+                      )}
+                      {innerGame.action && (
+                        <p className="font-body text-sm text-text-secondary leading-relaxed">
+                          {innerGame.action.length > 200
+                            ? innerGame.action.slice(0, 197).replace(/\s+\S*$/, '') + '…'
+                            : innerGame.action}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="font-body text-sm text-text-secondary leading-relaxed">
+                      {('action' in innerGame ? innerGame.action : '') || ''}
+                    </p>
+                  )}
                 </div>
-                <h3 className="font-serif text-xl font-bold text-ct-dark mb-2">
-                  Narrative Fallacy in Markets
-                </h3>
-                <p className="font-body text-sm text-text-secondary leading-relaxed">
-                  Your brain constructs coherent stories from random data. Markets punish narrative traders. This is why contrarian positioning compounds.
-                </p>
-              </div>
+              )}
 
               <div className="border-t border-ct-dark"></div>
 
-              {/* Discovery */}
-              <div>
-                <div className="inline-block bg-ct-dark text-white px-2 py-1 text-xs font-mono font-semibold mb-3 rounded-sm">
-                  DISCOVERY
+              {/* Discovery / Model — from signal data or latest brief */}
+              {discovery && (
+                <div>
+                  <div className="inline-block bg-ct-dark text-white px-2 py-1 text-xs font-mono font-semibold mb-3 rounded-sm">
+                    DISCOVERY
+                  </div>
+                  <h3 className="font-serif text-xl font-bold text-ct-dark mb-2">
+                    {discovery.name}
+                  </h3>
+                  <p className="font-body text-sm text-text-secondary leading-relaxed">
+                    {discovery.preview.length > 250
+                      ? discovery.preview.slice(0, 247).replace(/\s+\S*$/, '') + '…'
+                      : discovery.preview}
+                  </p>
                 </div>
-                <h3 className="font-serif text-xl font-bold text-ct-dark mb-2">
-                  Cross-Domain Pattern Recognition
-                </h3>
-                <p className="font-body text-sm text-text-secondary leading-relaxed">
-                  The same feedback loops that crash ecosystems crash markets. The same cultural inflection points that precede civil shifts precede market rotations.
-                </p>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -248,7 +254,7 @@ export default function HomePage() {
               <p className="font-body text-sm text-text-on-dark-muted leading-relaxed mb-6">
                 Markets. Meditations. Mental models. Delivered every morning, cross-domain thinking in 8 minutes.
               </p>
-              <div className="font-mono text-xs text-ct-green-data">50+ editions</div>
+              <div className="font-mono text-xs text-ct-green-data">{editionCount}+ editions</div>
             </div>
 
             {/* 02: The Observatory */}
@@ -272,9 +278,9 @@ export default function HomePage() {
                 EXPLORE
               </div>
               <p className="font-body text-sm text-text-on-dark-muted leading-relaxed mb-6">
-                50+ hand-curated sources. Books, papers, podcasts. The research behind every model.
+                1,000+ hand-curated sources. 150+ books, 175+ articles, 600+ podcasts. The research behind every model.
               </p>
-              <div className="font-mono text-xs text-ct-pink">100+ sources</div>
+              <div className="font-mono text-xs text-ct-pink">1,000+ sources</div>
             </div>
           </div>
         </div>
@@ -288,7 +294,7 @@ export default function HomePage() {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {domains.map((domain, idx) => (
+            {domainBreakdown.map((domain, idx) => (
               <div key={idx} className="bg-white border-2 border-ct-dark p-6 rounded-sm">
                 <h3 className="font-serif text-lg font-bold text-ct-dark mb-1">
                   {domain.name}
@@ -315,7 +321,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 6. ARCHIVE STRIP */}
+      {/* 6. ARCHIVE STRIP — from actual published briefs */}
       <section className="border-t-4 border-ct-dark bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="font-mono text-sm text-ct-pink font-semibold mb-12 tracking-wide">
@@ -359,7 +365,7 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center">
             <div>
               <div className="font-mono text-2xl sm:text-3xl font-bold text-ct-yellow mb-1">
-                50+
+                {editionCount}+
               </div>
               <div className="font-mono text-xs text-text-on-dark-muted">EDITIONS</div>
             </div>
@@ -371,7 +377,7 @@ export default function HomePage() {
             </div>
             <div>
               <div className="font-mono text-2xl sm:text-3xl font-bold text-ct-yellow mb-1">
-                50+
+                1,000+
               </div>
               <div className="font-mono text-xs text-text-on-dark-muted">SOURCES</div>
             </div>

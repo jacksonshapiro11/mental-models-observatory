@@ -218,12 +218,18 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy e
     // 7. Estimate duration (128kbps MP3 → bytes / (128000/8) = seconds)
     const estimatedDuration = Math.round(audio.length / (128000 / 8));
 
-    // 8. Generate episode title + store metadata in Redis
-    // Use lede, orientation, or raw markdown start as fallback for title generation
-    const openaiKey = process.env.OPENAI_API_KEY!;
-    const titleInput = brief.lede || brief.orientation || (rawMarkdown ? rawMarkdown.slice(0, 500) : '');
-    console.log(`[audio] Title input source: ${brief.lede ? 'lede' : brief.orientation ? 'orientation' : 'rawMarkdown'} (${titleInput.length} chars)`);
-    const episodeTitle = await generateEpisodeTitle(titleInput, brief.displayDate, openaiKey);
+    // 8. Use Daily Title from the brief for episode title (consistent across all formats)
+    // Fall back to AI-generated title only if Daily Title is missing
+    let episodeTitle: string;
+    if (brief.dailyTitle) {
+      episodeTitle = brief.dailyTitle;
+      console.log(`[audio] Using Daily Title: ${episodeTitle}`);
+    } else {
+      const openaiKey = process.env.OPENAI_API_KEY!;
+      const titleInput = brief.lede || brief.orientation || (rawMarkdown ? rawMarkdown.slice(0, 500) : '');
+      console.log(`[audio] No Daily Title found, generating from ${brief.lede ? 'lede' : 'rawMarkdown'} (${titleInput.length} chars)`);
+      episodeTitle = await generateEpisodeTitle(titleInput, brief.displayDate, openaiKey);
+    }
     console.log(`[audio] Episode title: ${episodeTitle}`);
 
     const episode = {

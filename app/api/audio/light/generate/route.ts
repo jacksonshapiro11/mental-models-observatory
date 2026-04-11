@@ -148,6 +148,7 @@ export async function POST(req: NextRequest) {
       {
         date: brief.date,
         displayDate: brief.displayDate,
+        dailyTitle: brief.dailyTitle,
         epigraph: brief.epigraph,
         sections: brief.sections.map(s => ({ id: s.id, label: s.label, content: s.content })),
       },
@@ -206,15 +207,19 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses, breathy emphasis, mo
     // 7. Estimate duration (128kbps MP3)
     const estimatedDuration = Math.round(audio.length / (128000 / 8));
 
-    // 8. Generate episode title + store metadata in Redis (light namespace)
-    const titleInput = brief.sections[0]?.content?.slice(0, 500) || '';
-    const episodeTitle = await generateEpisodeTitle(titleInput, brief.displayDate, openaiApiKey);
+    // 8. Use the Daily Title from the brief (consistent across brief, light, and audio)
+    const episodeTitle = brief.dailyTitle
+      ? `${brief.dailyTitle} — Super Brief`
+      : `Super Brief — ${brief.displayDate}`;
     console.log(`[audio:light] Episode title: ${episodeTitle}`);
 
     const episode = {
       date: brief.date,
       title: episodeTitle,
-      description: extractDescription(brief),
+      dailyTitle: brief.dailyTitle || '',
+      description: brief.dailyTitle
+        ? `${brief.dailyTitle}. ${extractDescription(brief)}`
+        : extractDescription(brief),
       audioUrl: blob.url,
       duration: estimatedDuration,
       fileSize: audio.length,

@@ -515,7 +515,7 @@ function extractCommentaryOnly(content: string): string {
 // Instead: rewrite each section individually, then stitch together.
 // Each section gets the full prompt context so voice/tone is consistent.
 
-const SECTION_SYSTEM_PROMPT = `You are a podcast scriptwriter for "Markets, Meditations, and Mental Models" by Cosmic Trex, a daily financial market intelligence podcast.
+const SECTION_SYSTEM_PROMPT = `You are a podcast scriptwriter for "Markets, Meditations, and Mental Models", a daily financial market intelligence podcast.
 
 YOUR JOB: Convert written market analysis into natural, conversational spoken form. Every KEY insight, thesis, and "so what" from the source must appear in your output. But be EFFICIENT. The target episode length is 30-35 minutes total across all sections. That means each section must be tight. Deliver the insight in the fewest words that preserve the substance. Cut redundant context, excessive setup, and throat-clearing. Get to the point, make it land, move on.
 
@@ -630,7 +630,7 @@ Return ONLY the spoken script for this section. No meta-commentary, no [brackete
  */
 const SECTION_INSTRUCTIONS: Record<string, string> = {
   'intro': 'Write a SHORT, energizing podcast opening. Say "Welcome to Markets, Meditations, and Mental Models" and the date naturally. Then say the episode title (the Daily Title from the brief — it appears as an H3 below the date). Then give the Intro Summary from the brief (the 2-3 italic sentences below the Daily Title). Keep it under 45 seconds when spoken. Direct and conversational, like greeting a friend. Do NOT include any quotes or epigraphs. The daily word of encouragement will be added separately. Do NOT use hype language. Do NOT introduce or preview The Dashboard at the end. A separate transition will handle that.',
-  'light-intro': 'Write a SHORT, punchy podcast opening for the Super Brief. Say "Welcome to the Super Brief by Cosmic Trex" and the date naturally. Then tease the top 1-2 stories in one sentence. Keep it under 20 seconds when spoken. Fast, direct, energized. No hype language. No quotes. Jump right in.',
+  'light-intro': 'Write a SHORT, punchy podcast opening for the Super Brief. Say "Welcome to the Super Brief" and the date naturally. Then say the Daily Title (the editorial headline for the day). Then tease the top 1-2 stories in one sentence. Keep it under 20 seconds when spoken. Fast, direct, energized. No hype language. No quotes. Jump right in.',
   'The Dashboard': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the content. Structural regime read: what\'s the session\'s character, what regime is forming or breaking, and one structural observation per sub-section (Equities, Crypto, Commodities & Rates). The editorial product is the commentary. The website renders the data. Do NOT recite prices the listener can check themselves. Do NOT preview stories from The Six. Keep the full analytical depth. Simplify language, not thinking. Thread between sub-sections: if equities tell one story and bonds tell another, connect them.',
   'The Take': 'Do NOT introduce or announce this section by name. A separate transition handles that. Start with the topic: "We\'re looking at [topic/headline from the content]." Give the listener a one-sentence setup of what question or argument you\'re about to unpack. THEN build the argument naturally, like you\'re thinking through it in real time. This is the heart of the Markets section. Give it full treatment, don\'t compress. Explain any frameworks in plain language. If the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance. The "where this might be wrong" is just as important as the thesis.',
   'The Model': 'Do NOT introduce or announce this section. A separate transition handles that. Just start explaining the model in plain language with genuine intellectual energy. What is it, where does it come from, and how does it connect to what\'s happening today? Make it feel like you\'re sharing something genuinely cool, not lecturing. Keep the full depth of the application. This should make the listener feel like they just gained a new thinking tool.',
@@ -1173,6 +1173,7 @@ export async function preprocessBriefLightForTTS(
   brief: {
     date: string;
     displayDate: string;
+    dailyTitle?: string;
     epigraph: string;
     sections: { id: string; label: string; content: string }[];
   },
@@ -1204,8 +1205,8 @@ export async function preprocessBriefLightForTTS(
       console.log('[audio:light] Rewriting as Super Brief podcast script (GPT-4o, per-section)...');
       const client = new OpenAI({ apiKey: options.openaiApiKey });
 
-      // Build intro
-      const introContent = `DATE: ${brief.displayDate}\nHEADLINE: ${ordered[0]?.content?.split('\n')[0] || ''}`;
+      // Build intro — include Daily Title so the opening uses the same headline as the brief
+      const introContent = `DATE: ${brief.displayDate}\nDAILY TITLE: ${brief.dailyTitle || ''}\nHEADLINE: ${ordered[0]?.content?.split('\n')[0] || ''}`;
       const introScript = await rewriteSection(client, 'light-intro', introContent, {});
 
       // Rewrite each section individually with section-specific instructions
