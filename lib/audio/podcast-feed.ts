@@ -41,11 +41,23 @@ function getRedis(): Redis {
   });
 }
 
+/** Parse an episode date → sortable numeric score. Strips suffixes like "-light",
+ *  falls back to current time if unparseable, never returns NaN (Upstash rejects null scores). */
+function scoreForEpisodeDate(date: string): number {
+  // Strip common suffixes (e.g. "2026-04-14-light" → "2026-04-14")
+  const isoCandidate = date.replace(/-(light|super|v\d+)$/i, '');
+  const t = new Date(isoCandidate).getTime();
+  if (Number.isFinite(t)) return t;
+  // Last resort: use now() so the write still succeeds instead of crashing the pipeline.
+  console.warn(`[podcast-feed] Unparseable episode date "${date}", using Date.now() as score`);
+  return Date.now();
+}
+
 /** Store episode metadata after audio generation */
 export async function writeEpisodeMetadata(episode: EpisodeMetadata): Promise<void> {
   const r = getRedis();
   const key = AUDIO_KEYS.EPISODE_PREFIX + episode.date;
-  const score = new Date(episode.date).getTime();
+  const score = scoreForEpisodeDate(episode.date);
 
   await Promise.all([
     r.set(key, JSON.stringify(episode)),
@@ -68,7 +80,7 @@ export async function readEpisodeMetadata(date: string): Promise<EpisodeMetadata
 export async function writeLightEpisodeMetadata(episode: EpisodeMetadata): Promise<void> {
   const r = getRedis();
   const key = AUDIO_KEYS.LIGHT_EPISODE_PREFIX + episode.date;
-  const score = new Date(episode.date).getTime();
+  const score = scoreForEpisodeDate(episode.date);
 
   await Promise.all([
     r.set(key, JSON.stringify(episode)),
