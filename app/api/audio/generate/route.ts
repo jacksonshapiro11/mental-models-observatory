@@ -128,6 +128,20 @@ export async function POST(req: NextRequest) {
   const dateParam = req.nextUrl.searchParams.get('date');
   const force = req.nextUrl.searchParams.get('force') === 'true';
 
+  // Guard: the full-brief endpoint must never receive a Light date.
+  // This caused a real incident (2026-04-14) where the full pipeline ran on a
+  // -light.md file, produced the wrong audio, and then crashed on Redis zadd
+  // because `new Date("2026-04-14-light").getTime()` is NaN.
+  if (dateParam && /-light$/i.test(dateParam)) {
+    return NextResponse.json(
+      {
+        error: 'Wrong endpoint',
+        detail: `Date "${dateParam}" is a Brief Light date. Call /api/audio/light/generate?date=${dateParam.replace(/-light$/i, '')} instead.`,
+      },
+      { status: 400 }
+    );
+  }
+
   try {
     // 1. Load the brief
     const brief = dateParam ? getBriefByDate(dateParam) : getLatestBrief();

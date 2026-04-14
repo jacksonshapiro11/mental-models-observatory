@@ -211,8 +211,13 @@ const CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates');
 export function getLatestBrief(): DailyBrief | null {
   if (!fs.existsSync(CONTENT_DIR)) return null;
 
+  // Exclude Brief Light files — they're handled by getLatestBriefLight.
+  // Without this filter, "2026-04-14-light.md" sorts after "2026-04-14.md"
+  // and getLatestBrief returns the light file, which then misroutes into
+  // the full-brief audio pipeline (see getAllBriefDates below, which already
+  // has this filter).
   const files = fs.readdirSync(CONTENT_DIR)
-    .filter(f => f.endsWith('.md'))
+    .filter(f => f.endsWith('.md') && !f.includes('-light'))
     .sort()
     .reverse();
 
