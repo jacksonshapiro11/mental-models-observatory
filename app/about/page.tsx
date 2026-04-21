@@ -1,5 +1,17 @@
 import Link from 'next/link';
 import { getAllModels, getAllDomains } from '@/lib/data';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'About Cosmic Trex',
+  description: 'Daily financial intelligence brief covering markets, geopolitics, AI, crypto, and macro — filtered through 100+ mental models across 40 knowledge domains. 50+ expert sources, tracked predictions, cross-disciplinary synthesis.',
+  alternates: { canonical: '/about' },
+  openGraph: {
+    title: 'About Cosmic Trex',
+    description: 'Daily financial intelligence brief covering markets, geopolitics, AI, crypto, and macro — filtered through mental models from physics, psychology, game theory, and systems thinking.',
+    url: '/about',
+  },
+};
 
 export default function AboutPage() {
   const modelCount = getAllModels().length;

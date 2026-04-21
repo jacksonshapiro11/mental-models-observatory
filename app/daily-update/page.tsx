@@ -5,8 +5,14 @@ import { Newspaper } from 'lucide-react';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Daily Update | Mental Models Observatory',
-  description: 'Daily market intelligence brief — macro, crypto, AI, geopolitics, and the mental models that connect them.',
+  title: "Today's Daily Brief",
+  description: 'Daily market intelligence brief — macro, crypto, AI, geopolitics, and the mental models that connect them. Every morning from Cosmic Trex.',
+  alternates: { canonical: '/daily-update' },
+  openGraph: {
+    title: "Today's Daily Brief — Cosmic Trex",
+    description: 'Daily market intelligence brief. Markets, geopolitics, AI, crypto, and macro — filtered through mental models.',
+    url: '/daily-update',
+  },
 };
 
 export default function DailyUpdatePage() {

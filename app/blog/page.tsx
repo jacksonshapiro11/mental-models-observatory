@@ -2,6 +2,18 @@ import fs from 'fs';
 import path from 'path';
 import Link from 'next/link';
 import { BookOpen, Calendar, Clock } from 'lucide-react';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Blog',
+  description: 'Insights, deep dives, and essays on mental models, markets, and cross-disciplinary thinking from Cosmic Trex.',
+  alternates: { canonical: '/blog' },
+  openGraph: {
+    title: 'Blog — Cosmic Trex',
+    description: 'Insights, deep dives, and essays on mental models, markets, and cross-disciplinary thinking.',
+    url: '/blog',
+  },
+};
 
 interface BlogPost {
   title: string;

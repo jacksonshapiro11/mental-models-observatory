@@ -2,6 +2,7 @@ import { getAllModels, getModelBySlug } from '@/lib/data';
 import ReadwiseHighlights from '@/components/content/ReadwiseHighlights';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 
 interface ModelPageProps {
   params: Promise<{
@@ -12,6 +13,28 @@ interface ModelPageProps {
 export function generateStaticParams() {
   const models = getAllModels();
   return models.map(m => ({ slug: m.slug }));
+}
+
+export async function generateMetadata({ params }: ModelPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const model = getAllModels().find(m => m.slug === slug);
+  if (!model) return { title: 'Model Not Found' };
+
+  const title = `${model.name} — ${model.domain}`;
+  const description = model.description
+    ? model.description.substring(0, 160)
+    : `${model.name}: a mental model from ${model.domain}. Part of the Cosmic Trex Observatory.`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/models/${slug}` },
+    openGraph: {
+      title: `${model.name} — Cosmic Trex Observatory`,
+      description,
+      url: `/models/${slug}`,
+    },
+  };
 }
 
 function getRelatedModels(currentSlug: string, currentDomain: string, currentTags: string[], allModels: any[]) {

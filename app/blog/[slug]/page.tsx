@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import path from 'path';
 import ReactMarkdown from 'react-markdown';
+import type { Metadata } from 'next';
+import { ArticleJsonLd } from '@/components/seo/JsonLd';
 
 interface BlogPost {
   title: string;
@@ -62,6 +64,43 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
+export async function generateStaticParams() {
+  const postsDirectory = path.join(process.cwd(), 'blog/posts');
+  if (!fs.existsSync(postsDirectory)) return [];
+  const slugs: { slug: string }[] = [];
+  for (const file of fs.readdirSync(postsDirectory)) {
+    if (!file.endsWith('.md')) continue;
+    const content = fs.readFileSync(path.join(postsDirectory, file), 'utf8');
+    const match = content.match(/slug:\s*(.+)/);
+    if (match?.[1]) slugs.push({ slug: match[1].trim() });
+  }
+  return slugs;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const post = getBlogPost(slug);
+  if (!post) return { title: 'Post Not Found' };
+
+  return {
+    title: post.title,
+    description: post.excerpt || `${post.title} — Cosmic Trex Blog`,
+    alternates: { canonical: `/blog/${slug}` },
+    openGraph: {
+      title: `${post.title} — Cosmic Trex`,
+      description: post.excerpt || `${post.title} — Cosmic Trex Blog`,
+      type: 'article',
+      publishedTime: post.date,
+      url: `/blog/${slug}`,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description: post.excerpt || `${post.title} — Cosmic Trex Blog`,
+    },
+  };
+}
+
 export default async function BlogPostPage({ params }: PageProps) {
   const { slug } = await params;
   const post = getBlogPost(slug);
@@ -71,6 +110,13 @@ export default async function BlogPostPage({ params }: PageProps) {
   }
 
   return (
+    <>
+    <ArticleJsonLd
+      title={post.title}
+      description={post.excerpt || `${post.title} — Cosmic Trex Blog`}
+      datePublished={post.date}
+      url={`/blog/${slug}`}
+    />
     <div className="min-h-screen bg-white dark:bg-[var(--espresso-bg-dark)]">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12">
         {/* Back link */}
@@ -116,6 +162,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         </article>
       </div>
     </div>
+    </>
   );
 }
 

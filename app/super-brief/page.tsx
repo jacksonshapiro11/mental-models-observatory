@@ -5,8 +5,14 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Super Brief | Mental Models Observatory',
-  description: 'Your compressed daily intelligence brief — markets, meditations, and mental models in 5 minutes.',
+  title: "Today's Super Brief",
+  description: 'The compressed daily intelligence brief — essential market signals, one mental model, and cross-domain insights in 3 minutes. From Cosmic Trex.',
+  alternates: { canonical: '/super-brief' },
+  openGraph: {
+    title: "Today's Super Brief — Cosmic Trex",
+    description: 'The compressed daily intelligence brief. Essential market signals in 3 minutes.',
+    url: '/super-brief',
+  },
 };
 
 export default function SuperBriefPage() {

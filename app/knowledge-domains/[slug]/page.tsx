@@ -1,12 +1,35 @@
-import { getDomainBySlug, getModelsByDomain } from '@/lib/data';
+import { getDomainBySlug, getModelsByDomain, getAllDomains } from '@/lib/data';
 import { ArrowLeft, ArrowRight, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 
 interface DomainPageProps {
   params: Promise<{
     slug: string;
   }>;
+}
+
+export function generateStaticParams() {
+  const domains = getAllDomains();
+  return domains.map(d => ({ slug: d.slug }));
+}
+
+export async function generateMetadata({ params }: DomainPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const domain = getDomainBySlug(slug);
+  if (!domain) return { title: 'Domain Not Found' };
+
+  const models = getModelsByDomain(slug);
+  const title = `${domain.name} — Knowledge Domain`;
+  const description = `Explore ${models.length} mental models in ${domain.name}. Part of the Cosmic Trex Observatory.`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/knowledge-domains/${slug}` },
+    openGraph: { title: `${domain.name} — Cosmic Trex Observatory`, description, url: `/knowledge-domains/${slug}` },
+  };
 }
 
 export default async function DomainPage({ params }: DomainPageProps) {
