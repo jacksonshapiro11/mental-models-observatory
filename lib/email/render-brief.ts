@@ -195,7 +195,7 @@ function markdownToHtml(md: string): string {
       }
 
       // Fully-bold line = section-internal headline (the UPDATE theses)
-      const boldHeadlineMatch = block.match(/^\*\*(.+)\*\*$/s);
+      const boldHeadlineMatch = block.match(/^\*\*([\s\S]+)\*\*$/);
       if (boldHeadlineMatch && boldHeadlineMatch[1]) {
         return `<p style="margin:0 0 12px 0;font-family:Georgia,serif;font-size:17px;line-height:1.35;font-weight:700;color:#1a1a1a;">${escapeInline(boldHeadlineMatch[1])}</p>`;
       }
@@ -207,7 +207,7 @@ function markdownToHtml(md: string): string {
       }
 
       // Fully-italic paragraph (markets minute, meditation frame)
-      const italicMatch = block.match(/^\*([^*].+[^*])\*$/s);
+      const italicMatch = block.match(/^\*([^*][\s\S]+[^*])\*$/);
       if (italicMatch && italicMatch[1]) {
         return `<p style="margin:0 0 20px 0;font-family:Georgia,serif;font-style:italic;font-size:15px;line-height:1.7;color:#3d3629;">${escapeInline(italicMatch[1])}</p>`;
       }
