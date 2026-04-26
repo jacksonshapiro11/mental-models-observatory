@@ -164,7 +164,7 @@ function truncateToTweet(text: string, maxLen: number = MAX_TWEET_LENGTH): strin
 
 function compressForTweet(body: string, maxSentences: number = 3): string {
   // Strip markdown formatting
-  let clean = body
+  const clean = body
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')  // links
     .replace(/\*\*([^*]+)\*\*/g, '$1')          // bold
     .replace(/\*([^*]+)\*/g, '$1')              // italic
