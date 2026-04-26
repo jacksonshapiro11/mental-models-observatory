@@ -24,7 +24,7 @@ export function renderBriefEmail(brief: BriefLight): RenderedEmail {
   const previewText = truncate(brief.lede || brief.epigraph, 140);
   const webUrl = `${SITE_URL}/super-brief`;
   const fullBriefUrl = `${SITE_URL}/daily-update`;
-  const audioUrl = `${SITE_URL}/super-brief`;
+  const audioUrl = 'https://podcasts.apple.com/us/podcast/markets-meditations-and-mental-models/id1885352035';
 
   const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
