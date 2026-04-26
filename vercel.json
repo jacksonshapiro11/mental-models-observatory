@@ -1,16 +1,20 @@
 {
   "crons": [
     {
-      "path": "/api/dashboard/snapshot",
-      "schedule": "0 11 * * *"
-    },
-    {
       "path": "/api/audio/generate",
       "schedule": "30 9 * * *"
     },
     {
       "path": "/api/audio/light/generate",
       "schedule": "45 9 * * *"
+    },
+    {
+      "path": "/api/distribute",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/dashboard/snapshot",
+      "schedule": "15 11 * * *"
     }
   ]
 }

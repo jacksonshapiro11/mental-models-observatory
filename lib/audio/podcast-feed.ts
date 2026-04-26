@@ -121,6 +121,27 @@ export async function getAllEpisodes(limit = 50): Promise<EpisodeMetadata[]> {
     .map(raw => (typeof raw === 'string' ? JSON.parse(raw) : raw) as EpisodeMetadata);
 }
 
+/** Get all Brief Light episode dates, most recent first */
+export async function getAllLightEpisodeDates(limit = 100): Promise<string[]> {
+  const r = getRedis();
+  const dates = await r.zrange(AUDIO_KEYS.LIGHT_EPISODE_INDEX, 0, limit - 1, { rev: true });
+  return dates as string[];
+}
+
+/** Get all Brief Light episodes with full metadata, most recent first */
+export async function getAllLightEpisodes(limit = 50): Promise<EpisodeMetadata[]> {
+  const dates = await getAllLightEpisodeDates(limit);
+  if (dates.length === 0) return [];
+
+  const r = getRedis();
+  const keys = dates.map(d => AUDIO_KEYS.LIGHT_EPISODE_PREFIX + d);
+  const results = await Promise.all(keys.map(k => r.get(k)));
+
+  return results
+    .filter((raw): raw is string | EpisodeMetadata => raw !== null)
+    .map(raw => (typeof raw === 'string' ? JSON.parse(raw) : raw) as EpisodeMetadata);
+}
+
 // ─── RSS XML generation ─────────────────────────────────────────────────────
 
 function escapeXml(str: string): string {
@@ -164,9 +185,9 @@ interface FeedConfig {
 const DEFAULT_CONFIG: FeedConfig = {
   title: 'Markets, Meditations, and Mental Models',
   description: 'Your daily guide to an increasingly complex world. Markets, crypto, AI, geopolitics, and the mental models that connect them — from Cosmic Trex, where ancient wisdom meets the cutting edge.',
-  siteUrl: 'https://www.cosmictrex.com',
-  feedUrl: 'https://www.cosmictrex.com/api/podcast/feed',
-  coverImageUrl: 'https://www.cosmictrex.com/podcast-cover.jpg',
+  siteUrl: 'https://cosmictrex.com',
+  feedUrl: 'https://cosmictrex.com/api/podcast/feed',
+  coverImageUrl: 'https://cosmictrex.com/podcast-cover.jpg',
   author: 'Cosmic Trex',
   email: 'cosmictrex11@gmail.com',
   language: 'en-us',
@@ -175,18 +196,20 @@ const DEFAULT_CONFIG: FeedConfig = {
   explicit: false,
 };
 
-function generateEpisodeXml(episode: EpisodeMetadata, coverImageUrl: string): string {
+function generateEpisodeXml(episode: EpisodeMetadata, coverImageUrl: string, variant: 'brief' | 'super-brief' = 'brief'): string {
   const pubDate = toRfc2822Date(episode.date);
   const duration = formatDuration(episode.duration);
+  const guidPrefix = variant === 'super-brief' ? 'super-brief' : 'daily-brief';
+  const titlePrefix = variant === 'super-brief' ? 'Super Brief' : 'Brief';
+  const displayTitle = `${titlePrefix}: ${episode.title.replace(/^(Daily Brief|Super Brief|Brief Light)\s*[—–-]\s*/i, '')}`;
 
   return `    <item>
-      <title>${escapeXml(episode.title)}</title>
+      <title>${escapeXml(displayTitle)}</title>
       <description>${escapeXml(episode.description)}</description>
       <enclosure url="${escapeXml(episode.audioUrl)}" length="${episode.fileSize}" type="audio/mpeg" />
-      <guid isPermaLink="false">daily-brief-${episode.date}</guid>
+      <guid isPermaLink="false">${guidPrefix}-${episode.date}</guid>
       <pubDate>${pubDate}</pubDate>
       <itunes:duration>${duration}</itunes:duration>
-      <itunes:episode>${parseInt(episode.date.replace(/-/g, ''), 10)}</itunes:episode>
       <itunes:image href="${escapeXml(coverImageUrl)}" />
       <itunes:explicit>no</itunes:explicit>
     </item>`;
@@ -197,13 +220,31 @@ function generateEpisodeXml(episode: EpisodeMetadata, coverImageUrl: string): st
  */
 export async function generatePodcastFeed(config?: Partial<FeedConfig>): Promise<string> {
   const cfg = { ...DEFAULT_CONFIG, ...config };
-  const episodes = await getAllEpisodes(100);
 
-  const lastBuildDate = episodes.length > 0
-    ? toRfc2822Date(episodes[0]!.date)
+  // Fetch both full and super brief episodes
+  const [fullEpisodes, lightEpisodes] = await Promise.all([
+    getAllEpisodes(100),
+    getAllLightEpisodes(100),
+  ]);
+
+  // Tag each with variant and merge
+  const tagged: Array<{ ep: EpisodeMetadata; variant: 'brief' | 'super-brief' }> = [
+    ...fullEpisodes.map(ep => ({ ep, variant: 'brief' as const })),
+    ...lightEpisodes.map(ep => ({ ep, variant: 'super-brief' as const })),
+  ];
+
+  // Sort by date descending, briefs before super briefs on the same day
+  tagged.sort((a, b) => {
+    const dateCompare = b.ep.date.localeCompare(a.ep.date);
+    if (dateCompare !== 0) return dateCompare;
+    return a.variant === 'brief' ? -1 : 1;
+  });
+
+  const lastBuildDate = tagged.length > 0
+    ? toRfc2822Date(tagged[0]!.ep.date)
     : new Date().toUTCString();
 
-  const episodeXml = episodes.map(ep => generateEpisodeXml(ep, cfg.coverImageUrl)).join('\n');
+  const episodeXml = tagged.map(({ ep, variant }) => generateEpisodeXml(ep, cfg.coverImageUrl, variant)).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"

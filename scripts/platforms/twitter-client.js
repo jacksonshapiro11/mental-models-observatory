@@ -34,14 +34,10 @@ class TwitterClient {
         accessToken: config.accessToken,
         accessTokenSecret: config.accessTokenSecret
       });
-      
-      // Verify we have a read-write client (OAuth 1.0a should provide this)
-      if (!this.client.readWrite) {
-        throw new Error('Failed to initialize read-write client. Check OAuth credentials.');
-      }
-      
+
       this.isOAuth2 = false;
-      this.rwClient = this.client.readWrite;
+      // Use the client directly — .readWrite can lose auth context in some versions
+      this.rwClient = this.client;
     } else {
       throw new Error('No valid OAuth credentials provided');
     }

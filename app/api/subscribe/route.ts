@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
-import { createSubscription } from '@/lib/email/beehiiv-client';
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 
@@ -161,43 +160,8 @@ export async function POST(request: NextRequest) {
     });
     await pipeline.exec();
 
-    // Dual-write to beehiiv. Redis is source of truth; beehiiv is delivery.
-    //
-    // Pattern: mark for backfill FIRST, then attempt sync. If the sync succeeds,
-    // remove the backfill marker. If anything goes wrong (API down, env misconfig,
-    // serverless instance frozen before Promise settles), the marker stays and the
-    // nightly backfill cron retries it. This makes the whole pipeline self-healing.
-    const hasBeehiivCreds = Boolean(
-      process.env.BEEHIIV_API_KEY && process.env.BEEHIIV_PUBLICATION_ID
-    );
-
-    if (!hasBeehiivCreds) {
-      // Env vars missing — log loudly so this shows up in Vercel logs, and park
-      // in backfill so we don't lose the signup.
-      console.error(
-        '[subscribe] BEEHIIV_API_KEY or BEEHIIV_PUBLICATION_ID not set — parking %s for backfill',
-        sanitized
-      );
-      await r.sadd('subscribers:beehiiv_backfill', sanitized);
-    } else {
-      // Mark first so a dropped connection/cold-cut still leaves a breadcrumb.
-      await r.sadd('subscribers:beehiiv_backfill', sanitized);
-      try {
-        await createSubscription({
-          email: sanitized,
-          reactivate_existing: true,
-          send_welcome_email: true,
-          utm_source: source,
-          utm_medium: 'website_signup',
-        });
-        // Success — remove from backfill
-        await r.srem('subscribers:beehiiv_backfill', sanitized);
-        console.log('[subscribe] beehiiv sync ok:', sanitized);
-      } catch (err) {
-        console.error('[subscribe] beehiiv sync failed:', err);
-        // Leave in backfill set — the cron will retry.
-      }
-    }
+    // Redis is the sole subscriber store. Emails sent via Resend at publish time.
+    console.log('[subscribe] new subscriber:', sanitized, 'source:', source);
 
     return NextResponse.json({ success: true, message: "You're in." });
   } catch (err) {
