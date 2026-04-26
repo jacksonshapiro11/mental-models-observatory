@@ -22,7 +22,7 @@ import { Redis } from '@upstash/redis';
 import { TwitterApi } from 'twitter-api-v2';
 import { getBriefLightByDate, getLatestBriefLight } from '@/lib/brief-light-parser';
 import { renderBriefEmail } from '@/lib/email/render-brief';
-import { sendEmail, sendBatch } from '@/lib/email/resend-client';
+import { sendBatch } from '@/lib/email/resend-client';
 import { generateThreadFromDate, generateThreadForLatest } from '@/lib/social/thread-generator';
 
 // ─── Auth (matches other cron endpoints) ───────────────────────────────────
@@ -130,12 +130,18 @@ async function distributeX(dateSlug: string, dryRun: boolean): Promise<{ success
   for (const tweet of thread.tweets) {
     try {
       const text = tweet.text.substring(0, 280);
-      const response = previousTweetId
-        ? await client.v2.reply(text, previousTweetId)
-        : await client.v2.tweet(text);
+      let tweetId: string;
 
-      previousTweetId = response.data.id;
-      postedIds.push(response.data.id);
+      if (previousTweetId) {
+        const reply = await client.v2.reply(text, previousTweetId);
+        tweetId = reply.data.id;
+      } else {
+        const post = await client.v2.tweet(text);
+        tweetId = post.data.id;
+      }
+
+      previousTweetId = tweetId;
+      postedIds.push(tweetId);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return {
@@ -146,7 +152,7 @@ async function distributeX(dateSlug: string, dryRun: boolean): Promise<{ success
 
     // Wait between tweets to avoid rate limits
     if (tweet !== thread.tweets[thread.tweets.length - 1]) {
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise<void>((resolve) => setTimeout(resolve, 3000));
     }
   }
 
