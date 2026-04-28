@@ -232,6 +232,22 @@ function expandPercentages(text: string): string {
     /([+-])(\d+)\s*bp\b/gi,
     (_, sign, num) => `${sign === '+' ? 'plus ' : 'minus '}${num} basis points`
   );
+  // Expand numeric ranges BEFORE signed percentages so "1.2-1.5%" doesn't get
+  // mis-parsed as "1.2 down 1.5%". Handles dash, en-dash, and em-dash separators.
+  result = result.replace(
+    /(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)%/g,
+    (_, low, high) => `${low} to ${high} percent`
+  );
+  // Also handle ranges where both sides have % signs: "1.2%-1.5%"
+  result = result.replace(
+    /(\d+(?:\.\d+)?)%\s*[-–—]\s*(\d+(?:\.\d+)?)%/g,
+    (_, low, high) => `${low} to ${high} percent`
+  );
+  // Expand basis point ranges: "25-50bp" → "25 to 50 basis points"
+  result = result.replace(
+    /(\d+)\s*[-–—]\s*(\d+)\s*bp\b/gi,
+    (_, low, high) => `${low} to ${high} basis points`
+  );
   result = result.replace(
     /([+-])(\d+(?:\.\d+)?)%/g,
     (_, sign, num) => `${sign === '+' ? 'up ' : 'down '}${num} percent`
@@ -300,13 +316,23 @@ function cleanFormatting(text: string): string {
  *  GPT-4o expanding a ticker AND the regex layer expanding it again. */
 function deduplicateExpansions(text: string): string {
   // Catch patterns like "the X, the X" or "the X the X" (with optional comma/dash between)
-  for (const name of Object.values(TICKER_NAMES)) {
-    if (!name.startsWith('the ')) continue;
+  // Apply to BOTH ticker names AND financial abbreviations — GPT-4o may expand
+  // an abbreviation AND the regex layer expands it again, causing doubling.
+  const allExpansions = [
+    ...Object.values(TICKER_NAMES),
+    ...Object.values(FINANCIAL_ABBREVIATIONS),
+  ];
+  const seen = new Set<string>();
+  for (const name of allExpansions) {
+    // Deduplicate the expansion list itself (some values may overlap)
+    const lower = name.toLowerCase();
+    if (seen.has(lower)) continue;
+    seen.add(lower);
     // Escape for regex
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    // Match "the X[,;—] the X" or "the X the X" (adjacent)
-    const doublePattern = new RegExp(`${escaped}[,;\\s—-]*${escaped}`, 'gi');
-    text = text.replace(doublePattern, name);
+    // Match "X[,;— ] X" or "X X" (adjacent) — works whether or not name starts with "the"
+    const doublePattern = new RegExp(`(${escaped})[,;\\s—-]+(${escaped})`, 'gi');
+    text = text.replace(doublePattern, '$1');
   }
   return text;
 }
@@ -588,6 +614,7 @@ NUMBERS (CRITICAL FOR NATURAL SPEECH):
 - Index levels: Round to nearest hundred or use natural speech. Say "S&P near fifty-eight hundred" NOT "5,782.76". Say "Nasdaq around twenty thousand."
 - Yields & rates: Keep the precision. These move in basis points. Say "four point one four percent on the ten-year" or "the ten-year at four-fourteen." Never round a yield to a whole number.
 - Percentage changes: Round to halves. Say "up about a point and a half" NOT "up 1.47%". Say "down roughly two percent" NOT "down 1.93%". Say "up about five percent" NOT "up 4.9%".
+- Ranges: ALWAYS say "to" for ranges. Say "one point two to one point five percent" NOT "one point two one point five percent." The dash in "1.2-1.5%" is spoken as "to." Never read a range dash as "down" or skip it entirely. Same for basis point ranges: "twenty-five to fifty basis points."
 - Crypto: Round to nearest thousand for BTC ("Bitcoin at seventy-two thousand"), nearest hundred for ETH. Only precise when a key level matters.
 - Dollar amounts: "about one point two billion" NOT "1.2 billion dollars exactly." Use "trillion," "billion," "million."
 - Basis points: Say "twenty-five basis points" NOT "25 bps." For context, "a quarter point" works too.
@@ -637,7 +664,7 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'Inner Game': 'Do NOT introduce or announce this section. A separate transition handles that. Just start reading warmly and with genuine presence. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode. Let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift. The listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
   'Discovery': 'Do NOT introduce or announce this section. A separate transition handles that. Just start telling the story. This is an original essay. NOT a reading recommendation, NOT a list of cool facts (that was Wild Card). Discovery is ONE deep narrative with a single through-line argument. The energy here is slower, more reflective, more intellectually weighty than Wild Card. Tell the story with fascination but let it build. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. Stay very close to the written text. The essay was carefully constructed. End the episode on intellectual wonder.',
   // Optional sections
-  'Overnight': 'Quick overnight catch-up. Three to four key developments since last night. Keep it brisk and factual with "here\'s what happened while you were sleeping" energy. Each item gets 1-2 sentences. Natural transition into the Dashboard.',
+  'Overnight': 'Quick overnight catch-up. Three to four key developments since last night. Keep it brisk and factual with "here\'s what happened while you were sleeping" energy. Each item gets 1-2 sentences. CRITICAL: Check the ALREADY COVERED list carefully. If an overnight development is already covered in the Dashboard or Markets & Macro, do NOT restate it. Either skip it entirely or say "we\'ll get into that in a moment" and move on. The listener should NEVER hear the same fact in Overnight and then again in the Dashboard or Six. Overnight only adds what\'s genuinely new since the evening brief was written.',
   'Deep Read / Listen': 'Skip this section entirely in audio. Do not read it. These are external link recommendations that don\'t work in audio format.',
 
   // Legacy sections — still used for processing older briefs
