@@ -51,6 +51,11 @@ const TICKER_NAMES: Record<string, string> = {
   'TSM': 'TSMC',
   'QCOM': 'Qualcomm',
   'ARM': 'ARM Holdings',
+  // Consumer / other stocks
+  'DPZ': "Domino's",
+  'VZ': 'Verizon',
+  'WU': 'Western Union',
+  'BLK': 'BlackRock',
   // ETFs
   'SPY': 'the S&P 500 ETF',
   'QQQ': 'the Nasdaq 100 ETF',
@@ -298,6 +303,8 @@ function cleanFormatting(text: string): string {
   text = text.replace(/▸/g, '');
   // Strip "former President Trump" → "President Trump" (he IS the sitting president)
   text = text.replace(/\bformer President\s+Trump\b/gi, 'President Trump');
+  // Fix GPT-4o training data title errors — Rubio is Secretary of State, not Senator
+  text = text.replace(/\bSenator\s+Rubio\b/g, 'Secretary of State Rubio');
   text = text.replace(/~/g, 'approximately ');
   text = text.replace(/\s*—\s*/g, ', ');
   // Remove markdown escape sequences (e.g., "\-" → "-", "\*" → "*")
@@ -576,8 +583,15 @@ BANNED PHRASES (these are overused filler that replaces actual insight):
 - "Now we're diving into The Six" / "Let's dive into The Six" (The Six is only introduced ONCE at the very start by Markets & Macro. Never re-announce it mid-flow.)
 Do NOT use any of these. If you catch yourself reaching for one, just say the actual insight instead.
 
-FIDELITY TO SOURCE TEXT (CRITICAL):
+FIDELITY TO SOURCE TEXT (CRITICAL — THIS IS THE #1 RULE):
 Stay close to the written brief. The written text was carefully crafted. Your job is to make it sound natural when spoken, NOT to rewrite it from scratch. Keep the specific language, the specific numbers, the specific framing. Do not paraphrase loosely or over-simplify. If the brief says "the DeFi-CeFi lending rate spread surviving 51 consecutive days of extreme fear," say that. Do not compress it to "DeFi rates are holding up." The specificity IS the value. Simplify delivery (contractions, pacing, natural rhythm) but preserve the substance word-for-word where possible.
+
+FIDELITY FLOOR — NEVER DROP THESE (even when compressing for time):
+- COMPANY NAMES: If the brief names a company (Domino's, Verizon, BlackRock, etc.), that name MUST appear in your script. You may shorten context around it, but the name itself is sacred. Never replace a company name with a generic description ("a pizza chain," "a telecom company").
+- POLITICAL TITLES: Use EXACTLY the title in the brief. If the brief says "Secretary of State Rubio," say "Secretary of State Rubio." Do NOT substitute titles from your training data. Titles change — the brief has the current one.
+- KEY DATA POINTS: If the brief includes a specific number that drives the analysis (earnings miss, rate move, price level), keep it. You can round per the NUMBERS rules above, but don't drop the data point entirely.
+- TICKER SYMBOLS: When the brief uses a ticker (DPZ, VZ, MSFT), convert it to the company name for speech. Do NOT skip the reference.
+- PROPER NOUNS: Names of people, institutions, laws, treaties, technologies. If the brief names it, your script names it.
 
 BANNED PUNCTUATION:
 - NEVER use em-dashes ("--" or "—") in the output. They are an AI writing tell and sound unnatural when spoken.
@@ -688,6 +702,8 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'Markets Minute': 'Quick, punchy market read. What\'s the character of today\'s session? Connect the dots between equities, crypto, commodities, and rates. If divergences tell a story, say so. Round prices naturally for speech. This should feel brisk but insightful.',
   'Interesting Things': 'Lighter energy, genuine curiosity. These are fascinating things outside the main market stories. Science, health, breakthroughs. Give each one what it needs to land. If items connect, say so. Stay close to the written text.',
   'The Meditation': 'Warm, present, reflective. Include the full quote and attribution. Then deliver the teaching and the practical action. Let it breathe. No rushing. This is the human moment. The listener should feel grounded after hearing it.',
+  'The Model': 'Teach this mental model as a standalone concept. Use the timeless examples from the written text — do NOT connect it to today\'s news, markets, or any companies mentioned earlier. This is an intellectual gift the listener keeps forever. Name the model, explain it with the examples given, and land on the decision tool. Keep it clear and unhurried. The listener should feel like they just learned something genuinely useful.',
+  'Brief Light Close': 'Warm, brief sign-off. This is the last thing the listener hears. Land it cleanly — don\'t trail off. One or two sentences that feel like a human saying goodbye. No market references, no previews of tomorrow.',
 };
 
 /** Retry an async fn with exponential backoff on rate-limit (429) and server errors (5xx). */
