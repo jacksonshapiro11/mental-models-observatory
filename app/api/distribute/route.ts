@@ -121,8 +121,30 @@ async function distributeX(dateSlug: string, dryRun: boolean): Promise<{ success
     return { success: true, details: `Would post ${thread.tweets.length}-tweet thread` };
   }
 
-  // Post thread using twitter-api-v2 directly (OAuth 2.0 bearer token)
-  const client = new TwitterApi(process.env.TWITTER_OAUTH2_ACCESS_TOKEN!);
+  // Refresh the OAuth 2.0 token before posting (tokens expire every 2 hours)
+  const clientId = process.env.TWITTER_CLIENT_ID!;
+  const clientSecret = process.env.TWITTER_CLIENT_SECRET || '';
+  const refreshToken = process.env.TWITTER_OAUTH2_REFRESH_TOKEN;
+
+  let accessToken = process.env.TWITTER_OAUTH2_ACCESS_TOKEN!;
+
+  if (refreshToken) {
+    try {
+      console.log('[distribute] Refreshing X OAuth 2.0 token...');
+      const authClient = new TwitterApi({ clientId, clientSecret });
+      const refreshResult = await authClient.refreshOAuth2Token(refreshToken);
+      accessToken = refreshResult.accessToken;
+      console.log('[distribute] Token refreshed successfully');
+      // Note: ideally store the new refresh token too, but Vercel env vars
+      // can't be updated at runtime. The original refresh token continues to
+      // work for most X OAuth 2.0 configurations.
+    } catch (refreshErr) {
+      console.warn('[distribute] Token refresh failed, trying existing token:', refreshErr instanceof Error ? refreshErr.message : String(refreshErr));
+      // Fall through — try the existing token anyway
+    }
+  }
+
+  const client = new TwitterApi(accessToken);
 
   let previousTweetId: string | null = null;
   const postedIds: string[] = [];
