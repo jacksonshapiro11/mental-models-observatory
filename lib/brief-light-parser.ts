@@ -26,17 +26,33 @@ export interface BriefLightSection {
   id: string;
   label: string;
   content: string;
+  title?: string;   // text after a colon in the header, e.g. "THE IDEA: <title>" or "THE MODEL: <name>"
 }
 
-// ─── Section definitions (Brief Light only) ─────────────────────────────────
+// ─── Section detection (header-driven) ──────────────────────────────────────
+// Handles BOTH the legacy selection format (THE UPDATE / INTERESTING THINGS / …)
+// AND the ideas-first format (multiple "THE IDEA: <title>" headers, ALSO MOVING,
+// TWO THINGS WORTH KNOWING, THE MODEL: <name> inline, THE CLOSE). Any "## ▸ …"
+// line is a section boundary; the id is derived from the header text so renamed
+// or new sections never silently disappear again.
 
-const LIGHT_SECTION_MARKERS = [
-  { marker: '## ▸ THE UPDATE',          id: 'the-update',          label: 'The Update' },
-  { marker: '## ▸ MARKETS MINUTE',      id: 'markets-minute',      label: 'Markets Minute' },
-  { marker: '## ▸ INTERESTING THINGS',  id: 'interesting-things',  label: 'Interesting Things' },
-  { marker: '## ▸ THE MEDITATION',      id: 'the-meditation',      label: 'The Meditation' },
-  { marker: '## ▸ THE MODEL',           id: 'the-model',           label: 'The Model' },
-];
+const SECTION_HEADER_RE = /^##\s*▸\s*(.+?)\s*$/;
+
+function sectionMetaFor(rawHeader: string): { id: string; label: string; title: string } {
+  const colonIdx = rawHeader.indexOf(':');
+  const head = (colonIdx >= 0 ? rawHeader.slice(0, colonIdx) : rawHeader).trim();
+  const title = colonIdx >= 0 ? rawHeader.slice(colonIdx + 1).trim() : '';
+  const u = head.toUpperCase();
+  if (u.startsWith('THE UPDATE')) return { id: 'the-update', label: 'The Update', title };
+  if (u.startsWith('THE BIG IDEA') || u.startsWith('THE IDEA')) return { id: 'the-idea', label: title || 'Idea', title };
+  if (u.startsWith('ALSO MOVING')) return { id: 'also-moving', label: 'Also Moving', title };
+  if (u.startsWith('MARKETS MINUTE')) return { id: 'markets-minute', label: 'Markets Minute', title };
+  if (u.startsWith('TWO THINGS') || u.startsWith('INTERESTING THINGS')) return { id: 'interesting-things', label: 'Interesting Things', title };
+  if (u.startsWith('THE MEDITATION')) return { id: 'the-meditation', label: 'The Meditation', title };
+  if (u.startsWith('THE MODEL')) return { id: 'the-model', label: 'The Model', title };
+  if (u.startsWith('THE CLOSE')) return { id: 'the-close', label: 'The Close', title };
+  return { id: head.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'section', label: head, title };
+}
 
 // ─── Parser ─────────────────────────────────────────────────────────────────
 
@@ -80,40 +96,28 @@ export function parseBriefLight(markdown: string, dateSlug: string): BriefLight 
     if (line.includes('## ▸')) break;
   }
 
-  // Parse sections
+  // Parse sections (header-driven — every "## ▸ …" line is a boundary)
   const sections: BriefLightSection[] = [];
 
-  for (let si = 0; si < LIGHT_SECTION_MARKERS.length; si++) {
-    const def = LIGHT_SECTION_MARKERS[si]!;
-    const startIdx = markdown.indexOf(def.marker);
-    if (startIdx === -1) continue;
+  const headerLines: { lineNo: number; raw: string }[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = (lines[i] ?? '').match(SECTION_HEADER_RE);
+    if (m && m[1]) headerLines.push({ lineNo: i, raw: m[1].trim() });
+  }
 
-    // Content starts after the marker line
-    const afterMarker = markdown.indexOf('\n', startIdx);
-    if (afterMarker === -1) continue;
-
-    // Find end: next section marker or end of file
-    let endIdx = markdown.length;
-    for (let ni = si + 1; ni < LIGHT_SECTION_MARKERS.length; ni++) {
-      const nextDef = LIGHT_SECTION_MARKERS[ni]!;
-      const nextIdx = markdown.indexOf(nextDef.marker);
-      if (nextIdx !== -1 && nextIdx > startIdx) {
-        endIdx = nextIdx;
-        break;
-      }
-    }
-
-    const content = markdown
-      .slice(afterMarker + 1, endIdx)
-      .replace(/^---\s*$/gm, '')     // Strip horizontal rules
+  for (let h = 0; h < headerLines.length; h++) {
+    const { lineNo, raw } = headerLines[h]!;
+    const meta = sectionMetaFor(raw);
+    const endLine = h + 1 < headerLines.length ? headerLines[h + 1]!.lineNo : lines.length;
+    const content = lines
+      .slice(lineNo + 1, endLine)
+      .join('\n')
+      .replace(/^---\s*$/gm, '')      // Strip horizontal rules
       .trim();
 
-    if (content) {
-      sections.push({
-        id: def.id,
-        label: def.label,
-        content,
-      });
+    // Keep the section if it has content (the close may be just a sign-off line).
+    if (content || meta.id === 'the-close') {
+      sections.push({ id: meta.id, label: meta.label, title: meta.title, content });
     }
   }
 

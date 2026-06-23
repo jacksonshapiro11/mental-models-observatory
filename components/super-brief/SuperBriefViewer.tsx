@@ -48,6 +48,14 @@ function RichText({ text, className = '' }: { text: string; className?: string }
   return <span className={className}>{parts}</span>;
 }
 
+// Split a section's content into paragraphs (blank-line separated) for the ideas-first layout.
+function toParagraphs(content: string): string[] {
+  return content
+    .split(/\n\s*\n/)
+    .map(p => p.replace(/\n+/g, ' ').trim())
+    .filter(Boolean);
+}
+
 // ─── Signal parser ──────────────────────────────────────────────────────────
 // Parse "The Update" section markdown into signal items.
 // Each bold headline (**Title**) starts a new signal.
@@ -170,81 +178,91 @@ function parseInterestingThings(content: string): InterestingItem[] {
 
 // ─── Meditation parser ──────────────────────────────────────────────────────
 
-function parseMeditation(content: string): { quote: string; attribution: string; body: string } {
-  const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+function parseMeditation(content: string): { quote: string; attribution: string; before: string; after: string } {
+  const paras = content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
 
   let quote = '';
   let attribution = '';
-  const bodyLines: string[] = [];
+  let quoteIdx = -1;
 
-  for (const line of lines) {
-    // Pattern: *"Quote"* Author, *Source*
-    // This is the most common format in the light briefs.
-    // The line starts with *" and contains "* somewhere, followed by attribution text.
-    const fullQuoteMatch = line.match(/^\*[""\u201C](.+?)[""\u201D]\*\s+(.+)$/);
-    if (fullQuoteMatch && !quote) {
-      quote = fullQuoteMatch[1] ?? '';
-      // Attribution may contain italic source: "Author, *Source*"
-      attribution = (fullQuoteMatch[2] ?? '').replace(/\*/g, '');
-      continue;
+  for (let idx = 0; idx < paras.length; idx++) {
+    const lines = paras[idx]!.split('\n').map(l => l.trim()).filter(Boolean);
+    const first = lines[0] ?? '';
+    const m = first.match(/^\*["“”](.+?)["“”]\*\s*(.*)$/);
+    if (m) {
+      quote = m[1] ?? '';
+      let attr = (m[2] ?? '').trim();
+      if (!attr && lines[1]) attr = lines[1];
+      attribution = attr.replace(/^[–—-]\s*/, '').replace(/\*/g, '').trim();
+      quoteIdx = idx;
+      break;
     }
-
-    // Simpler pattern: *"Quote"* on its own line
-    if (line.startsWith('*"') && line.endsWith('"*') && !quote) {
-      quote = line.slice(2, -2);
-      continue;
-    }
-
-    // Standalone italic line: *text*
-    if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && !quote) {
-      const inner = line.slice(1, -1);
-      quote = inner.replace(/^[""\u201C]+/, '').replace(/[""\u201D]+$/, '');
-      continue;
-    }
-
-    // Attribution line starting with —
-    if ((line.startsWith('—') || line.startsWith('\u2014')) && !attribution) {
-      attribution = line;
-      continue;
-    }
-
-    bodyLines.push(line);
   }
 
-  return { quote, attribution, body: bodyLines.join(' ') };
+  const before: string[] = [];
+  const after: string[] = [];
+  paras.forEach((p, idx) => {
+    if (quoteIdx < 0 || idx > quoteIdx) after.push(p);
+    else if (idx < quoteIdx) before.push(p);
+  });
+
+  return { quote, attribution, before: before.join('\n\n'), after: after.join('\n\n') };
 }
 
 // ─── Model parser ───────────────────────────────────────────────────────────
 
-function parseModel(content: string): { name: string; body: string; link: string } {
-  const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+// The Model is the day's deep "keeper": a named model with a vivid example, the
+// mechanism (why), a bolded "Use it" takeaway, and an Explore link. Paragraph-aware.
+function parseModel(content: string): { name: string; body: string; useIt: string; link: string } {
+  const paras = content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
 
   let name = '';
   let link = '';
-  const bodyLines: string[] = [];
+  let useIt = '';
+  const bodyParas: string[] = [];
 
-  for (const line of lines) {
-    if (line.startsWith('### ')) {
-      name = line.replace('### ', '');
+  for (const para of paras) {
+    const lines = para.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines[0]?.startsWith('### ')) {                              // ### Name: the angle
+      name = lines[0].replace(/^###\s+/, '');
+      const rest = lines.slice(1).join(' ').trim();
+      if (rest) bodyParas.push(rest);
       continue;
     }
-    // Link: [→ Explore](url) or [→ Explore this model](url)
-    const linkMatch = line.match(/\[([^\]]*)\]\(([^)]+)\)/);
-    if (linkMatch) {
-      link = linkMatch[2] ?? '';
-      continue;
-    }
-    bodyLines.push(line);
+    if (/^\*\*\s*use it/i.test(para)) { useIt = para; continue; }    // **Use it:** takeaway
+    const onlyLink = para.match(/^\*{0,2}\[([^\]]*)\]\(([^)]+)\)\*{0,2}$/);
+    if (onlyLink) { link = onlyLink[2] ?? ''; continue; }            // a paragraph that is just the link
+    const inlineLink = para.match(/\[([^\]]*)\]\(([^)]+)\)/);
+    if (inlineLink && !link) link = inlineLink[2] ?? '';
+    bodyParas.push(para);
   }
 
-  return { name, body: bodyLines.join(' '), link };
+  return { name, body: bodyParas.join('\n\n'), useIt, link };
+}
+
+// ─── Ideas parser ───────────────────────────────────────────────────────────
+// Ideas-first ideas may arrive as a single "## ▸ THE IDEAS" block with bold
+// headlines, OR as separate "## ▸ THE IDEA: <title>" sections. Normalize to cards.
+function buildIdeaCards(ideaSections: { content: string; title?: string }[]): { headline: string; body: string }[] {
+  const cards: { headline: string; body: string }[] = [];
+  for (const sec of ideaSections) {
+    const items = parseInterestingThings(sec.content); // bold-headline + body items, if any
+    if (items.length > 0) {
+      for (const it of items) cards.push({ headline: it.headline, body: it.body });
+    } else {
+      cards.push({ headline: sec.title || '', body: sec.content });
+    }
+  }
+  return cards;
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
   // Find sections by ID
-  const updateSection = brief.sections.find(s => s.id === 'the-update');
+  const updateSection = brief.sections.find(s => s.id === 'the-update');     // legacy selection format
+  const ideaSections = brief.sections.filter(s => s.id === 'the-idea');      // ideas-first format
+  const alsoMovingSection = brief.sections.find(s => s.id === 'also-moving');
   const marketsMinuteSection = brief.sections.find(s => s.id === 'markets-minute');
   const interestingSection = brief.sections.find(s => s.id === 'interesting-things');
   const meditationSection = brief.sections.find(s => s.id === 'the-meditation');
@@ -255,10 +273,9 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
   const interestingItems = interestingSection ? parseInterestingThings(interestingSection.content) : [];
   const meditation = meditationSection ? parseMeditation(meditationSection.content) : null;
   const model = modelSection ? parseModel(modelSection.content) : null;
-
-  // Extract first signal as hero headline + TLDR
-  const heroSignal = signals[0];
-  const remainingSignals = signals.slice(1);
+  // Ideas-first puts the model name inline in the header ("THE MODEL: <name>") — captured as the section title.
+  if (model && !model.name && modelSection?.title) model.name = modelSection.title;
+  const ideaCards = buildIdeaCards(ideaSections);  // one card per idea, from either format
 
   return (
     <div className="min-h-screen">
@@ -297,21 +314,63 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
       {/* ── 2. DARK DASHBOARD — live prices ─────────────────────────────── */}
       <SuperBriefDashboard />
 
-      {/* ── 2b. MARKETS MINUTE — compressed regime read ─────────────────── */}
+      {/* ── 2a. MARKETS MINUTE — market-state read, bright pink band under the dashboard ─ */}
       {marketsMinuteSection && (
-        <section className="bg-[#0d0d0d] px-4 py-3 border-t border-[#1a1a1a]">
+        <section className="bg-ct-pink px-4 py-4 border-t-[3px] border-ct-dark">
           <div className="max-w-lg mx-auto">
-            <div className="font-mono text-[9px] text-ct-yellow uppercase tracking-wider font-medium mb-2">
+            <div className="font-mono text-[9px] text-white/75 uppercase tracking-wider font-medium mb-2">
               Markets minute
             </div>
-            <p className="text-[12px] text-[#bbb] leading-[1.6]">
+            <p className="text-[13px] text-white leading-[1.65] font-medium">
               <RichText text={marketsMinuteSection.content} />
             </p>
           </div>
         </section>
       )}
 
-      {/* ── 3. DARK SIGNALS — "Today's Signals" ─────────────────────────── */}
+      {/* ── 2b. THE IDEAS — ideas-first lead (the day's biggest ideas) ───── */}
+      {ideaCards.length > 0 && (
+        <section className="bg-white px-4 py-4 border-t-[3px] border-ct-dark">
+          <div className="max-w-lg mx-auto">
+            <div className="font-mono text-[10px] text-ct-pink uppercase tracking-wider font-medium mb-3">
+              The ideas
+            </div>
+            {ideaCards.map((idea, i) => (
+              <div key={i} className={i > 0 ? 'mt-5 pt-4 border-t border-[#eee]' : ''}>
+                {idea.headline && (
+                  <h2 className="font-serif text-[18px] font-medium text-[#111] leading-[1.3] mb-2">
+                    {idea.headline}
+                  </h2>
+                )}
+                {toParagraphs(idea.body).map((para, j) => (
+                  <p key={j} className="text-[13px] text-[#1a1a1a] font-medium leading-[1.6] mb-2 last:mb-0">
+                    <RichText text={para} />
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── 2a2. ALSO MOVING — ideas-first secondary ────────────────────── */}
+      {alsoMovingSection && (
+        <section className="bg-[#FAFAFA] px-4 py-3 border-t border-[#e5e5e5]">
+          <div className="max-w-lg mx-auto">
+            <div className="font-mono text-[9px] text-[#888] uppercase tracking-wider font-medium mb-1.5">
+              Also moving
+            </div>
+            {toParagraphs(alsoMovingSection.content).map((para, j) => (
+              <p key={j} className="text-[12px] text-[#3a3a3a] font-medium leading-[1.6] mb-1.5 last:mb-0">
+                <RichText text={para} />
+              </p>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── 3. DARK SIGNALS — "Today's Signals" (legacy selection format only) ─ */}
+      {signals.length > 0 && (
       <section className="bg-ct-dark px-4 py-3 border-t border-[#1a1a1a]">
         <div className="max-w-lg mx-auto">
           <div className="font-mono text-[9px] text-ct-pink uppercase tracking-wider font-medium mb-2">
@@ -344,6 +403,7 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
           ))}
         </div>
       </section>
+      )}
 
       {/* ── 4. WARM CREAM — "Interesting Things" (replaces The Take) ───── */}
       {interestingItems.length > 0 && (
@@ -357,7 +417,7 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
                 <h2 className="font-serif text-[16px] font-medium text-[#111] leading-[1.3] mb-2">
                   {item.headline}
                 </h2>
-                <p className="text-[13px] text-[#444] leading-[1.6]">
+                <p className="text-[13px] text-[#1a1a1a] font-medium leading-[1.6]">
                   <RichText text={item.body} />
                 </p>
               </div>
@@ -374,49 +434,61 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
 
       {/* ── 5. DARK + PINK — "The Meditation" (matches Inner Game) ──────── */}
       {meditation && (
-        <section className="bg-ct-dark px-4 py-5 text-center border-t-[3px] border-ct-pink">
+        <section className="bg-ct-dark px-4 py-5 border-t-[3px] border-ct-pink">
           <div className="max-w-lg mx-auto">
-            <div className="text-[10px] tracking-[0.1em] uppercase text-ct-pink font-medium mb-2">
+            <div className="text-[10px] tracking-[0.1em] uppercase text-ct-pink font-medium mb-3 text-center">
               The meditation
             </div>
+            {meditation.before && toParagraphs(meditation.before).map((para, i) => (
+              <p key={`mb-${i}`} className="text-[12px] text-[#cfcfcf] font-medium leading-[1.6] mb-3">
+                <RichText text={para} />
+              </p>
+            ))}
             {meditation.quote && (
-              <blockquote className="font-serif italic text-[15px] text-[#ccc] leading-[1.45] max-w-[320px] mx-auto mb-1">
+              <blockquote className="font-serif italic text-[16px] text-[#f0f0f0] leading-[1.45] max-w-[340px] mx-auto mt-1 mb-1 text-center">
                 &ldquo;{meditation.quote}&rdquo;
               </blockquote>
             )}
             {meditation.attribution && (
-              <div className="text-[10px] text-[#555] mb-3">{meditation.attribution}</div>
+              <div className="text-[10px] text-[#888] mb-4 text-center">{meditation.attribution}</div>
             )}
-            {meditation.body && (
-              <p className="text-[11px] text-[#999] leading-[1.55] text-left">
-                <RichText text={meditation.body} />
+            {meditation.after && toParagraphs(meditation.after).map((para, i) => (
+              <p key={`ma-${i}`} className="text-[12px] text-[#cfcfcf] font-medium leading-[1.6] mb-3 last:mb-0">
+                <RichText text={para} />
               </p>
-            )}
+            ))}
           </div>
         </section>
       )}
 
-      {/* ── 6. MINT GREEN — "The Model" ─────────────────────────────────── */}
+      {/* ── 6. MINT — "The Model" — the day's deep keeper ───────────────── */}
       {model && (
-        <section className="bg-[#E8FFF5] px-4 py-3.5 border-t-[3px] border-[#00885a]">
+        <section className="bg-[#E8FFF5] px-4 py-5 border-t-[3px] border-[#00885a]">
           <div className="max-w-lg mx-auto">
-            <div className="text-[9px] text-[#00885a] tracking-[0.06em] uppercase font-medium mb-1">
-              Today&apos;s model
+            <div className="font-mono text-[10px] text-[#00885a] tracking-wider uppercase font-medium mb-2">
+              The model
             </div>
             {model.name && (
-              <div className="font-serif text-[14px] font-medium text-[#111] mb-1">
+              <h2 className="font-serif text-[19px] font-medium text-[#111] leading-[1.3] mb-3">
                 {model.name}
+              </h2>
+            )}
+            {model.body && toParagraphs(model.body).map((para, i) => (
+              <p key={`mo-${i}`} className="text-[13px] text-[#1a1a1a] font-medium leading-[1.6] mb-2.5">
+                <RichText text={para} />
+              </p>
+            ))}
+            {model.useIt && (
+              <div className="bg-[#D6F5E8] border-l-[3px] border-[#00885a] px-3 py-2.5 mt-1 text-[13px] text-[#1a1a1a] leading-[1.6]">
+                <RichText text={model.useIt} />
               </div>
             )}
-            <div className="text-[12px] text-[#444] leading-[1.45]">
-              <RichText text={model.body} />
-            </div>
             {model.link && (
               <Link
                 href={model.link}
-                className="text-[10px] text-[#00885a] font-medium mt-1.5 block no-underline"
+                className="text-[11px] text-[#00885a] font-medium mt-3 inline-block no-underline"
               >
-                Explore in the observatory →
+                Explore this model →
               </Link>
             )}
           </div>

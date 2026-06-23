@@ -29,7 +29,7 @@
     --ct-text-on-dark: #DDDDDD;
     --ct-text-on-dark-muted: #888888;
     --ct-font-display: 'Fraunces', Georgia, serif;
-    --ct-font-body: 'Source Sans 3', system-ui, sans-serif;
+    --ct-font-body: var(--font-body), 'Inter', system-ui, sans-serif;
     --ct-font-mono: 'JetBrains Mono', ui-monospace, monospace;
     --ct-measure: 65ch;
     --ct-body-size: 16px;

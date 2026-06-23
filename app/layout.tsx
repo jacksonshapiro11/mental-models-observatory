@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
-import { Source_Sans_3, Fraunces, JetBrains_Mono } from 'next/font/google';
+import { Inter, Fraunces, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Navigation } from '@/components/layout/Navigation';
 import { WebsiteJsonLd } from '@/components/seo/JsonLd';
 
-const sourceSans = Source_Sans_3({
+const inter = Inter({
   subsets: ['latin'],
   variable: '--font-body',
   display: 'swap',
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700'],
 });
 
 const fraunces = Fraunces({
@@ -92,12 +92,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sourceSans.variable} ${fraunces.variable} ${jetbrainsMono.variable}`}
-      style={{
-        '--font-body': 'var(--font-body)',
-        '--font-display': 'var(--font-display)',
-        '--font-mono': 'var(--font-mono)',
-      } as React.CSSProperties & Record<string, string>}
+      className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable}`}
     >
       <body className="antialiased">
         <WebsiteJsonLd />

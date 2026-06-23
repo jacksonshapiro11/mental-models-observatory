@@ -36,7 +36,7 @@ const config: Config = {
 
       // TYPOGRAPHY SYSTEM
       fontFamily: {
-        sans: ['Source Sans 3', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-body)', 'Inter', 'system-ui', 'sans-serif'],
         serif: ['Fraunces', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
       },

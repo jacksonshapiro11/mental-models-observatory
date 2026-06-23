@@ -1180,17 +1180,23 @@ function applyLightPronunciations(text: string): string {
 
 // ─── Brief Light section ordering & transitions ────────────────────────────
 
-/** Desired section order for audio. Markets context first, then stories, then reflection. */
+/** Desired section order for audio. Ideas-first leads with the ideas; legacy format
+ *  has no the-idea/also-moving so it falls back to markets-minute → the-update → … */
 const LIGHT_SECTION_ORDER = [
-  'markets-minute',
-  'the-update',
+  'markets-minute',    // market-state read, surfaced first (renders under the dashboard on web)
+  'the-idea',          // ideas-first lead (may repeat — handled by filter below)
+  'also-moving',       // ideas-first secondary
+  'the-update',        // legacy selection format
   'interesting-things',
   'the-meditation',
   'the-model',
+  'the-close',
 ];
 
 const LIGHT_SECTION_TRANSITIONS: Record<string, string> = {
-  'markets-minute': '', // First section after intro, no transition needed
+  'the-idea': 'Let\'s get into today\'s biggest ideas.', // fired once before the first idea
+  'also-moving': 'A few other things moving today.',
+  'markets-minute': 'Let\'s start with where the market actually is.', // leads the brief, under the dashboard
   'the-update': 'Alright, here\'s what\'s driving the conversation today.',
   'interesting-things': 'A couple things that caught our eye outside the main stories.',
   'the-meditation': 'OK. Let\'s take a breath. Time for today\'s meditation.',
@@ -1199,11 +1205,13 @@ const LIGHT_SECTION_TRANSITIONS: Record<string, string> = {
 };
 
 const LIGHT_SECTION_INSTRUCTIONS: Record<string, string> = {
+  'The Idea': 'Deliver this as one genuine market idea: state the idea and why it matters, ground it in the news that surfaced it, and include the honest "what would change my mind." Keep the through-line tight — the idea is the point, the news is the evidence. Stay close to the source text; do not invent numbers or calls not in it.',
+  'Also Moving': 'Brisk and secondary. A couple of things moving that did not rise to a full idea today. One or two sentences each. Keep it light and quick.',
   'The Update': 'Cover every story. Each one gets its headline, the key numbers, why it matters, and the "so what." Thread stories together naturally when they connect. Do NOT skip any story. Stay close to the source text. The specificity is the value. Get to the insight fast. No throat-clearing.',
   'Markets Minute': 'Quick, punchy market read. What\'s the character of today\'s session? Connect the dots between equities, crypto, commodities, and rates. If divergences tell a story, say so. Round prices naturally for speech. This should feel brisk but insightful.',
   'Interesting Things': 'Lighter energy, genuine curiosity. These are fascinating things outside the main market stories. Science, health, breakthroughs. Give each one what it needs to land. If items connect, say so. Stay close to the written text.',
-  'The Meditation': 'Warm, present, reflective. Include the full quote and attribution. Then deliver the teaching and the practical action. Let it breathe. No rushing. This is the human moment. The listener should feel grounded after hearing it.',
-  'The Model': 'Teach this mental model as a standalone concept. Use the timeless examples from the written text — do NOT connect it to today\'s news, markets, or any companies mentioned earlier. This is an intellectual gift the listener keeps forever. Name the model, explain it with the examples given, and land on the decision tool. Keep it clear and unhurried. The listener should feel like they just learned something genuinely useful.',
+  'The Meditation': 'Warm, present, reflective. This is the FULL Inner Game and a centerpiece of the brief: read it complete, do NOT shorten or summarize. Deliver the opening setup, the full quote and attribution, the entire reflection, and the closing practice. Let it breathe. No rushing. This is the human moment. The listener should feel grounded after hearing it.',
+  'The Model': 'This is the brief\'s deep keeper: the one reusable idea the listener takes away. Teach it, do not just name it. Give the vivid example, explain the mechanism (why it is true), then land on the bolded "Use it" decision tool they can apply today. Use the timeless examples from the written text and do NOT tie it to today\'s news, markets, or companies. Keep it clear and unhurried; the listener should finish with something genuinely useful they will reuse.',
   'The Close': 'Warm, brief sign-off. This is the last thing the listener hears. Land it cleanly — don\'t trail off. One or two sentences that feel like a human saying goodbye. No market references, no previews of tomorrow.',
 };
 
@@ -1218,20 +1226,19 @@ export async function preprocessBriefLightForTTS(
     displayDate: string;
     dailyTitle?: string;
     epigraph: string;
-    sections: { id: string; label: string; content: string }[];
+    sections: { id: string; label: string; content: string; title?: string }[];
   },
   options: PreprocessOptions = {}
 ): Promise<PreprocessedBrief> {
-  // Reorder sections according to LIGHT_SECTION_ORDER
-  const ordered = LIGHT_SECTION_ORDER
-    .map(id => brief.sections.find(s => s.id === id))
-    .filter((s): s is { id: string; label: string; content: string } => !!s);
-
-  // Add any sections not in the order list at the end
+  // Reorder sections per LIGHT_SECTION_ORDER. Use a per-id sweep (not find) so multiple
+  // "the-idea" sections are all included, in document order.
+  const ordered: { id: string; label: string; content: string; title?: string }[] = [];
+  for (const id of LIGHT_SECTION_ORDER) {
+    for (const s of brief.sections) if (s.id === id) ordered.push(s);
+  }
+  // Append any sections not in the order list
   for (const s of brief.sections) {
-    if (!LIGHT_SECTION_ORDER.includes(s.id)) {
-      ordered.push(s);
-    }
+    if (!ordered.includes(s)) ordered.push(s);
   }
 
   console.log(`[audio:light] Sections (ordered): ${ordered.map(s => s.label).join(' → ')}`);
@@ -1248,8 +1255,17 @@ export async function preprocessBriefLightForTTS(
       console.log('[audio:light] Rewriting as Super Brief podcast script (GPT-4o, per-section)...');
       const client = new OpenAI({ apiKey: options.openaiApiKey });
 
-      // Build intro — include Daily Title so the opening uses the same headline as the brief
-      const introContent = `DATE: ${brief.displayDate}\nDAILY TITLE: ${brief.dailyTitle || ''}\nHEADLINE: ${ordered[0]?.content?.split('\n')[0] || ''}`;
+      // Build intro — include Daily Title so the opening uses the same headline as the brief.
+      // Anchor the HEADLINE hint to the lead IDEA (not ordered[0], which is now Markets Minute),
+      // so the intro still previews the ideas even though Markets Minute is spoken first.
+      const firstIdea = ordered.find(s => s.id === 'the-idea');
+      const ideaHeadline = firstIdea
+        ? (firstIdea.title
+            || firstIdea.content.split('\n').map(l => l.trim()).find(l => /^\*\*.+\*\*$/.test(l))?.replace(/\*\*/g, '').trim()
+            || firstIdea.content.split('\n')[0]
+            || '')
+        : (ordered[0]?.content?.split('\n')[0] || '');
+      const introContent = `DATE: ${brief.displayDate}\nDAILY TITLE: ${brief.dailyTitle || ''}\nHEADLINE: ${ideaHeadline}`;
       const introScript = await rewriteSection(client, 'light-intro', introContent, {});
 
       // Rewrite each section individually with section-specific instructions
@@ -1264,32 +1280,43 @@ export async function preprocessBriefLightForTTS(
       }
 
       // Process each section
+      const usedTransitions = new Set<string>();
       for (let i = 0; i < ordered.length; i++) {
         const section = ordered[i]!;
         const prevSection = i > 0 ? ordered[i - 1]?.label : 'intro';
         const nextSection = i < ordered.length - 1 ? ordered[i + 1]?.label : undefined;
 
-        const context: SectionContext = {
-          prevSection,
-          nextSection,
-        };
+        const context: SectionContext = { prevSection, nextSection };
 
-        console.log(`[audio:light] Section: ${section.label}...`);
-        const script = await rewriteSection(client, section.label, section.content, context);
+        // Ideas-first: the idea headline and the model name live in the header
+        // (section.title), not the body — fold them back in so they get spoken.
+        // Use a stable label ('The Idea') for section-specific instructions.
+        const rewriteLabel = section.id === 'the-idea' ? 'The Idea' : section.label;
+        const rewriteContent = (section.title && (section.id === 'the-idea' || section.id === 'the-model'))
+          ? `**${section.title}**\n\n${section.content}`
+          : section.content;
+
+        console.log(`[audio:light] Section: ${rewriteLabel}${section.title ? ` — ${section.title}` : ''}...`);
+        const script = await rewriteSection(client, rewriteLabel, rewriteContent, context);
         console.log(`[audio:light]   → ${script.length} chars`);
 
-        // Prepend transition if one exists
+        // Prepend the transition once per section id (so multiple ideas don't repeat the lead-in)
         const transition = LIGHT_SECTION_TRANSITIONS[section.id] || '';
-        if (transition) {
+        if (transition && !usedTransitions.has(section.id)) {
           sectionScripts.push(`${transition}\n\n${script}`);
+          usedTransitions.add(section.id);
         } else {
           sectionScripts.push(script);
         }
       }
 
-      // Sign-off (shorter for super brief)
-      const signOff = 'That\'s today\'s Super Brief. Quick, sharp, and hopefully you\'re walking away with something useful. We\'ll be back tomorrow. Until then, stay curious.';
-      sectionScripts.push(signOff);
+      // Sign-off: if the brief has its own THE CLOSE section it was already spoken above;
+      // otherwise append a default so the episode never ends mid-air.
+      const hasClose = ordered.some(s => s.id === 'the-close');
+      if (!hasClose) {
+        const signOff = 'That\'s today\'s Super Brief. Quick, sharp, and hopefully you\'re walking away with something useful. We\'ll be back tomorrow. Until then, stay curious.';
+        sectionScripts.push(signOff);
+      }
 
       // Stitch with pause markers
       const SECTION_PAUSE = '\n\n...\n\n';

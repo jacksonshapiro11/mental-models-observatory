@@ -69,6 +69,9 @@ export function SuperBriefDashboard() {
           const change = assetData?.changes?.['1D'];
           const isPositive = change != null && change > 0;
           const isNegative = change != null && change < 0;
+          // Color the whole quote (price + change) by direction: green up, red down, white flat.
+          const dirColor = isPositive ? 'text-ct-green-data' : isNegative ? 'text-[#FF3B30]' : 'text-white';
+          const changeColor = isPositive ? 'text-ct-green-data' : isNegative ? 'text-[#FF3B30]' : 'text-[#555]';
 
           let priceStr = loading ? '—' : price != null ? price.toLocaleString('en-US', {
             minimumFractionDigits: asset.decimals,
@@ -87,14 +90,8 @@ export function SuperBriefDashboard() {
           return (
             <div key={asset.key} className="text-center">
               <div className="font-mono text-[9px] text-[#555]">{asset.label}</div>
-              <div className="font-mono text-[14px] font-medium text-white">{priceStr}</div>
-              <div
-                className={`font-mono text-[10px] ${
-                  isPositive ? 'text-ct-green-data' : isNegative ? 'text-ct-pink' : 'text-[#555]'
-                }`}
-              >
-                {changeStr}
-              </div>
+              <div className={`font-mono text-[14px] font-medium ${dirColor}`}>{priceStr}</div>
+              <div className={`font-mono text-[10px] ${changeColor}`}>{changeStr}</div>
             </div>
           );
         })}
