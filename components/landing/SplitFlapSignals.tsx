@@ -94,7 +94,12 @@ export function SplitFlapSignals({
   scrambleDurationMs = 1400,
 }: SplitFlapSignalsProps) {
   const [pageIndex, setPageIndex] = useState(0);
-  const [resolveRatio, setResolveRatio] = useState(0);
+  // Start RESOLVED (ratio 1) so the very first render — which happens on the server and
+  // again on the client during hydration — is deterministic. buildDisplay() only calls
+  // Math.random() when ratio < 1, so a 0 start scrambled differently on server vs client
+  // and broke hydration. The mount effect resets to 0 and runs the scramble-in animation
+  // client-side, after hydration, so the visual effect is unchanged.
+  const [resolveRatio, setResolveRatio] = useState(1);
   const animFrame = useRef(0);
   const mounted = useRef(true);
 

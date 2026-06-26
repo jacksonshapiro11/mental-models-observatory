@@ -155,12 +155,18 @@ function parseInterestingThings(content: string): InterestingItem[] {
     const trimmed = line.trim();
     if (!trimmed || trimmed === '---') continue;
 
-    if (trimmed.startsWith('**') && trimmed.endsWith('**') && !trimmed.slice(2, -2).includes('**')) {
+    // A new item begins at a bold headline at the START of a line. Handles BOTH
+    // "**Headline**" alone on its line (the ideas format) AND "**Headline.** body on
+    // the same line" (the format the generator uses for Two Things Worth Knowing).
+    // The old version only matched the own-line form, so Two Things parsed to zero
+    // items and the whole section silently failed to render.
+    const headlineMatch = trimmed.match(/^\*\*(.+?)\*\*\s*(.*)$/);
+    if (headlineMatch && headlineMatch[1] && !headlineMatch[1].includes('**')) {
       if (currentHeadline) {
         items.push({ headline: currentHeadline, body: currentBody.trim() });
       }
-      currentHeadline = trimmed.slice(2, -2);
-      currentBody = '';
+      currentHeadline = headlineMatch[1].trim();
+      currentBody = headlineMatch[2] ? headlineMatch[2].trim() : '';
       continue;
     }
 
