@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import OpenAI from 'openai';
 import { getBriefByDate, getLatestBrief } from '@/lib/daily-update-parser';
-import { preprocessBriefForTTS } from '@/lib/audio/text-preprocessor';
+import { preprocessBriefForTTS, checkScriptFidelity } from '@/lib/audio/text-preprocessor';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
 import { writeEpisodeMetadata, readEpisodeMetadata } from '@/lib/audio/podcast-feed';
 
@@ -183,6 +183,13 @@ export async function POST(req: NextRequest) {
 
     console.log(`[audio] Script: ${preprocessed.characterCount} characters, ${preprocessed.sections.length} sections`);
 
+    // Fidelity tripwire: flag if the spoken script came back gutted against the written brief.
+    // Lower floor than the super brief, since the full brief intentionally compresses delivery
+    // and the raw markdown includes non-spoken scaffolding (dashboard/watchlist).
+    const fidelity = checkScriptFidelity(rawMarkdown || '', preprocessed.fullText, { minRatio: 0.45 });
+    for (const w of fidelity.warnings) console.warn(`[audio] ⚠ FIDELITY — ${w}`);
+    console.log(`[audio] Fidelity ratio: ${Math.round(fidelity.ratio * 100)}% (script/source words)`);
+
     // 5. Generate audio via TTS (gpt-4o-mini-tts with voice instructions for natural delivery)
     // Voice: pinned to onyx. No more rotation — one consistent voice per episode.
     const selectedVoice = process.env.TTS_VOICE || 'onyx';
@@ -228,6 +235,20 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy e
     });
 
     console.log(`[audio] Uploaded to Blob: ${blob.url}`);
+
+    // Persist the generated script next to the audio so the episode is always reviewable
+    // (removes the blind spot where only the mp3 shipped and the script was thrown away).
+    try {
+      await put(`audio/daily-brief-${brief.date}.txt`, preprocessed.fullText, {
+        access: 'public',
+        contentType: 'text/plain; charset=utf-8',
+        addRandomSuffix: false,
+        ...(process.env.public_READ_WRITE_TOKEN ? { token: process.env.public_READ_WRITE_TOKEN } : {}),
+      });
+      console.log(`[audio] Script saved next to audio for review.`);
+    } catch (scriptErr) {
+      console.warn(`[audio] Script save failed (non-fatal):`, scriptErr);
+    }
 
     // 7. Estimate duration (128kbps MP3 → bytes / (128000/8) = seconds)
     const estimatedDuration = Math.round(audio.length / (128000 / 8));

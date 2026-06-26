@@ -314,21 +314,7 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
       {/* ── 2. DARK DASHBOARD — live prices ─────────────────────────────── */}
       <SuperBriefDashboard />
 
-      {/* ── 2a. MARKETS MINUTE — market-state read, bright pink band under the dashboard ─ */}
-      {marketsMinuteSection && (
-        <section className="bg-ct-pink px-4 py-4 border-t-[3px] border-ct-dark">
-          <div className="max-w-lg mx-auto">
-            <div className="font-mono text-[9px] text-white/75 uppercase tracking-wider font-medium mb-2">
-              Markets minute
-            </div>
-            <p className="text-[13px] text-white leading-[1.65] font-medium">
-              <RichText text={marketsMinuteSection.content} />
-            </p>
-          </div>
-        </section>
-      )}
-
-      {/* ── 2b. THE IDEAS — ideas-first lead (the day's biggest ideas) ───── */}
+      {/* ── 2a. THE IDEAS — ideas-first lead (the day's biggest ideas) ───── */}
       {ideaCards.length > 0 && (
         <section className="bg-white px-4 py-4 border-t-[3px] border-ct-dark">
           <div className="max-w-lg mx-auto">
@@ -365,6 +351,20 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
                 <RichText text={para} />
               </p>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── 2c. MARKETS MINUTE — market-state read, after the ideas ─────── */}
+      {marketsMinuteSection && (
+        <section className="bg-ct-pink px-4 py-4 border-t-[3px] border-ct-dark">
+          <div className="max-w-lg mx-auto">
+            <div className="font-mono text-[9px] text-white/75 uppercase tracking-wider font-medium mb-2">
+              Markets minute
+            </div>
+            <p className="text-[13px] text-white leading-[1.65] font-medium">
+              <RichText text={marketsMinuteSection.content} />
+            </p>
           </div>
         </section>
       )}

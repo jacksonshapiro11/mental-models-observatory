@@ -550,7 +550,7 @@ function extractCommentaryOnly(content: string): string {
 
 const SECTION_SYSTEM_PROMPT = `You are a podcast scriptwriter for "Markets, Meditations, and Mental Models", a daily financial market intelligence podcast.
 
-YOUR JOB: Convert written market analysis into natural, conversational spoken form. Every KEY insight, thesis, and "so what" from the source must appear in your output. But be EFFICIENT. The target episode length is 30-35 minutes total across all sections. That means each section must be tight. Deliver the insight in the fewest words that preserve the substance. Cut redundant context, excessive setup, and throat-clearing. Get to the point, make it land, move on.
+YOUR JOB: Convert written market analysis into natural, conversational spoken form. THE BALANCE, which is the entire job: keep the episode to a reasonable length AND lose no substance. Aim to land the full brief UNDER 30 minutes, but you hit that target by compressing DELIVERY, never by dropping substance. Compress delivery aggressively: paraphrase (it does NOT have to be word-for-word), cut setup, redundancy, throat-clearing, and connective filler. But EVERY substantive point survives: every thesis, every "so what," every number that drives an argument, every "where this might be wrong," every distinct story. NEVER drop a point, a step in the argument, or a piece of evidence to save time. Test: could the listener reconstruct every argument and conclusion from your script? If yes, you compressed right. If a point is gone, that is the lossy compression we are killing. Tiebreaker: if keeping all the substance runs you slightly over, run slightly over. Substance beats the clock by a small margin. Do not pad, do not gut. It should sound like a smart friend thinking it through out loud, not reading aloud.
 
 VOICE & FEEL (THIS IS CRITICAL):
 You're writing how a smart friend actually talks when explaining something they find fascinating. This is a MORNING show. The listener is waking up. Your script should wake them up. Not a podcast host performing. Not NPR. Not a finance bro hyping. A person who reads a lot, thinks clearly, and is genuinely excited to share what they know. The listener should feel like they're in a conversation, not an audience. They should feel ENERGIZED, AWAKE, and SMARTER after listening, not weighed down by doom or lulled to sleep. Even when the news is heavy, the energy should be "isn't it fascinating that we get to think about this?" not "everything is terrible." Bring LIFE to the writing. If you write it flat, the voice reads it flat.
@@ -618,8 +618,8 @@ JARGON RULES (CRITICAL):
 - Never use more than ONE technical term per sentence without an explanation.
 - If the written source has jargon, translate it. Your job is to make the listener smarter, not to prove you know the vocabulary.
 
-DEPTH (SMART BUT EFFICIENT):
-The listener is smart and wants to get smarter. Simplify the LANGUAGE, not the THINKING. Keep second-order effects and "why this matters" reasoning. But be CONCISE. The target total episode is 30-35 minutes. Every sentence must earn its place. If a point can land in 2 sentences instead of 4, use 2. Cut setup sentences that delay the insight. Get to the "so what" fast. The specificity IS the value, but verbosity is not.
+DEPTH (SUBSTANCE IS SACRED):
+The listener is smart and wants to get smarter. Simplify the LANGUAGE, never the THINKING. Keep every second-order effect, every "why this matters," every "where this might be wrong." Tighten wording, never ideas: you may deliver a four-sentence point in three well-chosen sentences, but all of its substance survives. Cut throat-clearing and repeated setup, not reasoning or evidence. When in doubt, include it. The specificity IS the value, and a section that arrives gutted has failed even if it is short.
 
 SKIP: Markdown formatting, links, emoji, reference markers, story numbers, status labels, confidence scores, Validates/Rejects framework labels (but include the reasoning).
 
@@ -740,11 +740,16 @@ interface SectionContext {
 // No need for AI-generated act boundary cues — the transitions are structural scaffolding.
 
 /** Rewrite a single section via GPT-4o with retry */
-async function rewriteSection(client: OpenAI, sectionName: string, content: string, context?: SectionContext): Promise<string> {
+async function rewriteSection(client: OpenAI, sectionName: string, content: string, context?: SectionContext, opts?: { instructions?: Record<string, string>; systemPrompt?: string }): Promise<string> {
+  // Which instruction set + system prompt to use. The super brief passes its own
+  // (LIGHT_SECTION_INSTRUCTIONS + LIGHT_SECTION_SYSTEM_PROMPT) so its per-section
+  // guidance actually applies — previously it was silently ignored.
+  const instrDict = opts?.instructions ?? SECTION_INSTRUCTIONS;
+  const systemPrompt = opts?.systemPrompt ?? SECTION_SYSTEM_PROMPT;
   // Look up exact match first, then try prefix match for sub-sections
-  let instruction = SECTION_INSTRUCTIONS[sectionName];
+  let instruction = instrDict[sectionName];
   if (!instruction) {
-    for (const [key, val] of Object.entries(SECTION_INSTRUCTIONS)) {
+    for (const [key, val] of Object.entries(instrDict)) {
       if (sectionName.startsWith(key.split(':')[0] + ':')) {
         instruction = val;
         break;
@@ -767,7 +772,7 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
       parts.push(`NEXT SECTION: "${context.nextSection}".`);
     }
     if (context.alreadyCovered && context.alreadyCovered.length > 0) {
-      parts.push(`ALREADY COVERED (DO NOT REPEAT THESE — the listener has already heard them):\n${context.alreadyCovered.map(f => `- ${f}`).join('\n')}\nIf any of these facts appear in your source content, either skip them entirely or reference them with a brief callback like "as we mentioned earlier" and move immediately to NEW information. Do NOT re-state the numbers, percentages, or framing. The listener remembers.`);
+      parts.push(`ALREADY COVERED (DO NOT REPEAT THESE — the listener has already heard them):\n${context.alreadyCovered.map(f => `- ${f}`).join('\n')}\nIf any of these facts appear in your source content, do not RE-EXPLAIN them at length; reference them with a brief callback like "as we mentioned earlier" and move to the new angle. BUT never drop a fact your section's own argument actually needs to land. If the point requires the number to make sense, say it again briefly. Only skip pure restatement that adds nothing. Preserving the argument always beats avoiding a repeat.`);
     }
     if (parts.length > 0) {
       transitionContext = '\n\nCONTEXT:\n' + parts.join('\n');
@@ -780,13 +785,20 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
         const resp = await client.chat.completions.create({
           model: 'gpt-4o',
           messages: [
-            { role: 'system', content: SECTION_SYSTEM_PROMPT },
+            { role: 'system', content: systemPrompt },
             { role: 'user', content: `SECTION: ${sectionName}\n\nINSTRUCTION: ${instruction}${transitionContext}\n\nCONTENT:\n${content}` },
           ],
           temperature: 0.4,
+          max_tokens: 8000,
         });
-        const text = resp.choices[0]?.message?.content?.trim();
+        const choice = resp.choices[0];
+        const text = choice?.message?.content?.trim();
         if (!text) throw new Error('Empty response');
+        // Truncation guard: if GPT stopped because it ran out of output room, the script
+        // is cut mid-sentence and TTS will read the cut. Surface it loudly.
+        if (choice?.finish_reason === 'length') {
+          console.warn(`[audio] Section "${sectionName}" hit the output-token cap — the script may be cut mid-sentence. This section likely needs splitting.`);
+        }
         return text;
       },
       { label: `GPT-4o "${sectionName}"` }
@@ -1183,9 +1195,9 @@ function applyLightPronunciations(text: string): string {
 /** Desired section order for audio. Ideas-first leads with the ideas; legacy format
  *  has no the-idea/also-moving so it falls back to markets-minute → the-update → … */
 const LIGHT_SECTION_ORDER = [
-  'markets-minute',    // market-state read, surfaced first (renders under the dashboard on web)
-  'the-idea',          // ideas-first lead (may repeat — handled by filter below)
+  'the-idea',          // ideas-first LEAD — the whole point opens the brief
   'also-moving',       // ideas-first secondary
+  'markets-minute',    // market-state read, after the ideas
   'the-update',        // legacy selection format
   'interesting-things',
   'the-meditation',
@@ -1196,7 +1208,7 @@ const LIGHT_SECTION_ORDER = [
 const LIGHT_SECTION_TRANSITIONS: Record<string, string> = {
   'the-idea': 'Let\'s get into today\'s biggest ideas.', // fired once before the first idea
   'also-moving': 'A few other things moving today.',
-  'markets-minute': 'Let\'s start with where the market actually is.', // leads the brief, under the dashboard
+  'markets-minute': '', // mid-flow after the ideas; no lead-in needed
   'the-update': 'Alright, here\'s what\'s driving the conversation today.',
   'interesting-things': 'A couple things that caught our eye outside the main stories.',
   'the-meditation': 'OK. Let\'s take a breath. Time for today\'s meditation.',
@@ -1204,7 +1216,32 @@ const LIGHT_SECTION_TRANSITIONS: Record<string, string> = {
   'the-close': '',  // No transition — the close IS the sign-off
 };
 
+// Dedicated system prompt for the SUPER BRIEF. The super brief is already curated and
+// distilled, so unlike the full brief it must NOT be compressed again — deliver it nearly
+// whole, conversationally, around 10 minutes. (Previously the super brief borrowed the
+// full-brief prompt, which told it to compress to a 30-35 min target — the root of the
+// over-compression and the fabricated closing summary.)
+const LIGHT_SECTION_SYSTEM_PROMPT = `You are the scriptwriter for the SUPER BRIEF, the short, ideas-first daily audio from "Markets, Meditations, and Mental Models."
+
+WHAT THIS IS: the super brief is ALREADY a tight, curated, distilled product (roughly 1,500 words). It is NOT a long episode to compress. Your job is to deliver it nearly WHOLE in a natural spoken voice, landing around 10 minutes. Do NOT compress it further. It was already compressed once on the page, and compressing it again is exactly the failure we are fixing.
+
+THE BALANCE (read twice):
+- You MAY smooth and tighten DELIVERY: contractions, natural rhythm, drop a redundant connective, round a price for speech. It does NOT have to be word-for-word.
+- You may NOT drop substance. Every idea keeps its news hook, its bigger idea, and its honest "what would change my mind." The meditation reads in FULL: the setup, the quote and author, the whole reflection, the practice. The model is TAUGHT in full: example, mechanism, and the "Use it." Each Two Things bullet is read. Nothing substantive is left on the floor.
+- Test: could the listener reconstruct every idea and its turn from your script? If yes, you delivered it right. If a point is gone, that is the lossy compression we are killing.
+
+FIDELITY (NON-NEGOTIABLE): say what the brief says. Never swap a concept for a different one. If the brief says "the AI stack," never say "the blockchain stack." Never invent a number, a claim, or a connection the brief did not make. Connecting two stories the brief connects is good. Inventing one is a lie.
+
+THE CLOSE: deliver the brief's written close as one or two warm spoken sentences. Do NOT write a recap or summary of the episode. Never summarize what the listener just heard. If the brief's close is one line, your close is one line.
+
+VOICE: a smart friend talking something through out loud, not reading aloud and not performing. Energized and awake, never doom, never NPR-flat. Contractions everywhere.
+
+NO SECTION INTROS: a deterministic transition is added before your section. Do not announce or frame the section. Start with the first substantive sentence.
+
+BANNED: em-dashes (use a period or a comma instead), "buckle up," "here's where it gets interesting," "let that sink in," "at the end of the day," and hype filler. Spell numbers for natural speech and round where it helps. Skip markdown, links, and reference markers.`;
+
 const LIGHT_SECTION_INSTRUCTIONS: Record<string, string> = {
+  'light-intro': 'Open the episode in two or three warm, energetic sentences. Use the DAILY TITLE and the lead idea HEADLINE to set up the big ideas coming, and make the listener want to stay. Do not summarize the whole brief; just open the door. No "welcome back," no throat-clearing.',
   'The Idea': 'Deliver this as one genuine market idea: state the idea and why it matters, ground it in the news that surfaced it, and include the honest "what would change my mind." Keep the through-line tight — the idea is the point, the news is the evidence. Stay close to the source text; do not invent numbers or calls not in it.',
   'Also Moving': 'Brisk and secondary. A couple of things moving that did not rise to a full idea today. One or two sentences each. Keep it light and quick.',
   'The Update': 'Cover every story. Each one gets its headline, the key numbers, why it matters, and the "so what." Thread stories together naturally when they connect. Do NOT skip any story. Stay close to the source text. The specificity is the value. Get to the insight fast. No throat-clearing.',
@@ -1214,6 +1251,33 @@ const LIGHT_SECTION_INSTRUCTIONS: Record<string, string> = {
   'The Model': 'This is the brief\'s deep keeper: the one reusable idea the listener takes away. Teach it, do not just name it. Give the vivid example, explain the mechanism (why it is true), then land on the bolded "Use it" decision tool they can apply today. Use the timeless examples from the written text and do NOT tie it to today\'s news, markets, or companies. Keep it clear and unhurried; the listener should finish with something genuinely useful they will reuse.',
   'The Close': 'Warm, brief sign-off. This is the last thing the listener hears. Land it cleanly — don\'t trail off. One or two sentences that feel like a human saying goodbye. No market references, no previews of tomorrow.',
 };
+
+/**
+ * Fidelity tripwire. Compares the spoken script to the written source and flags lossy
+ * compression (script far shorter than the brief = gutted sections) or bloat (far longer
+ * = padding/verbatim). Runs at generation time so a bad episode is caught in the logs,
+ * not days later on the podcast. Word-ratio based, which is robust to numbers being
+ * spelled out for speech.
+ */
+export function checkScriptFidelity(
+  sourceText: string,
+  script: string,
+  opts?: { minRatio?: number; maxRatio?: number },
+): { ok: boolean; warnings: string[]; ratio: number; sourceWords: number; scriptWords: number } {
+  const minRatio = opts?.minRatio ?? 0.6;
+  const maxRatio = opts?.maxRatio ?? 1.8;
+  const sourceWords = sourceText.split(/\s+/).filter(Boolean).length;
+  const scriptWords = script.split(/\s+/).filter(Boolean).length;
+  const ratio = sourceWords > 0 ? scriptWords / sourceWords : 1;
+  const warnings: string[] = [];
+  if (ratio < minRatio) {
+    warnings.push(`LOSSY: the spoken script is only ${Math.round(ratio * 100)}% of the brief's length (${scriptWords} vs ${sourceWords} words). Sections are likely gutted; regenerate or raise fidelity before this ships.`);
+  }
+  if (ratio > maxRatio) {
+    warnings.push(`BLOATED: the spoken script is ${Math.round(ratio * 100)}% of the brief's length; it may be padding or reading verbatim.`);
+  }
+  return { ok: warnings.length === 0, warnings, ratio, sourceWords, scriptWords };
+}
 
 /**
  * Preprocess a Brief Light for TTS. Dedicated pipeline that handles
@@ -1266,7 +1330,7 @@ export async function preprocessBriefLightForTTS(
             || '')
         : (ordered[0]?.content?.split('\n')[0] || '');
       const introContent = `DATE: ${brief.displayDate}\nDAILY TITLE: ${brief.dailyTitle || ''}\nHEADLINE: ${ideaHeadline}`;
-      const introScript = await rewriteSection(client, 'light-intro', introContent, {});
+      const introScript = await rewriteSection(client, 'light-intro', introContent, {}, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
 
       // Rewrite each section individually with section-specific instructions
       const sectionScripts: string[] = [];
@@ -1297,7 +1361,7 @@ export async function preprocessBriefLightForTTS(
           : section.content;
 
         console.log(`[audio:light] Section: ${rewriteLabel}${section.title ? ` — ${section.title}` : ''}...`);
-        const script = await rewriteSection(client, rewriteLabel, rewriteContent, context);
+        const script = await rewriteSection(client, rewriteLabel, rewriteContent, context, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
         console.log(`[audio:light]   → ${script.length} chars`);
 
         // Prepend the transition once per section id (so multiple ideas don't repeat the lead-in)

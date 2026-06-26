@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import OpenAI from 'openai';
 import { getBriefLightByDate, getLatestBriefLight } from '@/lib/brief-light-parser';
-import { preprocessBriefLightForTTS } from '@/lib/audio/text-preprocessor';
+import { preprocessBriefLightForTTS, checkScriptFidelity } from '@/lib/audio/text-preprocessor';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
 import { writeLightEpisodeMetadata, readLightEpisodeMetadata } from '@/lib/audio/podcast-feed';
 
@@ -160,6 +160,16 @@ export async function POST(req: NextRequest) {
 
     console.log(`[audio:light] Script: ${preprocessed.characterCount} characters, ${preprocessed.sections.length} sections`);
 
+    // Fidelity tripwire: the super brief should be delivered nearly whole, so flag if the
+    // script came back too thin against the written brief (caught here, not on Spotify).
+    const fidelity = checkScriptFidelity(
+      brief.sections.map(s => s.content).join('\n'),
+      preprocessed.fullText,
+      { minRatio: 0.7 },
+    );
+    for (const w of fidelity.warnings) console.warn(`[audio:light] ⚠ FIDELITY — ${w}`);
+    console.log(`[audio:light] Fidelity ratio: ${Math.round(fidelity.ratio * 100)}% (script/brief words)`);
+
     // 5. Generate audio via TTS
     const selectedVoice = process.env.TTS_VOICE || 'onyx';
     console.log(`[audio:light] TTS voice: ${selectedVoice}`);
@@ -173,17 +183,17 @@ export async function POST(req: NextRequest) {
       ttsClient,
       preprocessed.fullText,
       {
-        instructions: `Voice: bright, energized, genuinely curious. This is the SUPER BRIEF — the compressed version. Move with pace and purpose. Every sentence earns its spot. Like a smart friend giving you the 5-minute version over coffee because you're both running late but the stories are too good to skip.
+        instructions: `Voice: bright, warm, genuinely curious, a smart friend walking you through the day's biggest ideas over coffee. This is the SUPER BRIEF: ideas-first and substantial, around ten minutes. Not rushed.
 
-Pacing: Faster than the full brief. Keep momentum high. Brief pauses between stories to let the listener reset, but no lingering. This is the express lane.
+Pacing: lively but unhurried. Keep momentum, but let the ideas land. Give the meditation and the mental model room to breathe; do not race through them. Natural pauses between sections. This is a real conversation, not a speed-run.
 
-Tone: Confident, curious, punchy. Even serious stories get delivered with energy — "isn't it wild that this is happening?" not doom and gloom. The listener should feel like they just speed-ran the day's most important stories and came out sharper.
+Tone: confident, curious, human. Even serious stories carry energy and interest, never doom, never NPR-flat. The listener should finish feeling sharper and a little more grounded, like they actually learned something.
 
-Energy: HIGH throughout. This is short — every second counts. No warm-up, no wind-down. Hit the ground running and end strong.
+Energy: engaged and awake throughout, but modulated to the material: punchy on the ideas and the market read, slower and warmer on the meditation and the model.
 
-Voice consistency: CRITICAL. Maintain the SAME pitch, register, and speaking pace throughout. One consistent voice from start to finish.
+Voice consistency: CRITICAL. Maintain the SAME pitch, register, and base pace throughout. One consistent voice from start to finish.
 
-Avoid: Robotic cadence, singsong patterns, dramatic pauses, breathy emphasis, monotone delivery, NPR flatness, sleepy energy.`,
+Avoid: rushing, robotic cadence, singsong patterns, dramatic over-pausing, breathy emphasis, monotone, NPR flatness, sleepy energy, and any sense of speed-running the content.`,
         onProgress: (completed, total) => {
           console.log(`[audio:light] TTS chunk ${completed}/${total}`);
         },
@@ -203,6 +213,21 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses, breathy emphasis, mo
     });
 
     console.log(`[audio:light] Uploaded to Blob: ${blob.url}`);
+
+    // Persist the generated script next to the audio so the episode is always reviewable
+    // (removes the blind spot where only the mp3 shipped and the script was thrown away).
+    try {
+      await put(`audio/brief-light-${brief.date}.txt`, preprocessed.fullText, {
+        access: 'public',
+        contentType: 'text/plain; charset=utf-8',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        ...(process.env.public_READ_WRITE_TOKEN ? { token: process.env.public_READ_WRITE_TOKEN } : {}),
+      });
+      console.log('[audio:light] Script saved next to audio for review.');
+    } catch (scriptErr) {
+      console.warn('[audio:light] Script save failed (non-fatal):', scriptErr);
+    }
 
     // 7. Estimate duration (128kbps MP3)
     const estimatedDuration = Math.round(audio.length / (128000 / 8));
