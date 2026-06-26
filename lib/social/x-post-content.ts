@@ -26,7 +26,10 @@ async function readXPostFromRedis(dateSlug: string): Promise<{ mainPost: string;
   const data = parseRedisJson<{ mainPost?: string; reply?: string }>(raw);
 
   if (!data?.mainPost) return null;
-  return { mainPost: data.mainPost, reply: data.reply };
+  return {
+    mainPost: data.mainPost,
+    ...(data.reply ? { reply: data.reply } : {}),
+  };
 }
 
 function buildPostsFromRedis(post: { mainPost: string; reply?: string }): string[] {
