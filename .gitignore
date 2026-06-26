@@ -180,8 +180,29 @@ data/subscribers.json
 
 # Working files & mockups (never commit)
 mockup-*.html
+email-preview-*.html
+email-draft-body-*.html
+draft-body-*.html
+welcome-email.html
 section-mockups.md
 signal-drafts.md
+
+# Local QA artifacts from fact-gate (regenerated per brief)
+content/daily-updates/*-factcheck.json
+
+# FUSE/VM hidden debris
+**/.fuse_hidden*
+
+# Teaser render output (Beehiiv paste workflow — local only)
+teaser-out/
+
+# Agent/temp extractors at repo root
+_extract*
+_tmp_*
+tmp_*.py
+tmp_*.sh
+extract_tweets*.py
+extract_zvi*.py
 test-audio-output.mp3
 test-audio-script.txt
 ui-staging/
