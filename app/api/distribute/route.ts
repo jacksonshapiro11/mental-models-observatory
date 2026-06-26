@@ -23,177 +23,23 @@
  * Protected by CRON_SECRET / SNAPSHOT_SECRET.
  */
 
-export const maxDuration = 120; // 2 minutes — enough for email batch + posting
+export const maxDuration = 120;
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Redis } from '@upstash/redis';
+import { isCronAuthorized } from '@/lib/cron-auth';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
 import { resolvePublishDate } from '@/lib/publish-date';
-import { renderBriefEmail } from '@/lib/email/render-brief';
-import { sendBatch } from '@/lib/email/resend-client';
-import { resolveXPostContent } from '@/lib/social/x-post-content';
-import { hasXPostingCredentials, resolveXPostingClient } from '@/lib/social/x-oauth';
-
-// ─── Auth (matches other cron endpoints) ───────────────────────────────────
-
-function isAuthorized(req: NextRequest): boolean {
-  const snapshotSecret = process.env.SNAPSHOT_SECRET;
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!snapshotSecret && !cronSecret) {
-    console.error('[distribute] Neither SNAPSHOT_SECRET nor CRON_SECRET is set');
-    return false;
-  }
-
-  const secret = req.headers.get('x-snapshot-secret') || req.nextUrl.searchParams.get('secret');
-  if (secret && snapshotSecret && secret === snapshotSecret) return true;
-
-  const authHeader = req.headers.get('authorization');
-  if (authHeader) {
-    const token = authHeader.replace('Bearer ', '');
-    if (cronSecret && token === cronSecret) return true;
-    if (snapshotSecret && token === snapshotSecret) return true;
-  }
-
-  console.warn('[distribute] Auth failed.');
-  return false;
-}
-
-// ─── Email distribution ────────────────────────────────────────────────────
-
-async function distributeEmail(dateSlug: string, dryRun: boolean): Promise<{ success: boolean; details: string }> {
-  if (!process.env.RESEND_API_KEY) {
-    return { success: false, details: 'RESEND_API_KEY not set' };
-  }
-
-  const brief = getBriefLightByDate(dateSlug);
-  if (!brief) {
-    return { success: false, details: `No brief light found for ${dateSlug}` };
-  }
-
-  const rendered = renderBriefEmail(brief);
-  console.log(`[distribute] Email subject: ${rendered.subject}`);
-
-  // Get subscribers from Redis
-  const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-  });
-  const recipients = (await redis.smembers('subscribers:emails')) as string[];
-  console.log(`[distribute] Subscribers: ${recipients.length}`);
-
-  if (recipients.length === 0) {
-    return { success: true, details: 'No subscribers' };
-  }
-
-  if (dryRun) {
-    return { success: true, details: `Would send to ${recipients.length} subscriber(s)` };
-  }
-
-  const result = await sendBatch(recipients, rendered.subject, rendered.html, {
-    tags: [
-      { name: 'type', value: 'daily-brief' },
-      { name: 'date', value: brief.date },
-    ],
-  });
-
-  return {
-    success: result.failed.length === 0,
-    details: `Sent ${result.sent}/${result.total}${result.failed.length > 0 ? `, ${result.failed.length} failed` : ''}`,
-  };
-}
-
-// ─── X/Twitter distribution ───────────────────────────────────────────────
-//
-// Dual-source strategy:
-//   1. Try Redis first — the daily-x-post scheduled task generates AI content
-//      and stores it via /api/x-post/store (key: x-post:YYYY-MM-DD)
-//   2. Fall back to code-based thread-generator — extracts from the brief
-//      directly (this is the system that worked on 5/11)
-//
-// This ensures posts always go out even if the scheduled task hasn't run.
-
-async function distributeX(dateSlug: string, dryRun: boolean): Promise<{ success: boolean; details: string }> {
-  if (!(await hasXPostingCredentials())) {
-    return {
-      success: false,
-      details: 'Twitter OAuth 2.0 not configured. Set TWITTER_CLIENT_ID + tokens (env or /api/x-auth).',
-    };
-  }
-
-  const content = await resolveXPostContent(dateSlug);
-  if (!content) {
-    return {
-      success: false,
-      details: `No x-post content available for ${dateSlug} (Redis empty, no brief found for thread generator)`,
-    };
-  }
-
-  const { posts, source } = content;
-  console.log(`[distribute] Using ${source}: ${posts.length} posts (${posts.map((p) => p.length).join('/')} chars)`);
-
-  if (dryRun) {
-    return {
-      success: true,
-      details: `[${source}] Would post ${posts.length} tweets:\n\n${posts.join('\n\n--- REPLY ---\n\n')}`,
-    };
-  }
-
-  let client;
-  try {
-    const resolved = await resolveXPostingClient();
-    client = resolved.client;
-    console.log(
-      `[distribute] Token source: ${resolved.tokenSource}${resolved.refreshed ? ' (refreshed)' : ''}`,
-    );
-  } catch (authErr) {
-    const msg = authErr instanceof Error ? authErr.message : String(authErr);
-    return { success: false, details: `X auth failed: ${msg}` };
-  }
-
-  try {
-    // Post first tweet
-    const firstResult = await client.v2.tweet(posts[0]!);
-    let lastTweetId = firstResult.data.id;
-    console.log(`[distribute] Post 1/${posts.length} published: ${lastTweetId} [${source}]`);
-
-    // Post remaining tweets as self-replies
-    for (let i = 1; i < posts.length; i++) {
-      await new Promise<void>((resolve) => setTimeout(resolve, 3000));
-      const replyResult = await client.v2.reply(posts[i]!, lastTweetId);
-      lastTweetId = replyResult.data.id;
-      console.log(`[distribute] Post ${i + 1}/${posts.length} published: ${lastTweetId}`);
-    }
-
-    return {
-      success: true,
-      details: `[${source}] Published ${posts.length} posts: https://x.com/i/status/${firstResult.data.id}`,
-    };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return {
-      success: false,
-      details: `X posting failed: ${msg}`,
-    };
-  }
-}
-
-// ─── Route handler ─────────────────────────────────────────────────────────
+import { runDistribute } from '@/lib/distribute/handler';
 
 export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!isCronAuthorized(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Resolve the target date. The auto (cron) path targets TODAY; an explicit
-  // ?date= is a deliberate manual backfill.
   const { date: dateSlug, manual } = resolvePublishDate(req.nextUrl.searchParams.get('date'));
-  const channel = req.nextUrl.searchParams.get('channel'); // 'email' | 'x' | null (both)
+  const channel = req.nextUrl.searchParams.get('channel') as 'email' | 'x' | null;
   const dryRun = req.nextUrl.searchParams.get('dry-run') === 'true';
 
-  // FRESHNESS GATE: on the auto path, distribute ONLY if today's brief is
-  // actually published. A missed day is a clean skip — never email or post an
-  // older brief, or email + X lag a day behind every time a day is missed.
   if (!manual && !getBriefLightByDate(dateSlug)) {
     console.warn(`[distribute] No brief for ${dateSlug} — skipping distribution (no stale fallback).`);
     return NextResponse.json({ date: dateSlug, skipped: true, reason: `No brief published for ${dateSlug}` });
@@ -201,39 +47,20 @@ export async function POST(req: NextRequest) {
 
   console.log(`[distribute] Starting — date=${dateSlug}, channel=${channel || 'all'}, dryRun=${dryRun}`);
 
-  const results: Record<string, { success: boolean; details: string }> = {};
+  const results = await runDistribute({ dateSlug, dryRun, channel });
+  const allSuccess = Object.values(results).every((r) => r.success);
 
-  // Email
-  if (!channel || channel === 'email') {
-    try {
-      results.email = await distributeEmail(dateSlug, dryRun);
-    } catch (err) {
-      results.email = { success: false, details: `Error: ${err instanceof Error ? err.message : String(err)}` };
-    }
-    console.log(`[distribute] Email: ${results.email.success ? '✅' : '❌'} ${results.email.details}`);
-  }
-
-  // X/Twitter
-  if (!channel || channel === 'x') {
-    try {
-      results.x = await distributeX(dateSlug, dryRun);
-    } catch (err) {
-      results.x = { success: false, details: `Error: ${err instanceof Error ? err.message : String(err)}` };
-    }
-    console.log(`[distribute] X: ${results.x.success ? '✅' : '❌'} ${results.x.details}`);
-  }
-
-  const allSuccess = Object.values(results).every(r => r.success);
-
-  return NextResponse.json({
-    date: dateSlug,
-    dryRun,
-    results,
-    success: allSuccess,
-  }, { status: allSuccess ? 200 : 207 }); // 207 Multi-Status if partial failure
+  return NextResponse.json(
+    {
+      date: dateSlug,
+      dryRun,
+      results,
+      success: allSuccess,
+    },
+    { status: allSuccess ? 200 : 207 },
+  );
 }
 
-// Vercel cron sends GET requests
 export async function GET(req: NextRequest) {
   return POST(req);
 }

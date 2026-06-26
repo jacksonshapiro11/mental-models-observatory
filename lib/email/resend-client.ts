@@ -6,7 +6,7 @@
  * Required env vars:
  *   RESEND_API_KEY       — from Resend dashboard
  *   EMAIL_FROM_ADDRESS   — verified domain email (e.g., jackson@cosmictrex.com)
- *   EMAIL_FROM_NAME      — display name (default: "Jackson @ Mental Models Observatory")
+ *   EMAIL_FROM_NAME      — display name (default: "Cosmic Trex")
  */
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
@@ -36,7 +36,7 @@ function getConfig() {
   if (!apiKey) throw new Error('RESEND_API_KEY not set');
 
   const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'jackson@cosmictrex.com';
-  const fromName = process.env.EMAIL_FROM_NAME || 'Jackson @ Mental Models Observatory';
+  const fromName = process.env.EMAIL_FROM_NAME || 'Cosmic Trex';
 
   return { apiKey, from: `${fromName} <${fromAddress}>` };
 }

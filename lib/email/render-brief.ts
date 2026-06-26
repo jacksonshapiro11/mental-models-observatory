@@ -10,6 +10,7 @@
  */
 
 import { BriefLight } from '../brief-light-parser';
+import { buildUnsubscribeUrl } from './unsubscribe-token';
 
 const SITE_URL = 'https://cosmictrex.com';
 
@@ -19,12 +20,13 @@ export interface RenderedEmail {
   html: string;
 }
 
-export function renderBriefEmail(brief: BriefLight): RenderedEmail {
+export function renderBriefEmail(brief: BriefLight, recipientEmail?: string): RenderedEmail {
   const subject = extractSubject(brief);
   const previewText = truncate(brief.lede || brief.epigraph, 140);
   const webUrl = `${SITE_URL}/super-brief`;
   const fullBriefUrl = `${SITE_URL}/daily-update`;
   const audioUrl = 'https://podcasts.apple.com/us/podcast/markets-meditations-and-mental-models/id1885352035';
+  const unsubscribeUrl = recipientEmail ? buildUnsubscribeUrl(recipientEmail) : null;
 
   const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -49,7 +51,7 @@ export function renderBriefEmail(brief: BriefLight): RenderedEmail {
   ${renderDailyHeader(brief)}
   ${renderSections(brief)}
   ${renderShareBlock(brief, webUrl)}
-  ${renderFooter(webUrl)}
+  ${renderFooter(webUrl, unsubscribeUrl)}
 
 </table>
 
@@ -160,7 +162,10 @@ function renderShareBlock(brief: BriefLight, webUrl: string): string {
   </td></tr>`;
 }
 
-function renderFooter(webUrl: string): string {
+function renderFooter(webUrl: string, unsubscribeUrl: string | null): string {
+  const unsubLine = unsubscribeUrl
+    ? `<a href="${unsubscribeUrl}" style="color:#8a7d64;">Unsubscribe</a> &nbsp;·&nbsp; `
+    : '';
   return `
   <tr><td style="padding:24px 40px 40px 40px;border-top:1px solid #e8e2d5;">
     <p style="margin:0 0 8px 0;font-family:Georgia,serif;font-size:13px;line-height:1.6;color:#6b5d45;">
@@ -168,8 +173,11 @@ function renderFooter(webUrl: string): string {
     </p>
     <p style="margin:0;font-family:Georgia,serif;font-size:12px;line-height:1.6;color:#8a7d64;">
       <a href="${webUrl}" style="color:#6b5d45;">View in browser</a> &nbsp;·&nbsp;
-      <a href="${SITE_URL}" style="color:#6b5d45;">The Observatory</a> &nbsp;·&nbsp;
+      <a href="${SITE_URL}" style="color:#6b5d45;">Cosmic Trex</a> &nbsp;·&nbsp;
       <a href="${SITE_URL}/archive" style="color:#6b5d45;">Archive</a>
+    </p>
+    <p style="margin:8px 0 0 0;font-family:Georgia,serif;font-size:11px;line-height:1.6;color:#8a7d64;">
+      ${unsubLine}Cosmic Trex · Markets, Meditations &amp; Mental Models
     </p>
   </td></tr>`;
 }

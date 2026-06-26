@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Fraunces, JetBrains_Mono } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
 import { Navigation } from '@/components/layout/Navigation';
 import { WebsiteJsonLd } from '@/components/seo/JsonLd';
@@ -98,6 +99,7 @@ export default function RootLayout({
         <WebsiteJsonLd />
         <Navigation variant="light" className="sticky top-0 z-50" />
         {children}
+        <Analytics />
       </body>
     </html>
   );

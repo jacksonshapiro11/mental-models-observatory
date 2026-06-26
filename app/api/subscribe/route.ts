@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
+import { sendWelcomeEmail } from '@/lib/email/welcome';
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 
@@ -162,6 +163,11 @@ export async function POST(request: NextRequest) {
 
     // Redis is the sole subscriber store. Emails sent via Resend at publish time.
     console.log('[subscribe] new subscriber:', sanitized, 'source:', source);
+
+    // Welcome email — best-effort, never fail subscribe
+    sendWelcomeEmail(sanitized).catch((err) => {
+      console.error('[subscribe] welcome email failed:', err);
+    });
 
     return NextResponse.json({ success: true, message: "You're in." });
   } catch (err) {

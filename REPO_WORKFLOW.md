@@ -50,7 +50,22 @@ If push fails, see `git-push-protocol.md`.
 
 ## Email
 
-Resend + Redis subscribers (`scripts/send-daily-email.ts`). Beehiiv scripts are legacy — do not use.
+Resend + Redis subscribers (`scripts/send-daily-email.ts`). Beehiiv scripts are legacy — **do not use**. Disable any scheduled Beehiiv draft task in Claude.
+
+**Resend ceiling:** Free tier = 100 emails/day. Upgrade Resend plan when subscriber count approaches **80** (headroom for welcome + daily sends).
+
+**Unsubscribe:** HMAC-signed links in email footer (`UNSUBSCRIBE_SECRET` or `SNAPSHOT_SECRET`). Route: `/api/unsubscribe`.
+
+## Publish orchestrator
+
+After `publish.py` pushes the brief, fire the full pipeline:
+
+```bash
+curl -X POST "https://cosmictrex.com/api/publish/complete" \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+Optional backfill: `?date=YYYY-MM-DD`. Runs light audio, email + X distribute, and marketing pack **in parallel**. Step logs in Redis (`distribute:log:{date}`, `audio:log:{date}`, `marketing:pack:{date}`). Retry cron at 12:00 and 14:00 ET hits `/api/distribute/retry`.
 
 ## What never ships
 
