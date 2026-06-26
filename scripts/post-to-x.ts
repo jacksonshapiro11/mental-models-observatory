@@ -21,6 +21,11 @@ import path from 'path';
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 dotenv.config();
 import { generateThreadFromDate, generateThreadForLatest } from '../lib/social/thread-generator';
+import {
+  hasXPostingCredentials,
+  loadXOAuthTokens,
+  refreshAndPersistXTokens,
+} from '../lib/social/x-oauth';
 
 // Use require for the JS Twitter client
 const TwitterClient = require('../scripts/platforms/twitter-client.js');
@@ -45,33 +50,34 @@ function parseArgs(): Args {
 
 // ─── Twitter client setup ──────────────────────────────────────────────────
 
-function getTwitterClient(): InstanceType<typeof TwitterClient> {
-  // Prefer OAuth 2.0 (free tier), fall back to OAuth 1.0a
-  if (process.env.TWITTER_OAUTH2_ACCESS_TOKEN && process.env.TWITTER_CLIENT_ID) {
-    return new TwitterClient({
-      oauth2AccessToken: process.env.TWITTER_OAUTH2_ACCESS_TOKEN,
-      clientId: process.env.TWITTER_CLIENT_ID,
-      clientSecret: process.env.TWITTER_CLIENT_SECRET,
-      refreshToken: process.env.TWITTER_OAUTH2_REFRESH_TOKEN,
-    });
+async function getTwitterClient(): Promise<InstanceType<typeof TwitterClient>> {
+  if (!(await hasXPostingCredentials())) {
+    throw new Error(
+      'Twitter OAuth 2.0 not configured. Set TWITTER_CLIENT_ID + tokens, or run /api/x-auth.',
+    );
   }
 
-  const config: Record<string, string | undefined> = {
-    apiKey: process.env.TWITTER_API_KEY,
-    apiSecret: process.env.TWITTER_API_SECRET,
-    accessToken: process.env.TWITTER_ACCESS_TOKEN,
-    accessTokenSecret: process.env.TWITTER_ACCESS_TOKEN_SECRET,
-  };
-
-  const missing = Object.entries(config)
-    .filter(([, v]) => !v)
-    .map(([k]) => k);
-
-  if (missing.length > 0) {
-    throw new Error(`Missing Twitter credentials: ${missing.join(', ')}`);
+  const { tokens } = await loadXOAuthTokens();
+  if (!tokens?.accessToken) {
+    throw new Error('No OAuth tokens available');
   }
 
-  return new TwitterClient(config);
+  let accessToken = tokens.accessToken;
+  if (tokens.refreshToken) {
+    try {
+      const refreshed = await refreshAndPersistXTokens(tokens);
+      accessToken = refreshed.accessToken;
+    } catch {
+      // Fall through with existing token; postTweet will retry refresh on 401
+    }
+  }
+
+  return new TwitterClient({
+    oauth2AccessToken: accessToken,
+    clientId: process.env.TWITTER_CLIENT_ID,
+    clientSecret: process.env.TWITTER_CLIENT_SECRET,
+    refreshToken: tokens.refreshToken,
+  });
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────
@@ -107,7 +113,7 @@ async function main() {
   }
 
   // 3. Post
-  const client = getTwitterClient();
+  const client = await getTwitterClient();
 
   console.log('🚀 Posting to X...\n');
 

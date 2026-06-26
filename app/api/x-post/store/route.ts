@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
+import { parseRedisJson } from '@/lib/social/x-oauth';
 
 function isAuthorized(req: NextRequest): boolean {
   const snapshotSecret = process.env.SNAPSHOT_SECRET;

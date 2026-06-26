@@ -20,7 +20,8 @@
  *
  * Env:
  *   RESEND_API_KEY, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
- *   TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
+ *   TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET
+ *   TWITTER_OAUTH2_ACCESS_TOKEN, TWITTER_OAUTH2_REFRESH_TOKEN (or tokens in Redis via /api/x-auth)
  */
 
 import dotenv from 'dotenv';
@@ -32,7 +33,12 @@ dotenv.config(); // fallback to .env
 import { getBriefLightByDate, getLatestBriefLight } from '../lib/brief-light-parser';
 import { renderBriefEmail } from '../lib/email/render-brief';
 import { sendEmail, sendBatch } from '../lib/email/resend-client';
-import { generateThreadFromDate, generateThreadForLatest } from '../lib/social/thread-generator';
+import { resolveXPostContent } from '../lib/social/x-post-content';
+import {
+  hasXPostingCredentials,
+  loadXOAuthTokens,
+  refreshAndPersistXTokens,
+} from '../lib/social/x-oauth';
 import { Redis } from '@upstash/redis';
 
 const TwitterClient = require('./platforms/twitter-client.js');
@@ -143,47 +149,56 @@ async function distributeEmail(args: Args): Promise<{ success: boolean; details:
 
 async function distributeX(args: Args): Promise<{ success: boolean; details: string }> {
   try {
-    // Check for required env vars — prefer OAuth 2.0 (free tier), fall back to OAuth 1.0a
-    const hasOAuth2 = Boolean(process.env.TWITTER_OAUTH2_ACCESS_TOKEN && process.env.TWITTER_CLIENT_ID);
-    const hasOAuth1 = Boolean(process.env.TWITTER_API_KEY && process.env.TWITTER_ACCESS_TOKEN);
-    if (!hasOAuth2 && !hasOAuth1) {
-      return { success: false, details: 'Twitter credentials not set — skipping X' };
+    if (!(await hasXPostingCredentials())) {
+      return {
+        success: false,
+        details: 'Twitter OAuth 2.0 not configured — set TWITTER_CLIENT_ID + tokens (env or /api/x-auth)',
+      };
     }
 
-    const thread = args.date
-      ? generateThreadFromDate(args.date)
-      : generateThreadForLatest();
-
-    if (!thread) {
-      return { success: false, details: `No brief found for thread generation` };
+    const dateSlug = args.date || todaySlug();
+    const content = await resolveXPostContent(dateSlug);
+    if (!content) {
+      return { success: false, details: `No brief/post content found for ${dateSlug}` };
     }
 
-    console.log(`🐦 X thread: ${thread.tweets.length} tweets for "${thread.dailyTitle}"`);
+    console.log(`🐦 X posts: ${content.posts.length} from ${content.source}`);
 
     if (args.dryRun) {
-      thread.tweets.forEach((t, i) => {
-        console.log(`   [${i + 1}] (${t.text.length}c) ${t.text.slice(0, 80)}...`);
+      content.posts.forEach((text, i) => {
+        console.log(`   [${i + 1}] (${text.length}c) ${text.slice(0, 80)}...`);
       });
-      return { success: true, details: `Would post ${thread.tweets.length}-tweet thread` };
+      return { success: true, details: `Would post ${content.posts.length} tweet(s)` };
     }
 
-    const clientConfig = hasOAuth2
-      ? {
-          oauth2AccessToken: process.env.TWITTER_OAUTH2_ACCESS_TOKEN,
-          clientId: process.env.TWITTER_CLIENT_ID,
-          clientSecret: process.env.TWITTER_CLIENT_SECRET,
-          refreshToken: process.env.TWITTER_OAUTH2_REFRESH_TOKEN,
-        }
-      : {
-          apiKey: process.env.TWITTER_API_KEY,
-          apiSecret: process.env.TWITTER_API_SECRET,
-          accessToken: process.env.TWITTER_ACCESS_TOKEN,
-          accessTokenSecret: process.env.TWITTER_ACCESS_TOKEN_SECRET,
-        };
-    const client = new TwitterClient(clientConfig);
+    const { tokens, source } = await loadXOAuthTokens();
+    if (!tokens?.accessToken) {
+      return { success: false, details: 'No OAuth tokens available' };
+    }
 
-    const tweetTexts = thread.tweets.map((t) => t.text);
-    const result = await client.postThread(tweetTexts);
+    let accessToken = tokens.accessToken;
+    if (tokens.refreshToken) {
+      try {
+        const refreshed = await refreshAndPersistXTokens(tokens);
+        accessToken = refreshed.accessToken;
+        console.log(`   Token refreshed (${source})`);
+      } catch (refreshErr) {
+        console.warn(
+          `   Token refresh failed, using existing token: ${
+            refreshErr instanceof Error ? refreshErr.message : String(refreshErr)
+          }`,
+        );
+      }
+    }
+
+    const client = new TwitterClient({
+      oauth2AccessToken: accessToken,
+      clientId: process.env.TWITTER_CLIENT_ID,
+      clientSecret: process.env.TWITTER_CLIENT_SECRET,
+      refreshToken: tokens.refreshToken,
+    });
+
+    const result = await client.postThread(content.posts);
 
     if (result.success) {
       const firstId = result.results[0]?.tweetId;
@@ -191,13 +206,13 @@ async function distributeX(args: Args): Promise<{ success: boolean; details: str
         success: true,
         details: `Thread posted: https://x.com/i/status/${firstId}`,
       };
-    } else {
-      const posted = result.results?.filter((r: { success: boolean }) => r.success).length || 0;
-      return {
-        success: false,
-        details: `Thread failed after ${posted}/${thread.tweets.length} tweets: ${result.error}`,
-      };
     }
+
+    const posted = result.results?.filter((r: { success: boolean }) => r.success).length || 0;
+    return {
+      success: false,
+      details: `Thread failed after ${posted}/${content.posts.length} tweets: ${result.error}`,
+    };
   } catch (err) {
     return { success: false, details: `X error: ${err instanceof Error ? err.message : String(err)}` };
   }

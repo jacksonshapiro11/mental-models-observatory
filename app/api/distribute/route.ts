@@ -27,11 +27,11 @@ export const maxDuration = 120; // 2 minutes — enough for email batch + postin
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
-import { TwitterApi } from 'twitter-api-v2';
 import { getBriefLightByDate, getLatestBriefLight } from '@/lib/brief-light-parser';
 import { renderBriefEmail } from '@/lib/email/render-brief';
 import { sendBatch } from '@/lib/email/resend-client';
-import { generateThreadFromDate, generateThreadForLatest } from '@/lib/social/thread-generator';
+import { resolveXPostContent } from '@/lib/social/x-post-content';
+import { hasXPostingCredentials, resolveXPostingClient } from '@/lib/social/x-oauth';
 
 // ─── Auth (matches other cron endpoints) ───────────────────────────────────
 
@@ -110,35 +110,6 @@ async function distributeEmail(dateSlug: string, dryRun: boolean): Promise<{ suc
   };
 }
 
-// ─── Read pre-generated X post from Redis ─────────────────────────────────
-//
-// The daily-x-post scheduled task generates content via the X_Post_Generator
-// skill and stores it in Redis (key: x-post:YYYY-MM-DD) via /api/x-post/store.
-
-async function readXPost(dateSlug: string): Promise<{ mainPost: string; reply: string } | null> {
-  const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-  });
-
-  const key = `x-post:${dateSlug}`;
-  const raw = await redis.get(key);
-
-  if (!raw) {
-    console.warn(`[distribute] No x-post found in Redis for key ${key}`);
-    return null;
-  }
-
-  const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-
-  if (!data.mainPost) {
-    console.warn('[distribute] x-post in Redis missing mainPost field');
-    return null;
-  }
-
-  return { mainPost: data.mainPost, reply: data.reply };
-}
-
 // ─── X/Twitter distribution ───────────────────────────────────────────────
 //
 // Dual-source strategy:
@@ -150,40 +121,23 @@ async function readXPost(dateSlug: string): Promise<{ mainPost: string; reply: s
 // This ensures posts always go out even if the scheduled task hasn't run.
 
 async function distributeX(dateSlug: string, dryRun: boolean): Promise<{ success: boolean; details: string }> {
-  const hasOAuth2 = Boolean(process.env.TWITTER_OAUTH2_ACCESS_TOKEN && process.env.TWITTER_CLIENT_ID);
-  if (!hasOAuth2) {
-    return { success: false, details: 'Twitter OAuth 2.0 credentials not set' };
+  if (!(await hasXPostingCredentials())) {
+    return {
+      success: false,
+      details: 'Twitter OAuth 2.0 not configured. Set TWITTER_CLIENT_ID + tokens (env or /api/x-auth).',
+    };
   }
 
-  // Source 1: Try Redis (AI-generated content from daily-x-post task)
-  const redisPost = await readXPost(dateSlug);
-
-  // Source 2: Fall back to code-based thread generator
-  const threadFallback = !redisPost
-    ? generateThreadFromDate(dateSlug) || generateThreadForLatest()
-    : null;
-
-  if (!redisPost && !threadFallback) {
-    return { success: false, details: `No x-post content available for ${dateSlug} (Redis empty, no brief found for thread generator)` };
+  const content = await resolveXPostContent(dateSlug);
+  if (!content) {
+    return {
+      success: false,
+      details: `No x-post content available for ${dateSlug} (Redis empty, no brief found for thread generator)`,
+    };
   }
 
-  // Build the posts array: [{text, replyToId?}]
-  // Redis path: mainPost + reply (2 posts)
-  // Fallback path: thread.tweets array (3 posts from thread-generator)
-  const posts: string[] = [];
-  let source: string;
-
-  if (redisPost) {
-    source = 'redis (AI-generated)';
-    posts.push(redisPost.mainPost, redisPost.reply);
-    console.log(`[distribute] Using Redis content: ${redisPost.mainPost.length} chars main, ${redisPost.reply.length} chars reply`);
-  } else {
-    source = 'thread-generator (code-based fallback)';
-    for (const tweet of threadFallback!.tweets) {
-      posts.push(tweet.text);
-    }
-    console.log(`[distribute] Using thread-generator fallback: ${posts.length} posts, ${posts.map(p => p.length).join('/')} chars`);
-  }
+  const { posts, source } = content;
+  console.log(`[distribute] Using ${source}: ${posts.length} posts (${posts.map((p) => p.length).join('/')} chars)`);
 
   if (dryRun) {
     return {
@@ -192,26 +146,17 @@ async function distributeX(dateSlug: string, dryRun: boolean): Promise<{ success
     };
   }
 
-  // Refresh the OAuth 2.0 token before posting (tokens expire every 2 hours)
-  const clientId = process.env.TWITTER_CLIENT_ID!;
-  const clientSecret = process.env.TWITTER_CLIENT_SECRET || '';
-  const refreshToken = process.env.TWITTER_OAUTH2_REFRESH_TOKEN;
-
-  let accessToken = process.env.TWITTER_OAUTH2_ACCESS_TOKEN!;
-
-  if (refreshToken) {
-    try {
-      console.log('[distribute] Refreshing X OAuth 2.0 token...');
-      const authClient = new TwitterApi({ clientId, clientSecret });
-      const refreshResult = await authClient.refreshOAuth2Token(refreshToken);
-      accessToken = refreshResult.accessToken;
-      console.log('[distribute] Token refreshed successfully');
-    } catch (refreshErr) {
-      console.warn('[distribute] Token refresh failed, trying existing token:', refreshErr instanceof Error ? refreshErr.message : String(refreshErr));
-    }
+  let client;
+  try {
+    const resolved = await resolveXPostingClient();
+    client = resolved.client;
+    console.log(
+      `[distribute] Token source: ${resolved.tokenSource}${resolved.refreshed ? ' (refreshed)' : ''}`,
+    );
+  } catch (authErr) {
+    const msg = authErr instanceof Error ? authErr.message : String(authErr);
+    return { success: false, details: `X auth failed: ${msg}` };
   }
-
-  const client = new TwitterApi(accessToken);
 
   try {
     // Post first tweet

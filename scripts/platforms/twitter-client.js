@@ -45,7 +45,7 @@ class TwitterClient {
 
 
   /**
-   * Refresh OAuth 2.0 access token
+   * Refresh OAuth 2.0 access token and optionally persist to Redis.
    */
   async refreshAccessToken() {
     if (!this.isOAuth2 || !this.config.refreshToken || !this.config.clientId) {
@@ -63,7 +63,6 @@ class TwitterClient {
       this.config.refreshToken
     );
 
-    // Update our client with new token
     this.client = new TwitterApi(accessToken, {
       clientId: this.config.clientId,
     });
@@ -73,7 +72,28 @@ class TwitterClient {
       this.config.refreshToken = newRefreshToken;
     }
 
-    console.log('✅ Access token refreshed');
+    // Persist rotated tokens when Upstash is configured (production cron path).
+    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (redisUrl && redisToken) {
+      try {
+        const { Redis } = require('@upstash/redis');
+        const redis = new Redis({ url: redisUrl, token: redisToken });
+        await redis.set(
+          'x-oauth:tokens',
+          JSON.stringify({
+            accessToken,
+            refreshToken: newRefreshToken || this.config.refreshToken,
+            updatedAt: new Date().toISOString(),
+          }),
+        );
+        console.log('✅ Access token refreshed and saved to Redis');
+      } catch (persistErr) {
+        console.warn('⚠️  Token refreshed but Redis persist failed:', persistErr.message);
+      }
+    } else {
+      console.log('✅ Access token refreshed (update TWITTER_OAUTH2_* env vars manually)');
+    }
 
     return { accessToken, refreshToken: newRefreshToken };
   }

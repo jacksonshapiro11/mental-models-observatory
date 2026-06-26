@@ -46,7 +46,8 @@
     "email:export-subs": "tsx scripts/export-subscribers-csv.ts",
     "x:post": "tsx scripts/post-to-x.ts",
     "x:post:dry": "tsx scripts/post-to-x.ts --dry-run",
-    "x:post:single": "tsx scripts/post-to-x.ts --single"
+    "x:post:single": "tsx scripts/post-to-x.ts --single",
+    "x:test": "tsx scripts/test-x-pipeline.ts"
   },
   "dependencies": {
     "@tailwindcss/forms": "^0.5.7",
