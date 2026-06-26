@@ -1,0 +1,16 @@
+
+--- novelty-gate.ts ---
+novelty-gate — 2026-06-14-v2.md
+  take title : "(no title found)"
+  move       : unclassified  (none)
+  title form : other
+
+  2 FLAG (review):
+   ⚠ Move could not be classified. Tag the draft with <!-- take-move: <id> --> (see system/take-ledger.json _moves).
+   ⚠ Title-form monotony: 4/5 recent Take titles start with "The…". Vary the title structure.
+
+✅ NOVELTY-GATE PASS
+
+❌ validate-brief FAIL — 2026-06-14-v2.md — 2 structural issue(s):
+  [model-recency] Model slug "coordination-mechanisms-human-cooperation" already published on 2026-05-24 (within 30 days). Hard fail — pick a different whitelist model.
+  [ai-section-min-bullets] AI & Tech has 1 bullet(s); minimum is 2. RC6 load-shedding — expand coverage (a non-dominant-company second bullet) rather than compress to one.
