@@ -105,7 +105,9 @@ function parseBriefForThread(markdown: string, dateSlug: string): ParsedBrief {
   // Extract sections by marker
   const sections = [
     { marker: '## ▸ THE UPDATE', type: 'update' },
+    { marker: '## ▸ THE IDEAS', type: 'update' }, // light brief format
     { marker: '## ▸ INTERESTING THINGS', type: 'interesting' },
+    { marker: '## ▸ TWO THINGS WORTH KNOWING', type: 'interesting' }, // light brief format
     { marker: '## ▸ THE MODEL', type: 'model' },
     { marker: '## ▸ THE MEDITATION', type: 'meditation' },
   ];
@@ -133,9 +135,11 @@ function parseBriefForThread(markdown: string, dateSlug: string): ParsedBrief {
         const firstParagraph = afterHeadline.split(/\n\s*\n/)[0]?.trim() || '';
 
         if (sec.type === 'update') {
-          result.updateHeadlines.push(headline);
-          result.updateBodies.push(firstParagraph);
-        } else {
+          if (!result.updateHeadlines.includes(headline)) {
+            result.updateHeadlines.push(headline);
+            result.updateBodies.push(firstParagraph);
+          }
+        } else if (!result.interestingThings.includes(headline)) {
           result.interestingThings.push(headline);
           result.interestingBodies.push(firstParagraph);
         }
