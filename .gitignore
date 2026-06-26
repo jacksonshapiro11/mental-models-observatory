@@ -193,8 +193,10 @@ content/daily-updates/*-factcheck.json
 # FUSE/VM hidden debris
 **/.fuse_hidden*
 
-# Teaser render output (Beehiiv paste workflow — local only)
+# Teaser / email image artifacts (legacy Beehiiv workflow — local only)
 teaser-out/
+public/email/
+public/email-header.png
 
 # Agent/temp extractors at repo root
 _extract*

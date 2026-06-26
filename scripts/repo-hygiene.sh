@@ -19,7 +19,7 @@ rm -f _extract.ts _extract_digests.py _tmp_extract.py _tmp_extract2.py _tmp_pars
   tmp_copy_file.sh tmp_extract_tweets.py tmp_jq_extract.py \
   extract_tweets.py extract_tweets_temp.py extract_zvi.py extract_zvi_content.py 2>/dev/null || true
 
-echo "Removing teaser-out/ (regenerate with render-teaser.ts)..."
+echo "Removing teaser-out/ (local Beehiiv teaser artifacts)..."
 rm -rf teaser-out/ 2>/dev/null || true
 
 echo "Removing untracked duplicate briefs that already exist on origin/main..."
