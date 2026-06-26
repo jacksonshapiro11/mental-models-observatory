@@ -29,7 +29,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isCronAuthorized } from '@/lib/cron-auth';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
 import { resolvePublishDate } from '@/lib/publish-date';
-import { runDistribute } from '@/lib/distribute/handler';
+import { runDistribute, type DistributeResults } from '@/lib/distribute/handler';
+import { readDistributeLog } from '@/lib/marketing/distribute-log';
 
 export async function POST(req: NextRequest) {
   if (!isCronAuthorized(req)) {
@@ -47,7 +48,38 @@ export async function POST(req: NextRequest) {
 
   console.log(`[distribute] Starting — date=${dateSlug}, channel=${channel || 'all'}, dryRun=${dryRun}`);
 
-  const results = await runDistribute({ dateSlug, dryRun, channel });
+  let results: DistributeResults;
+
+  if (!dryRun) {
+    const existingLog = await readDistributeLog(dateSlug);
+    results = {};
+
+    const skipEmail =
+      existingLog?.email?.status === 'success' && (!channel || channel === 'email');
+    const skipX = existingLog?.x?.status === 'success' && (!channel || channel === 'x');
+
+    if (skipEmail) {
+      results.email = { success: true, details: 'skipped — already sent' };
+      console.log('[distribute] Email: ⏭️ skipped — already sent');
+    }
+    if (skipX) {
+      results.x = { success: true, details: 'skipped — already posted' };
+      console.log('[distribute] X: ⏭️ skipped — already posted');
+    }
+
+    const needsEmail = (!channel || channel === 'email') && !skipEmail;
+    const needsX = (!channel || channel === 'x') && !skipX;
+
+    if (needsEmail || needsX) {
+      const runChannel = needsEmail && needsX ? null : needsEmail ? 'email' : 'x';
+      const fresh = await runDistribute({ dateSlug, dryRun, channel: runChannel });
+      if (needsEmail && fresh.email) results.email = fresh.email;
+      if (needsX && fresh.x) results.x = fresh.x;
+    }
+  } else {
+    results = await runDistribute({ dateSlug, dryRun, channel });
+  }
+
   const allSuccess = Object.values(results).every((r) => r.success);
 
   return NextResponse.json(

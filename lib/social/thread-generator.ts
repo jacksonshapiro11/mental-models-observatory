@@ -200,31 +200,77 @@ function extractKillerLine(body: string): string {
 }
 
 /**
+ * Split text into tweet-sized units: sentences and semicolon-separated clauses.
+ * Ledes often use one long sentence with `;` joins — treating those as boundaries
+ * avoids hard-slicing mid-clause.
+ */
+function splitClauses(text: string): string[] {
+  const clean = stripMarkdown(text);
+  const clauses: string[] = [];
+  for (const segment of clean.split(/\s*;\s+/)) {
+    const sentences = segment.match(/[^.!?]+[.!?]+/g) || [segment];
+    for (const s of sentences) {
+      const trimmed = s.trim();
+      if (trimmed) clauses.push(trimmed);
+    }
+  }
+  return clauses.length > 0 ? clauses : [clean];
+}
+
+/** Truncate at a word boundary and append ellipsis when over the limit. */
+function truncateToFit(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const ellipsis = '…';
+  const limit = maxChars - ellipsis.length;
+  const truncated = text.slice(0, limit);
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > limit * 0.5) {
+    return truncated.slice(0, lastSpace) + ellipsis;
+  }
+  return truncated.trimEnd() + ellipsis;
+}
+
+/**
  * Compress a paragraph to fit in a tweet alongside a headline.
- * Takes the first N sentences that fit.
+ * Takes the first N clauses/sentences that fit; truncates at word boundary if needed.
  */
 function compressToFit(body: string, availableChars: number): string {
-  const clean = stripMarkdown(body);
-  const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean];
+  const clauses = splitClauses(body);
   let result = '';
-  for (const sentence of sentences) {
-    const candidate = result ? `${result} ${sentence.trim()}` : sentence.trim();
-    if (candidate.length > availableChars) break;
-    result = candidate;
+  for (const clause of clauses) {
+    const candidate = result ? `${result} ${clause}` : clause;
+    if (candidate.length <= availableChars) {
+      result = candidate;
+    } else if (!result) {
+      return truncateToFit(clause, availableChars);
+    } else {
+      break;
+    }
   }
-  return result || sentences[0]?.trim().slice(0, availableChars) || '';
+  return result || truncateToFit(clauses[0] || stripMarkdown(body), availableChars);
 }
 
 function truncate(text: string, maxLen: number = MAX_TWEET_LENGTH): string {
   if (text.length <= maxLen) return text;
-  const truncated = text.slice(0, maxLen - 1);
-  const lastPeriod = truncated.lastIndexOf('. ');
-  const lastQuestion = truncated.lastIndexOf('? ');
-  const cutPoint = Math.max(lastPeriod, lastQuestion);
+  const ellipsis = '…';
+  const limit = maxLen - ellipsis.length;
+  const truncated = text.slice(0, limit);
+
+  const boundaryMarkers = ['. ', '? ', '! ', '; '];
+  let cutPoint = -1;
+  for (const marker of boundaryMarkers) {
+    const idx = truncated.lastIndexOf(marker);
+    if (idx > cutPoint) cutPoint = idx;
+  }
   if (cutPoint > maxLen * 0.5) {
     return truncated.slice(0, cutPoint + 1);
   }
-  return truncated.trimEnd() + '…';
+
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > maxLen * 0.5) {
+    return truncated.slice(0, lastSpace) + ellipsis;
+  }
+  return truncated.trimEnd() + ellipsis;
 }
 
 // ─── Post composition ─────────────────────────────────────────────────────
