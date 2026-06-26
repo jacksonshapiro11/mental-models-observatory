@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 interface SubscribeFormProps {
   source: string; // tracks which form (hero, footer-cta, super-brief, subscribe-page)
+  attribution?: string; // optional override for ?ref= attribution
   inputClassName?: string;
   buttonClassName?: string;
   layout?: 'row' | 'column';
@@ -12,8 +14,9 @@ interface SubscribeFormProps {
   noteClassName?: string;
 }
 
-export function SubscribeForm({
+function SubscribeFormInner({
   source,
+  attribution: attributionProp,
   inputClassName = '',
   buttonClassName = '',
   layout = 'row',
@@ -21,6 +24,10 @@ export function SubscribeForm({
   showNote = true,
   noteClassName = 'text-xs text-ct-dark font-body',
 }: SubscribeFormProps) {
+  const searchParams = useSearchParams();
+  const refFromUrl = searchParams.get('ref');
+  const attribution = attributionProp ?? refFromUrl ?? undefined;
+
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -39,6 +46,7 @@ export function SubscribeForm({
         body: JSON.stringify({
           email: email.trim(),
           source,
+          ...(attribution ? { attribution } : {}),
           website: '', // honeypot — should always be empty
         }),
       });
@@ -105,5 +113,13 @@ export function SubscribeForm({
         <p className={noteClassName}>Free. No spam. Ever.</p>
       )}
     </form>
+  );
+}
+
+export function SubscribeForm(props: SubscribeFormProps) {
+  return (
+    <Suspense fallback={null}>
+      <SubscribeFormInner {...props} />
+    </Suspense>
   );
 }

@@ -7,6 +7,7 @@ import SuperBriefAudioPlayer from '@/components/super-brief/SuperBriefAudioPlaye
 import { SuperBriefDashboard } from '@/components/super-brief/SuperBriefDashboard';
 import { Footer } from '@/components/layout/Footer';
 import { SubscribeForm } from '@/components/subscribe/SubscribeForm';
+import { ShareBar } from '@/components/share/ShareBar';
 
 // ─── Inline markdown helpers ────────────────────────────────────────────────
 
@@ -517,6 +518,13 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
           </div>
         </section>
       )}
+
+      {/* ── Share ───────────────────────────────────────────────────────── */}
+      <ShareBar
+        title={brief.dailyTitle || 'Super Brief'}
+        path={`/super-brief/${brief.date}`}
+        displayDate={brief.displayDate}
+      />
 
       {/* ── 7. YELLOW READ FULL BRIEF CTA ───────────────────────────────── */}
       <section className="bg-ct-yellow px-4 py-3 text-center border-t-[3px] border-ct-dark">

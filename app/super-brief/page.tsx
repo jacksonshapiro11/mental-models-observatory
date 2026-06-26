@@ -1,19 +1,33 @@
 import { getLatestBriefLight } from '@/lib/brief-light-parser';
+import { superBriefOgImage } from '@/lib/og-super-brief';
 import SuperBriefViewer from '@/components/super-brief/SuperBriefViewer';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = {
-  title: "Today's Super Brief",
-  description: 'The compressed daily intelligence brief — essential market signals, one mental model, and cross-domain insights in 3 minutes. From Cosmic Trex.',
-  alternates: { canonical: '/super-brief' },
-  openGraph: {
-    title: "Today's Super Brief — Cosmic Trex",
-    description: 'The compressed daily intelligence brief. Essential market signals in 3 minutes.',
-    url: '/super-brief',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const brief = getLatestBriefLight();
+  const title = "Today's Super Brief — Cosmic Trex";
+  const description = 'The compressed daily intelligence brief. Essential market signals in 3 minutes.';
+
+  return {
+    title: "Today's Super Brief",
+    description,
+    alternates: { canonical: '/super-brief' },
+    openGraph: {
+      title,
+      description,
+      url: '/super-brief',
+      ...(brief ? { images: superBriefOgImage(brief.date) } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(brief ? { images: [`/api/og/super-brief/${brief.date}`] } : {}),
+    },
+  };
+}
 
 export default function SuperBriefPage() {
   const brief = getLatestBriefLight();

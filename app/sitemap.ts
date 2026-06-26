@@ -45,8 +45,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Core pages
   const corePages: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}`, lastModified: now, changeFrequency: 'daily', priority: 1.0 },
-    { url: `${SITE_URL}/daily-update`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
-    { url: `${SITE_URL}/super-brief`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
+    { url: `${SITE_URL}/super-brief`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${SITE_URL}/daily-update`, lastModified: now, changeFrequency: 'daily', priority: 0.7 },
     { url: `${SITE_URL}/archive`, lastModified: now, changeFrequency: 'daily', priority: 0.7 },
     { url: `${SITE_URL}/models`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
     { url: `${SITE_URL}/blog`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
@@ -60,7 +60,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${SITE_URL}/daily-update/${date}`,
     lastModified: new Date(date),
     changeFrequency: 'never' as const,
-    priority: 0.8,
+    priority: 0.7,
   }));
 
   // Super briefs (light)
@@ -69,7 +69,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${SITE_URL}/super-brief/${date}`,
     lastModified: new Date(date),
     changeFrequency: 'never' as const,
-    priority: 0.6,
+    priority: 0.85,
   }));
 
   // Mental models

@@ -11,8 +11,8 @@ interface NavigationProps {
 }
 
 const NAV_LINKS = [
-  { label: 'Brief', href: '/daily-update' },
   { label: 'Super Brief', href: '/super-brief' },
+  { label: 'Full Brief', href: '/daily-update' },
   { label: 'Archive', href: '/archive' },
   { label: 'Models', href: '/models' },
   { label: 'About', href: '/about' },

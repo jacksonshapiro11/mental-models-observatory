@@ -1,4 +1,5 @@
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
+import { superBriefOgImage } from '@/lib/og-super-brief';
 import SuperBriefViewer from '@/components/super-brief/SuperBriefViewer';
 import { ArticleJsonLd } from '@/components/seo/JsonLd';
 import { notFound } from 'next/navigation';
@@ -28,11 +29,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       type: 'article',
       publishedTime: date,
       url: `/super-brief/${date}`,
+      images: superBriefOgImage(date),
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
+      images: [`/api/og/super-brief/${date}`],
     },
   };
 }

@@ -97,6 +97,12 @@ function hashIP(ip: string): string {
   return `ip_${Math.abs(hash).toString(36)}`;
 }
 
+function sanitizeAttribution(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.length === 0) return undefined;
+  const cleaned = value.trim().slice(0, 100).replace(/[^\w-]/g, '');
+  return cleaned.length > 0 ? cleaned : undefined;
+}
+
 // ─── POST handler ──────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
@@ -139,6 +145,9 @@ export async function POST(request: NextRequest) {
     ? body.source
     : 'unknown';
 
+  // Referral attribution (?ref= on subscribe links)
+  const attribution = sanitizeAttribution(body.attribution ?? body.ref);
+
   const r = getRedis();
 
   try {
@@ -158,11 +167,12 @@ export async function POST(request: NextRequest) {
       subscribedAt: new Date().toISOString(),
       source,
       ip: hashIP(ip),
+      ...(attribution ? { attribution } : {}),
     });
     await pipeline.exec();
 
     // Redis is the sole subscriber store. Emails sent via Resend at publish time.
-    console.log('[subscribe] new subscriber:', sanitized, 'source:', source);
+    console.log('[subscribe] new subscriber:', sanitized, 'source:', source, attribution ? `ref:${attribution}` : '');
 
     // Welcome email — best-effort, never fail subscribe
     sendWelcomeEmail(sanitized).catch((err) => {

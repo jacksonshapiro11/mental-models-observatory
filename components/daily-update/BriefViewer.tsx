@@ -9,6 +9,7 @@ import AudioPlayer from '@/components/daily-update/AudioPlayer';
 import { TickerBar } from '@/components/landing/TickerBar';
 import { SectionVote } from '@/components/daily-update/SectionVote';
 import { SubscribeForm } from '@/components/subscribe/SubscribeForm';
+import { ShareBar } from '@/components/share/ShareBar';
 
 // ─── Status badge system ─────────────────────────────────────────────────────
 
@@ -1478,6 +1479,13 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
             </>
           );
         })()}
+
+        <ShareBar
+          title={brief.dailyTitle || 'Daily Brief'}
+          path={`/daily-update/${brief.date}`}
+          displayDate={brief.displayDate}
+          variant="dark"
+        />
 
         {/* Subscribe CTA */}
         <section className="bg-ct-pink px-4 py-6 text-center border-t-[3px] border-ct-dark">

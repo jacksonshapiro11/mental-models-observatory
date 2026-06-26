@@ -22,11 +22,11 @@ export function Footer() {
 
         {/* Navigation links */}
         <div className="flex flex-wrap gap-x-8 gap-y-3 mb-8 pb-8 border-b border-text-on-dark-muted/20">
-          <Link href="/daily-update" className="font-mono text-xs text-text-on-dark hover:text-ct-yellow transition-colors">
-            Brief
-          </Link>
           <Link href="/super-brief" className="font-mono text-xs text-text-on-dark hover:text-ct-yellow transition-colors">
             Super Brief
+          </Link>
+          <Link href="/daily-update" className="font-mono text-xs text-text-on-dark hover:text-ct-yellow transition-colors">
+            Full Brief
           </Link>
           <Link href="/archive" className="font-mono text-xs text-text-on-dark hover:text-ct-yellow transition-colors">
             Archive

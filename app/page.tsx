@@ -100,17 +100,18 @@ export default function HomePage() {
               {/* CTA Buttons */}
               <div className="mb-8 space-y-2">
                 <Link
-                  href="/daily-update"
+                  href="/super-brief"
                   className="inline-block bg-ct-dark text-ct-yellow px-6 py-3 font-semibold hover:bg-ct-pink hover:text-white transition-colors"
                 >
-                  Read today's brief →
+                  Read today&apos;s super brief →
                 </Link>
+                <p className="font-mono text-xs text-ct-dark/70">3 minutes · essential market signals</p>
                 <div className="pt-2">
                   <Link
-                    href="/super-brief"
+                    href="/daily-update"
                     className="inline-block bg-ct-pink text-white px-6 py-3 font-semibold hover:bg-ct-dark hover:text-ct-yellow transition-colors text-sm"
                   >
-                    Read the super brief →
+                    Read the full brief →
                   </Link>
                 </div>
               </div>
