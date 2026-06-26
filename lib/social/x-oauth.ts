@@ -75,10 +75,11 @@ export async function loadXOAuthTokens(): Promise<{
     return { tokens: null, source: null };
   }
 
+  const refreshToken = process.env.TWITTER_OAUTH2_REFRESH_TOKEN;
   return {
     tokens: {
       accessToken,
-      refreshToken: process.env.TWITTER_OAUTH2_REFRESH_TOKEN,
+      ...(refreshToken ? { refreshToken } : {}),
     },
     source: 'env',
   };
@@ -126,10 +127,6 @@ export async function refreshAndPersistXTokens(
 }
 
 export function createXPostingClient(accessToken: string): TwitterApi {
-  const clientId = process.env.TWITTER_CLIENT_ID;
-  if (clientId) {
-    return new TwitterApi(accessToken, { clientId });
-  }
   return new TwitterApi(accessToken);
 }
 

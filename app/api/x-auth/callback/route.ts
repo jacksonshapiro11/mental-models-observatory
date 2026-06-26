@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
 
     await writeXTokensToRedis({
       accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
+      ...(result.refreshToken ? { refreshToken: result.refreshToken } : {}),
     });
 
     await redis.del(X_OAUTH_PENDING_KEY);
