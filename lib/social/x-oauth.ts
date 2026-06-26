@@ -12,6 +12,33 @@ import { TwitterApi } from 'twitter-api-v2';
 export const X_OAUTH_REDIS_KEY = 'x-oauth:tokens';
 export const X_OAUTH_PENDING_KEY = 'x-oauth:pending';
 
+const X_OAUTH_CALLBACK_PATH = '/api/x-auth/callback';
+
+/**
+ * Canonical OAuth callback URL — must match X Developer Portal exactly.
+ * Prefer X_OAUTH_CALLBACK_URL or NEXT_PUBLIC_SITE_URL over request origin
+ * so www vs non-www entry URLs don't produce a mismatched redirect_uri.
+ */
+export function getXOAuthCallbackUrl(requestOrigin?: string): string {
+  const explicit = process.env.X_OAUTH_CALLBACK_URL?.trim();
+  if (explicit) {
+    return explicit.replace(/\/$/, '');
+  }
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (siteUrl) {
+    return `${siteUrl.replace(/\/$/, '')}${X_OAUTH_CALLBACK_PATH}`;
+  }
+
+  if (requestOrigin) {
+    return `${requestOrigin}${X_OAUTH_CALLBACK_PATH}`;
+  }
+
+  throw new Error(
+    'Cannot determine X OAuth callback URL. Set X_OAUTH_CALLBACK_URL or NEXT_PUBLIC_SITE_URL.',
+  );
+}
+
 export interface XOAuthTokens {
   accessToken: string;
   refreshToken?: string;

@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TwitterApi } from 'twitter-api-v2';
 import { Redis } from '@upstash/redis';
-import { X_OAUTH_PENDING_KEY } from '@/lib/social/x-oauth';
+import { getXOAuthCallbackUrl, X_OAUTH_PENDING_KEY } from '@/lib/social/x-oauth';
 
 export async function GET(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get('secret');
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
   const clientSecret = process.env.TWITTER_CLIENT_SECRET || '';
   const client = new TwitterApi({ clientId, clientSecret });
-  const callbackUrl = `${req.nextUrl.origin}/api/x-auth/callback`;
+  const callbackUrl = getXOAuthCallbackUrl(req.nextUrl.origin);
 
   const { url, codeVerifier, state } = client.generateOAuth2AuthLink(callbackUrl, {
     scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'],

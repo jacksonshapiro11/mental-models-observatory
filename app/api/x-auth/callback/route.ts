@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TwitterApi } from 'twitter-api-v2';
 import { Redis } from '@upstash/redis';
 import {
+  getXOAuthCallbackUrl,
   X_OAUTH_PENDING_KEY,
   parseRedisJson,
   writeXTokensToRedis,
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
   }
 
   const clientSecret = process.env.TWITTER_CLIENT_SECRET || '';
-  const callbackUrl = `${req.nextUrl.origin}/api/x-auth/callback`;
+  const callbackUrl = getXOAuthCallbackUrl(req.nextUrl.origin);
 
   try {
     const client = new TwitterApi({ clientId, clientSecret });
@@ -67,10 +68,16 @@ export async function GET(req: NextRequest) {
       redirectUri: callbackUrl,
     });
 
-    await writeXTokensToRedis({
+    const stored = await writeXTokensToRedis({
       accessToken: result.accessToken,
       ...(result.refreshToken ? { refreshToken: result.refreshToken } : {}),
     });
+    if (!stored) {
+      return NextResponse.json(
+        { error: 'Token exchange succeeded but Redis write failed. Check UPSTASH env vars.' },
+        { status: 500 },
+      );
+    }
 
     await redis.del(X_OAUTH_PENDING_KEY);
 
