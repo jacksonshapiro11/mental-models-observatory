@@ -20,7 +20,8 @@ import path from 'path';
 
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 dotenv.config();
-import { getBriefLightByDate, getLatestBriefLight } from '../lib/brief-light-parser';
+import { getBriefLightByDate } from '../lib/brief-light-parser';
+import { resolvePublishDate } from '../lib/publish-date';
 import { renderBriefEmail } from '../lib/email/render-brief';
 import { sendEmail, sendBatch } from '../lib/email/resend-client';
 import { Redis } from '@upstash/redis';
@@ -60,11 +61,17 @@ async function getSubscribers(): Promise<string[]> {
 async function main() {
   const args = parseArgs();
 
-  // 1. Load brief
-  const brief = args.date ? getBriefLightByDate(args.date) : getLatestBriefLight();
+  // 1. Load brief. Auto path targets TODAY and skips if missing — never falls
+  //    back to an older brief. An explicit --date= is a deliberate backfill.
+  const { date: targetDate, manual } = resolvePublishDate(args.date);
+  const brief = getBriefLightByDate(targetDate);
   if (!brief) {
-    console.error(`❌ No brief light found${args.date ? ` for ${args.date}` : ''}`);
-    process.exit(1);
+    if (manual) {
+      console.error(`❌ No brief light found for ${targetDate}`);
+      process.exit(1);
+    }
+    console.log(`⏭️  No brief for ${targetDate} (today) — skipping send. Not falling back to an older brief.`);
+    process.exit(0);
   }
 
   console.log(`📰 Brief: ${brief.date} — "${brief.dailyTitle}"`);

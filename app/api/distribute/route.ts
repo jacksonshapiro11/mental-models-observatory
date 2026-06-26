@@ -27,7 +27,8 @@ export const maxDuration = 120; // 2 minutes — enough for email batch + postin
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
-import { getBriefLightByDate, getLatestBriefLight } from '@/lib/brief-light-parser';
+import { getBriefLightByDate } from '@/lib/brief-light-parser';
+import { resolvePublishDate } from '@/lib/publish-date';
 import { renderBriefEmail } from '@/lib/email/render-brief';
 import { sendBatch } from '@/lib/email/resend-client';
 import { resolveXPostContent } from '@/lib/social/x-post-content';
@@ -58,14 +59,6 @@ function isAuthorized(req: NextRequest): boolean {
   return false;
 }
 
-// ─── Today's date in ET ────────────────────────────────────────────────────
-
-function todaySlug(): string {
-  const now = new Date();
-  const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  return et.toISOString().slice(0, 10);
-}
-
 // ─── Email distribution ────────────────────────────────────────────────────
 
 async function distributeEmail(dateSlug: string, dryRun: boolean): Promise<{ success: boolean; details: string }> {
@@ -73,7 +66,7 @@ async function distributeEmail(dateSlug: string, dryRun: boolean): Promise<{ suc
     return { success: false, details: 'RESEND_API_KEY not set' };
   }
 
-  const brief = getBriefLightByDate(dateSlug) || getLatestBriefLight();
+  const brief = getBriefLightByDate(dateSlug);
   if (!brief) {
     return { success: false, details: `No brief light found for ${dateSlug}` };
   }
@@ -192,9 +185,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const dateSlug = req.nextUrl.searchParams.get('date') || todaySlug();
+  // Resolve the target date. The auto (cron) path targets TODAY; an explicit
+  // ?date= is a deliberate manual backfill.
+  const { date: dateSlug, manual } = resolvePublishDate(req.nextUrl.searchParams.get('date'));
   const channel = req.nextUrl.searchParams.get('channel'); // 'email' | 'x' | null (both)
   const dryRun = req.nextUrl.searchParams.get('dry-run') === 'true';
+
+  // FRESHNESS GATE: on the auto path, distribute ONLY if today's brief is
+  // actually published. A missed day is a clean skip — never email or post an
+  // older brief, or email + X lag a day behind every time a day is missed.
+  if (!manual && !getBriefLightByDate(dateSlug)) {
+    console.warn(`[distribute] No brief for ${dateSlug} — skipping distribution (no stale fallback).`);
+    return NextResponse.json({ date: dateSlug, skipped: true, reason: `No brief published for ${dateSlug}` });
+  }
 
   console.log(`[distribute] Starting — date=${dateSlug}, channel=${channel || 'all'}, dryRun=${dryRun}`);
 

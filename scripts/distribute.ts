@@ -30,7 +30,8 @@ import path from 'path';
 // Load .env.local explicitly (dotenv/config only loads .env by default)
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 dotenv.config(); // fallback to .env
-import { getBriefLightByDate, getLatestBriefLight } from '../lib/brief-light-parser';
+import { getBriefLightByDate } from '../lib/brief-light-parser';
+import { resolvePublishDate, todayET } from '../lib/publish-date';
 import { renderBriefEmail } from '../lib/email/render-brief';
 import { sendEmail, sendBatch } from '../lib/email/resend-client';
 import { resolveXPostContent } from '../lib/social/x-post-content';
@@ -68,9 +69,7 @@ function parseArgs(): Args {
 // ─── Get today's date slug ─────────────────────────────────────────────────
 
 function todaySlug(): string {
-  const now = new Date();
-  const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  return et.toISOString().slice(0, 10);
+  return todayET(); // single source of truth (America/New_York reading date)
 }
 
 // ─── Email distribution ────────────────────────────────────────────────────
@@ -82,11 +81,14 @@ async function distributeEmail(args: Args): Promise<{ success: boolean; details:
       return { success: false, details: 'RESEND_API_KEY not set — skipping email' };
     }
 
-    const dateSlug = args.date || todaySlug();
-    const brief = args.date ? getBriefLightByDate(args.date) : getLatestBriefLight();
+    // Auto path targets TODAY and skips if missing; --date= is a manual backfill.
+    const { date: dateSlug, manual } = resolvePublishDate(args.date);
+    const brief = getBriefLightByDate(dateSlug);
 
     if (!brief) {
-      return { success: false, details: `No brief light found for ${dateSlug}` };
+      return manual
+        ? { success: false, details: `No brief light found for ${dateSlug}` }
+        : { success: true, details: `skipped — no brief for ${dateSlug} (today), not falling back to stale` };
     }
 
     const rendered = renderBriefEmail(brief);

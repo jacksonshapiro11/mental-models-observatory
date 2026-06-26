@@ -273,6 +273,7 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
   const interestingSection = brief.sections.find(s => s.id === 'interesting-things');
   const meditationSection = brief.sections.find(s => s.id === 'the-meditation');
   const modelSection = brief.sections.find(s => s.id === 'the-model');
+  const closeSection = brief.sections.find(s => s.id === 'the-close');   // sign-off — parsed but previously never rendered
 
   // Parse content
   const signals = updateSection ? parseSignals(updateSection.content) : [];
@@ -497,6 +498,22 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
                 Explore this model →
               </Link>
             )}
+          </div>
+        </section>
+      )}
+
+      {/* ── 6.5 DARK — "The Close" — the day's human sign-off ───────────── */}
+      {closeSection && closeSection.content.trim() && (
+        <section className="bg-ct-dark px-4 py-7 border-t-[3px] border-ct-dark">
+          <div className="max-w-lg mx-auto">
+            <div className="font-mono text-[10px] text-ct-yellow tracking-wider uppercase font-medium mb-3">
+              The close
+            </div>
+            {toParagraphs(closeSection.content).map((para, i) => (
+              <p key={`cl-${i}`} className="font-serif text-[17px] text-[#F5F1E8] leading-[1.55] mb-3 last:mb-0">
+                <RichText text={para} />
+              </p>
+            ))}
           </div>
         </section>
       )}

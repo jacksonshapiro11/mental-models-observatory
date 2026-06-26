@@ -21,7 +21,8 @@ import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import OpenAI from 'openai';
-import { getBriefByDate, getLatestBrief } from '@/lib/daily-update-parser';
+import { getBriefByDate } from '@/lib/daily-update-parser';
+import { resolvePublishDate, isStaleForAutoPublish, todayET } from '@/lib/publish-date';
 import { preprocessBriefForTTS, checkScriptFidelity } from '@/lib/audio/text-preprocessor';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
 import { writeEpisodeMetadata, readEpisodeMetadata } from '@/lib/audio/podcast-feed';
@@ -143,14 +144,29 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // 1. Load the brief
-    const brief = dateParam ? getBriefByDate(dateParam) : getLatestBrief();
+    // 1. Resolve the target date. The auto (cron) path targets TODAY and skips
+    //    if today's brief is missing — it must NEVER fall back to the newest
+    //    file on disk, or a missed day makes every episode lag a day behind.
+    //    An explicit ?date= is a deliberate manual backfill.
+    const { date: targetDate, manual } = resolvePublishDate(dateParam);
+    const brief = getBriefByDate(targetDate);
 
     if (!brief) {
-      return NextResponse.json(
-        { error: 'Brief not found', date: dateParam || 'latest' },
-        { status: 404 }
-      );
+      if (manual) {
+        return NextResponse.json(
+          { error: 'Brief not found', date: targetDate },
+          { status: 404 }
+        );
+      }
+      // Auto path, today's brief not published yet → clean skip, no stale episode.
+      console.warn(`[audio] No brief for ${targetDate} — skipping (not falling back to a stale episode).`);
+      return NextResponse.json({ status: 'skipped', reason: `No brief published for ${targetDate}`, date: targetDate });
+    }
+
+    // Regression tripwire: the auto path may only ever ship TODAY's brief.
+    if (isStaleForAutoPublish(brief.date, manual)) {
+      console.warn(`[audio] Stale brief blocked: resolved ${brief.date} but today is ${todayET()} — skipping.`);
+      return NextResponse.json({ status: 'skipped', reason: 'stale brief blocked', date: brief.date });
     }
 
     // 2. Check if audio already exists (skip if not forcing)
