@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# repo-hygiene.sh — safe cleanup of known local junk. Does not touch tracked files
-# or content/daily-updates/*.md (use git pull after API publish for those).
+# repo-hygiene.sh — safe cleanup of known local junk.
+#
+# SACRED: Past briefs in content/daily-updates/ are never deleted from git history.
+# This script only removes UNTRACKED local copies that are byte-identical to origin/main.
+# It never removes tracked files. Never run rm -f content/daily-updates/*.md.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -24,13 +27,17 @@ rm -rf teaser-out/ 2>/dev/null || true
 
 echo "Removing untracked duplicate briefs that already exist on origin/main..."
 if git rev-parse --verify origin/main >/dev/null 2>&1; then
-  for f in content/daily-updates/2026-*.md; do
+  for f in content/daily-updates/202*.md; do
     [ -f "$f" ] || continue
+    # Never touch tracked files — only untracked duplicates.
+    if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+      continue
+    fi
     base="$(basename "$f")"
     if git cat-file -e "origin/main:content/daily-updates/$base" 2>/dev/null; then
       if diff -q "$f" <(git show "origin/main:content/daily-updates/$base") >/dev/null 2>&1; then
         rm -f "$f"
-        echo "  removed duplicate: $base"
+        echo "  removed untracked duplicate: $base"
       fi
     fi
   done
