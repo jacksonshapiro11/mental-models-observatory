@@ -1,11 +1,12 @@
 import { getAllBriefDates, getBriefByDate } from '@/lib/daily-update-parser';
+import { getAllBriefLightDates, getBriefLightByDate } from '@/lib/brief-light-parser';
 import ArchiveClient from '@/components/archive/ArchiveClient';
 import type { ArchiveBrief } from '@/components/archive/ArchiveClient';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Daily Brief Archive',
-  description: 'Every published edition of the Cosmic Trex daily intelligence brief. Markets, meditations, and mental models — published daily since February 2026.',
+  description: 'Every published edition of the Cosmic Trex daily intelligence brief — full briefs and super briefs. Markets, meditations, and mental models, published daily since February 2026.',
   alternates: { canonical: '/archive' },
   openGraph: {
     title: 'Daily Brief Archive — Cosmic Trex',
@@ -15,9 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default function ArchivePage() {
-  const dates = getAllBriefDates();
-
-  const briefs: ArchiveBrief[] = dates
+  const briefs: ArchiveBrief[] = getAllBriefDates()
     .map((date) => {
       const brief = getBriefByDate(date);
       if (!brief) return null;
@@ -28,7 +27,23 @@ export default function ArchivePage() {
         epigraph: brief.epigraph,
         lede: brief.lede,
         sectionCount: brief.sections.length,
-        sections: brief.sections.map(s => s.label),
+        sections: brief.sections.map((s) => s.label),
+      };
+    })
+    .filter((b): b is ArchiveBrief => b !== null);
+
+  const superBriefs: ArchiveBrief[] = getAllBriefLightDates()
+    .map((date) => {
+      const brief = getBriefLightByDate(date);
+      if (!brief) return null;
+      return {
+        date: brief.date,
+        displayDate: brief.displayDate,
+        dailyTitle: brief.dailyTitle || '',
+        epigraph: brief.epigraph,
+        lede: brief.lede,
+        sectionCount: brief.sections.length,
+        sections: brief.sections.map((s) => s.label),
       };
     })
     .filter((b): b is ArchiveBrief => b !== null);
@@ -43,19 +58,19 @@ export default function ArchivePage() {
               THE ARCHIVE
             </h1>
             <p className="text-text-on-dark text-sm mb-6">
-              Every published edition of Markets, Meditations & Mental Models
+              Every published edition of Markets, Meditations &amp; Mental Models
             </p>
             <p className="text-text-on-dark-muted text-xs font-mono">
-              {briefs.length}+ editions | Published daily since February 2026
+              {briefs.length}+ full briefs · {superBriefs.length}+ super briefs | Published daily since February 2026
             </p>
           </div>
         </div>
       </div>
 
-      {/* Main Content — interactive filtering is client-side */}
+      {/* Main Content — interactive filtering + brief/super-brief toggle is client-side */}
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         <div className="max-w-4xl mx-auto">
-          <ArchiveClient briefs={briefs} />
+          <ArchiveClient briefs={briefs} superBriefs={superBriefs} />
         </div>
       </div>
     </div>

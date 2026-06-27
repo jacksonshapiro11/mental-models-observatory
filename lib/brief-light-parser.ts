@@ -162,3 +162,13 @@ export function hasBriefLight(dateSlug: string): boolean {
   const filePath = path.join(CONTENT_DIR, `${dateSlug}-light.md`);
   return fs.existsSync(filePath);
 }
+
+// All published super-brief dates, newest first (mirrors getAllBriefDates for the full brief).
+export function getAllBriefLightDates(): string[] {
+  if (!fs.existsSync(CONTENT_DIR)) return [];
+  return fs.readdirSync(CONTENT_DIR)
+    .filter(f => f.endsWith('-light.md'))
+    .map(f => f.replace('-light.md', ''))
+    .sort()
+    .reverse();
+}
