@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     : `Super Brief — ${date}`;
   const description = brief?.lede
     ? brief.lede.replace(/\*\*/g, '').substring(0, 160)
-    : `Compressed daily intelligence brief for ${date}. The essential market signals in 3 minutes.`;
+    : `Compressed daily intelligence brief for ${date}. The essential market signals in about ten minutes.`;
 
   return {
     title,

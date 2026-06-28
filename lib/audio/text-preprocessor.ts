@@ -1192,13 +1192,14 @@ function applyLightPronunciations(text: string): string {
 
 // ─── Brief Light section ordering & transitions ────────────────────────────
 
-/** Desired section order for audio. Ideas-first leads with the ideas; legacy format
- *  has no the-idea/also-moving so it falls back to markets-minute → the-update → … */
+/** Desired section order for audio. Selection format leads with THE UPDATE (the day's
+ *  stories), then the market read — matching the written brief and the web renderer.
+ *  Ideas-first has no the-update, so it leads with the-idea/also-moving then markets-minute. */
 const LIGHT_SECTION_ORDER = [
   'the-idea',          // ideas-first LEAD — the whole point opens the brief
   'also-moving',       // ideas-first secondary
-  'markets-minute',    // market-state read, after the ideas
-  'the-update',        // legacy selection format
+  'the-update',        // selection-format LEAD — stories first, like the written brief
+  'markets-minute',    // market-state read, after the stories/ideas
   'interesting-things',
   'the-meditation',
   'the-model',
@@ -1221,7 +1222,7 @@ const LIGHT_SECTION_TRANSITIONS: Record<string, string> = {
 // whole, conversationally, around 10 minutes. (Previously the super brief borrowed the
 // full-brief prompt, which told it to compress to a 30-35 min target — the root of the
 // over-compression and the fabricated closing summary.)
-const LIGHT_SECTION_SYSTEM_PROMPT = `You are the scriptwriter for the SUPER BRIEF, the short, ideas-first daily audio from "Markets, Meditations, and Mental Models."
+const LIGHT_SECTION_SYSTEM_PROMPT = `You are the scriptwriter for the SUPER BRIEF, the short daily audio from "Markets, Meditations, and Mental Models."
 
 WHAT THIS IS: the super brief is ALREADY a tight, curated, distilled product (roughly 1,500 words). It is NOT a long episode to compress. Your job is to deliver it nearly WHOLE in a natural spoken voice, landing around 10 minutes. Do NOT compress it further. It was already compressed once on the page, and compressing it again is exactly the failure we are fixing.
 

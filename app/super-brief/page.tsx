@@ -8,7 +8,7 @@ import type { Metadata } from 'next';
 export async function generateMetadata(): Promise<Metadata> {
   const brief = getLatestBriefLight();
   const title = "Today's Super Brief — Cosmic Trex";
-  const description = 'The compressed daily intelligence brief. Essential market signals in 3 minutes.';
+  const description = 'The compressed daily intelligence brief. Essential market signals in about ten minutes.';
 
   return {
     title: "Today's Super Brief",

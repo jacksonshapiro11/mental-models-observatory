@@ -112,7 +112,7 @@ export async function generateLightAudio(
     });
 
     const { audio, chunks, characterCount } = await generateFullAudio(ttsClient, preprocessed.fullText, {
-      instructions: `Voice: bright, warm, genuinely curious, a smart friend walking you through the day's biggest ideas over coffee. This is the SUPER BRIEF: ideas-first and substantial, around ten minutes. Not rushed.
+      instructions: `Voice: bright, warm, genuinely curious, a smart friend walking you through the day's biggest stories over coffee. This is the SUPER BRIEF: wide-ranging and substantial, around ten minutes. Not rushed.
 
 Pacing: lively but unhurried. Keep momentum, but let the ideas land. Give the meditation and the mental model room to breathe; do not race through them. Natural pauses between sections. This is a real conversation, not a speed-run.
 

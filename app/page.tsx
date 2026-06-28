@@ -105,7 +105,7 @@ export default function HomePage() {
                 >
                   Read today&apos;s super brief →
                 </Link>
-                <p className="font-mono text-xs text-ct-dark/70">3 minutes · essential market signals</p>
+                <p className="font-mono text-xs text-ct-dark/70">~10 minutes · essential market signals</p>
                 <div className="pt-2">
                   <Link
                     href="/daily-update"
