@@ -30,7 +30,7 @@ import { isCronAuthorized } from '@/lib/cron-auth';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
 import { resolvePublishDate } from '@/lib/publish-date';
 import { runDistribute, type DistributeResults } from '@/lib/distribute/handler';
-import { readDistributeLog } from '@/lib/marketing/distribute-log';
+import { readDistributeLog, writeStepLog } from '@/lib/marketing/distribute-log';
 
 export async function POST(req: NextRequest) {
   if (!isCronAuthorized(req)) {
@@ -73,8 +73,31 @@ export async function POST(req: NextRequest) {
     if (needsEmail || needsX) {
       const runChannel = needsEmail && needsX ? null : needsEmail ? 'email' : 'x';
       const fresh = await runDistribute({ dateSlug, dryRun, channel: runChannel });
-      if (needsEmail && fresh.email) results.email = fresh.email;
-      if (needsX && fresh.x) results.x = fresh.x;
+      const at = new Date().toISOString();
+
+      if (needsEmail && fresh.email) {
+        results.email = fresh.email;
+        // Persist the send outcome. The retry cron treats a MISSING log entry as
+        // "failed" and re-sends, which is what caused the 7am + 8am double-send.
+        // Recording success here lets the 8am retry correctly skip.
+        const emailEntry: Parameters<typeof writeStepLog>[2] = {
+          status: fresh.email.success ? 'success' : 'failed',
+          at,
+        };
+        if (fresh.email.details) emailEntry.details = fresh.email.details;
+        await writeStepLog(dateSlug, 'email', emailEntry);
+      }
+
+      if (needsX && fresh.x) {
+        results.x = fresh.x;
+        const xEntry: Parameters<typeof writeStepLog>[2] = {
+          status: fresh.x.success ? 'success' : 'failed',
+          at,
+        };
+        if (fresh.x.details) xEntry.details = fresh.x.details;
+        if (fresh.x.tweetId) xEntry.tweetId = fresh.x.tweetId;
+        await writeStepLog(dateSlug, 'x', xEntry);
+      }
     }
   } else {
     results = await runDistribute({ dateSlug, dryRun, channel });
