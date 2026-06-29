@@ -14,6 +14,9 @@ export function isCronAuthorized(req: NextRequest): boolean {
     return false;
   }
 
+  // Vercel cron invocations always send this header.
+  if (req.headers.get('x-vercel-cron') === '1') return true;
+
   const secret = req.headers.get('x-snapshot-secret') || req.nextUrl.searchParams.get('secret');
   if (secret && snapshotSecret && secret === snapshotSecret) return true;
 

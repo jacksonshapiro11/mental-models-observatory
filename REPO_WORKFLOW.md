@@ -57,16 +57,56 @@ Resend + Redis subscribers (`scripts/send-daily-email.ts`). Beehiiv scripts are 
 
 **Unsubscribe:** HMAC-signed links in email footer (`UNSUBSCRIBE_SECRET` or `SNAPSHOT_SECRET`). Route: `/api/unsubscribe`.
 
-## Publish orchestrator
+## Morning publish pipeline
 
-After `publish.py` pushes the brief, fire the full pipeline:
+Typical schedule: `brief-morning` ~5:20 AM ET runs `publish.py`, then Vercel deploys.
+
+```
+brief-morning (~5:20 AM ET)
+  └─ publish.py → GitHub push (full + light .md)
+       └─ wait 90s → POST /api/publish/complete
+            ├─ full podcast audio (parallel)
+            ├─ super brief audio (parallel)
+            ├─ email + X distribute (parallel)
+            └─ marketing pack (parallel)
+
+brief-morning-verify (~5:50 AM ET)  ← ADD THIS SCHEDULED TASK
+  └─ publish.py --verify --content-dir content/daily-updates
+       └─ auto-re-publishes any missing files from local copies
+
+Vercel crons (UTC, EDT ≈ UTC-4):
+  9:00 Mon–Fri  /api/dashboard/snapshot
+  9:50 daily    /api/publish/backup     — content health check (GitHub + deployed site)
+  9:55 daily    /api/publish/complete   — idempotent failsafe for audio + distribute
+```
+
+### Content backup
+
+- **GET `/api/publish/health`** — `{ date, fullBrief, lightBrief, ready }` from deployed filesystem.
+- **POST `/api/publish/backup`** (cron) — if briefs missing on site, checks GitHub API when `GITHUB_TOKEN` is set on Vercel; logs alert with actionable recommendations. **Cannot auto-push from Vercel** — recovery requires `publish.py --verify` on a machine with local brief files.
+- **Scheduled task `brief-morning-verify`** — run 30 min after `brief-morning`:
 
 ```bash
-curl -X POST "https://cosmictrex.com/api/publish/complete" \
+python .claude/skills/publish-brief/scripts/publish.py --verify \
+  --content-dir content/daily-updates
+```
+
+### Manual pipeline trigger
+
+```bash
+curl -X POST "https://www.cosmictrex.com/api/publish/complete" \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-Optional backfill: `?date=YYYY-MM-DD`. Runs light audio, email + X distribute, and marketing pack **in parallel**. Step logs in Redis (`distribute:log:{date}`, `audio:log:{date}`, `marketing:pack:{date}`). Retry cron at 12:00 and 14:00 ET hits `/api/distribute/retry`.
+Optional backfill: `?date=YYYY-MM-DD`. Step logs in Redis (`distribute:log:{date}`, `audio:log:{date}`, `marketing:pack:{date}`). Full podcast idempotency via `readEpisodeMetadata`.
+
+### Env vars for pipeline
+
+| Var | Used by |
+|-----|---------|
+| `SNAPSHOT_SECRET` | publish.py → publish/complete; manual curl |
+| `CRON_SECRET` | Vercel cron auth |
+| `GITHUB_TOKEN` | publish.py; optional on Vercel for `/api/publish/backup` GitHub checks |
 
 ## What never ships
 

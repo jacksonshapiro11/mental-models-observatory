@@ -1,24 +1,16 @@
 {
   "crons": [
     {
-      "path": "/api/audio/generate",
-      "schedule": "30 9 * * *"
-    },
-    {
-      "path": "/api/audio/light/generate",
-      "schedule": "45 9 * * *"
-    },
-    {
-      "path": "/api/distribute",
-      "schedule": "0 11 * * *"
-    },
-    {
-      "path": "/api/distribute/retry",
-      "schedule": "0 12,14 * * *"
-    },
-    {
       "path": "/api/dashboard/snapshot",
-      "schedule": "15 11 * * *"
+      "schedule": "0 9 * * 1-5"
+    },
+    {
+      "path": "/api/publish/backup",
+      "schedule": "50 9 * * *"
+    },
+    {
+      "path": "/api/publish/complete",
+      "schedule": "55 9 * * *"
     }
   ]
 }

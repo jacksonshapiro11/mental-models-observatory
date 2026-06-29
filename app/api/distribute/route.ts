@@ -30,7 +30,7 @@ import { isCronAuthorized } from '@/lib/cron-auth';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
 import { resolvePublishDate } from '@/lib/publish-date';
 import { runDistribute, type DistributeResults } from '@/lib/distribute/handler';
-import { readDistributeLog, writeStepLog } from '@/lib/marketing/distribute-log';
+import { runDistributeIfNeeded } from '@/lib/distribute/run-if-needed';
 
 export async function POST(req: NextRequest) {
   if (!isCronAuthorized(req)) {
@@ -50,57 +50,16 @@ export async function POST(req: NextRequest) {
 
   let results: DistributeResults;
 
-  if (!dryRun) {
-    const existingLog = await readDistributeLog(dateSlug);
-    results = {};
-
-    const skipEmail =
-      existingLog?.email?.status === 'success' && (!channel || channel === 'email');
-    const skipX = existingLog?.x?.status === 'success' && (!channel || channel === 'x');
-
-    if (skipEmail) {
-      results.email = { success: true, details: 'skipped — already sent' };
+  if (dryRun) {
+    results = await runDistribute({ dateSlug, dryRun, channel });
+  } else {
+    results = await runDistributeIfNeeded({ dateSlug, channel });
+    if (results.email?.details?.includes('skipped')) {
       console.log('[distribute] Email: ⏭️ skipped — already sent');
     }
-    if (skipX) {
-      results.x = { success: true, details: 'skipped — already posted' };
+    if (results.x?.details?.includes('skipped')) {
       console.log('[distribute] X: ⏭️ skipped — already posted');
     }
-
-    const needsEmail = (!channel || channel === 'email') && !skipEmail;
-    const needsX = (!channel || channel === 'x') && !skipX;
-
-    if (needsEmail || needsX) {
-      const runChannel = needsEmail && needsX ? null : needsEmail ? 'email' : 'x';
-      const fresh = await runDistribute({ dateSlug, dryRun, channel: runChannel });
-      const at = new Date().toISOString();
-
-      if (needsEmail && fresh.email) {
-        results.email = fresh.email;
-        // Persist the send outcome. The retry cron treats a MISSING log entry as
-        // "failed" and re-sends, which is what caused the 7am + 8am double-send.
-        // Recording success here lets the 8am retry correctly skip.
-        const emailEntry: Parameters<typeof writeStepLog>[2] = {
-          status: fresh.email.success ? 'success' : 'failed',
-          at,
-        };
-        if (fresh.email.details) emailEntry.details = fresh.email.details;
-        await writeStepLog(dateSlug, 'email', emailEntry);
-      }
-
-      if (needsX && fresh.x) {
-        results.x = fresh.x;
-        const xEntry: Parameters<typeof writeStepLog>[2] = {
-          status: fresh.x.success ? 'success' : 'failed',
-          at,
-        };
-        if (fresh.x.details) xEntry.details = fresh.x.details;
-        if (fresh.x.tweetId) xEntry.tweetId = fresh.x.tweetId;
-        await writeStepLog(dateSlug, 'x', xEntry);
-      }
-    }
-  } else {
-    results = await runDistribute({ dateSlug, dryRun, channel });
   }
 
   const allSuccess = Object.values(results).every((r) => r.success);

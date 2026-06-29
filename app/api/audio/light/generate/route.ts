@@ -22,6 +22,7 @@ import { isCronAuthorized } from '@/lib/cron-auth';
 import { resolvePublishDate } from '@/lib/publish-date';
 import { generateLightAudio } from '@/lib/audio/light-generate';
 import { readLightEpisodeMetadata } from '@/lib/audio/podcast-feed';
+import { writeAudioLog } from '@/lib/marketing/distribute-log';
 
 export async function POST(req: NextRequest) {
   if (!isCronAuthorized(req)) {
@@ -46,6 +47,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (result.status === 'error') {
+    const audioLog: Parameters<typeof writeAudioLog>[1] = {
+      status: 'failed',
+      at: new Date().toISOString(),
+    };
+    if (result.error) audioLog.error = result.error;
+    await writeAudioLog(targetDate, audioLog);
     return NextResponse.json(
       { error: 'Super Brief audio generation failed', detail: result.error },
       { status: 500 },
@@ -53,6 +60,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (result.status === 'exists') {
+    const audioLog: Parameters<typeof writeAudioLog>[1] = {
+      status: 'success',
+      at: new Date().toISOString(),
+    };
+    if (result.details) audioLog.details = result.details;
+    await writeAudioLog(targetDate, audioLog);
     return NextResponse.json({
       status: 'exists',
       message: result.details,
@@ -67,6 +80,12 @@ export async function POST(req: NextRequest) {
   } catch (verifyErr) {
     console.warn(`[audio:light] Verification error: ${verifyErr}`);
   }
+
+  await writeAudioLog(result.date, {
+    status: 'success',
+    at: new Date().toISOString(),
+    ...(result.details ? { details: result.details } : {}),
+  });
 
   return NextResponse.json({
     status: 'success',

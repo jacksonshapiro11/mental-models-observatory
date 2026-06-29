@@ -1,10 +1,11 @@
 /**
  * /api/distribute/retry — Retry failed publish pipeline steps
  *
- * For today ET: checks Redis step logs and retries only missing/failed steps
- * when the brief exists. Used by retry cron at 12:00 and 14:00 ET.
+ * For today ET: checks Redis step logs and episode metadata, retries only
+ * missing/failed steps when the brief exists. Manual backstop when publish/complete
+ * failsafe did not fully succeed.
  *
- * Auth: Bearer CRON_SECRET
+ * Auth: Bearer CRON_SECRET / SNAPSHOT_SECRET / x-vercel-cron
  */
 
 export const maxDuration = 300;
@@ -12,32 +13,23 @@ export const maxDuration = 300;
 import { NextRequest, NextResponse } from 'next/server';
 import { isCronAuthorized } from '@/lib/cron-auth';
 import { todayET } from '@/lib/publish-date';
+import { getBriefByDate } from '@/lib/daily-update-parser';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
 import { generateLightAudio } from '@/lib/audio/light-generate';
-import { runDistribute } from '@/lib/distribute/handler';
+import { generateFullBriefAudio } from '@/lib/audio/full-generate';
+import { readEpisodeMetadata } from '@/lib/audio/podcast-feed';
+import { runDistributeIfNeeded } from '@/lib/distribute/run-if-needed';
 import { generateDailyPack } from '@/lib/marketing/generate-daily-pack';
+import { audioNeedsRetry, stepNeedsRetry } from '@/lib/marketing/pipeline-status';
 import {
   readAudioLog,
   readDistributeLog,
   readMarketingPack,
   writeAudioLog,
-  writeStepLog,
 } from '@/lib/marketing/distribute-log';
 
-function isCronOnly(req: NextRequest): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return false;
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader) return false;
-  return authHeader.replace('Bearer ', '') === cronSecret;
-}
-
-function stepFailed(entry?: { status?: string } | null): boolean {
-  return !entry || entry.status === 'failed';
-}
-
 export async function POST(req: NextRequest) {
-  if (!isCronOnly(req) && !isCronAuthorized(req)) {
+  if (!isCronAuthorized(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -51,10 +43,11 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const [audioLog, distributeLog, marketingPack] = await Promise.all([
+  const [audioLog, distributeLog, marketingPack, fullEpisode] = await Promise.all([
     readAudioLog(dateSlug),
     readDistributeLog(dateSlug),
     readMarketingPack(dateSlug),
+    readEpisodeMetadata(dateSlug),
   ]);
 
   const retries: string[] = [];
@@ -63,50 +56,47 @@ export async function POST(req: NextRequest) {
 
   const retryTasks: Promise<void>[] = [];
 
-  if (stepFailed(audioLog)) {
-    retries.push('audio');
+  const needsFullPodcast = !fullEpisode && !!getBriefByDate(dateSlug);
+  if (needsFullPodcast) {
+    retries.push('fullAudio');
     retryTasks.push(
-      generateLightAudio({ date: dateSlug }).then(async (audio) => {
-        const audioOk = audio.status === 'success' || audio.status === 'exists';
-        const audioLog: Parameters<typeof writeAudioLog>[1] = {
-          status: audioOk ? 'success' : audio.status === 'skipped' ? 'skipped' : 'failed',
-          at,
-        };
-        const audioDetails = audio.details || audio.error;
-        if (audioDetails) audioLog.details = audioDetails;
-        if (audio.error) audioLog.error = audio.error;
-        await writeAudioLog(dateSlug, audioLog);
-        results.audio = audio;
+      generateFullBriefAudio({ date: dateSlug }).then((audio) => {
+        results.fullAudio = audio;
       }),
     );
   }
 
-  const retryEmail = stepFailed(distributeLog?.email);
-  const retryX = stepFailed(distributeLog?.x);
+  if (audioNeedsRetry(audioLog)) {
+    retries.push('lightAudio');
+    retryTasks.push(
+      generateLightAudio({ date: dateSlug }).then(async (audio) => {
+        const audioOk = audio.status === 'success' || audio.status === 'exists';
+        if (audio.status === 'skipped') {
+          results.lightAudio = audio;
+          return;
+        }
+        const entry: Parameters<typeof writeAudioLog>[1] = {
+          status: audioOk ? 'success' : 'failed',
+          at,
+        };
+        const audioDetails = audio.details || audio.error;
+        if (audioDetails) entry.details = audioDetails;
+        if (audio.error) entry.error = audio.error;
+        await writeAudioLog(dateSlug, entry);
+        results.lightAudio = audio;
+      }),
+    );
+  }
+
+  const retryEmail = stepNeedsRetry(distributeLog?.email);
+  const retryX = stepNeedsRetry(distributeLog?.x);
 
   if (retryEmail || retryX) {
     if (retryEmail) retries.push('email');
     if (retryX) retries.push('x');
     const channel = retryEmail && retryX ? null : retryEmail ? 'email' : 'x';
     retryTasks.push(
-      runDistribute({ dateSlug, channel }).then(async (dist) => {
-        if (dist.email) {
-          const emailEntry: Parameters<typeof writeStepLog>[2] = {
-            status: dist.email.success ? 'success' : 'failed',
-            at,
-          };
-          if (dist.email.details) emailEntry.details = dist.email.details;
-          await writeStepLog(dateSlug, 'email', emailEntry);
-        }
-        if (dist.x) {
-          const xEntry: Parameters<typeof writeStepLog>[2] = {
-            status: dist.x.success ? 'success' : 'failed',
-            at,
-          };
-          if (dist.x.details) xEntry.details = dist.x.details;
-          if (dist.x.tweetId) xEntry.tweetId = dist.x.tweetId;
-          await writeStepLog(dateSlug, 'x', xEntry);
-        }
+      runDistributeIfNeeded({ dateSlug, channel }).then((dist) => {
         results.distribute = dist;
       }),
     );
@@ -129,12 +119,17 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  await Promise.allSettled(retryTasks);
+  const settled = await Promise.allSettled(retryTasks);
+  const errors = settled
+    .filter((s): s is PromiseRejectedResult => s.status === 'rejected')
+    .map((s) => (s.reason instanceof Error ? s.reason.message : String(s.reason)));
 
   return NextResponse.json({
     date: dateSlug,
     retried: retries,
     results,
+    ...(errors.length > 0 ? { errors } : {}),
+    success: errors.length === 0,
   });
 }
 
