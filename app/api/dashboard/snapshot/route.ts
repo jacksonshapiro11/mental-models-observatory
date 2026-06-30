@@ -13,11 +13,15 @@
  */
 
 import { fetchDXY, fetchDXYFromYahoo } from '@/lib/dxy';
+import { isCronAuthorized } from '@/lib/cron-auth';
 import {
   writeManualFields,
   writePriceHistory,
   writeSnapshot,
+  readHistoryBundle,
+  writeHistoryBundle,
   type DashboardSnapshot,
+  type PriceHistoryEntry,
 } from '@/lib/upstash';
 import { Redis } from '@upstash/redis';
 import { NextRequest, NextResponse } from 'next/server';
@@ -25,7 +29,6 @@ import { NextRequest, NextResponse } from 'next/server';
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 
 const FINNHUB_KEY = process.env.FINNHUB_API_KEY!;
-const SNAPSHOT_SECRET = process.env.SNAPSHOT_SECRET!;
 
 const TIMEOUT = 8000;
 
@@ -77,17 +80,6 @@ const ASSETS: Record<string, { yahoo: string; fallback: string | null; fallbackM
   US10Y:  { yahoo: '%5ETNX',   fallback: null,   fallbackMultiplier: 1, category: 'rates' },
 };
 
-// ─── AUTH ────────────────────────────────────────────────────────────────────
-
-function isAuthorized(req: NextRequest): boolean {
-  const secret = req.headers.get('x-snapshot-secret') || req.nextUrl.searchParams.get('secret');
-  if (secret === SNAPSHOT_SECRET) return true;
-  const authHeader = req.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET || SNAPSHOT_SECRET;
-  if (authHeader === `Bearer ${cronSecret}`) return true;
-  return false;
-}
-
 // ─── DIAGNOSTICS ─────────────────────────────────────────────────────────────
 
 const _warnings: string[] = [];
@@ -99,7 +91,7 @@ function warn(msg: string) {
 // ─── GET: Daily Snapshot ─────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!isCronAuthorized(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -145,7 +137,7 @@ export async function GET(req: NextRequest) {
 // ─── PATCH: Manual Field Update ──────────────────────────────────────────────
 
 export async function PATCH(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!isCronAuthorized(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -348,15 +340,27 @@ async function fetchYahooCurrentPriceWithMeta(symbol: string): Promise<{ price: 
 
 // ─── READ HISTORICAL DATA FROM REDIS ─────────────────────────────────────────
 
-interface HistoryEntry {
-  date: string;
-  equities: Record<string, { latestClose: number; multiplier?: number }>;
-  crypto: Record<string, { latestClose: number }>;
-  commodities: Record<string, { latestClose: number; multiplier?: number }>;
-  rates: Record<string, { latestClose: number }>;
-}
+type HistoryEntry = PriceHistoryEntry;
 
 async function readRecentHistory(maxDays: number): Promise<HistoryEntry[]> {
+  // Fast path: single bundled key (1 Redis command vs up to 1500 per-key GETs)
+  const bundle = await readHistoryBundle();
+  if (bundle.length >= 50) {
+    console.log(`[snapshot] Loaded ${bundle.length} days from history bundle`);
+    return bundle.slice(-maxDays);
+  }
+
+  console.log('[snapshot] History bundle empty/small — falling back to per-day keys');
+  const entries = await readRecentHistoryPerKey(maxDays);
+  if (entries.length > 0) {
+    await writeHistoryBundle(entries).catch((err) => {
+      console.warn('[snapshot] Failed to backfill history bundle:', err);
+    });
+  }
+  return entries;
+}
+
+async function readRecentHistoryPerKey(maxDays: number): Promise<HistoryEntry[]> {
   const r = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL!,
     token: process.env.UPSTASH_REDIS_REST_TOKEN!,
@@ -380,7 +384,13 @@ async function readRecentHistory(maxDays: number): Promise<HistoryEntry[]> {
     for (const key of batch) {
       pipeline.get(key);
     }
-    const results = await pipeline.exec();
+    let results: unknown[];
+    try {
+      results = await pipeline.exec();
+    } catch (err) {
+      console.error('[snapshot] Redis history batch read failed:', err);
+      break;
+    }
 
     for (const raw of results) {
       if (!raw) continue;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useDashboardLivePolling } from '@/hooks/useDashboardLivePolling';
 
 interface AssetPrice {
   price: number | null;
@@ -14,8 +14,6 @@ interface MarketData {
   rates?: Record<string, AssetPrice>;
   meta?: Record<string, unknown>;
 }
-
-const REFRESH_INTERVAL = 60000;
 
 const FALLBACK_DATA: MarketData = {
   equities: {
@@ -81,24 +79,8 @@ function Dot() {
 }
 
 export function TickerBar() {
-  const [data, setData] = useState<MarketData>(FALLBACK_DATA);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/dashboard/live');
-        if (!response.ok) throw new Error('API error');
-        const result: MarketData = await response.json();
-        setData(result);
-      } catch {
-        setData(FALLBACK_DATA);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, REFRESH_INTERVAL);
-    return () => clearInterval(interval);
-  }, []);
+  const { data: liveData } = useDashboardLivePolling<MarketData>();
+  const data = liveData ?? FALLBACK_DATA;
 
   // ── Equities ──
   const spx = data.equities?.SPX;

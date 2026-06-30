@@ -11,10 +11,10 @@
  * - All API keys hidden server-side; CDN caches responses for 60s
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { getDashboardPollIntervalMs } from '@/lib/market-hours';
 
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
-const REFRESH_INTERVAL = 60_000;
 const API_ENDPOINT = '/api/dashboard/live';
 
 // ─── CT DESIGN TOKENS ───────────────────────────────────────────────────────
@@ -321,29 +321,49 @@ export default function LiveDashboard({ analysisTimestamp = /** @type {string|nu
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('equities');
-  const intervalRef = useRef(null);
-
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await fetch(API_ENDPOINT);
-      if (!res.ok) throw new Error(`API returned ${res.status}`);
-      const json = await res.json();
-      setData(json);
-      setLastFetch(Date.now());
-      setError(null);
-    } catch (err) {
-      console.error('Dashboard fetch failed:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const timeoutRef = useRef(null);
+  const intervalMsRef = useRef(60_000);
 
   useEffect(() => {
-    fetchData();
-    intervalRef.current = setInterval(fetchData, REFRESH_INTERVAL);
-    return () => clearInterval(intervalRef.current);
-  }, [fetchData]);
+    let cancelled = false;
+
+    const scheduleNext = (ms) => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        void fetchData();
+      }, ms);
+    };
+
+    const fetchData = async () => {
+      if (cancelled) return;
+      try {
+        const res = await fetch(API_ENDPOINT);
+        if (!res.ok) throw new Error(`API returned ${res.status}`);
+        const json = await res.json();
+        if (cancelled) return;
+        setData(json);
+        setLastFetch(Date.now());
+        setError(null);
+
+        const nextMs = json.meta?.pollIntervalMs ?? getDashboardPollIntervalMs(json.meta?.marketStatus);
+        intervalMsRef.current = nextMs;
+        scheduleNext(nextMs);
+      } catch (err) {
+        console.error('Dashboard fetch failed:', err);
+        setError(err.message);
+        if (!cancelled) scheduleNext(intervalMsRef.current);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void fetchData();
+
+    return () => {
+      cancelled = true;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   const status = getFreshnessStatus(lastFetch);
 

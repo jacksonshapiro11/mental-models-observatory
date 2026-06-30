@@ -27,9 +27,12 @@ const AUDIO_KEYS = {
   EPISODE_INDEX: 'audio:episodes',
   /** Individual episode metadata: audio:episode:YYYY-MM-DD */
   EPISODE_PREFIX: 'audio:episode:',
+  /** Pre-built manifest — avoids zrange + N GETs on every feed request */
+  EPISODE_MANIFEST: 'audio:episodes:manifest',
   /** Brief Light episodes — separate index and prefix */
   LIGHT_EPISODE_INDEX: 'audio:episodes:light',
   LIGHT_EPISODE_PREFIX: 'audio:episode:light:',
+  LIGHT_EPISODE_MANIFEST: 'audio:episodes:light:manifest',
 };
 
 // ─── Redis helpers ──────────────────────────────────────────────────────────
@@ -43,6 +46,63 @@ function getRedis(): Redis {
 
 /** Parse an episode date → sortable numeric score. Strips suffixes like "-light",
  *  falls back to current time if unparseable, never returns NaN (Upstash rejects null scores). */
+function parseEpisodeJson(raw: unknown): EpisodeMetadata | null {
+  if (!raw) return null;
+  try {
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as EpisodeMetadata;
+  } catch {
+    return null;
+  }
+}
+
+async function readEpisodeManifest(manifestKey: string, limit: number): Promise<EpisodeMetadata[] | null> {
+  try {
+    const r = getRedis();
+    const raw = await r.get(manifestKey);
+    if (!raw) return null;
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(parsed)) return null;
+    return (parsed as EpisodeMetadata[]).slice(0, limit);
+  } catch (err) {
+    console.error(`[podcast-feed] readEpisodeManifest failed for ${manifestKey}:`, err);
+    return null;
+  }
+}
+
+async function upsertEpisodeManifest(manifestKey: string, episode: EpisodeMetadata, limit = 100): Promise<void> {
+  try {
+    const r = getRedis();
+    const existing = (await readEpisodeManifest(manifestKey, limit)) || [];
+    const without = existing.filter((e) => e.date !== episode.date);
+    const updated = [episode, ...without]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, limit);
+    await r.set(manifestKey, JSON.stringify(updated));
+  } catch (err) {
+    console.error(`[podcast-feed] upsertEpisodeManifest failed for ${manifestKey}:`, err);
+  }
+}
+
+async function loadEpisodesFromIndex(
+  indexKey: string,
+  prefix: string,
+  limit: number,
+): Promise<EpisodeMetadata[]> {
+  const r = getRedis();
+  const dates = (await r.zrange(indexKey, 0, limit - 1, { rev: true })) as string[];
+  if (dates.length === 0) return [];
+
+  const pipeline = r.pipeline();
+  for (const d of dates) {
+    pipeline.get(prefix + d);
+  }
+  const results = await pipeline.exec();
+
+  return results
+    .map((raw) => parseEpisodeJson(raw))
+    .filter((ep): ep is EpisodeMetadata => ep !== null);
+}
+
 function scoreForEpisodeDate(date: string): number {
   // Strip common suffixes (e.g. "2026-04-14-light" → "2026-04-14")
   const isoCandidate = date.replace(/-(light|super|v\d+)$/i, '');
@@ -55,23 +115,34 @@ function scoreForEpisodeDate(date: string): number {
 
 /** Store episode metadata after audio generation */
 export async function writeEpisodeMetadata(episode: EpisodeMetadata): Promise<void> {
-  const r = getRedis();
-  const key = AUDIO_KEYS.EPISODE_PREFIX + episode.date;
-  const score = scoreForEpisodeDate(episode.date);
+  try {
+    const r = getRedis();
+    const key = AUDIO_KEYS.EPISODE_PREFIX + episode.date;
+    const score = scoreForEpisodeDate(episode.date);
 
-  await Promise.all([
-    r.set(key, JSON.stringify(episode)),
-    r.zadd(AUDIO_KEYS.EPISODE_INDEX, { score, member: episode.date }),
-  ]);
+    await Promise.all([
+      r.set(key, JSON.stringify(episode)),
+      r.zadd(AUDIO_KEYS.EPISODE_INDEX, { score, member: episode.date }),
+      upsertEpisodeManifest(AUDIO_KEYS.EPISODE_MANIFEST, episode),
+    ]);
+  } catch (err) {
+    console.error(`[podcast-feed] writeEpisodeMetadata failed for ${episode.date}:`, err);
+    throw err;
+  }
 }
 
 /** Read episode metadata for a specific date */
 export async function readEpisodeMetadata(date: string): Promise<EpisodeMetadata | null> {
-  const r = getRedis();
-  const key = AUDIO_KEYS.EPISODE_PREFIX + date;
-  const raw = await r.get(key);
-  if (!raw) return null;
-  return typeof raw === 'string' ? JSON.parse(raw) : raw as EpisodeMetadata;
+  try {
+    const r = getRedis();
+    const key = AUDIO_KEYS.EPISODE_PREFIX + date;
+    const raw = await r.get(key);
+    if (!raw) return null;
+    return typeof raw === 'string' ? JSON.parse(raw) : (raw as EpisodeMetadata);
+  } catch (err) {
+    console.error(`[podcast-feed] readEpisodeMetadata failed for ${date}:`, err);
+    return null;
+  }
 }
 
 // ─── Brief Light episode helpers ────────────────────────────────────────────
@@ -85,61 +156,94 @@ export async function writeLightEpisodeMetadata(episode: EpisodeMetadata): Promi
   await Promise.all([
     r.set(key, JSON.stringify(episode)),
     r.zadd(AUDIO_KEYS.LIGHT_EPISODE_INDEX, { score, member: episode.date }),
+    upsertEpisodeManifest(AUDIO_KEYS.LIGHT_EPISODE_MANIFEST, episode),
   ]);
 }
 
 /** Read Brief Light episode metadata for a specific date */
 export async function readLightEpisodeMetadata(date: string): Promise<EpisodeMetadata | null> {
-  const r = getRedis();
-  const key = AUDIO_KEYS.LIGHT_EPISODE_PREFIX + date;
-  const raw = await r.get(key);
-  if (!raw) return null;
-  return typeof raw === 'string' ? JSON.parse(raw) : raw as EpisodeMetadata;
+  try {
+    const r = getRedis();
+    const key = AUDIO_KEYS.LIGHT_EPISODE_PREFIX + date;
+    const raw = await r.get(key);
+    if (!raw) return null;
+    return typeof raw === 'string' ? JSON.parse(raw) : (raw as EpisodeMetadata);
+  } catch (err) {
+    console.error(`[podcast-feed] readLightEpisodeMetadata failed for ${date}:`, err);
+    return null;
+  }
 }
 
 /** Get all episode dates, most recent first */
 export async function getAllEpisodeDates(limit = 100): Promise<string[]> {
-  const r = getRedis();
-  // ZREVRANGE returns highest scores first (most recent dates)
-  const dates = await r.zrange(AUDIO_KEYS.EPISODE_INDEX, 0, limit - 1, { rev: true });
-  return dates as string[];
+  try {
+    const r = getRedis();
+    const dates = await r.zrange(AUDIO_KEYS.EPISODE_INDEX, 0, limit - 1, { rev: true });
+    return dates as string[];
+  } catch (err) {
+    console.error('[podcast-feed] getAllEpisodeDates failed:', err);
+    return [];
+  }
 }
 
 /** Get all episodes with full metadata, most recent first */
 export async function getAllEpisodes(limit = 50): Promise<EpisodeMetadata[]> {
-  const dates = await getAllEpisodeDates(limit);
-  if (dates.length === 0) return [];
+  try {
+    const fromManifest = await readEpisodeManifest(AUDIO_KEYS.EPISODE_MANIFEST, limit);
+    if (fromManifest && fromManifest.length > 0) {
+      return fromManifest;
+    }
 
-  const r = getRedis();
-  const keys = dates.map(d => AUDIO_KEYS.EPISODE_PREFIX + d);
-
-  // Batch fetch all episode metadata
-  const results = await Promise.all(keys.map(k => r.get(k)));
-
-  return results
-    .filter((raw): raw is string | EpisodeMetadata => raw !== null)
-    .map(raw => (typeof raw === 'string' ? JSON.parse(raw) : raw) as EpisodeMetadata);
+    const episodes = await loadEpisodesFromIndex(
+      AUDIO_KEYS.EPISODE_INDEX,
+      AUDIO_KEYS.EPISODE_PREFIX,
+      limit,
+    );
+    if (episodes.length > 0) {
+      await getRedis().set(AUDIO_KEYS.EPISODE_MANIFEST, JSON.stringify(episodes)).catch(() => {});
+    }
+    return episodes;
+  } catch (err) {
+    console.error('[podcast-feed] getAllEpisodes failed:', err);
+    return [];
+  }
 }
 
 /** Get all Brief Light episode dates, most recent first */
 export async function getAllLightEpisodeDates(limit = 100): Promise<string[]> {
-  const r = getRedis();
-  const dates = await r.zrange(AUDIO_KEYS.LIGHT_EPISODE_INDEX, 0, limit - 1, { rev: true });
-  return dates as string[];
+  try {
+    const r = getRedis();
+    const dates = await r.zrange(AUDIO_KEYS.LIGHT_EPISODE_INDEX, 0, limit - 1, { rev: true });
+    return dates as string[];
+  } catch (err) {
+    console.error('[podcast-feed] getAllLightEpisodeDates failed:', err);
+    return [];
+  }
 }
 
 /** Get all Brief Light episodes with full metadata, most recent first */
 export async function getAllLightEpisodes(limit = 50): Promise<EpisodeMetadata[]> {
-  const dates = await getAllLightEpisodeDates(limit);
-  if (dates.length === 0) return [];
+  try {
+    const fromManifest = await readEpisodeManifest(AUDIO_KEYS.LIGHT_EPISODE_MANIFEST, limit);
+    if (fromManifest && fromManifest.length > 0) {
+      return fromManifest;
+    }
 
-  const r = getRedis();
-  const keys = dates.map(d => AUDIO_KEYS.LIGHT_EPISODE_PREFIX + d);
-  const results = await Promise.all(keys.map(k => r.get(k)));
-
-  return results
-    .filter((raw): raw is string | EpisodeMetadata => raw !== null)
-    .map(raw => (typeof raw === 'string' ? JSON.parse(raw) : raw) as EpisodeMetadata);
+    const episodes = await loadEpisodesFromIndex(
+      AUDIO_KEYS.LIGHT_EPISODE_INDEX,
+      AUDIO_KEYS.LIGHT_EPISODE_PREFIX,
+      limit,
+    );
+    if (episodes.length > 0) {
+      await getRedis()
+        .set(AUDIO_KEYS.LIGHT_EPISODE_MANIFEST, JSON.stringify(episodes))
+        .catch(() => {});
+    }
+    return episodes;
+  } catch (err) {
+    console.error('[podcast-feed] getAllLightEpisodes failed:', err);
+    return [];
+  }
 }
 
 // ─── RSS XML generation ─────────────────────────────────────────────────────

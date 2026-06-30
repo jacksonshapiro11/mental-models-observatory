@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useDashboardLivePolling } from '@/hooks/useDashboardLivePolling';
 
 interface MarketData {
   equities?: Record<string, { price: number | null; changes?: Record<string, number> }>;
@@ -9,8 +9,6 @@ interface MarketData {
   rates?: Record<string, { price: number | null; changes?: Record<string, number> }>;
   meta?: Record<string, unknown>;
 }
-
-const REFRESH_INTERVAL = 60000; // 60 seconds
 
 // Fallback data if API fails
 const FALLBACK_DATA: MarketData = {
@@ -59,35 +57,8 @@ function getChangeColor(value: number | null | undefined): string {
 }
 
 export function TerminalData() {
-  const [data, setData] = useState<MarketData>(FALLBACK_DATA);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<number>(0);
-  const timeoutRef = useRef<NodeJS.Timeout>(undefined);
-
-  const fetchData = async () => {
-    try {
-      const response = await fetch('/api/dashboard/live');
-      if (!response.ok) throw new Error('API error');
-      const result: MarketData = await response.json();
-      setData(result);
-      setLastUpdated(Date.now());
-      setLoading(false);
-    } catch (err) {
-      console.error('Failed to fetch live data:', err);
-      setData(FALLBACK_DATA);
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // Fetch immediately
-    fetchData();
-
-    // Set up interval
-    const interval = setInterval(fetchData, REFRESH_INTERVAL);
-
-    return () => clearInterval(interval);
-  }, []);
+  const { data: liveData } = useDashboardLivePolling<MarketData>();
+  const data = liveData ?? FALLBACK_DATA;
 
   const spx = data.equities?.SPX;
   const btc = data.crypto?.BTC;

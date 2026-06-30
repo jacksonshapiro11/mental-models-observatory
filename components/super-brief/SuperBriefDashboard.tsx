@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useDashboardLivePolling } from '@/hooks/useDashboardLivePolling';
 
 interface AssetData {
   price?: number;
@@ -33,31 +33,7 @@ const ASSETS = [
 ];
 
 export function SuperBriefDashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/dashboard/live');
-        if (res.ok) {
-          setData(await res.json());
-        }
-      } catch {
-        /* silent */
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    intervalRef.current = setInterval(fetchData, 60_000);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
+  const { data, loading } = useDashboardLivePolling<DashboardData>();
 
   return (
     <section className="bg-ct-dark px-4 py-3">
@@ -69,7 +45,6 @@ export function SuperBriefDashboard() {
           const change = assetData?.changes?.['1D'];
           const isPositive = change != null && change > 0;
           const isNegative = change != null && change < 0;
-          // Color the whole quote (price + change) by direction: green up, red down, white flat.
           const dirColor = isPositive ? 'text-ct-green-data' : isNegative ? 'text-[#FF3B30]' : 'text-white';
           const changeColor = isPositive ? 'text-ct-green-data' : isNegative ? 'text-[#FF3B30]' : 'text-[#555]';
 

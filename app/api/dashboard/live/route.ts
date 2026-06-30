@@ -6,7 +6,7 @@
  *
  * Architecture:
  *   - Real-time prices: Binance (crypto) + Finnhub (equities + forex → DXY)
- *   - Cached slow data: CoinGecko /global (5-min TTL in Upstash)
+ * Cached slow data: CoinGecko /global (4-hour TTL in Upstash)
  *   - Daily reference data: Snapshot from Upstash (MAs, % changes, commodities, rates)
  *   - Manual fields: FedWatch, ETF flows from Upstash
  */
@@ -22,6 +22,11 @@ import {
   type CoinGeckoGlobal,
 } from '@/lib/upstash';
 import { fetchDXY, fetchDXYFromYahoo, type DXYResult } from '@/lib/dxy';
+import {
+  getDashboardPollIntervalMs,
+  getLiveDashboardCacheSeconds,
+  getMarketStatus,
+} from '@/lib/market-hours';
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 
@@ -122,6 +127,10 @@ export async function GET() {
       }
     }
 
+    const marketStatus = getMarketStatus();
+    const pollIntervalMs = getDashboardPollIntervalMs(marketStatus);
+    const cacheSeconds = getLiveDashboardCacheSeconds(marketStatus);
+
     const response = buildResponse({
       cryptoPrices: cryptoPrices.status === 'fulfilled' ? cryptoPrices.value : {},
       equityPrices: mergedEquityPrices,
@@ -130,11 +139,13 @@ export async function GET() {
       coinGecko: coinGeckoGlobal.status === 'fulfilled' ? coinGeckoGlobal.value : null,
       snapshot: snapshotData,
       manual: manualData,
+      marketStatus,
+      pollIntervalMs,
     });
 
     return NextResponse.json(response, {
       headers: {
-        'Cache-Control': 's-maxage=60, stale-while-revalidate=120',
+        'Cache-Control': `s-maxage=${cacheSeconds}, stale-while-revalidate=${cacheSeconds * 2}`,
       },
     });
   } catch (err) {
@@ -156,11 +167,22 @@ interface BuildResponseArgs {
   coinGecko: CoinGeckoGlobal | null;
   snapshot: DashboardSnapshot | null;
   manual: ManualFields;
+  marketStatus: ReturnType<typeof getMarketStatus>;
+  pollIntervalMs: number;
 }
 
-function buildResponse({ cryptoPrices, equityPrices, commodityPrices, dxy, coinGecko, snapshot, manual }: BuildResponseArgs) {
+function buildResponse({
+  cryptoPrices,
+  equityPrices,
+  commodityPrices,
+  dxy,
+  coinGecko,
+  snapshot,
+  manual,
+  marketStatus,
+  pollIntervalMs,
+}: BuildResponseArgs) {
   const now = Date.now();
-  const marketStatus = getMarketStatus();
 
   // Merge live prices with snapshot reference data
   const equities: Record<string, unknown> = {};
@@ -240,6 +262,7 @@ function buildResponse({ cryptoPrices, equityPrices, commodityPrices, dxy, coinG
   // Build meta
   const meta: Record<string, unknown> = {
     marketStatus,
+    pollIntervalMs,
     timestamp: now,
     snapshotDate: snapshot?.date ?? null,
     cryptoMeta: Object.keys(cryptoMeta).length > 0 ? cryptoMeta : null,
@@ -458,7 +481,7 @@ async function fetchCommodityPrices(): Promise<Record<string, { price: number; p
   return results;
 }
 
-// ─── COINGECKO ENRICHED DATA (cached in Upstash, 1-hour TTL) ────────────────
+// ─── COINGECKO ENRICHED DATA (cached in Upstash, 4-hour TTL) ────────────────
 // Fetches 4 endpoints in parallel: /global, /global/defi, /search/trending, /derivatives
 // ~4 calls/hour × 720 hours/month = ~2,880 calls/month (well within 10K limit)
 // Corporate treasury fetched daily via snapshot (barely changes)
@@ -573,21 +596,6 @@ async function fetchCoinGeckoGlobalCached(): Promise<CoinGeckoGlobal | null> {
     console.warn('CoinGecko enriched fetch failed:', err);
     return null;
   }
-}
-
-// ─── MARKET STATUS ───────────────────────────────────────────────────────────
-
-function getMarketStatus(): 'pre' | 'open' | 'after' | 'closed' {
-  const now = new Date();
-  const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  const day = et.getDay();
-  const time = et.getHours() * 60 + et.getMinutes();
-
-  if (day === 0 || day === 6) return 'closed';
-  if (time >= 240 && time < 570) return 'pre';
-  if (time >= 570 && time < 960) return 'open';
-  if (time >= 960 && time < 1200) return 'after';
-  return 'closed';
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────

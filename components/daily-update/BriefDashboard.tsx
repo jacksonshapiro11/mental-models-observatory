@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useDashboardLivePolling } from '@/hooks/useDashboardLivePolling';
 
 interface AssetData {
   price?: number;
@@ -33,31 +33,7 @@ const ASSETS = [
 ];
 
 export function BriefDashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/dashboard/live');
-        if (res.ok) {
-          setData(await res.json());
-        }
-      } catch {
-        /* silent */
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    intervalRef.current = setInterval(fetchData, 60_000);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
+  const { data, loading } = useDashboardLivePolling<DashboardData>();
 
   return (
     <div>
@@ -101,7 +77,6 @@ export function BriefDashboard() {
         })}
       </div>
 
-      {/* Mobile: 3×3 grid (matches super brief) */}
       <div className="sm:hidden grid grid-cols-3 gap-2 max-w-lg mx-auto">
         {ASSETS.map((asset) => {
           const categoryData = data?.[asset.category] as Record<string, AssetData> | undefined;
@@ -141,7 +116,6 @@ export function BriefDashboard() {
         })}
       </div>
 
-      {/* CoinGecko attribution */}
       <p className="text-[10px] text-[#555] mt-3 max-w-5xl mx-auto">
         Crypto data provided by <a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#888]">CoinGecko</a>
       </p>

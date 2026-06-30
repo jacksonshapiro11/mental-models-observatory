@@ -34,34 +34,46 @@ function getRedis(): Redis {
   return redis;
 }
 
+async function safeRedisGet<T>(key: string): Promise<T | null> {
+  try {
+    return await getRedis().get<T>(key);
+  } catch (err) {
+    console.error(`[distribute-log] Redis read failed for ${key}:`, err);
+    return null;
+  }
+}
+
+async function safeRedisSet(key: string, value: unknown): Promise<void> {
+  try {
+    await getRedis().set(key, value);
+  } catch (err) {
+    console.error(`[distribute-log] Redis write failed for ${key}:`, err);
+  }
+}
+
 export async function writeStepLog(
   date: string,
   step: 'email' | 'x',
   result: StepLogEntry,
 ): Promise<void> {
-  const r = getRedis();
   const key = `distribute:log:${date}`;
-  const existing = (await r.get<DistributeLog>(key)) || {};
+  const existing = (await safeRedisGet<DistributeLog>(key)) || {};
   const updated: DistributeLog = { ...existing, [step]: result };
-  await r.set(key, updated);
+  await safeRedisSet(key, updated);
 }
 
 export async function writeAudioLog(date: string, result: AudioLog): Promise<void> {
-  const r = getRedis();
-  await r.set(`audio:log:${date}`, result);
+  await safeRedisSet(`audio:log:${date}`, result);
 }
 
 export async function readDistributeLog(date: string): Promise<DistributeLog | null> {
-  const r = getRedis();
-  return r.get<DistributeLog>(`distribute:log:${date}`);
+  return safeRedisGet<DistributeLog>(`distribute:log:${date}`);
 }
 
 export async function readAudioLog(date: string): Promise<AudioLog | null> {
-  const r = getRedis();
-  return r.get<AudioLog>(`audio:log:${date}`);
+  return safeRedisGet<AudioLog>(`audio:log:${date}`);
 }
 
 export async function readMarketingPack<T = Record<string, unknown>>(date: string): Promise<T | null> {
-  const r = getRedis();
-  return r.get<T>(`marketing:pack:${date}`);
+  return safeRedisGet<T>(`marketing:pack:${date}`);
 }

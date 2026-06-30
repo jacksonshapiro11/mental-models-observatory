@@ -75,7 +75,20 @@ export const KEYS = {
   COINGECKO_GLOBAL: 'dashboard:coingecko:global',
   MANUAL_FIELDS: 'dashboard:manual',
   PRICE_HISTORY_PREFIX: 'dashboard:history:', // + YYYY-MM-DD
+  /** Rolling bundle of slim daily entries — 1 GET vs 1500 per-key reads in snapshot cron */
+  HISTORY_BUNDLE: 'dashboard:history:bundle',
 };
+
+/** Slim per-day price row stored in HISTORY_BUNDLE (and per-day keys). */
+export interface PriceHistoryEntry {
+  date: string;
+  equities: Record<string, { latestClose: number; multiplier?: number }>;
+  crypto: Record<string, { latestClose: number }>;
+  commodities: Record<string, { latestClose: number; multiplier?: number }>;
+  rates: Record<string, { latestClose: number }>;
+}
+
+const HISTORY_BUNDLE_MAX_DAYS = 1200;
 
 // ─── SNAPSHOT (written once/day by cron) ─────────────────────────────────────
 
@@ -92,12 +105,12 @@ export async function readSnapshot(): Promise<DashboardSnapshot | null> {
   return typeof raw === 'string' ? JSON.parse(raw) : raw as DashboardSnapshot;
 }
 
-// ─── COINGECKO CACHE (1-hour TTL — ~720 calls/month, well within 10K limit) ─
+// ─── COINGECKO CACHE (4-hour TTL — cuts live-dashboard Redis reads ~4×) ─────
 
 export async function writeCoinGeckoGlobal(data: CoinGeckoGlobal): Promise<boolean> {
   const r = getRedis();
-  // TTL = 3600 seconds (1 hour)
-  await r.set(KEYS.COINGECKO_GLOBAL, JSON.stringify(data), { ex: 3600 });
+  // TTL = 14400 seconds (4 hours)
+  await r.set(KEYS.COINGECKO_GLOBAL, JSON.stringify(data), { ex: 14400 });
   return true;
 }
 
@@ -127,10 +140,75 @@ export async function readManualFields(): Promise<ManualFields> {
 
 // ─── PRICE HISTORY (append daily, never overwrite) ──────────────────────────
 
+export function snapshotToHistoryEntry(snapshot: DashboardSnapshot): PriceHistoryEntry {
+  const slimEquities = (
+    assets: Record<string, AssetSnapshot & { multiplier?: number }>,
+  ): PriceHistoryEntry['equities'] => {
+    const out: PriceHistoryEntry['equities'] = {};
+    for (const [name, data] of Object.entries(assets || {})) {
+      if (data?.latestClose != null) {
+        const entry: { latestClose: number; multiplier?: number } = { latestClose: data.latestClose };
+        if (data.multiplier != null) entry.multiplier = data.multiplier;
+        out[name] = entry;
+      }
+    }
+    return out;
+  };
+
+  const slimSimple = (
+    assets: Record<string, AssetSnapshot>,
+  ): Record<string, { latestClose: number }> => {
+    const out: Record<string, { latestClose: number }> = {};
+    for (const [name, data] of Object.entries(assets || {})) {
+      if (data?.latestClose != null) {
+        out[name] = { latestClose: data.latestClose };
+      }
+    }
+    return out;
+  };
+
+  return {
+    date: snapshot.date,
+    equities: slimEquities(snapshot.equities as Record<string, AssetSnapshot & { multiplier?: number }>),
+    crypto: slimSimple(snapshot.crypto),
+    commodities: slimEquities(
+      snapshot.commodities as Record<string, AssetSnapshot & { multiplier?: number }>,
+    ),
+    rates: slimSimple(snapshot.rates),
+  };
+}
+
+export async function readHistoryBundle(): Promise<PriceHistoryEntry[]> {
+  const r = getRedis();
+  const raw = await r.get(KEYS.HISTORY_BUNDLE);
+  if (!raw) return [];
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(parsed) ? (parsed as PriceHistoryEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function writeHistoryBundle(entries: PriceHistoryEntry[]): Promise<void> {
+  const r = getRedis();
+  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+  const trimmed = sorted.slice(-HISTORY_BUNDLE_MAX_DAYS);
+  await r.set(KEYS.HISTORY_BUNDLE, JSON.stringify(trimmed));
+}
+
+async function appendHistoryBundle(entry: PriceHistoryEntry): Promise<void> {
+  const existing = await readHistoryBundle();
+  const without = existing.filter((e) => e.date !== entry.date);
+  without.push(entry);
+  await writeHistoryBundle(without);
+}
+
 export async function writePriceHistory(date: string, data: DashboardSnapshot): Promise<boolean> {
   const r = getRedis();
   const key = KEYS.PRICE_HISTORY_PREFIX + date;
   await r.set(key, JSON.stringify(data));
+  await appendHistoryBundle(snapshotToHistoryEntry(data));
   return true;
 }
 

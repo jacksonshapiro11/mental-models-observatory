@@ -14,6 +14,7 @@
 export const maxDuration = 300;
 
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { isCronAuthorized } from '@/lib/cron-auth';
 import { resolvePublishDate } from '@/lib/publish-date';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
@@ -31,6 +32,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  try {
+    return await runPublishComplete(req);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[publish/complete] Unhandled error:', err);
+    return NextResponse.json(
+      { error: 'Publish pipeline failed', detail: message },
+      { status: 503 },
+    );
+  }
+}
+
+async function runPublishComplete(req: NextRequest) {
   const { date: dateSlug, manual } = resolvePublishDate(req.nextUrl.searchParams.get('date'));
 
   if (!getBriefLightByDate(dateSlug)) {
@@ -150,6 +164,10 @@ export async function POST(req: NextRequest) {
     dist?.email?.success !== false &&
     dist?.x?.success !== false &&
     !dist?.error;
+
+  if (fullAudio?.status === 'success' || lightAudio?.status === 'success') {
+    revalidatePath('/api/podcast/feed');
+  }
 
   return NextResponse.json({ ...summary, success: allOk }, { status: allOk ? 200 : 207 });
 }

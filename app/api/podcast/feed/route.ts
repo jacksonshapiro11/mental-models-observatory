@@ -5,7 +5,7 @@
  * Subscribe to this URL in any podcast app (Overcast, Apple Podcasts, etc.)
  *
  * No authentication required — this is a public feed.
- * Cached on Vercel CDN for 1 hour, stale-while-revalidate for 2 hours.
+ * CDN caches 1 hour (podcast apps poll often; manifest stays fresh on publish).
  */
 
 import { NextResponse } from 'next/server';

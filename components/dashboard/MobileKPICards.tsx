@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
+import { useDashboardLivePolling } from '@/hooks/useDashboardLivePolling';
 
 /**
  * Mobile-only 2x2 KPI card grid for the Dashboard section.
@@ -44,25 +45,8 @@ function formatKPIChange(value: number | undefined): string {
 }
 
 export function MobileKPICards({ children }: { children: React.ReactNode }) {
-  const [data, setData] = useState<DashboardData | null>(null);
   const [expanded, setExpanded] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/dashboard/live');
-        if (!res.ok) return;
-        const json = await res.json();
-        setData(json);
-      } catch {
-        // silent — cards will show "—"
-      }
-    };
-    fetchData();
-    intervalRef.current = setInterval(fetchData, 60_000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, []);
+  const { data } = useDashboardLivePolling<DashboardData>();
 
   return (
     <div>
