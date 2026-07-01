@@ -11,6 +11,8 @@ import { readDistributeLog, writeStepLog } from '@/lib/marketing/distribute-log'
 
 export interface RunDistributeIfNeededOptions {
   dateSlug: string;
+  /** Week slug for weekly publish pipeline (uses weekly-light content + /weekly links) */
+  weeklySlug?: string;
   dryRun?: boolean;
   channel?: 'email' | 'x' | null;
 }
@@ -18,7 +20,7 @@ export interface RunDistributeIfNeededOptions {
 export async function runDistributeIfNeeded(
   options: RunDistributeIfNeededOptions,
 ): Promise<DistributeResults> {
-  const { dateSlug, dryRun = false, channel = null } = options;
+  const { dateSlug, weeklySlug, dryRun = false, channel = null } = options;
   const existingLog = await readDistributeLog(dateSlug);
   const results: DistributeResults = {};
 
@@ -41,7 +43,9 @@ export async function runDistributeIfNeeded(
   }
 
   const runChannel = needsEmail && needsX ? null : needsEmail ? 'email' : 'x';
-  const fresh = await runDistribute({ dateSlug, dryRun, channel: runChannel });
+  const distributeOpts: Parameters<typeof runDistribute>[0] = { dateSlug, dryRun, channel: runChannel };
+  if (weeklySlug) distributeOpts.weeklySlug = weeklySlug;
+  const fresh = await runDistribute(distributeOpts);
 
   if (needsEmail && fresh.email) {
     results.email = fresh.email;

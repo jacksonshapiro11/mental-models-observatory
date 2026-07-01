@@ -6,13 +6,19 @@ import fs from 'fs';
 import path from 'path';
 import { put } from '@vercel/blob';
 import OpenAI from 'openai';
-import { getBriefByDate } from '@/lib/daily-update-parser';
+import { getBriefByDate, getWeeklyBySlug } from '@/lib/daily-update-parser';
 import { isStaleForAutoPublish, todayET } from '@/lib/publish-date';
 import { preprocessBriefForTTS, checkScriptFidelity } from '@/lib/audio/text-preprocessor';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
 import { writeEpisodeMetadata, readEpisodeMetadata } from '@/lib/audio/podcast-feed';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates');
+const WEEKLY_CONTENT_DIR = path.join(CONTENT_DIR, 'weekly');
+
+/** Redis / podcast episode key for a weekly full brief */
+export function weeklyFullEpisodeKey(slug: string): string {
+  return `weekly-${slug}`;
+}
 
 export type FullAudioStatus = 'success' | 'exists' | 'skipped' | 'error';
 
@@ -76,6 +82,8 @@ Rules:
 
 export interface GenerateFullAudioOptions {
   date: string;
+  /** Week slug (e.g. "2026-W26") — reads content/daily-updates/weekly/ instead of daily */
+  weeklySlug?: string;
   force?: boolean;
   manual?: boolean;
 }
@@ -83,21 +91,27 @@ export interface GenerateFullAudioOptions {
 export async function generateFullBriefAudio(
   options: GenerateFullAudioOptions,
 ): Promise<FullAudioResult> {
-  const { date: targetDate, force = false, manual = false } = options;
-  const brief = getBriefByDate(targetDate);
+  const { date: targetDate, weeklySlug, force = false, manual = false } = options;
+  const isWeekly = !!weeklySlug;
+  const episodeKey = isWeekly ? weeklyFullEpisodeKey(weeklySlug) : targetDate;
+
+  const brief = isWeekly ? getWeeklyBySlug(weeklySlug) : getBriefByDate(targetDate);
 
   if (!brief) {
+    const label = isWeekly ? `weekly ${weeklySlug}` : targetDate;
     if (manual) {
-      return { status: 'error', date: targetDate, error: `Brief not found for ${targetDate}` };
+      return { status: 'error', date: episodeKey, error: `Brief not found for ${label}` };
     }
     return {
       status: 'skipped',
-      date: targetDate,
-      details: `No full brief published for ${targetDate}`,
+      date: episodeKey,
+      details: isWeekly
+        ? `No full weekly published for ${weeklySlug}`
+        : `No full brief published for ${targetDate}`,
     };
   }
 
-  if (isStaleForAutoPublish(brief.date, manual)) {
+  if (!isWeekly && isStaleForAutoPublish(brief.date, manual)) {
     return {
       status: 'skipped',
       date: brief.date,
@@ -106,27 +120,46 @@ export async function generateFullBriefAudio(
   }
 
   if (!force) {
-    const existing = await readEpisodeMetadata(brief.date);
+    const existing = await readEpisodeMetadata(episodeKey);
     if (existing) {
       return {
         status: 'exists',
-        date: brief.date,
-        details: `Full brief audio already exists for ${brief.date}`,
+        date: episodeKey,
+        details: `Full brief audio already exists for ${episodeKey}`,
         episode: existing,
       };
     }
   }
 
   try {
-    console.log(`[audio:full] Generating audio for ${brief.date}...`);
+    console.log(`[audio:full] Generating audio for ${episodeKey}...`);
 
     const openaiApiKey = process.env.OPENAI_API_KEY!;
-    const mdPath = path.join(CONTENT_DIR, `${brief.date}.md`);
-    const rawMarkdown = fs.existsSync(mdPath) ? fs.readFileSync(mdPath, 'utf-8') : undefined;
+    const mdPath = isWeekly
+      ? path.join(WEEKLY_CONTENT_DIR, `${weeklySlug}.md`)
+      : path.join(CONTENT_DIR, `${brief.date}.md`);
+    // Weekly files use {slug}-{mon-dd-dd}.md — fall back to prefix match
+    let rawMarkdown: string | undefined;
+    if (isWeekly) {
+      const exact = path.join(WEEKLY_CONTENT_DIR, `${weeklySlug}.md`);
+      if (fs.existsSync(exact)) {
+        rawMarkdown = fs.readFileSync(exact, 'utf-8');
+      } else if (fs.existsSync(WEEKLY_CONTENT_DIR)) {
+        const match = fs
+          .readdirSync(WEEKLY_CONTENT_DIR)
+          .find((f) => f.startsWith(`${weeklySlug}-`) && f.endsWith('.md') && !f.includes('-light'));
+        if (match) {
+          rawMarkdown = fs.readFileSync(path.join(WEEKLY_CONTENT_DIR, match), 'utf-8');
+        }
+      }
+    } else {
+      rawMarkdown = fs.existsSync(mdPath) ? fs.readFileSync(mdPath, 'utf-8') : undefined;
+    }
 
     const preprocessOpts: Parameters<typeof preprocessBriefForTTS>[1] = {
       openaiApiKey,
       skipLlmCleanup: false,
+      isWeekly,
     };
     if (rawMarkdown) preprocessOpts.rawMarkdown = rawMarkdown;
 
@@ -166,7 +199,9 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy e
       },
     );
 
-    const filename = `audio/daily-brief-${brief.date}.mp3`;
+    const filename = isWeekly
+      ? `audio/weekly-${weeklySlug}.mp3`
+      : `audio/daily-brief-${brief.date}.mp3`;
     const blob = await put(filename, audio, {
       access: 'public',
       contentType: 'audio/mpeg',
@@ -176,7 +211,7 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy e
     });
 
     try {
-      await put(`audio/daily-brief-${brief.date}.txt`, preprocessed.fullText, {
+      await put(isWeekly ? `audio/weekly-${weeklySlug}.txt` : `audio/daily-brief-${brief.date}.txt`, preprocessed.fullText, {
         access: 'public',
         contentType: 'text/plain; charset=utf-8',
         addRandomSuffix: false,
@@ -199,7 +234,7 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy e
     }
 
     const episode = {
-      date: brief.date,
+      date: episodeKey,
       title: episodeTitle,
       description: extractDescription(brief),
       audioUrl: blob.url,
@@ -213,13 +248,13 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy e
 
     return {
       status: 'success',
-      date: brief.date,
+      date: episodeKey,
       details: `Generated ${characterCount} chars, ${chunks} chunks`,
       episode,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[audio:full] Generation failed:', err);
-    return { status: 'error', date: targetDate, error: msg };
+    return { status: 'error', date: episodeKey, error: msg };
   }
 }

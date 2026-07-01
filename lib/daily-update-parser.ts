@@ -16,7 +16,7 @@ export interface DailyBrief {
 
 export interface BriefSection {
   id: string;
-  type: 'overnight' | 'dashboard' | 'the-six' | 'deep-read' | 'the-take' | 'inner-game' | 'the-model' | 'discovery' | 'big-stories' | 'tomorrows-headlines' | 'watchlist' | 'worldview' | 'ref-big-stories' | 'ref-tomorrows';
+  type: 'overnight' | 'dashboard' | 'the-six' | 'the-signal' | 'deep-read' | 'the-take' | 'the-predictions' | 'inner-game' | 'the-model' | 'discovery' | 'big-stories' | 'tomorrows-headlines' | 'watchlist' | 'worldview' | 'ref-big-stories' | 'ref-tomorrows';
   label: string;
   shortLabel: string;
   content: string;        // Raw markdown content of this section
@@ -28,8 +28,12 @@ const SECTION_DEFS: { marker: string; id: string; type: BriefSection['type']; la
   { marker: '## ▸ OVERNIGHT', id: 'overnight', type: 'overnight', label: 'Overnight', shortLabel: 'ON' },
   { marker: '# ▸ THE DASHBOARD', id: 'dashboard', type: 'dashboard', label: 'Dashboard', shortLabel: 'Dash' },
   { marker: '# ▸ THE SIX', id: 'the-six', type: 'the-six', label: 'The Six', shortLabel: 'Six' },
+  // Weekly-only — does not appear in daily briefs (harmless: skipped when absent)
+  { marker: '# ▸ THE SIGNAL', id: 'the-signal', type: 'the-signal', label: 'The Signal', shortLabel: 'Signal' },
   { marker: '## Deep Read', id: 'deep-read', type: 'deep-read', label: 'Deep Read', shortLabel: 'Read' },
   { marker: '# ▸ THE TAKE', id: 'the-take', type: 'the-take', label: 'The Take', shortLabel: 'Take' },
+  // Weekly-only — does not appear in daily briefs (harmless: skipped when absent)
+  { marker: '# ▸ THE PREDICTIONS', id: 'the-predictions', type: 'the-predictions', label: 'The Predictions', shortLabel: 'Predict' },
   { marker: '# ▸ INNER GAME', id: 'inner-game', type: 'inner-game', label: 'Inner Game', shortLabel: 'Inner' },
   { marker: '# ▸ THE MODEL', id: 'the-model', type: 'the-model', label: 'The Model', shortLabel: 'Model' },
   { marker: '# ▸ DISCOVERY', id: 'discovery', type: 'discovery', label: 'Discovery', shortLabel: 'Discovery' },
@@ -243,6 +247,45 @@ export function getAllBriefDates(): string[] {
   return fs.readdirSync(CONTENT_DIR)
     .filter(f => f.endsWith('.md') && !f.includes('-light'))
     .map(f => f.replace('.md', ''))
+    .sort()
+    .reverse();
+}
+
+// ─── Weekly (full) helpers ───────────────────────────────────────────────────
+// The full Weekly lives in content/daily-updates/weekly/{YYYY-Www}-{mon-dd-dd}.md
+// and parses with the exact same section logic as the daily (it shares SECTION_DEFS,
+// plus the weekly-only THE SIGNAL and THE PREDICTIONS markers added above). The URL
+// slug is just the week id ("2026-W26"); the file is resolved by filename prefix.
+
+const WEEKLY_CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates/weekly');
+
+/** Resolve a week slug (e.g. "2026-W26") to its full-weekly file name, excluding -light. */
+function resolveWeeklyFile(slug: string): string | null {
+  if (!fs.existsSync(WEEKLY_CONTENT_DIR)) return null;
+  const match = fs.readdirSync(WEEKLY_CONTENT_DIR)
+    .filter(f => f.endsWith('.md') && !f.includes('-light'))
+    .find(f => f.startsWith(`${slug}-`) || f === `${slug}.md`);
+  return match ?? null;
+}
+
+export function getWeeklyBySlug(slug: string): DailyBrief | null {
+  const fileName = resolveWeeklyFile(slug);
+  if (!fileName) return null;
+
+  const content = fs.readFileSync(path.join(WEEKLY_CONTENT_DIR, fileName), 'utf-8');
+  return parseDailyBrief(content, slug);
+}
+
+/** All published full-weekly slugs (week ids), newest first. */
+export function getAllWeeklySlugs(): string[] {
+  if (!fs.existsSync(WEEKLY_CONTENT_DIR)) return [];
+  return fs.readdirSync(WEEKLY_CONTENT_DIR)
+    .filter(f => f.endsWith('.md') && !f.includes('-light'))
+    // Filename is {YYYY-Www}-{mon-dd-dd}.md → slug is the leading YYYY-Www token
+    .map(f => {
+      const m = f.match(/^(\d{4}-W\d{1,2})/i);
+      return m ? m[1]! : f.replace('.md', '');
+    })
     .sort()
     .reverse();
 }

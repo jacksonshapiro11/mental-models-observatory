@@ -104,6 +104,15 @@ async function loadEpisodesFromIndex(
 }
 
 function scoreForEpisodeDate(date: string): number {
+  // Weekly episodes: weekly-2026-W26 or weekly-light-2026-W26
+  const weeklyMatch = date.match(/^weekly-(?:light-)?(\d{4})-W(\d{1,2})$/i);
+  if (weeklyMatch) {
+    const year = Number(weeklyMatch[1]);
+    const week = Number(weeklyMatch[2]);
+    // Approximate: week * 7 days from Jan 1 — good enough for sort order
+    const approx = new Date(Date.UTC(year, 0, 1 + week * 7)).getTime();
+    if (Number.isFinite(approx)) return approx;
+  }
   // Strip common suffixes (e.g. "2026-04-14-light" → "2026-04-14")
   const isoCandidate = date.replace(/-(light|super|v\d+)$/i, '');
   const t = new Date(isoCandidate).getTime();
@@ -267,9 +276,11 @@ function formatDuration(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-function toRfc2822Date(dateStr: string): string {
+function toRfc2822Date(dateStr: string, fallbackIso?: string): string {
   const d = new Date(dateStr + 'T11:00:00Z'); // Publish time: 11:00 UTC
-  return d.toUTCString();
+  if (Number.isFinite(d.getTime())) return d.toUTCString();
+  if (fallbackIso) return new Date(fallbackIso).toUTCString();
+  return new Date().toUTCString();
 }
 
 interface FeedConfig {
@@ -301,17 +312,31 @@ const DEFAULT_CONFIG: FeedConfig = {
 };
 
 function generateEpisodeXml(episode: EpisodeMetadata, coverImageUrl: string, variant: 'brief' | 'super-brief' = 'brief'): string {
-  const pubDate = toRfc2822Date(episode.date);
+  const pubDate = toRfc2822Date(episode.date, episode.generatedAt);
   const duration = formatDuration(episode.duration);
-  const guidPrefix = variant === 'super-brief' ? 'super-brief' : 'daily-brief';
-  const titlePrefix = variant === 'super-brief' ? 'Super Brief' : 'Brief';
-  const displayTitle = `${titlePrefix}: ${episode.title.replace(/^(Daily Brief|Super Brief|Brief Light)\s*[—–-]\s*/i, '')}`;
+  const isWeeklyFull = /^weekly-\d{4}-W\d/i.test(episode.date);
+  const isWeeklyLight = /^weekly-light-\d{4}-W\d/i.test(episode.date);
+  const guidPrefix = isWeeklyLight
+    ? 'weekly-light'
+    : isWeeklyFull
+      ? 'weekly'
+      : variant === 'super-brief'
+        ? 'super-brief'
+        : 'daily-brief';
+  const titlePrefix = isWeeklyLight
+    ? 'Weekly Light'
+    : isWeeklyFull
+      ? 'The Weekly'
+      : variant === 'super-brief'
+        ? 'Super Brief'
+        : 'Brief';
+  const displayTitle = `${titlePrefix}: ${episode.title.replace(/^(Daily Brief|Super Brief|Brief Light|Weekly Light|The Weekly)\s*[—–-]\s*/i, '')}`;
 
   return `    <item>
       <title>${escapeXml(displayTitle)}</title>
       <description>${escapeXml(episode.description)}</description>
       <enclosure url="${escapeXml(episode.audioUrl)}" length="${episode.fileSize}" type="audio/mpeg" />
-      <guid isPermaLink="false">${guidPrefix}-${episode.date}</guid>
+      <guid isPermaLink="false">${guidPrefix}-${episode.date.replace(/^weekly-(?:light-)?/, '')}</guid>
       <pubDate>${pubDate}</pubDate>
       <itunes:duration>${duration}</itunes:duration>
       <itunes:image href="${escapeXml(coverImageUrl)}" />
@@ -345,7 +370,7 @@ export async function generatePodcastFeed(config?: Partial<FeedConfig>): Promise
   });
 
   const lastBuildDate = tagged.length > 0
-    ? toRfc2822Date(tagged[0]!.ep.date)
+    ? toRfc2822Date(tagged[0]!.ep.date, tagged[0]!.ep.generatedAt)
     : new Date().toUTCString();
 
   const episodeXml = tagged.map(({ ep, variant }) => generateEpisodeXml(ep, cfg.coverImageUrl, variant)).join('\n');

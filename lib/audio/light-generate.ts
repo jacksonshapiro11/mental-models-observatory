@@ -4,6 +4,7 @@
 
 import { put } from '@vercel/blob';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
+import { getWeeklyLightBySlug } from '@/lib/weekly-light-parser';
 import { isStaleForAutoPublish, todayET } from '@/lib/publish-date';
 import { preprocessBriefLightForTTS, checkScriptFidelity } from '@/lib/audio/text-preprocessor';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
@@ -32,8 +33,15 @@ function extractDescription(brief: { sections: { content: string }[]; epigraph?:
   );
 }
 
+/** Redis / podcast episode key for a weekly light brief */
+export function weeklyLightEpisodeKey(slug: string): string {
+  return `weekly-light-${slug}`;
+}
+
 export interface GenerateLightAudioOptions {
   date: string;
+  /** Week slug (e.g. "2026-W26") — reads content/daily-updates/weekly/{slug}-light.md */
+  weeklySlug?: string;
   force?: boolean;
   manual?: boolean;
 }
@@ -41,21 +49,27 @@ export interface GenerateLightAudioOptions {
 export async function generateLightAudio(
   options: GenerateLightAudioOptions,
 ): Promise<LightAudioResult> {
-  const { date: targetDate, force = false, manual = false } = options;
-  const brief = getBriefLightByDate(targetDate);
+  const { date: targetDate, weeklySlug, force = false, manual = false } = options;
+  const isWeekly = !!weeklySlug;
+  const episodeKey = isWeekly ? weeklyLightEpisodeKey(weeklySlug) : targetDate;
+
+  const brief = isWeekly ? getWeeklyLightBySlug(weeklySlug) : getBriefLightByDate(targetDate);
 
   if (!brief) {
+    const label = isWeekly ? `weekly light ${weeklySlug}` : targetDate;
     if (manual) {
-      return { status: 'error', date: targetDate, error: `Brief Light not found for ${targetDate}` };
+      return { status: 'error', date: episodeKey, error: `Brief Light not found for ${label}` };
     }
     return {
       status: 'skipped',
-      date: targetDate,
-      details: `No Super Brief published for ${targetDate}`,
+      date: episodeKey,
+      details: isWeekly
+        ? `No Weekly Light published for ${weeklySlug}`
+        : `No Super Brief published for ${targetDate}`,
     };
   }
 
-  if (isStaleForAutoPublish(brief.date, manual)) {
+  if (!isWeekly && isStaleForAutoPublish(brief.date, manual)) {
     return {
       status: 'skipped',
       date: brief.date,
@@ -64,19 +78,19 @@ export async function generateLightAudio(
   }
 
   if (!force) {
-    const existing = await readLightEpisodeMetadata(brief.date);
+    const existing = await readLightEpisodeMetadata(episodeKey);
     if (existing) {
       return {
         status: 'exists',
-        date: brief.date,
-        details: `Super Brief audio already exists for ${brief.date}`,
+        date: episodeKey,
+        details: `Super Brief audio already exists for ${episodeKey}`,
         episode: existing,
       };
     }
   }
 
   try {
-    console.log(`[audio:light] Generating Super Brief audio for ${brief.date}...`);
+    console.log(`[audio:light] Generating Super Brief audio for ${episodeKey}...`);
 
     const openaiApiKey = process.env.OPENAI_API_KEY!;
 
@@ -91,6 +105,7 @@ export async function generateLightAudio(
       {
         openaiApiKey,
         skipLlmCleanup: false,
+        isWeekly,
       },
     );
 
@@ -128,7 +143,9 @@ Avoid: rushing, robotic cadence, singsong patterns, dramatic over-pausing, breat
       },
     });
 
-    const filename = `audio/brief-light-${brief.date}.mp3`;
+    const filename = isWeekly
+      ? `audio/weekly-light-${weeklySlug}.mp3`
+      : `audio/brief-light-${brief.date}.mp3`;
     const blob = await put(filename, audio, {
       access: 'public',
       contentType: 'audio/mpeg',
@@ -138,7 +155,7 @@ Avoid: rushing, robotic cadence, singsong patterns, dramatic over-pausing, breat
     });
 
     try {
-      await put(`audio/brief-light-${brief.date}.txt`, preprocessed.fullText, {
+      await put(isWeekly ? `audio/weekly-light-${weeklySlug}.txt` : `audio/brief-light-${brief.date}.txt`, preprocessed.fullText, {
         access: 'public',
         contentType: 'text/plain; charset=utf-8',
         addRandomSuffix: false,
@@ -151,11 +168,15 @@ Avoid: rushing, robotic cadence, singsong patterns, dramatic over-pausing, breat
 
     const estimatedDuration = Math.round(audio.length / (128000 / 8));
     const episodeTitle = brief.dailyTitle
-      ? `${brief.dailyTitle} — Super Brief`
-      : `Super Brief — ${brief.displayDate}`;
+      ? isWeekly
+        ? `${brief.dailyTitle} — Weekly Light`
+        : `${brief.dailyTitle} — Super Brief`
+      : isWeekly
+        ? `Weekly Light — ${brief.displayDate}`
+        : `Super Brief — ${brief.displayDate}`;
 
     const episode = {
-      date: brief.date,
+      date: episodeKey,
       title: episodeTitle,
       dailyTitle: brief.dailyTitle || '',
       description: brief.dailyTitle
@@ -172,13 +193,13 @@ Avoid: rushing, robotic cadence, singsong patterns, dramatic over-pausing, breat
 
     return {
       status: 'success',
-      date: brief.date,
+      date: episodeKey,
       details: `Generated ${characterCount} chars, ${chunks} chunks`,
       episode,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[audio:light] Generation failed:', err);
-    return { status: 'error', date: targetDate, error: msg };
+    return { status: 'error', date: episodeKey, error: msg };
   }
 }

@@ -1230,8 +1230,13 @@ function SectionContent({ section, darkBg = false }: { section: BriefSection; da
     }
     case 'overnight': return <GenericSection content={section.content} darkBg={darkBg} />;
     case 'the-six': return <TheSixSection content={section.content} />;
+    // Weekly-only — bold-headline + prose paragraphs; rendered on a dark background.
+    case 'the-signal': return <GenericSection content={section.content} darkBg={darkBg} />;
     case 'deep-read': return <DeepReadSection content={section.content} />;
     case 'the-take': return <TheTakeSection content={section.content} />;
+    // Weekly-only — prose: a paragraph then three bold one-line calls each with an
+    // italic kill switch. Same prose treatment as The Take (NOT a table).
+    case 'the-predictions': return <TheTakeSection content={section.content} />;
     // asset-spotlight is handled by the default GenericSection fallback
     case 'inner-game': return <InnerGameSection content={section.content} />;
     case 'the-model': return <TheModelSection content={section.content} darkBg={darkBg} />;
@@ -1251,8 +1256,10 @@ const SECTION_TITLES: Record<string, string> = {
   'overnight': 'Overnight',
   'dashboard': 'The Dashboard',
   'the-six': 'The Six',
+  'the-signal': 'The Signal',
   'deep-read': 'Deep Read',
   'the-take': 'The Take',
+  'the-predictions': 'The Predictions',
   'asset-spotlight': 'Asset Spotlight',
   'inner-game': 'Inner Game',
   'the-model': 'The Model',
@@ -1392,7 +1399,9 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
             'overnight':          'bg-[#F8F8F4]',
             'dashboard':          'bg-ct-dark',
             'the-six':            'bg-transparent',    // The Six has its own internal alternating subsections
+            'the-signal':         'bg-ct-dark',        // weekly-only — dark, green-data accent
             'the-take':           'bg-[#FFFDF0]',
+            'the-predictions':    'bg-[#FFFDF0]',      // weekly-only — same prose treatment as The Take
             'big-stories':        'bg-[#F8F8F4]',
             'asset-spotlight':    'bg-white',
             'inner-game':         'bg-[#FFFDF0]',
@@ -1407,13 +1416,15 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
           };
 
           // Sections that render on dark backgrounds need light text
-          const DARK_BG_SECTIONS = new Set(['dashboard', 'the-model', 'worldview']);
+          const DARK_BG_SECTIONS = new Set(['dashboard', 'the-model', 'worldview', 'the-signal']);
 
           const SECTION_BORDER: Record<string, string> = {
             'overnight':          'border-t border-[#e8e8e4]',
             'dashboard':          '',
             'the-six':            'border-t-[3px] border-ct-dark',
+            'the-signal':         'border-t-2 border-ct-green-data',
             'the-take':           'border-t-[3px] border-ct-yellow',
+            'the-predictions':    'border-t-[3px] border-ct-pink',
             'big-stories':        'border-t border-[#e8e8e4]',
             'asset-spotlight':    'border-t-[3px] border-ct-dark',
             'inner-game':         'border-t-[3px] border-ct-pink',
@@ -1430,7 +1441,9 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
           const SECTION_LABEL_COLOR: Record<string, string> = {
             'dashboard':          'text-ct-yellow',
             'the-six':            'text-ct-dark',
+            'the-signal':         'text-ct-green-data',
             'the-take':           'text-ct-dark',
+            'the-predictions':    'text-ct-pink',
             'big-stories':        'text-ct-dark',
             'asset-spotlight':    'text-ct-dark',
             'inner-game':         'text-ct-pink',

@@ -157,10 +157,32 @@ const LEGACY_AUDIO_SECTIONS: AudioSectionConfig[] = [
   { marker: "# ▸ TOMORROW'S HEADLINES", name: "Tomorrow's Headlines", mode: 'full' },
 ];
 
-/** All known section markers (for finding boundaries) */
+/**
+ * Weekly audio section set. The Weekly reads its full section set, which differs from
+ * the daily in two ways: it INCLUDES THE SIGNAL (which the daily intentionally omits)
+ * and THE PREDICTIONS (a weekly-only section). Selected only when processing a weekly
+ * file (PreprocessOptions.isWeekly), so the daily's reading is never changed.
+ */
+const WEEKLY_AUDIO_SECTIONS: AudioSectionConfig[] = [
+  { marker: '## ▸ OVERNIGHT', name: 'Overnight', mode: 'full' },                  // optional — included if present
+  { marker: '# ▸ THE DASHBOARD', name: 'The Dashboard', mode: 'commentary-only' },
+  { marker: '# ▸ THE SIX', name: 'The Six', mode: 'full' },
+  { marker: '# ▸ THE SIGNAL', name: 'The Signal', mode: 'full' },                 // weekly-only inclusion
+  { marker: '# ▸ THE TAKE', name: 'The Take', mode: 'full' },
+  { marker: '# ▸ THE PREDICTIONS', name: 'The Predictions', mode: 'full' },       // weekly-only section
+  { marker: '# ▸ INNER GAME', name: 'Inner Game', mode: 'full' },
+  { marker: '# ▸ THE MODEL', name: 'The Model', mode: 'full' },
+  { marker: '# ▸ DISCOVERY', name: 'Discovery', mode: 'full' },
+];
+
+/** All known section markers (for finding boundaries).
+ *  THE SIGNAL and THE PREDICTIONS are weekly-only markers; adding them here only affects
+ *  boundary detection (they never appear in daily briefs), so the daily is unchanged. */
 const ALL_MARKERS = [
   ...AUDIO_SECTIONS.map(s => s.marker),
   ...LEGACY_AUDIO_SECTIONS.map(s => s.marker),
+  '# ▸ THE SIGNAL',       // Weekly-only boundary (sits between The Six and The Take)
+  '# ▸ THE PREDICTIONS',  // Weekly-only boundary (sits after The Take)
   '## Deep Read',  // Boundary marker — section is skipped in audio but needs to be recognized
   '# ▸ WORLDVIEW UPDATES',
   '# ▸ FULL REFERENCE: BIG STORIES',
@@ -374,8 +396,13 @@ interface ParsedBriefForAudio {
  */
 function extractRawContent(
   brief: { date: string; displayDate: string; epigraph: string; lede: string; sections: { id: string; label: string; content: string }[] },
-  rawMarkdown?: string
+  rawMarkdown?: string,
+  isWeekly = false
 ): { rawContent: string; parsed: ParsedBriefForAudio } {
+  // The weekly reads a different section set (adds THE SIGNAL + THE PREDICTIONS);
+  // the daily is untouched. Legacy markers are only relevant to the daily.
+  const primarySections = isWeekly ? WEEKLY_AUDIO_SECTIONS : AUDIO_SECTIONS;
+
   // If we have the raw markdown, parse sections directly from it (more reliable for markers)
   // Otherwise fall back to the parsed sections from daily-update-parser
   const parsed: ParsedBriefForAudio = {
@@ -389,7 +416,9 @@ function extractRawContent(
   if (rawMarkdown) {
     // Parse directly from raw markdown (same approach as test script)
     // Try current sections first, then legacy sections for older briefs
-    const allSectionsToTry = [...AUDIO_SECTIONS, ...LEGACY_AUDIO_SECTIONS];
+    const allSectionsToTry = isWeekly
+      ? [...WEEKLY_AUDIO_SECTIONS]
+      : [...AUDIO_SECTIONS, ...LEGACY_AUDIO_SECTIONS];
     for (const sec of allSectionsToTry) {
       const startIdx = findMarkerIndex(rawMarkdown, sec.marker);
       if (startIdx === -1) continue;
@@ -426,7 +455,7 @@ function extractRawContent(
   } else {
     // Fall back to parsed sections from daily-update-parser
     // Maps section IDs from the parser to audio section configs
-    const allConfigs = [...AUDIO_SECTIONS, ...LEGACY_AUDIO_SECTIONS];
+    const allConfigs = [...WEEKLY_AUDIO_SECTIONS, ...AUDIO_SECTIONS, ...LEGACY_AUDIO_SECTIONS];
     const configByName = (name: string) => allConfigs.find(c => c.name === name);
     const sectionIdToConfig: Record<string, AudioSectionConfig> = {
       'overnight': configByName('Overnight')!,
@@ -437,6 +466,11 @@ function extractRawContent(
       'inner-game': configByName('Inner Game')!,
       'the-model': configByName('The Model')!,
       'discovery': configByName('Discovery')!,
+      // Weekly-only section IDs — only present (and only selected) for the weekly
+      ...(isWeekly ? {
+        'the-signal': configByName('The Signal')!,
+        'the-predictions': configByName('The Predictions')!,
+      } : {}),
       // Legacy section IDs (for older briefs)
       'big-stories': configByName('The Big Stories')!,
       'tomorrows-headlines': configByName("Tomorrow's Headlines")!,
@@ -674,6 +708,9 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'light-intro': 'Write a SHORT, punchy podcast opening for the Super Brief. Say "Welcome to the Super Brief" and the date naturally. Then say the Daily Title (the editorial headline for the day). Then tease the top 1-2 stories in one sentence. Keep it under 20 seconds when spoken. Fast, direct, energized. No hype language. No quotes. Jump right in.',
   'The Dashboard': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the content. Structural regime read: what\'s the session\'s character, what regime is forming or breaking, and one structural observation per sub-section (Equities, Crypto, Commodities & Rates). The editorial product is the commentary. The website renders the data. Do NOT recite prices the listener can check themselves. Do NOT preview stories from The Six. Keep the full analytical depth. Simplify language, not thinking. Thread between sub-sections: if equities tell one story and bonds tell another, connect them.',
   'The Take': 'Do NOT introduce or announce this section by name. A separate transition handles that. Start with the topic: "We\'re looking at [topic/headline from the content]." Give the listener a one-sentence setup of what question or argument you\'re about to unpack. THEN build the argument naturally, like you\'re thinking through it in real time. This is the heart of the Markets section. Give it full treatment, don\'t compress. Explain any frameworks in plain language. If the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance. The "where this might be wrong" is just as important as the thesis.',
+  // Weekly-only top-level sections (THE SIGNAL and THE PREDICTIONS appear only in the Weekly)
+  'The Signal': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the first signal. Forward-looking tone: these are slow, structural things forming that most people are missing, each carried at week-view. Each signal ends with a clear if/then condition to watch. Make the if/then land in plain language. Give each signal what it needs. If signals connect, say so. Stay close to the written text. Do not over-simplify.',
+  'The Predictions': 'Do NOT introduce or announce this section. A separate transition handles that. Start with the framing sentence, then deliver the standing calls. There is one call per horizon: next week, next month, next year. For EACH call, say the call clearly AND its single kill-switch condition (the one thing that would prove it wrong). The kill switch is as important as the call, never drop it. Keep it tight and concrete. Stay close to the written text; do not invent or re-direct a call.',
   'The Model': 'Do NOT introduce or announce this section. A separate transition handles that. Teach this mental model as a standalone concept using the timeless examples from the written text — do NOT connect it to today\'s news, markets, or any companies mentioned in earlier sections. Name the model, explain it with genuine intellectual energy, and land on the decision tool. This is an intellectual gift the listener keeps forever. The listener should feel like they just gained a new thinking tool.',
   'Inner Game': 'Do NOT introduce or announce this section. A separate transition handles that. Just start reading warmly and with genuine presence. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode. Let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift. The listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
   'Discovery': 'Do NOT introduce or announce this section. A separate transition handles that. Just start telling the story. This is an original essay. NOT a reading recommendation, NOT a list of cool facts (that was Wild Card). Discovery is ONE deep narrative with a single through-line argument. The energy here is slower, more reflective, more intellectually weighty than Wild Card. Tell the story with fascination but let it build. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. Stay very close to the written text. The essay was carefully constructed. End the episode on intellectual wonder.',
@@ -943,7 +980,10 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
     'The Six: Geopolitics': 'Now to the geopolitical picture.',
     'The Six: Wild Card': 'Now getting into today\'s Wild Cards. The coolest things we found happening around the globe.',
     'The Six: The Signal': 'And wrapping up The Six with The Signal. Things that are forming that most people aren\'t watching yet.',
+    // Weekly-only top-level sections
+    'The Signal': 'Now to The Signal. The slow, structural things forming underneath the week that most people aren\'t watching yet.',
     'The Take': 'Now let\'s take a deep dive into one of the biggest stories we\'re monitoring. For today\'s Take.',
+    'The Predictions': 'And now The Predictions. Where we put our standing calls on the record, each with the one thing that would prove it wrong.',
     'Inner Game': 'That\'s all we have for today\'s markets. Let\'s take a deep breath, and settle into today\'s meditation.',
     'The Model': 'OK, let\'s get the brain working. Time for Mental Models.',
     'Discovery': 'And finally, today\'s Discovery.',
@@ -1076,6 +1116,9 @@ export interface PreprocessOptions {
   skipLlmCleanup?: boolean;
   /** Raw markdown of the brief (optional — enables more reliable section parsing) */
   rawMarkdown?: string;
+  /** Weekly mode — reads the weekly section set (adds THE SIGNAL + THE PREDICTIONS).
+   *  Leave false/undefined for the daily, which must read exactly as before. */
+  isWeekly?: boolean;
 }
 
 /**
@@ -1088,13 +1131,13 @@ export async function preprocessBriefForTTS(
   options: PreprocessOptions = {}
 ): Promise<PreprocessedBrief> {
   // Step 1: Extract raw content from selected sections
-  const { rawContent, parsed } = extractRawContent(brief, options.rawMarkdown);
+  const { rawContent, parsed } = extractRawContent(brief, options.rawMarkdown, options.isWeekly);
 
   console.log(`[audio] Extracted ${parsed.sections.length} sections: ${parsed.sections.map(s => s.name).join(', ')}`);
   console.log(`[audio] Raw content: ${rawContent.length} characters`);
 
   // Warn about expected sections that weren't found (helps diagnose formatting issues)
-  const expectedNames = AUDIO_SECTIONS.map(s => s.name);
+  const expectedNames = (options.isWeekly ? WEEKLY_AUDIO_SECTIONS : AUDIO_SECTIONS).map(s => s.name);
   const foundNames = new Set(parsed.sections.map(s => (s.name.split(':')[0] ?? s.name).trim()));
   const missingSections = expectedNames.filter(n => !foundNames.has(n));
   if (missingSections.length > 0) {
@@ -1201,6 +1244,7 @@ const LIGHT_SECTION_ORDER = [
   'the-update',        // selection-format LEAD — stories first, like the written brief
   'markets-minute',    // market-state read, after the stories/ideas
   'interesting-things',
+  'our-calls',         // weekly-light-only — the predictions nod (absent in daily lights)
   'the-meditation',
   'the-model',
   'the-close',
@@ -1212,6 +1256,7 @@ const LIGHT_SECTION_TRANSITIONS: Record<string, string> = {
   'markets-minute': '', // mid-flow after the ideas; no lead-in needed
   'the-update': 'Alright, here\'s what\'s driving the conversation today.',
   'interesting-things': 'A couple things that caught our eye outside the main stories.',
+  'our-calls': 'And quickly, where our standing calls sit going forward.',
   'the-meditation': 'OK. Let\'s take a breath. Time for today\'s meditation.',
   'the-model': 'And finally, today\'s mental model.',
   'the-close': '',  // No transition — the close IS the sign-off
@@ -1248,6 +1293,7 @@ const LIGHT_SECTION_INSTRUCTIONS: Record<string, string> = {
   'The Update': 'Cover every story. Each one gets its headline, the key numbers, why it matters, and the "so what." Thread stories together naturally when they connect. Do NOT skip any story. Stay close to the source text. The specificity is the value. Get to the insight fast. No throat-clearing.',
   'Markets Minute': 'Quick, punchy market read. What\'s the character of today\'s session? Connect the dots between equities, crypto, commodities, and rates. If divergences tell a story, say so. Round prices naturally for speech. This should feel brisk but insightful.',
   'Interesting Things': 'Lighter energy, genuine curiosity. These are fascinating things outside the main market stories. Science, health, breakthroughs. Give each one what it needs to land. If items connect, say so. Stay close to the written text.',
+  'Our Calls': 'Brisk and concrete. These are our three standing calls going forward: next week, next month, next year. Say each call in one clear line AND its single kill-switch condition (the one thing that would prove it wrong). If a call came due, give its one-line grade first. Keep it tight, this is the accountability nod, not a deep dive. Stay close to the written text; do not invent or re-direct a call.',
   'The Meditation': 'Warm, present, reflective. This is the FULL Inner Game and a centerpiece of the brief: read it complete, do NOT shorten or summarize. Deliver the opening setup, the full quote and attribution, the entire reflection, and the closing practice. Let it breathe. No rushing. This is the human moment. The listener should feel grounded after hearing it.',
   'The Model': 'This is the brief\'s deep keeper: the one reusable idea the listener takes away. Teach it, do not just name it. Give the vivid example, explain the mechanism (why it is true), then land on the bolded "Use it" decision tool they can apply today. Use the timeless examples from the written text and do NOT tie it to today\'s news, markets, or companies. Keep it clear and unhurried; the listener should finish with something genuinely useful they will reuse.',
   'The Close': 'Warm, brief sign-off. This is the last thing the listener hears. Land it cleanly — don\'t trail off. One or two sentences that feel like a human saying goodbye. No market references, no previews of tomorrow.',

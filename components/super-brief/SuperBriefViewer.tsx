@@ -265,13 +265,24 @@ function buildIdeaCards(ideaSections: { content: string; title?: string }[]): { 
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
+export default function SuperBriefViewer({
+  brief,
+  fullBriefBasePath = '/daily-update',
+  selfBasePath = '/super-brief',
+}: {
+  brief: BriefLight;
+  /** Base path for "read the full brief" cross-links. Daily → /daily-update, weekly → /weekly. */
+  fullBriefBasePath?: string;
+  /** Base path for this product's own share URL. Daily → /super-brief, weekly → /weekly-super. */
+  selfBasePath?: string;
+}) {
   // Find sections by ID
   const updateSection = brief.sections.find(s => s.id === 'the-update');     // legacy selection format
   const ideaSections = brief.sections.filter(s => s.id === 'the-idea');      // ideas-first format
   const alsoMovingSection = brief.sections.find(s => s.id === 'also-moving');
   const marketsMinuteSection = brief.sections.find(s => s.id === 'markets-minute');
   const interestingSection = brief.sections.find(s => s.id === 'interesting-things');
+  const ourCallsSection = brief.sections.find(s => s.id === 'our-calls');   // weekly-light-only — the predictions nod
   const meditationSection = brief.sections.find(s => s.id === 'the-meditation');
   const modelSection = brief.sections.find(s => s.id === 'the-model');
   const closeSection = brief.sections.find(s => s.id === 'the-close');   // sign-off — parsed but previously never rendered
@@ -431,11 +442,27 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
               </div>
             ))}
             <Link
-              href={`/daily-update/${brief.date}`}
+              href={`${fullBriefBasePath}/${brief.date}`}
               className="text-[11px] text-ct-pink font-medium mt-3 block no-underline"
             >
               More in today&apos;s full brief →
             </Link>
+          </div>
+        </section>
+      )}
+
+      {/* ── 4b. OUR CALLS — the predictions nod (weekly light only) ─────── */}
+      {ourCallsSection && ourCallsSection.content.trim() && (
+        <section className="bg-ct-dark px-4 py-4 border-t-2 border-ct-green-data">
+          <div className="max-w-lg mx-auto">
+            <div className="font-mono text-[9px] text-ct-green-data uppercase tracking-wider font-medium mb-2">
+              Our calls
+            </div>
+            {toParagraphs(ourCallsSection.content).map((para, i) => (
+              <p key={`oc-${i}`} className="text-[13px] text-[#ccc] leading-[1.6] mb-2 last:mb-0">
+                <RichText text={para} />
+              </p>
+            ))}
           </div>
         </section>
       )}
@@ -522,13 +549,13 @@ export default function SuperBriefViewer({ brief }: { brief: BriefLight }) {
       {/* ── Share ───────────────────────────────────────────────────────── */}
       <ShareBar
         title={brief.dailyTitle || 'Super Brief'}
-        path={`/super-brief/${brief.date}`}
+        path={`${selfBasePath}/${brief.date}`}
         displayDate={brief.displayDate}
       />
 
       {/* ── 7. YELLOW READ FULL BRIEF CTA ───────────────────────────────── */}
       <section className="bg-ct-yellow px-4 py-3 text-center border-t-[3px] border-ct-dark">
-        <Link href={`/daily-update/${brief.date}`} className="text-[12px] font-medium text-ct-dark no-underline">
+        <Link href={`${fullBriefBasePath}/${brief.date}`} className="text-[12px] font-medium text-ct-dark no-underline">
           Read the full brief →
         </Link>
         <div className="text-[10px] text-[#666] mt-1">

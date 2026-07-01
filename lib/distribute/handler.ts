@@ -5,7 +5,8 @@
 
 import { Redis } from '@upstash/redis';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
-import { renderBriefEmail } from '@/lib/email/render-brief';
+import { getWeeklyLightBySlug } from '@/lib/weekly-light-parser';
+import { renderBriefEmail, type RenderBriefEmailOptions } from '@/lib/email/render-brief';
 import { sendEmail } from '@/lib/email/resend-client';
 import { resolveXPostContent } from '@/lib/social/x-post-content';
 import { hasXPostingCredentials, resolveXPostingClient } from '@/lib/social/x-oauth';
@@ -18,6 +19,8 @@ export interface ChannelResult {
 
 export interface DistributeOptions {
   dateSlug: string;
+  /** Week slug (e.g. "2026-W26") — sends weekly-light email with /weekly links */
+  weeklySlug?: string;
   dryRun?: boolean;
   channel?: 'email' | 'x' | null;
 }
@@ -30,17 +33,30 @@ export interface DistributeResults {
 export async function distributeEmail(
   dateSlug: string,
   dryRun: boolean,
+  weeklySlug?: string,
 ): Promise<ChannelResult> {
   if (!process.env.RESEND_API_KEY) {
     return { success: false, details: 'RESEND_API_KEY not set' };
   }
 
-  const brief = getBriefLightByDate(dateSlug);
+  const brief = weeklySlug
+    ? getWeeklyLightBySlug(weeklySlug)
+    : getBriefLightByDate(dateSlug);
   if (!brief) {
-    return { success: false, details: `No brief light found for ${dateSlug}` };
+    const label = weeklySlug ? `weekly light ${weeklySlug}` : dateSlug;
+    return { success: false, details: `No brief light found for ${label}` };
   }
 
-  const rendered = renderBriefEmail(brief);
+  const emailOptions: RenderBriefEmailOptions = weeklySlug
+    ? {
+        webUrl: `https://cosmictrex.com/weekly-super/${weeklySlug}`,
+        fullBriefUrl: `https://cosmictrex.com/weekly/${weeklySlug}`,
+        subjectPrefix: 'The Weekly',
+        mastheadLabel: 'The Weekly · Markets, Meditations &amp; Mental Models',
+      }
+    : {};
+
+  const rendered = renderBriefEmail(brief, undefined, emailOptions);
   console.log(`[distribute] Email subject: ${rendered.subject}`);
 
   const redis = new Redis({
@@ -62,14 +78,14 @@ export async function distributeEmail(
   let failed = 0;
 
   for (const email of recipients) {
-    const personalized = renderBriefEmail(brief, email);
+    const personalized = renderBriefEmail(brief, email, emailOptions);
     const result = await sendEmail({
       to: email,
       subject: personalized.subject,
       html: personalized.html,
       tags: [
-        { name: 'type', value: 'daily-brief' },
-        { name: 'date', value: brief.date },
+        { name: 'type', value: weeklySlug ? 'weekly-brief' : 'daily-brief' },
+        { name: 'date', value: weeklySlug ?? brief.date },
       ],
     });
     if (result.success) {
@@ -155,12 +171,12 @@ export async function distributeX(dateSlug: string, dryRun: boolean): Promise<Ch
 }
 
 export async function runDistribute(options: DistributeOptions): Promise<DistributeResults> {
-  const { dateSlug, dryRun = false, channel = null } = options;
+  const { dateSlug, weeklySlug, dryRun = false, channel = null } = options;
   const results: DistributeResults = {};
 
   if (!channel || channel === 'email') {
     try {
-      results.email = await distributeEmail(dateSlug, dryRun);
+      results.email = await distributeEmail(dateSlug, dryRun, weeklySlug);
     } catch (err) {
       results.email = {
         success: false,

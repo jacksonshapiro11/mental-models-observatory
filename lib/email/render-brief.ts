@@ -20,11 +20,26 @@ export interface RenderedEmail {
   html: string;
 }
 
-export function renderBriefEmail(brief: BriefLight, recipientEmail?: string): RenderedEmail {
-  const subject = extractSubject(brief);
+export interface RenderBriefEmailOptions {
+  /** Override web link (default: /super-brief) */
+  webUrl?: string;
+  /** Override full-brief link (default: /daily-update) */
+  fullBriefUrl?: string;
+  /** Prefix for subject line (default: none — uses thesis or dailyTitle) */
+  subjectPrefix?: string;
+  /** Masthead product label (default: "Markets, Meditations & Mental Models") */
+  mastheadLabel?: string;
+}
+
+export function renderBriefEmail(
+  brief: BriefLight,
+  recipientEmail?: string,
+  options: RenderBriefEmailOptions = {},
+): RenderedEmail {
+  const subject = extractSubject(brief, options.subjectPrefix);
   const previewText = truncate(brief.lede || brief.epigraph, 140);
-  const webUrl = `${SITE_URL}/super-brief`;
-  const fullBriefUrl = `${SITE_URL}/daily-update`;
+  const webUrl = options.webUrl ?? `${SITE_URL}/super-brief`;
+  const fullBriefUrl = options.fullBriefUrl ?? `${SITE_URL}/daily-update`;
   const audioUrl = 'https://podcasts.apple.com/us/podcast/markets-meditations-and-mental-models/id1885352035';
   const unsubscribeUrl = recipientEmail ? buildUnsubscribeUrl(recipientEmail) : null;
 
@@ -46,11 +61,11 @@ export function renderBriefEmail(brief: BriefLight, recipientEmail?: string): Re
 
 <table role="presentation" width="620" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;width:100%;background-color:#ffffff;">
 
-  ${renderMasthead(brief, webUrl, audioUrl, fullBriefUrl)}
+  ${renderMasthead(brief, webUrl, audioUrl, fullBriefUrl, options.mastheadLabel)}
   ${renderEpigraph(brief)}
   ${renderDailyHeader(brief)}
   ${renderSections(brief)}
-  ${renderShareBlock(brief, webUrl)}
+  ${renderShareBlock(brief, webUrl, options.subjectPrefix)}
   ${renderFooter(webUrl, unsubscribeUrl)}
 
 </table>
@@ -68,26 +83,27 @@ export function renderBriefEmail(brief: BriefLight, recipientEmail?: string): Re
 // The strongest subject line is the bolded thesis from THE UPDATE section #1.
 // Format in markdown: **Thesis headline here.**  on its own line.
 
-function extractSubject(brief: BriefLight): string {
+function extractSubject(brief: BriefLight, prefix?: string): string {
   const update = brief.sections.find((s) => s.id === 'the-update');
+  let headline: string | undefined;
   if (update) {
-    // First **bold standalone line** — the thesis headline
     const match = update.content.match(/^\*\*(.+?)\*\*\s*$/m);
-    if (match && match[1]) return match[1].trim();
+    if (match && match[1]) headline = match[1].trim();
   }
-  // Fallback: Daily Title (e.g., "The Blockade")
-  return brief.dailyTitle || `Brief — ${brief.displayDate}`;
+  const base = headline || brief.dailyTitle || `Brief — ${brief.displayDate}`;
+  return prefix ? `${prefix}: ${base}` : base;
 }
 
 // ─── Components ─────────────────────────────────────────────────────────────
 
-function renderMasthead(brief: BriefLight, webUrl: string, audioUrl: string, fullBriefUrl?: string): string {
+function renderMasthead(brief: BriefLight, webUrl: string, audioUrl: string, fullBriefUrl?: string, mastheadLabel?: string): string {
+  const label = mastheadLabel ?? 'Markets, Meditations &amp; Mental Models';
   return `
   <tr><td style="padding:32px 40px 16px 40px;border-bottom:1px solid #e8e2d5;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
       <tr>
         <td style="font-family:Georgia,serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#6b5d45;font-weight:600;">
-          Markets, Meditations &amp; Mental Models
+          ${label}
         </td>
         <td align="right" style="font-family:Georgia,serif;font-size:12px;color:#8a7d64;">
           ${escapeHtml(brief.displayDate)}
@@ -138,8 +154,8 @@ function renderSections(brief: BriefLight): string {
     .join('\n');
 }
 
-function renderShareBlock(brief: BriefLight, webUrl: string): string {
-  const subject = extractSubject(brief);
+function renderShareBlock(brief: BriefLight, webUrl: string, subjectPrefix?: string): string {
+  const subject = extractSubject(brief, subjectPrefix);
   const tweetText = encodeURIComponent(`"${subject}"\n\nFrom today's Markets, Meditations & Mental Models:`);
   const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(webUrl)}`;
   const forwardSubject = encodeURIComponent(`Brief — ${brief.displayDate}`);

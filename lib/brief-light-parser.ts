@@ -48,6 +48,7 @@ function sectionMetaFor(rawHeader: string): { id: string; label: string; title: 
   if (u.startsWith('ALSO MOVING')) return { id: 'also-moving', label: 'Also Moving', title };
   if (u.startsWith('MARKETS MINUTE')) return { id: 'markets-minute', label: 'Markets Minute', title };
   if (u.startsWith('TWO THINGS') || u.startsWith('INTERESTING THINGS')) return { id: 'interesting-things', label: 'Interesting Things', title };
+  if (u.startsWith('OUR CALLS')) return { id: 'our-calls', label: 'Our Calls', title };  // weekly-light-only — the predictions nod
   if (u.startsWith('THE MEDITATION')) return { id: 'the-meditation', label: 'The Meditation', title };
   if (u.startsWith('THE MODEL')) return { id: 'the-model', label: 'The Model', title };
   if (u.startsWith('THE CLOSE')) return { id: 'the-close', label: 'The Close', title };
@@ -68,6 +69,10 @@ export function parseBriefLight(markdown: string, dateSlug: string): BriefLight 
 
   for (let i = 0; i < Math.min(lines.length, 25); i++) {
     const line = (lines[i] ?? '').trim();
+
+    // Skip HTML comment lines (e.g. a calibration-example banner, which may
+    // contain "## ▸" and would otherwise trip the section-break below).
+    if (line.startsWith('<!--')) continue;
 
     // Italic epigraph line: *"quote"* — appears before the date
     if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && !epigraph && !foundTitle) {
