@@ -102,9 +102,11 @@ function parseSignals(content: string): SignalItem[] {
     const trimmed = line.trim();
     if (!trimmed || trimmed === '---') continue;
 
-    // Bold standalone headline: **Title**
-    if (trimmed.startsWith('**') && trimmed.endsWith('**') && !trimmed.slice(2, -2).includes('**')) {
-      // Save previous signal
+    // A new signal begins at a bold headline at the START of a line. Handles BOTH
+    // "**Headline**" alone on its line (daily format) AND "**Headline.** body on
+    // the same line" (weekly light format).
+    const headlineMatch = trimmed.match(/^\*\*(.+?)\*\*\s*(.*)$/);
+    if (headlineMatch && headlineMatch[1] && !headlineMatch[1].includes('**')) {
       if (currentHeadline) {
         signals.push({
           headline: currentHeadline,
@@ -113,8 +115,8 @@ function parseSignals(content: string): SignalItem[] {
           domain: inferDomain(currentHeadline, currentBody),
         });
       }
-      currentHeadline = trimmed.slice(2, -2);
-      currentBody = '';
+      currentHeadline = headlineMatch[1].trim();
+      currentBody = headlineMatch[2] ? headlineMatch[2].trim() : '';
       continue;
     }
 
@@ -425,22 +427,30 @@ export default function SuperBriefViewer({
       )}
 
       {/* ── 4. WARM CREAM — "Interesting Things" (replaces The Take) ───── */}
-      {interestingItems.length > 0 && (
+      {(interestingItems.length > 0 || (interestingSection && interestingSection.content.trim())) && (
         <section className="bg-[#FFFDF0] px-4 py-4 border-t-[3px] border-ct-yellow">
           <div className="max-w-lg mx-auto">
             <div className="text-[10px] tracking-[0.06em] uppercase font-medium text-ct-dark mb-1.5">
               Interesting things
             </div>
-            {interestingItems.map((item, i) => (
-              <div key={i} className={i > 0 ? 'mt-4 pt-3 border-t border-[#e8e4d0]' : ''}>
-                <h2 className="font-serif text-[16px] font-medium text-[#111] leading-[1.3] mb-2">
-                  {item.headline}
-                </h2>
-                <p className="text-[13px] text-[#1a1a1a] font-medium leading-[1.6]">
-                  <RichText text={item.body} />
+            {interestingItems.length > 0 ? (
+              interestingItems.map((item, i) => (
+                <div key={i} className={i > 0 ? 'mt-4 pt-3 border-t border-[#e8e4d0]' : ''}>
+                  <h2 className="font-serif text-[16px] font-medium text-[#111] leading-[1.3] mb-2">
+                    {item.headline}
+                  </h2>
+                  <p className="text-[13px] text-[#1a1a1a] font-medium leading-[1.6]">
+                    <RichText text={item.body} />
+                  </p>
+                </div>
+              ))
+            ) : (
+              toParagraphs(interestingSection!.content).map((para, i) => (
+                <p key={i} className="text-[13px] text-[#1a1a1a] font-medium leading-[1.6] mb-2 last:mb-0">
+                  <RichText text={para} />
                 </p>
-              </div>
-            ))}
+              ))
+            )}
             <Link
               href={`${fullBriefBasePath}/${brief.date}`}
               className="text-[11px] text-ct-pink font-medium mt-3 block no-underline"
