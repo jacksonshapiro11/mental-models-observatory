@@ -158,10 +158,12 @@ const LEGACY_AUDIO_SECTIONS: AudioSectionConfig[] = [
 ];
 
 /**
- * Weekly audio section set. The Weekly reads its full section set, which differs from
- * the daily in two ways: it INCLUDES THE SIGNAL (which the daily intentionally omits)
- * and THE PREDICTIONS (a weekly-only section). Selected only when processing a weekly
- * file (PreprocessOptions.isWeekly), so the daily's reading is never changed.
+ * Weekly audio section set. The Weekly reads THE SIGNAL and THE PREDICTIONS as their own
+ * TOP-LEVEL sections. The daily differs: it has no PREDICTIONS, and "The Signal" is a
+ * `## ` sub-header inside The Six — spoken as "The Six: The Signal" via splitAtSubHeaders,
+ * NOT omitted. These weekly-only top-level markers are excluded from daily boundary
+ * detection (see extractRawContent) so they never truncate The Six. Selected only when
+ * processing a weekly file (PreprocessOptions.isWeekly).
  */
 const WEEKLY_AUDIO_SECTIONS: AudioSectionConfig[] = [
   { marker: '## ▸ OVERNIGHT', name: 'Overnight', mode: 'full' },                  // optional — included if present
@@ -207,13 +209,18 @@ function findMarkerIndex(text: string, marker: string): number {
     if (idx !== -1) return idx;
   }
 
-  // Try line-by-line case-insensitive match on the section name
+  // Try line-by-line case-insensitive match on the section name — but ONLY at the SAME
+  // header level as the marker. Without the level guard a top-level marker like
+  // "# ▸ THE SIGNAL" (one #) fuzzily matched a daily "## The Signal" sub-header (two #),
+  // mis-locating the boundary and dropping The Signal from daily audio.
+  const markerLevel = marker.match(/^#+/)?.[0].length ?? 0;
   const sectionName = marker.replace(/^#\s*▸\s*(THE\s+)?/i, '').trim();
   const lines = text.split('\n');
   let charIdx = 0;
   for (const line of lines) {
     const trimmed = line.trim();
-    if (/^#{1,3}\s/.test(trimmed) && trimmed.toUpperCase().includes(sectionName.toUpperCase())) {
+    const lineLevel = trimmed.match(/^#+/)?.[0].length ?? 0;
+    if (lineLevel === markerLevel && /^#{1,3}\s/.test(trimmed) && trimmed.toUpperCase().includes(sectionName.toUpperCase())) {
       return charIdx + (line.length - line.trimStart().length);
     }
     charIdx += line.length + 1;
@@ -419,6 +426,18 @@ function extractRawContent(
     const allSectionsToTry = isWeekly
       ? [...WEEKLY_AUDIO_SECTIONS]
       : [...AUDIO_SECTIONS, ...LEGACY_AUDIO_SECTIONS];
+
+    // Boundary markers used to find where each section ends. THE SIGNAL and THE PREDICTIONS
+    // are weekly-only TOP-LEVEL sections. In the DAILY, "The Signal" is a `## ` sub-header
+    // INSIDE The Six — so the weekly marker "# ▸ THE SIGNAL" must NOT be used as a daily
+    // boundary, or it truncates The Six right before "## The Signal" and silently drops the
+    // Signal from the daily audio. Excluding them for the daily lets The Six run to THE TAKE;
+    // splitAtSubHeaders then emits "The Six: The Signal" (spoken via its own transition +
+    // instruction). The weekly still uses them — it owns those sections at the top level.
+    const boundaryMarkers = isWeekly
+      ? ALL_MARKERS
+      : ALL_MARKERS.filter(m => m !== '# ▸ THE SIGNAL' && m !== '# ▸ THE PREDICTIONS');
+
     for (const sec of allSectionsToTry) {
       const startIdx = findMarkerIndex(rawMarkdown, sec.marker);
       if (startIdx === -1) continue;
@@ -427,7 +446,7 @@ function extractRawContent(
       if (afterMarker === -1) continue;
 
       let endIdx = rawMarkdown.length;
-      for (const m of ALL_MARKERS) {
+      for (const m of boundaryMarkers) {
         if (m === sec.marker) continue;
         const idx = findMarkerIndex(rawMarkdown, m);
         if (idx > startIdx && idx < endIdx) endIdx = idx;
@@ -898,6 +917,27 @@ function extractKeyFacts(text: string): string[] {
     }
   }
 
+  // Percentages — glyph OR spelled "percent". The briefs spell them out ("73 percent"),
+  // so the %-glyph patterns above miss them entirely. (July 1, 2026 — the yen/flows repeat.)
+  const percentPattern = /([\d.]+)\s*(?:%|percent)\b/gi;
+  while ((match = percentPattern.exec(text)) !== null) {
+    const idx = match.index;
+    const surrounding = text.slice(Math.max(0, idx - 50), Math.min(text.length, idx + match[0].length + 25)).replace(/[\n\r]+/g, ' ').trim();
+    if (surrounding.length > 12) facts.push(surrounding);
+  }
+
+  // Distinctive bare price levels the $-pattern misses: thousands-separated (52,319),
+  // 3+ straight digits (162, 4000), or a decimal level (4.44). Skips years. This is how
+  // "the yen broke 162" finally becomes dedupable — it is neither $-prefixed nor a percent.
+  const bareLevelPattern = /\b(\d{1,3}(?:,\d{3})+|\d{3,}|\d+\.\d{1,2})\b/g;
+  while ((match = bareLevelPattern.exec(text)) !== null) {
+    const raw = match[1]!;
+    if (/^(19|20)\d{2}$/.test(raw.replace(/,/g, ''))) continue; // years, not data points
+    const idx = match.index;
+    const surrounding = text.slice(Math.max(0, idx - 40), Math.min(text.length, idx + match[0].length + 25)).replace(/[\n\r]+/g, ' ').trim();
+    if (surrounding.length > 12) facts.push(surrounding);
+  }
+
   // Extract topic-level subjects from bolded headlines (e.g., "**Liberation Day turned one year old**")
   // This catches repetition where the same TOPIC appears across sections with different numbers.
   const boldPattern = /\*\*([^*]{15,120})\*\*/g;
@@ -1280,6 +1320,8 @@ FIDELITY (NON-NEGOTIABLE): say what the brief says. Never swap a concept for a d
 
 THE CLOSE: deliver the brief's written close as one or two warm spoken sentences. Do NOT write a recap or summary of the episode. Never summarize what the listener just heard. If the brief's close is one line, your close is one line.
 
+NO REPETITION (the listener hears this once, linearly): never state the same figure or the same framing more than TWICE across the whole episode. Each story tells itself once. If a story already delivered its number, MARKETS MINUTE and any later section must NOT recap that same figure — give the levels the stories did not dwell on, or reference the move without restating the number ("the same yen move we covered"). Check the ALREADY COVERED list in the transition context. After the second mention, the listener is annoyed.
+
 VOICE: a smart friend talking something through out loud, not reading aloud and not performing. Energized and awake, never doom, never NPR-flat. Contractions everywhere.
 
 NO SECTION INTROS: a deterministic transition is added before your section. Do not announce or frame the section. Start with the first substantive sentence.
@@ -1390,14 +1432,19 @@ export async function preprocessBriefLightForTTS(
         sectionScripts.push(introScript);
       }
 
-      // Process each section
+      // Process each section. The light path is sequential (this for-await loop), so we can
+      // carry a running fact list forward: each section is told what earlier ones already
+      // covered, so MARKETS MINUTE stops recapping figures THE UPDATE already delivered (the
+      // 2026-07-01 yen/flows repeat). Previously the light passed NO dedup context at all.
       const usedTransitions = new Set<string>();
+      const runningFacts: string[] = [];
       for (let i = 0; i < ordered.length; i++) {
         const section = ordered[i]!;
         const prevSection = i > 0 ? ordered[i - 1]?.label : 'intro';
         const nextSection = i < ordered.length - 1 ? ordered[i + 1]?.label : undefined;
 
         const context: SectionContext = { prevSection, nextSection };
+        if (runningFacts.length > 0) context.alreadyCovered = [...runningFacts];
 
         // Ideas-first: the idea headline and the model name live in the header
         // (section.title), not the body — fold them back in so they get spoken.
@@ -1410,6 +1457,10 @@ export async function preprocessBriefLightForTTS(
         console.log(`[audio:light] Section: ${rewriteLabel}${section.title ? ` — ${section.title}` : ''}...`);
         const script = await rewriteSection(client, rewriteLabel, rewriteContent, context, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
         console.log(`[audio:light]   → ${script.length} chars`);
+
+        // Feed this section's figures forward so later sections (esp. MARKETS MINUTE) know
+        // what's already been said and reference rather than repeat it.
+        runningFacts.push(...extractKeyFacts(section.content));
 
         // Prepend the transition once per section id (so multiple ideas don't repeat the lead-in)
         const transition = LIGHT_SECTION_TRANSITIONS[section.id] || '';

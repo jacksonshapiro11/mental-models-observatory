@@ -23,6 +23,7 @@ import { spawnSync } from 'child_process';
 // incompatible with Node --experimental-strip-types). This is equivalent to calling
 // getModelBySlug from lib/data.ts.
 import { READWISE_MODELS } from '../lib/readwise-data.ts';
+import { checkRepetition } from '../lib/repetition-check.ts';
 function getModelBySlug(slug: string) {
   return READWISE_MODELS.find((m: any) => m.slug === slug);
 }
@@ -1279,6 +1280,114 @@ function checkAdjacentSentenceDedup(body: string): Failure[] {
   return out;
 }
 
+// --- Signal pair label presence-check (July 1, 2026) ---
+// E-SIGNAL-TOPIC-FAMILIARITY-01 🟡 Day 2. If the QG log's SIGNAL PAIR line shows
+// a consensus/INVALID Signal, assert the published brief contains a `Context signal:` label.
+function checkSignalPairLabel(body: string, briefDir: string, absPath: string): Failure[] {
+  const out: Failure[] = [];
+  const briefDateMatch = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
+  if (!briefDateMatch) return out;
+  const bd = briefDateMatch[1];
+  const qgLog = path.join(briefDir, `${bd}-quality-gate-log.md`);
+  if (!fs.existsSync(qgLog)) return out;
+  const qgContent = fs.readFileSync(qgLog, 'utf8');
+  // Check if any Signal was marked INVALID or consensus in the QG log
+  const pairLine = qgContent.match(/SIGNAL PAIR:.*?(INVALID|consensus|well-covered|label)/i);
+  if (pairLine && /INVALID|consensus|well-covered/i.test(pairLine[0])) {
+    // A consensus Signal exists — check if the brief has the Context signal: label
+    const signalStart = body.indexOf('## The Signal');
+    if (signalStart !== -1) {
+      const signalSection = body.slice(signalStart, body.indexOf('\n---', signalStart + 1));
+      if (!signalSection.includes('Context signal:')) {
+        out.push({
+          check: 'signal-pair-unlabeled-consensus',
+          message: `🟡 FLAG: QG log shows a consensus/well-covered Signal but the brief contains no 'Context signal:' label. Per the SIGNAL PAIR STANDARD, a consensus Signal must be explicitly labeled so the reader knows it is context, not an undercovered thesis.`,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+// --- QG Inner Game audit completeness check (July 1, 2026) ---
+// E-QG-INNERCHECK-GAP-01 🟡. The QG Inner Game audit failed to bind on two
+// consecutive days (06-30 tradition-cooldown, 07-01 forbidden-source). Per the
+// escalation rule ("a rule that fails twice escalates to a layer that can't skip it"),
+// enforcement moves to a deterministic presence-check — the exact move that
+// resolved convergence (E-CONVERGENCE-ASSEMBLY-01).
+function checkQGInnerGameAudit(briefDir: string, absPath: string): Failure[] {
+  const out: Failure[] = [];
+  const briefDateMatch = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
+  if (!briefDateMatch) return out;
+  const bd = briefDateMatch[1];
+  const qgLog = path.join(briefDir, `${bd}-quality-gate-log.md`);
+  if (!fs.existsSync(qgLog)) return out;
+  const qgContent = fs.readFileSync(qgLog, 'utf8');
+  // Assert INNER GAME FORBIDDEN-CHECK line exists
+  if (!qgContent.includes('INNER GAME FORBIDDEN-CHECK:')) {
+    out.push({
+      check: 'qg-inner-game-forbidden-check-missing',
+      message: `🔴 FAIL: QG log missing 'INNER GAME FORBIDDEN-CHECK:' line — the forbidden-source check did not run. The QG must grep the Inner Game source against the FORBIDDEN list (Inner_Game_Generator.md:41) and log the result before the brief passes.`,
+    });
+  }
+  // Assert INNER GAME TRADITION line exists with pasted grep evidence
+  if (!qgContent.includes('INNER GAME TRADITION:')) {
+    out.push({
+      check: 'qg-inner-game-tradition-check-missing',
+      message: `🔴 FAIL: QG log missing 'INNER GAME TRADITION:' line — the 30-day tradition grep did not run. The QG must grep the Inner Game tradition over the trailing 30 days and paste the result before the brief passes.`,
+    });
+  }
+  return out;
+}
+
+// --- Model pool-size floor (July 1, 2026) ---
+// E-MODEL-WHITELIST-EXHAUSTION-01 🟡 Day 4, escalated to CRITICAL.
+// Presence-only advisory: warns when the resolving slug count is below the
+// sustainable floor for a 30-day cooldown.
+function checkModelPoolFloor(): Failure[] {
+  const out: Failure[] = [];
+  const whitelistPath = path.join(process.cwd(), 'system', 'Model_Tier3_Whitelist.md');
+  if (!fs.existsSync(whitelistPath)) return out;
+  const wl = fs.readFileSync(whitelistPath, 'utf8');
+  // Count active rows (not demoted/quarantined) by matching table rows with slugs
+  const rows = wl.match(/^\|\s*\d+\s*\|(?!.*DEMOTED|.*QUARANTINED).*`[a-z0-9-]+`/gm) || [];
+  // Extract unique resolving slugs (exclude the 3 known domain-only quarantined slugs)
+  const domainOnly = new Set([
+    'simple-rules-generating-complex-behavior',
+    'creativity-innovation',
+    'information-theory-media-ecology',
+  ]);
+  const slugs = new Set<string>();
+  for (const row of rows) {
+    const m = row.match(/`([a-z0-9-]+)`/);
+    if (m && !domainOnly.has(m[1])) slugs.add(m[1]);
+  }
+  const floor = 30; // 2 × (30-day cooldown / 14) ≈ 30 for daily publication
+  if (slugs.size < floor) {
+    out.push({
+      check: 'model-pool-below-floor',
+      message: `🟡 MODEL POOL BELOW FLOOR: ${slugs.size} resolving slugs vs ${floor} minimum for a 30-day cooldown. Exhaustion Protocol will recur — expand Model_Tier3_Whitelist.md by vetting READWISE_MODELS entries against the 6-point standard.`,
+    });
+  }
+  return out;
+}
+
+// --- Data-point repetition: the "at most twice" rule (July 1, 2026) ---
+// Makes Brief_Validator Check 9 (data-point dedup) MECHANICAL. It was prose-only, so the
+// same figure could still land in the lede, the Dashboard, and a Six bullet — the March 31
+// "52% to 2.2%" failure, and the July 1 repeat where the yen "162" and the "$23.5 billion"
+// quarter-end bid each appeared in three sections (heard three times in the first minutes of
+// audio). A load-bearing data point may appear in AT MOST TWO sections (the lede preview plus
+// its single home story); 3+ = FAIL. Timeless sections (Model, Inner Game, Discovery) are
+// excluded — they may borrow a number for a standalone example.
+function checkDataPointRepetition(body: string): Failure[] {
+  const rep = checkRepetition(body);
+  return rep.findings.map((f) => ({
+    check: 'data-point-repetition',
+    message: `"${f.display}" appears in ${f.sections.length} sections (rule: at most twice): ${f.sections.join(' · ')}. Keep it in the lede preview + its home story; reference it elsewhere without restating the figure.`,
+  }));
+}
+
 function main() {
   const [, , argPath] = process.argv;
   if (!argPath) {
@@ -1337,6 +1446,15 @@ function main() {
   // --- Adjacent-sentence dedup (June 6, 2026) ---
   // Catches merge artifacts where quality gate closing rewrites echo bullet body phrases.
   failures.push(...checkAdjacentSentenceDedup(body));
+  // --- Data-point repetition / "at most twice" (July 1, 2026) ---
+  // Mechanizes Brief_Validator Check 9: no load-bearing figure in 3+ sections.
+  failures.push(...checkDataPointRepetition(body));
+  // --- Signal pair label check (July 1, 2026 — E-SIGNAL-TOPIC-FAMILIARITY-01) ---
+  failures.push(...checkSignalPairLabel(body, briefDir, absPath));
+  // --- QG Inner Game audit completeness (July 1, 2026 — E-QG-INNERCHECK-GAP-01) ---
+  failures.push(...checkQGInnerGameAudit(briefDir, absPath));
+  // --- Model pool-size floor (July 1, 2026 — E-MODEL-WHITELIST-EXHAUSTION-01) ---
+  failures.push(...checkModelPoolFloor());
 
   // --- QG-must-have-run integrity check (June 16, 2026) ---
   // E-PIPELINE-SEQUENCING-01: if validating a v2, assert that the quality gate ran.

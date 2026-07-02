@@ -16,6 +16,7 @@
  * Exit: 0 pass (may warn) · 1 violation (blocks ship) · 2 usage error
  */
 import * as fs from 'fs';
+import { checkRepetition, formatRepetitionFindings } from '../lib/repetition-check.ts';
 
 const BANNED = ['buckle up', "let's talk about", 'let us talk about', "here's where it gets interesting", 'dive in', 'in this piece', 'we unpack'];
 const SUPERLATIVE = /\b(record (?:high|low)|all-time (?:high|low)|new (?:high|low)|biggest ever|largest ever|first ever|highest ever)\b/gi;
@@ -103,6 +104,19 @@ function main(): number {
     if (orphans.length) warns.push(`Numbers not found in the full brief (verify NO NEW ATOMS): ${[...new Set(orphans)].slice(0, 12).join(' · ')}`);
   } else {
     warns.push('Full brief not provided; skipped NO-NEW-ATOMS number-provenance check. Pass the full brief path as arg 2.');
+  }
+
+  // 9. DATA-POINT REPETITION — the "at most twice" rule (Jackson 2026-07-01).
+  // A super brief previews the story-of-the-week in the lede, tells each story once in THE
+  // UPDATE, and recaps levels in MARKETS MINUTE. That structure invites the same figure into
+  // three places (the 2026-07-01 light said the yen "162" and the "$23.5 billion" bid in the
+  // lede AND THE UPDATE AND MARKETS MINUTE — three times in the first three minutes of audio).
+  // The lede preview + the story's home = twice, the ceiling. A third section is the failure.
+  const rep = checkRepetition(md);
+  if (!rep.ok) {
+    fails.push(
+      `Data-point repetition — ${rep.findings.length} figure(s) appear in 3+ sections (rule: at most twice):\n${formatRepetitionFindings(rep.findings)}`,
+    );
   }
 
   const name = file.split('/').pop();
