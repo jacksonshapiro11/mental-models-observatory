@@ -1,8 +1,9 @@
 import { getLatestBriefLight } from '@/lib/brief-light-parser';
+import { currentWeeklyLightSlug } from '@/lib/weekly-window';
 import { superBriefOgImage } from '@/lib/og-super-brief';
 import SuperBriefViewer from '@/components/super-brief/SuperBriefViewer';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,6 +31,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function SuperBriefPage() {
+  // Zoom-out window (Pipeline_Controller "ZOOM-OUT DAY"): from the Weekly's
+  // Sunday until the next daily publishes, the Weekly Light IS the super brief.
+  const weeklySlug = currentWeeklyLightSlug();
+  if (weeklySlug) {
+    redirect(`/weekly-super/${weeklySlug}`);
+  }
+
   const brief = getLatestBriefLight();
 
   if (!brief) {

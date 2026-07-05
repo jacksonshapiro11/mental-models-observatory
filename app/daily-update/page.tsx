@@ -1,6 +1,8 @@
 import { getLatestBrief } from '@/lib/daily-update-parser';
+import { currentWeeklyFullSlug } from '@/lib/weekly-window';
 import BriefViewer from '@/components/daily-update/BriefViewer';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Newspaper } from 'lucide-react';
 import type { Metadata } from 'next';
 
@@ -16,6 +18,13 @@ export const metadata: Metadata = {
 };
 
 export default function DailyUpdatePage() {
+  // Zoom-out window (Pipeline_Controller "ZOOM-OUT DAY"): from the Weekly's
+  // Sunday until the next daily publishes, the Weekly IS the brief.
+  const weeklySlug = currentWeeklyFullSlug();
+  if (weeklySlug) {
+    redirect(`/weekly/${weeklySlug}`);
+  }
+
   const brief = getLatestBrief();
 
   if (!brief) {
