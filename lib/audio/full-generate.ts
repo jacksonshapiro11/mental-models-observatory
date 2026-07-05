@@ -11,14 +11,12 @@ import { isStaleForAutoPublish, todayET } from '@/lib/publish-date';
 import { preprocessBriefForTTS, checkScriptFidelity } from '@/lib/audio/text-preprocessor';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
 import { writeEpisodeMetadata, readEpisodeMetadata } from '@/lib/audio/podcast-feed';
+import { weeklyFullEpisodeKey } from '@/lib/audio/episode-keys';
+
+export { weeklyFullEpisodeKey };
 
 const CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates');
 const WEEKLY_CONTENT_DIR = path.join(CONTENT_DIR, 'weekly');
-
-/** Redis / podcast episode key for a weekly full brief */
-export function weeklyFullEpisodeKey(slug: string): string {
-  return `weekly-${slug}`;
-}
 
 export type FullAudioStatus = 'success' | 'exists' | 'skipped' | 'error';
 

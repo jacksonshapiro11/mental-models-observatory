@@ -9,6 +9,9 @@ import { isStaleForAutoPublish, todayET } from '@/lib/publish-date';
 import { preprocessBriefLightForTTS, checkScriptFidelity } from '@/lib/audio/text-preprocessor';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
 import { writeLightEpisodeMetadata, readLightEpisodeMetadata } from '@/lib/audio/podcast-feed';
+import { weeklyLightEpisodeKey } from '@/lib/audio/episode-keys';
+
+export { weeklyLightEpisodeKey };
 
 export type LightAudioStatus = 'success' | 'exists' | 'skipped' | 'error';
 
@@ -31,11 +34,6 @@ function extractDescription(brief: { sections: { content: string }[]; epigraph?:
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
       .slice(0, 300) || 'Your compressed daily intelligence brief.'
   );
-}
-
-/** Redis / podcast episode key for a weekly light brief */
-export function weeklyLightEpisodeKey(slug: string): string {
-  return `weekly-light-${slug}`;
 }
 
 export interface GenerateLightAudioOptions {
