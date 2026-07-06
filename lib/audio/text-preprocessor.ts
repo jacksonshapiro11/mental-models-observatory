@@ -377,7 +377,7 @@ function deduplicateExpansions(text: string): string {
  *  Caught live in W27 audio (2026-07-05): "at the the E.C.B.'s", "WTI crude crude oil",
  *  and "a the Bank of Japan hike" (expansion of "a BOJ hike"). deduplicateExpansions only
  *  covers known expansion strings; this is the general mechanical backstop. */
-function collapseDoubledWords(text: string): string {
+export function collapseDoubledWords(text: string): string {
   // Legit English doubles we must not touch.
   const legit = new Set(['had', 'that', 'very', 'many']);
   // "the the", "crude crude", "Japan Japan" — immediate case-insensitive duplicates.
@@ -620,7 +620,7 @@ function extractCommentaryOnly(content: string): string {
 // Exact-match lookups are banned for section maps; every lookup goes through here.
 
 /** "The Six: The Wild Card" and "the six: wild card" both → "six: wild card" */
-function canonicalSectionKey(name: string): string {
+export function canonicalSectionKey(name: string): string {
   return name
     .split(':')
     .map(p => p.trim().replace(/^the\s+/i, ''))
@@ -629,7 +629,7 @@ function canonicalSectionKey(name: string): string {
 }
 
 /** Map lookup by canonical section name — tolerant of "The " drift and casing. */
-function lookupSection<T>(dict: Record<string, T>, sectionName: string): T | undefined {
+export function lookupSection<T>(dict: Record<string, T>, sectionName: string): T | undefined {
   if (dict[sectionName] !== undefined) return dict[sectionName];
   const target = canonicalSectionKey(sectionName);
   for (const [key, val] of Object.entries(dict)) {
@@ -673,15 +673,22 @@ interface ScriptCheckResult {
   needsRetry: boolean;
 }
 
+/** Curly→straight apostrophes + lowercase, so banned-phrase matching can't be dodged
+ *  by typography. GPT-4o writes "Let’s dive into" (curly); the list holds "let's dive
+ *  into" (straight) — caught by scripts/audio-gate-regression.ts before it shipped. */
+function normalizeForPhraseMatch(s: string): string {
+  return s.toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+}
+
 /** Deterministic repairs + checks on a single section's script. */
-function enforceScriptRules(sectionName: string, script: string, sourceContent: string): ScriptCheckResult {
+export function enforceScriptRules(sectionName: string, script: string, sourceContent: string): ScriptCheckResult {
   const warnings: string[] = [];
   let out = script.trim();
 
   // 1) Strip a banned-phrase LEAD sentence ("Let's dive into some fascinating stories...").
   //    The deterministic transition already did the intro; a banned lead is pure double-intro.
   const firstSentence = out.match(/^[^.!?\n]{0,160}[.!?]/)?.[0] ?? '';
-  if (firstSentence && BANNED_SCRIPT_PHRASES.some(p => firstSentence.toLowerCase().includes(p))) {
+  if (firstSentence && BANNED_SCRIPT_PHRASES.some(p => normalizeForPhraseMatch(firstSentence).includes(p))) {
     out = out.slice(firstSentence.length).trim();
     warnings.push(`${sectionName}: stripped banned lead sentence ("${firstSentence.trim()}")`);
   }
@@ -695,8 +702,9 @@ function enforceScriptRules(sectionName: string, script: string, sourceContent: 
   }
 
   // 3) Remaining banned phrases mid-script — warn loudly (semantic edit isn't safe here).
+  const normalizedOut = normalizeForPhraseMatch(out);
   for (const phrase of BANNED_SCRIPT_PHRASES) {
-    if (out.toLowerCase().includes(phrase)) {
+    if (normalizedOut.includes(phrase)) {
       warnings.push(`${sectionName}: banned phrase survived in script body: "${phrase}"`);
     }
   }
@@ -1149,8 +1157,29 @@ WEEKLY EDITION (this episode is THE WEEKLY, the Sunday zoom-out over the whole w
 - LENGTH: the written Weekly is roughly a 35-minute read. Land the spoken version UNDER 40 minutes, NOT under 30. Do not compress it to a daily's length. The substance-beats-the-clock tiebreaker is even stronger here: if keeping everything runs long, run long.
 - The listener is on a slower Sunday clock. Let the teachings and the endings breathe.`;
 
+// ─── Deterministic transition phrases ────────────────────────────────────────
+// Injected BETWEEN sections after scriptwriting completes. No AI — structural
+// scaffolding that tells the listener where they are. Module-scoped and exported
+// so the regression test (scripts/audio-gate-regression.ts) exercises the REAL maps.
+export const SECTION_TRANSITIONS: Record<string, string> = {
+  'The Dashboard': 'Alright, let\'s start with the markets. Here\'s the Dashboard.',
+  'The Six: Markets & Macro': 'OK, let\'s jump into today\'s Six, starting with Markets and Macro.',
+  'The Six: Companies & Crypto': 'Now moving over to Companies and Crypto.',
+  'The Six: AI & Tech': 'Next up, A.I. and Tech.',
+  'The Six: Geopolitics': 'Now to the geopolitical picture.',
+  'The Six: Wild Card': 'Now getting into today\'s Wild Cards. The coolest things we found happening around the globe.',
+  'The Six: The Signal': 'And wrapping up The Six with The Signal. Things that are forming that most people aren\'t watching yet.',
+  // Weekly-only top-level sections
+  'The Signal': 'Now to The Signal. The slow, structural things forming underneath the week that most people aren\'t watching yet.',
+  'The Take': 'Now let\'s take a deep dive into one of the biggest stories we\'re monitoring. For today\'s Take.',
+  'The Predictions': 'And now The Predictions. Where we put our standing calls on the record, each with the one thing that would prove it wrong.',
+  'Inner Game': 'That\'s all we have for today\'s markets. Let\'s take a deep breath, and settle into today\'s meditation.',
+  'The Model': 'OK, let\'s get the brain working. Time for Mental Models.',
+  'Discovery': 'And finally, today\'s Discovery.',
+};
+
 /** Weekly overrides for the deterministic transitions (canonical-name lookup). */
-const WEEKLY_TRANSITION_OVERRIDES: Record<string, string> = {
+export const WEEKLY_TRANSITION_OVERRIDES: Record<string, string> = {
   'The Six: Markets & Macro': 'OK, let\'s jump into the week\'s Six, starting with Markets and Macro.',
   'The Six: Wild Card': 'Now for the week\'s Wild Card. The story that has nothing to do with markets and everything to do with how the world actually works.',
   'The Take': 'Now let\'s take a deep dive into the biggest current running under the week. For this week\'s Take.',
@@ -1159,10 +1188,10 @@ const WEEKLY_TRANSITION_OVERRIDES: Record<string, string> = {
   'Discovery': 'And finally, this week\'s Discovery.',
 };
 
-const DAILY_SIGN_OFF = 'That\'s today\'s brief. Thank you for spending part of your morning with us. Hopefully you\'re walking away a bit more informed, a bit more grounded, and a bit more curious about what\'s forming around the corner. We\'ll be back tomorrow with more. Until then. Yesterday is history, tomorrow is a mystery, but today is a gift, and that is why it\'s called the present. Take care.';
+export const DAILY_SIGN_OFF = 'That\'s today\'s brief. Thank you for spending part of your morning with us. Hopefully you\'re walking away a bit more informed, a bit more grounded, and a bit more curious about what\'s forming around the corner. We\'ll be back tomorrow with more. Until then. Yesterday is history, tomorrow is a mystery, but today is a gift, and that is why it\'s called the present. Take care.';
 
 /** Weekly sign-off — opens with a bridge so it never lands cold after the close. */
-const WEEKLY_SIGN_OFF = 'And that closes out the week. Thank you for spending part of your Sunday with us. Hopefully you\'re stepping into the new week a bit more informed, a bit more grounded, and a bit more curious about what\'s forming around the corner. The daily brief is back tomorrow morning. Until then. Yesterday is history, tomorrow is a mystery, but today is a gift, and that is why it\'s called the present. Take care.';
+export const WEEKLY_SIGN_OFF = 'And that closes out the week. Thank you for spending part of your Sunday with us. Hopefully you\'re stepping into the new week a bit more informed, a bit more grounded, and a bit more curious about what\'s forming around the corner. The daily brief is back tomorrow morning. Until then. Yesterday is history, tomorrow is a mystery, but today is a gift, and that is why it\'s called the present. Take care.';
 
 /** The weekly's written close (final paragraph after Discovery) has no section marker,
  *  so it rides inside Discovery's content. W27 delivered the essay's falsification
@@ -1213,26 +1242,6 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
     const thisSectionFacts = extractKeyFacts(tasks[i]!.content);
     runningFacts.push(...thisSectionFacts);
   }
-
-  // ─── Deterministic transition phrases ───────────────────────────────────
-  // These are injected BETWEEN sections after parallel scriptwriting completes.
-  // No AI needed — they're structural scaffolding that tells the listener where they are.
-  const SECTION_TRANSITIONS: Record<string, string> = {
-    'The Dashboard': 'Alright, let\'s start with the markets. Here\'s the Dashboard.',
-    'The Six: Markets & Macro': 'OK, let\'s jump into today\'s Six, starting with Markets and Macro.',
-    'The Six: Companies & Crypto': 'Now moving over to Companies and Crypto.',
-    'The Six: AI & Tech': 'Next up, A.I. and Tech.',
-    'The Six: Geopolitics': 'Now to the geopolitical picture.',
-    'The Six: Wild Card': 'Now getting into today\'s Wild Cards. The coolest things we found happening around the globe.',
-    'The Six: The Signal': 'And wrapping up The Six with The Signal. Things that are forming that most people aren\'t watching yet.',
-    // Weekly-only top-level sections
-    'The Signal': 'Now to The Signal. The slow, structural things forming underneath the week that most people aren\'t watching yet.',
-    'The Take': 'Now let\'s take a deep dive into one of the biggest stories we\'re monitoring. For today\'s Take.',
-    'The Predictions': 'And now The Predictions. Where we put our standing calls on the record, each with the one thing that would prove it wrong.',
-    'Inner Game': 'That\'s all we have for today\'s markets. Let\'s take a deep breath, and settle into today\'s meditation.',
-    'The Model': 'OK, let\'s get the brain working. Time for Mental Models.',
-    'Discovery': 'And finally, today\'s Discovery.',
-  };
 
   // Strategy 1: Parallel (fast — all sections at once)
   try {
@@ -1697,7 +1706,12 @@ export async function preprocessBriefLightForTTS(
         // what's already been said and reference rather than repeat it.
         runningFacts.push(...extractKeyFacts(section.content));
 
-        // Prepend the transition once per section id (so multiple ideas don't repeat the lead-in)
+        // Prepend the transition once per section id (so multiple ideas don't repeat the lead-in).
+        // An id deliberately mapped to '' (e.g. 'the-close') is a chosen no-transition;
+        // an id MISSING from the map is a silent cold start — warn loudly (audio gate).
+        if (LIGHT_SECTION_TRANSITIONS[section.id] === undefined) {
+          console.warn(`[audio:gate] No light transition mapped for section id "${section.id}" — it will start cold. Add it to LIGHT_SECTION_TRANSITIONS.`);
+        }
         const transition = LIGHT_SECTION_TRANSITIONS[section.id] || '';
         if (transition && !usedTransitions.has(section.id)) {
           sectionScripts.push(`${transition}\n\n${script}`);
