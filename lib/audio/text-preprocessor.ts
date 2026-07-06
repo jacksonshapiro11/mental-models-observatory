@@ -930,8 +930,20 @@ async function withRetry<T>(
 interface SectionContext {
   prevSection?: string | undefined;
   nextSection?: string | undefined;
+  /** The previous section's TOPIC (its ### title or bold lead) — enables the
+   *  one-clause bridge in teaching sections (Jackson 2026-07-06: the Model→Discovery
+   *  seam played as two unrelated lectures even when the subjects rhymed). */
+  prevTopic?: string | undefined;
   /** Key facts/data points already covered in earlier sections — DO NOT repeat these */
   alreadyCovered?: string[] | undefined;
+}
+
+/** Pull a section's topic for bridge context: its ### title, else its first bold lead. */
+function extractSectionTopic(content: string): string | undefined {
+  const heading = content.match(/^###\s+(.{4,90})$/m)?.[1]?.trim();
+  if (heading) return heading;
+  const bold = content.match(/\*\*([^*]{8,90})\*\*/)?.[1]?.trim();
+  return bold || undefined;
 }
 
 // Act transitions are now handled by deterministic SECTION_TRANSITIONS in rewriteAsScript().
@@ -978,6 +990,15 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
     }
     if (context.nextSection) {
       parts.push(`NEXT SECTION: "${context.nextSection}".`);
+    }
+    // Teaching-section bridge (Model / Discovery): the deterministic transition tells
+    // the listener WHERE they are; this lets the script acknowledge WHY the subjects
+    // sit next to each other — but only when the link is real.
+    if (context.prevTopic) {
+      const canon = canonicalSectionKey(sectionName);
+      if (canon === 'model' || canon === 'discovery') {
+        parts.push(`PREVIOUS SECTION TOPIC: "${context.prevTopic}". BRIDGE OPTION (narrow exception to the no-intro rule): IF your section's subject genuinely rhymes with that topic, you may open with ONE short clause that links the two SUBJECTS (never section names, never "speaking of," never a forced link). Example shape: "The last idea was about the cost of destroying information. This one is about what makes information trustworthy at all." If no genuine link exists, start cold with your first substantive point as usual.`);
+      }
     }
     if (context.alreadyCovered && context.alreadyCovered.length > 0) {
       parts.push(`ALREADY COVERED (DO NOT REPEAT THESE — the listener has already heard them):\n${context.alreadyCovered.map(f => `- ${f}`).join('\n')}\nIf any of these facts appear in your source content, do not RE-EXPLAIN them at length; reference them with a brief callback like "as we mentioned earlier" and move to the new angle. BUT never drop a fact your section's own argument actually needs to land. If the point requires the number to make sense, say it again briefly. Only skip pure restatement that adds nothing. Preserving the argument always beats avoiding a repeat.`);
@@ -1276,6 +1297,7 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
         const context: SectionContext = {
           prevSection: prevTask?.name,
           nextSection: nextTask?.name,
+          prevTopic: prevTask ? extractSectionTopic(prevTask.content) : undefined,
           alreadyCovered: cumulativeFacts.get(task.index),
         };
         const { script } = await rewriteSectionChecked(client, task.name, task.content, context, optsFor(task.name));
@@ -1348,6 +1370,7 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
       const context: SectionContext = {
         prevSection: prevTask?.name,
         nextSection: nextTask?.name,
+        prevTopic: prevTask ? extractSectionTopic(prevTask.content) : undefined,
         alreadyCovered: ti > 0 ? [...seqRunningFacts] : [],
       };
       const seqOpts: RewriteOpts | undefined = isWeekly

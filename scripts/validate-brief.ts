@@ -22,11 +22,13 @@ import { spawnSync } from 'child_process';
 // Import READWISE_MODELS directly (avoiding lib/data.ts which uses extensionless imports
 // incompatible with Node --experimental-strip-types). This is equivalent to calling
 // getModelBySlug from lib/data.ts.
-import { READWISE_MODELS } from '../lib/readwise-data.ts';
+import { READWISE_MODELS, READWISE_DOMAINS } from '../lib/readwise-data.ts';
 import { checkRepetition } from '../lib/repetition-check.ts';
 function getModelBySlug(slug: string) {
   return READWISE_MODELS.find((m: any) => m.slug === slug);
 }
+// M2 (July 5): domain slug set for slug-type disambiguation
+const DOMAIN_SLUGS = new Set((READWISE_DOMAINS as any[]).map((d: any) => d.slug));
 
 type Failure = { check: string; message: string };
 
@@ -131,6 +133,17 @@ function checkModelLink(body: string): Failure[] {
     return out;
   }
   const slug = m[1];
+  // M2 (July 5): slug-type disambiguation — reject domain slugs used as model slugs.
+  // `information-theory-media-ecology` is a DOMAIN slug (lib/readwise-data.ts:259) that
+  // false-PASSed when used in a model link. Domain slugs render on the website but are
+  // not valid model identifiers.
+  if (DOMAIN_SLUGS.has(slug)) {
+    out.push({
+      check: 'model-link-domain-slug',
+      message: `Model link uses domain slug "${slug}" — this is a DOMAIN, not a MODEL. Use the specific model slug (e.g., the model's own slug from READWISE_MODELS, not its domainSlug). Domain slugs resolve on the website but are not valid model identifiers.`,
+    });
+    return out;
+  }
   const model = getModelBySlug(slug);
   if (!model) {
     out.push({
@@ -155,6 +168,10 @@ function checkModelRecency(body: string, briefDate: string): Failure[] {
   const dir = path.join(process.cwd(), 'content', 'daily-updates');
   if (!fs.existsSync(dir)) return out;
 
+  // Resolve model to get concept name for name-based cooldown (M2, July 5)
+  const resolvedModel = getModelBySlug(slug);
+  const conceptName = resolvedModel ? (resolvedModel as any).name : null;
+
   // Compute cutoff: briefDate - 30 days (aligned to Brief_Architect.md's 30-day selection filter;
   // was 14 days, which let Stigmergy through at 21 days on June 14. E-MODEL-CONCEPT-REPEAT-02.)
   const bd = new Date(briefDate + 'T00:00:00Z');
@@ -166,11 +183,30 @@ function checkModelRecency(body: string, briefDate: string): Failure[] {
     const d = f.slice(0, 10);
     if (d >= cutoffStr && d < briefDate) {
       const content = fs.readFileSync(path.join(dir, f), 'utf8');
+      // Original slug-based check
       if (content.includes(`/models/${slug}`)) {
         out.push({
           check: 'model-recency',
           message: `Model slug "${slug}" already published on ${d} (within 30 days). Hard fail — pick a different whitelist model.`,
         });
+      }
+      // M2 (July 5): concept-name cooldown — catches alias evasion.
+      // Bateson's Double Bind re-surfaced at 17 days under slug `game-theory-strategic-interaction`;
+      // the slug-only grep false-PASSed because the earlier publication used a different slug.
+      // Now also grep for the model's concept NAME in the Model section of published briefs.
+      if (conceptName && !content.includes(`/models/${slug}`)) {
+        // Extract Model section from the published brief to check concept name
+        const modelStart = content.indexOf('## 🧠 The Model');
+        if (modelStart !== -1) {
+          const modelEnd = content.indexOf('\n# ', modelStart + 1);
+          const pubModelSection = modelEnd !== -1 ? content.slice(modelStart, modelEnd) : content.slice(modelStart);
+          if (pubModelSection.includes(conceptName)) {
+            out.push({
+              check: 'model-recency-name',
+              message: `Model concept "${conceptName}" (slug: "${slug}") appears by NAME in the Model section published on ${d} (within 30 days) — possible alias evasion. The same concept under a different slug still violates the 30-day cooldown.`,
+            });
+          }
+        }
       }
     }
   }
@@ -279,15 +315,13 @@ function checkInnerGameStructure(body: string): Failure[] {
     .slice(headerIdx + 1)
     .filter((l) => l.length > 0);
 
-  // Multi-form structural validation (updated April 29, 2026 — unblocks non-Quote-First forms).
-  // The Architect specifies one of 5 valid Inner Game forms (A-E). The validator accepts any.
-  //   Form A (Quote-First): Line 1 = italicized quote *"..."*, Line 2 = — Author
-  //   Form B (Question-First): Line 1 = ends with ?
-  //   Form C (Observation-First): Line 1 = declarative sentence (not italic quote, not question)
-  //   Form D (Practice-First): Line 1 = starts with action verb or contains practice/exercise/try
-  //   Form E (Body-First): Line 1 = describes physical sensation or body experience
-  // All forms require: bold action line somewhere in section.
-  const quoteLineRe = /^\*["\u201c][^"\u201d]+["\u201d]\*$/;
+  // QUOTE-FIRST, ALWAYS (Jackson, 2026-07-06 — RESCINDS the April 29 multi-form
+  // validation and the June 12 A-E taxonomy). The 2026-07-06 brief shipped an
+  // Observation-First Inner Game with no quote — legal under the five-form policy,
+  // which Jackson has overruled: "Inner game should always be in the same quote form
+  // then analysis." The Generator's fixed structure (April 13) is again the only form:
+  //   Line 1 = italicized quote *"..."*    Line 2 = — Author attribution
+  const quoteLineRe = /^\*["“][^"”]+["”]\*$/;
   // Allow italicized work titles, parenthetical dates, commas, apostrophes in attribution.
   const attributionLineRe = /^—\s+[A-Z].+$/;
   const hasAction = /\*\*Today's (practice|action)[:\*]?/i.test(section);
@@ -295,27 +329,17 @@ function checkInnerGameStructure(body: string): Failure[] {
   const line1 = content[0] ?? '';
   const line2 = content[1] ?? '';
 
-  // Detect which form is being used
-  const isFormA = quoteLineRe.test(line1) && attributionLineRe.test(line2);
-  const isFormB = line1.endsWith('?');
-  const isFormC = line1.length > 10 && !quoteLineRe.test(line1) && !line1.endsWith('?');
-  const isFormD = /^(Try|Practice|Exercise|Notice|Observe|Begin|Start|Sit|Stand|Breathe|Close|Place|Hold|Feel|Pause|Do|Set|Pick|Write|Take|Ask|Spend|Choose|Find|Make|Give|Open|Read|Walk|Run|Stop|Look|Listen|Touch|Move|Consider|Reflect|Imagine|Remember|Think|Name|Circle)/i.test(line1) || /\b(practice|exercise|try)\b/i.test(line1);
-  const isFormE = /\b(body|breath|chest|hands|shoulders|jaw|stomach|spine|skin|muscles|tension|sensation|heartbeat|pulse|exhale|inhale|feel|physical|somatic)\b/i.test(line1);
-
-  const isValidForm = isFormA || isFormB || isFormC || isFormD || isFormE;
-
-  if (!isValidForm) {
+  if (!quoteLineRe.test(line1)) {
     out.push({
       check: 'inner-game',
-      message: `Inner Game Line 1 must match one of the 5 valid forms (Quote-First, Question-First, Observation-First, Practice-First, Body-First). Got: ${JSON.stringify(line1.slice(0, 120))}`,
+      message: `Inner Game must open QUOTE-FIRST (fixed form — the five-form taxonomy was rescinded 2026-07-06): Line 1 must be an italicized quote (*"..."*). Got: ${JSON.stringify(line1.slice(0, 120))}`,
     });
   }
 
-  // Form A specifically requires attribution on line 2
-  if (isFormA && !attributionLineRe.test(line2)) {
+  if (!attributionLineRe.test(line2)) {
     out.push({
       check: 'inner-game',
-      message: `Inner Game uses Quote-First form but Line 2 is not a valid attribution (— Author). Got: ${JSON.stringify(line2.slice(0, 120))}`,
+      message: `Inner Game Line 2 must be the quote's attribution (— Author). Got: ${JSON.stringify(line2.slice(0, 120))}`,
     });
   }
 
@@ -326,6 +350,79 @@ function checkInnerGameStructure(body: string): Failure[] {
     });
   }
 
+  return out;
+}
+
+// ─── Inner Game concept reuse (added 2026-07-06, Jackson) ───────────────────
+// "Desire paths" shipped as the 2026-07-06 Inner Game on its FOURTH appearance
+// (2026-03-18, 04-16, 06-14). The cooldowns check quote SOURCES (30d) and
+// recommendation DOMAINS — nothing checked concept identity against history.
+// Mechanical test: distinctive repeated phrases from today's Inner Game must not
+// be load-bearing in any prior published brief. A phrase is "load-bearing" when
+// it appears 2+ times on both sides — rare enough to avoid stopword collisions.
+const IG_STOPWORDS = new Set(['the','a','an','and','or','but','of','to','in','on','for','with','that','this','your','you','it','is','are','was','were','be','not','have','has','they','them','their','its','as','at','by','from','into','than','then','when','where','what','who','how','all','one','own','same','more','most','other','some','can','will','just','do','does','did','no','yes','we','our','us','again','over','under','out','up','down','off','about','because','so','if','any','every','each','both','very','too','only','never','always','keep','keeps','kept'])
+
+function distinctivePhrases(text: string): string[] {
+  const words = text.toLowerCase().replace(/[^a-z\s'-]/g, ' ').split(/\s+/).filter(Boolean);
+  const counts = new Map<string, number>();
+  for (let n = 2; n <= 3; n++) {
+    for (let i = 0; i + n <= words.length; i++) {
+      const gram = words.slice(i, i + n);
+      // Require every word to be a content word and the phrase to be substantial.
+      if (gram.some(w => IG_STOPWORDS.has(w) || w.length < 3)) continue;
+      const phrase = gram.join(' ');
+      if (phrase.length < 9) continue;
+      counts.set(phrase, (counts.get(phrase) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .filter(([, c]) => c >= 2)
+    .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)
+    .slice(0, 6)
+    .map(([ph]) => ph);
+}
+
+function checkInnerGameConceptReuse(body: string, briefPath: string): Failure[] {
+  const out: Failure[] = [];
+  const start = body.indexOf('# \u25b8 INNER GAME');
+  const end = body.indexOf('# \u25b8 THE MODEL');
+  if (start === -1 || end === -1) return out;
+  const section = body.slice(start, end);
+  const phrases = distinctivePhrases(section);
+  if (phrases.length === 0) return out;
+
+  const archiveDir = path.join(process.cwd(), 'content/daily-updates');
+  if (!fs.existsSync(archiveDir)) return out;
+  const selfDate = path.basename(briefPath).match(/(\d{4}-\d{2}-\d{2})/)?.[1] ?? '';
+  const priorFiles = fs.readdirSync(archiveDir)
+    .filter(f => /^\d{4}-\d{2}-\d{2}\.md$/.test(f) && !f.startsWith(selfDate));
+
+  // Two-pass with a CORPUS-RARITY gate (calibrated 2026-07-06 on real data):
+  // a CONCEPT concentrates in few briefs ("desire paths": 3 briefs, 7x in one);
+  // VOCABULARY scatters across many ("open question": all over the corpus).
+  // Only rare phrases (present in <=4 prior briefs) can trigger, and the prior
+  // use must be load-bearing (2+ occurrences somewhere in that brief).
+  const presence = new Map<string, string[]>();          // phrase -> briefs containing it
+  const loadBearing = new Map<string, [string, number]>(); // phrase -> [brief, hits]
+  for (const f of priorFiles) {
+    let txt: string;
+    try { txt = fs.readFileSync(path.join(archiveDir, f), 'utf8').toLowerCase(); } catch { continue; }
+    for (const phrase of phrases) {
+      const hits = txt.split(phrase).length - 1;
+      if (hits >= 1) (presence.get(phrase) ?? presence.set(phrase, []).get(phrase)!).push(f);
+      if (hits >= 2 && !loadBearing.has(phrase)) loadBearing.set(phrase, [f, hits]);
+    }
+  }
+  for (const phrase of phrases) {
+    const inBriefs = presence.get(phrase) ?? [];
+    if (inBriefs.length === 0 || inBriefs.length > 4) continue; // never seen, or common vocabulary
+    const lb = loadBearing.get(phrase);
+    if (!lb) continue;
+    out.push({
+      check: 'inner-game-concept-reuse',
+      message: `Inner Game concept appears recycled: "${phrase}" is load-bearing here AND was a treatment in prior brief ${lb[0]} (${lb[1]}x; present in ${inBriefs.length} prior brief(s): ${inBriefs.join(', ')}). The concept must be NEW to the corpus — pick another (worked failure: "desire paths" shipped as the 2026-07-06 Inner Game on its 4th appearance).`,
+    });
+  }
   return out;
 }
 
@@ -1306,6 +1403,35 @@ function checkSignalPairLabel(body: string, briefDir: string, absPath: string): 
       }
     }
   }
+  // --- DESK-QUOTE CHECK presence assertion (July 3, 2026 — E-SIGNAL-TOPIC-FAMILIARITY-01 Day 4) ---
+  // The QG must log a SIGNAL DESK-QUOTE CHECK line per Signal.
+  if (!qgContent.includes('SIGNAL DESK-QUOTE CHECK:')) {
+    out.push({
+      check: 'signal-desk-quote-check-missing',
+      message: `🔴 FAIL: QG log missing 'SIGNAL DESK-QUOTE CHECK:' line — the desk-quote register check did not run. The QG must grep each Signal body against the MAJOR-DESK REGISTER (Signal_Generator.md) and log the result before the brief passes.`,
+    });
+  }
+  // Flag if a desk-quote hit was found but Signal lacks Context label
+  const deskHitMatch = qgContent.match(/SIGNAL DESK-QUOTE CHECK:.*?auto-INVALID/i);
+  if (deskHitMatch) {
+    const signalStart = body.indexOf('## The Signal');
+    if (signalStart !== -1) {
+      const signalSection = body.slice(signalStart, body.indexOf('\n---', signalStart + 1));
+      if (!signalSection.includes('Context signal:')) {
+        out.push({
+          check: 'signal-desk-quote-hit-unlabeled',
+          message: `🔴 FAIL: QG log shows a Signal with a major-desk quote stating the thesis (auto-INVALID) but the brief contains no 'Context signal:' label. A desk-quoted Signal must be replaced or labeled per the DESK-QUOTE AUTO-FAIL rule.`,
+        });
+      }
+    }
+  }
+  // Flag prohibited qualifier verdict states (July 3, 2026)
+  if (/VALID\s*\(borderline\)|VALID\s*\(partial\)|VALID\s*\(weak\)/i.test(qgContent)) {
+    out.push({
+      check: 'signal-prohibited-verdict-qualifier',
+      message: `🔴 FAIL: QG log contains a prohibited verdict qualifier (borderline/partial/weak). Warrant states must be exactly VALID or INVALID — qualifiers are prohibited per the ENUMERATED VERDICTS rule (July 3).`,
+    });
+  }
   return out;
 }
 
@@ -1336,6 +1462,109 @@ function checkQGInnerGameAudit(briefDir: string, absPath: string): Failure[] {
       check: 'qg-inner-game-tradition-check-missing',
       message: `🔴 FAIL: QG log missing 'INNER GAME TRADITION:' line — the 30-day tradition grep did not run. The QG must grep the Inner Game tradition over the trailing 30 days and paste the result before the brief passes.`,
     });
+  }
+  // --- CONCEPT-INVERSION presence assertion (July 3, 2026 — E-INNER-GAME-CONCEPT-01 Day 71+) ---
+  // The QG must log a CONCEPT-INVERSION line naming the reader assumption inverted.
+  if (!qgContent.includes('CONCEPT-INVERSION:')) {
+    out.push({
+      check: 'qg-inner-game-concept-inversion-missing',
+      message: `🔴 FAIL: QG log missing 'CONCEPT-INVERSION:' line — the concept inversion test did not run. The QG must state the reader assumption the Inner Game concept contradicts and log PASS or confirmatory before the brief passes.`,
+    });
+  }
+  // --- RECOMMENDATION DOMAIN validity assertion (July 5, 2026 — upgraded from presence-only) ---
+  // E-INNER-GAME-CONCEPT-01 Day 73. The July-4 presence assertion was defeated on first
+  // exercise: the QG back-filled the line with invented vocabulary ("practical action / craft
+  // execution"), a contradicted last-7 list, and an un-updated ledger. Presence-checking is
+  // dead; validity-checking is the replacement. This asserts: (1) line exists, (2) domain
+  // token is one of the 8 enumerated taxonomy tokens verbatim, (3) domain is not in the
+  // trailing 7 entries from the ledger file, (4) ledger has a row for BRIEF_DATE.
+  const DOMAIN_TAXONOMY = [
+    'decision-timing', 'attention-perception', 'body-somatic', 'social-relational',
+    'creative-process', 'emotional-regulation', 'identity-narrative', 'environment-design',
+  ];
+  const domainLineMatch = qgContent.match(/RECOMMENDATION DOMAIN:\s*today='([^']+)'/);
+  if (!domainLineMatch) {
+    out.push({
+      check: 'qg-inner-game-recommendation-domain-missing',
+      message: `🔴 FAIL: QG log missing 'RECOMMENDATION DOMAIN:' line — the recommendation-domain test did not run. The QG must classify the Inner Game's practical recommendation domain and verify it differs from the trailing 7 entries before the brief passes.`,
+    });
+  } else {
+    const todayDomain = domainLineMatch[1].trim();
+    // (i) Token must be exactly one of the 8 enumerated taxonomy tokens
+    if (!DOMAIN_TAXONOMY.includes(todayDomain)) {
+      out.push({
+        check: 'qg-inner-game-recommendation-domain-invalid-token',
+        message: `🔴 FAIL: non-taxonomy domain token '${todayDomain}' — AUTO-VOID per RECOMMENDATION-DOMAIN TEST. The QG must classify against the enumerated taxonomy in Inner_Game_Generator.md: ${DOMAIN_TAXONOMY.join(', ')}.`,
+      });
+    }
+    // (ii) Check trailing-7 in the ledger file
+    const igGenPath = path.resolve(briefDir, '..', 'system', 'Inner_Game_Generator.md');
+    if (fs.existsSync(igGenPath)) {
+      const igContent = fs.readFileSync(igGenPath, 'utf8');
+      // Parse ledger rows: | YYYY-MM-DD | domain |
+      const ledgerRows: { date: string; domain: string }[] = [];
+      const ledgerRe = /\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([^|]+?)\s*\|/g;
+      // Find rows after "RECOMMENDATION-DOMAIN LEDGER"
+      const ledgerStart = igContent.indexOf('RECOMMENDATION-DOMAIN LEDGER');
+      if (ledgerStart !== -1) {
+        const ledgerSection = igContent.slice(ledgerStart);
+        let m: RegExpExecArray | null;
+        while ((m = ledgerRe.exec(ledgerSection)) !== null) {
+          const rowDomain = m[2].trim().replace(/\(.*\)/, '').trim(); // strip footnotes
+          if (rowDomain && rowDomain !== '(no brief)' && rowDomain !== 'Domain') {
+            ledgerRows.push({ date: m[1], domain: rowDomain });
+          }
+        }
+      }
+      // Check trailing-7 repeat (exclude today's own row — we want the 7 entries BEFORE today)
+      const trailing7 = ledgerRows.filter(r => r.date !== bd).slice(-7);
+      const trailing7Domains = trailing7.map(r => r.domain);
+      if (DOMAIN_TAXONOMY.includes(todayDomain) && trailing7Domains.includes(todayDomain)) {
+        const repeatRow = trailing7.find(r => r.domain === todayDomain);
+        out.push({
+          check: 'qg-inner-game-recommendation-domain-trailing7-repeat',
+          message: `🔴 FAIL: trailing-7 repeat — domain '${todayDomain}' used ${repeatRow?.date ?? 'recently'}. The recommendation domain must differ from ALL trailing 7 entries.`,
+        });
+      }
+      // Check ledger has a row for BRIEF_DATE
+      if (!ledgerRows.some(r => r.date === bd)) {
+        out.push({
+          check: 'qg-inner-game-recommendation-domain-ledger-not-updated',
+          message: `🔴 FAIL: ledger not updated — no row for ${bd} in the RECOMMENDATION-DOMAIN LEDGER. The RECOMMENDATION-DOMAIN TEST requires updating the ledger in the same pass.`,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+// --- Convergence class presence-check (July 3, 2026) ---
+// E-CONVERGENCE-ASSEMBLY-01 🟡 Day 2. When the QG log records a synthesis designation,
+// assert a CONVERGENCE CLASS line exists and reads MECHANISM — a designated synthesis
+// with a THEME class or missing class line is a hard fail.
+function checkConvergenceClass(briefDir: string, absPath: string): Failure[] {
+  const out: Failure[] = [];
+  const briefDateMatch = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
+  if (!briefDateMatch) return out;
+  const bd = briefDateMatch[1];
+  const qgLog = path.join(briefDir, `${bd}-quality-gate-log.md`);
+  if (!fs.existsSync(qgLog)) return out;
+  const qgContent = fs.readFileSync(qgLog, 'utf8');
+  // Check if a synthesis designation exists
+  const hasSynthesis = qgContent.includes('SYNTHESIS DESIGNATION:') &&
+    !qgContent.includes('not triggered');
+  if (hasSynthesis) {
+    if (!qgContent.includes('CONVERGENCE CLASS:')) {
+      out.push({
+        check: 'convergence-class-missing',
+        message: `🔴 FAIL: QG log has a SYNTHESIS DESIGNATION but no 'CONVERGENCE CLASS:' line. Per the MECHANISM-VS-THEME CLASSIFICATION rule (July 3), every synthesis must be classified as MECHANISM or THEME before designation.`,
+      });
+    } else if (/CONVERGENCE CLASS:.*THEME/i.test(qgContent)) {
+      out.push({
+        check: 'convergence-theme-claimed-as-assembly',
+        message: `🔴 FAIL: QG log classifies the convergence as THEME but has a SYNTHESIS DESIGNATION. Only MECHANISM-class convergences may proceed to synthesis. A THEME may shape the intro/title but must not be claimed as assembly.`,
+      });
+    }
   }
   return out;
 }
@@ -1372,6 +1601,26 @@ function checkModelPoolFloor(): Failure[] {
   return out;
 }
 
+// --- Model standalone check (July 4, 2026 — E-MODEL-STANDALONE-VIOLATION-01) ---
+// Grep the Model section for temporal-anchor tokens that violate the standalone test.
+function checkModelStandalone(body: string): Failure[] {
+  const out: Failure[] = [];
+  // Extract Model section (between "## The Model" or "### The Model" and the next ## or ### heading)
+  const modelMatch = body.match(/#{2,3}\s+(?:The\s+)?Model[\s\S]*?(?=\n#{2,3}\s|\n## |$)/i);
+  if (!modelMatch) return out;
+  const modelText = modelMatch[0];
+  // Check for temporal-anchor tokens
+  const temporalPattern = /\b(this week|this morning|today'?s|yesterday'?s|tonight|right now|this quarter)\b/gi;
+  const temporalHits = modelText.match(temporalPattern);
+  if (temporalHits && temporalHits.length > 0) {
+    out.push({
+      check: 'model-standalone-violation',
+      message: `🔴 FAIL: Model contains temporal-anchor tokens that violate standalone test: ${temporalHits.map(h => `"${h}"`).join(', ')}. The Model must be readable six months from now with zero context about today's events.`,
+    });
+  }
+  return out;
+}
+
 // --- Data-point repetition: the "at most twice" rule (July 1, 2026) ---
 // Makes Brief_Validator Check 9 (data-point dedup) MECHANICAL. It was prose-only, so the
 // same figure could still land in the lede, the Dashboard, and a Six bullet — the March 31
@@ -1386,6 +1635,46 @@ function checkDataPointRepetition(body: string): Failure[] {
     check: 'data-point-repetition',
     message: `"${f.display}" appears in ${f.sections.length} sections (rule: at most twice): ${f.sections.join(' · ')}. Keep it in the lede preview + its home story; reference it elsewhere without restating the figure.`,
   }));
+}
+
+// --- AI&T Differentiation check (July 5, 2026 — E-AI-SECTION-CONSENSUS-01) ---
+// Critic mandate #1: at least one AI&T bullet must carry a named non-wire element.
+// DARK-LAYER REROUTE off Brief_Architect.md, Day 32+.
+function checkQGAITDifferentiation(briefDir: string, absPath: string): Failure[] {
+  const out: Failure[] = [];
+  const briefDateMatch = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
+  if (!briefDateMatch) return out;
+  const bd = briefDateMatch[1];
+  const qgLog = path.join(briefDir, `${bd}-quality-gate-log.md`);
+  if (!fs.existsSync(qgLog)) return out;
+  const qgContent = fs.readFileSync(qgLog, 'utf8');
+  // Assert AI&T DIFFERENTIATION line exists
+  if (!qgContent.includes('AI&T DIFFERENTIATION:')) {
+    out.push({
+      check: 'qg-ait-differentiation-missing',
+      message: `🔴 FAIL: QG log missing 'AI&T DIFFERENTIATION:' line — the wire test did not run. The QG must classify each AI&T bullet as CONSENSUS or DIFFERENTIATED with a named non-wire element.`,
+    });
+  } else {
+    // Validate the line has proper structure: at least one DIFFERENTIATED token or a replacement action
+    const diffLine = qgContent.split('\n').find(l => l.includes('AI&T DIFFERENTIATION:'));
+    if (diffLine) {
+      const hasPass = /→\s*(PASS|🔴 all-consensus → replaced)/.test(diffLine);
+      const hasDifferentiated = /DIFFERENTIATED:/.test(diffLine);
+      if (!hasPass) {
+        out.push({
+          check: 'qg-ait-differentiation-invalid-verdict',
+          message: `🔴 FAIL: AI&T DIFFERENTIATION line missing verdict (PASS or replacement action). The line must end with '→ PASS (≥1 DIFFERENTIATED)' or '→ 🔴 all-consensus → replaced b<N>'.`,
+        });
+      }
+      if (hasPass && /PASS/.test(diffLine) && !hasDifferentiated) {
+        out.push({
+          check: 'qg-ait-differentiation-pass-without-evidence',
+          message: `🔴 FAIL: AI&T DIFFERENTIATION PASS verdict without any 'DIFFERENTIATED:' token — a PASS requires at least one bullet classified DIFFERENTIATED with a named non-wire element.`,
+        });
+      }
+    }
+  }
+  return out;
 }
 
 function main() {
@@ -1417,6 +1706,7 @@ function main() {
   failures.push(...checkDashboardNoTables(body));
   failures.push(...checkInnerGameStructure(body));
   failures.push(...checkInnerGameWordBudget(body));
+  failures.push(...checkInnerGameConceptReuse(body, absPath));
   failures.push(...checkEmDashes(body));
   failures.push(...checkHypePhrases(body));
   failures.push(...checkInternalTagLeak(body));
@@ -1455,6 +1745,12 @@ function main() {
   failures.push(...checkQGInnerGameAudit(briefDir, absPath));
   // --- Model pool-size floor (July 1, 2026 — E-MODEL-WHITELIST-EXHAUSTION-01) ---
   failures.push(...checkModelPoolFloor());
+  // --- Convergence class check (July 3, 2026 — E-CONVERGENCE-ASSEMBLY-01) ---
+  failures.push(...checkConvergenceClass(briefDir, absPath));
+  // --- Model standalone check (July 4, 2026 — E-MODEL-STANDALONE-VIOLATION-01) ---
+  failures.push(...checkModelStandalone(body));
+  // --- AI&T differentiation check (July 5, 2026 — E-AI-SECTION-CONSENSUS-01) ---
+  failures.push(...checkQGAITDifferentiation(briefDir, absPath));
 
   // --- QG-must-have-run integrity check (June 16, 2026) ---
   // E-PIPELINE-SEQUENCING-01: if validating a v2, assert that the quality gate ran.
@@ -1514,6 +1810,51 @@ function main() {
     if (r.stdout) console.log(`\n--- ${g.file} ---\n${r.stdout.trim()}`);
     if (r.stderr && r.stderr.trim()) console.error(r.stderr.trim());
     if (r.status !== 0) subGateFailed = true;
+  }
+
+  // --- FALSE-POSITIVE OVERRIDE support (July 5, 2026 — M1) ---
+  // Read the editor log for evidence-bound overrides. A matching override downgrades
+  // a staleness/entity/dedup failure to advisory (logged, non-blocking).
+  // Checks eligible for override: signal-staleness, wildcard-staleness, entity-lead-*,
+  // adjacent-sentence-dedup, data-point-repetition.
+  const overrideEligiblePrefixes = [
+    'signal-staleness', 'wildcard-staleness', 'entity-lead', 'event-lead',
+    'adjacent-sentence-dedup', 'data-point-repetition',
+  ];
+  {
+    const dateMatchOverride = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
+    if (dateMatchOverride) {
+      const editorLog = path.join(briefDir, `${dateMatchOverride[1]}-editor-log.md`);
+      if (fs.existsSync(editorLog)) {
+        const elContent = fs.readFileSync(editorLog, 'utf8');
+        const overrideLines = elContent.split('\n').filter(l => l.includes('FALSE-POSITIVE OVERRIDE:'));
+        if (overrideLines.length > 0) {
+          // For each override, check if it names a check that has a matching failure
+          const overriddenChecks: string[] = [];
+          for (const ol of overrideLines) {
+            // Extract check name: FALSE-POSITIVE OVERRIDE: [check-name] [evidence]
+            const checkMatch = ol.match(/FALSE-POSITIVE OVERRIDE:\s*\[([^\]]+)\]/);
+            if (checkMatch) {
+              overriddenChecks.push(checkMatch[1].trim().toLowerCase());
+            }
+          }
+          // Downgrade matching failures
+          for (let i = failures.length - 1; i >= 0; i--) {
+            const f = failures[i];
+            const isEligible = overrideEligiblePrefixes.some(p => f.check.startsWith(p));
+            if (isEligible) {
+              const isOverridden = overriddenChecks.some(oc =>
+                f.check.toLowerCase().includes(oc) || oc.includes(f.check.toLowerCase())
+              );
+              if (isOverridden) {
+                console.log(`  🟡 [${f.check}] DOWNGRADED to advisory — FALSE-POSITIVE OVERRIDE with evidence in editor log.`);
+                failures.splice(i, 1);
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   if (failures.length === 0 && !subGateFailed) {
