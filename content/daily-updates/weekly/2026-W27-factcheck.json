@@ -1,0 +1,174 @@
+{
+  "brief": "2026-W27-jun-28-jul-04.md",
+  "generated": "2026-07-06T00:38:36.362Z",
+  "truthFile": null,
+  "summary": {
+    "claims": 4,
+    "superlatives": 7,
+    "pass": 0,
+    "fail": 0,
+    "unverified": 11,
+    "officeHolderFacts": 4,
+    "archiveAssetsKnown": 6
+  },
+  "findings": [
+    {
+      "check": "price-vs-archive",
+      "severity": "FLAG",
+      "message": "Brent crude stated near 105 deviates 36% from our last-3 archive median 77 (2026-06-27:73, 2026-06-23:77, 2026-06-22:80.26). Possible fabrication/stale — verify vs PRIMARY source."
+    },
+    {
+      "check": "price-vs-archive",
+      "severity": "FLAG",
+      "message": "WTI stated near 105 deviates 52% from our last-3 archive median 69 (2026-07-04:68, 2026-07-02:69, 2026-07-01:71). Possible fabrication/stale — verify vs PRIMARY source."
+    }
+  ],
+  "claims": [
+    {
+      "key": "ust10",
+      "asset": "10-year yield",
+      "tier": "critical",
+      "claimType": "market",
+      "direction": "up",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Commodities & Rates",
+      "sentence": "The 10-year climbed from 4.",
+      "status": "UNVERIFIED"
+    },
+    {
+      "key": "wti",
+      "asset": "WTI",
+      "tier": "standard",
+      "claimType": "market",
+      "direction": "up",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Geopolitics",
+      "sentence": "**Iran's War Ladder Ran to Doha, and the Strait Reopened for Oil It Cannot Sell.",
+      "status": "UNVERIFIED"
+    },
+    {
+      "key": "gold",
+      "asset": "gold",
+      "tier": "standard",
+      "claimType": "market",
+      "direction": "down",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Commodities & Rates",
+      "sentence": "Gold ran the sharpest round trip of the week, sliding under 4,000 by midweek on a fourth straight weekly decline as the haven bid evaporated, then ripping to roughly 4,180 on Friday once the jobs print flipped the front end.",
+      "status": "UNVERIFIED"
+    },
+    {
+      "key": "btc",
+      "asset": "Bitcoin",
+      "tier": "standard",
+      "claimType": "market",
+      "direction": "down",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Crypto",
+      "sentence": "Bitcoin ground lower most of the week, pinned between its 200-week moving average and the 60,000 ceiling, sliding from about 60,200 to the mid-58,000s as June ETF outflows hit 4.",
+      "status": "UNVERIFIED"
+    },
+    {
+      "key": "superlative:dow",
+      "asset": "Dow",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": "52319",
+      "section": "Equities",
+      "sentence": "Then two catalysts, a Supreme Court ruling that preserved Fed independence and a reported Iran de-escalation, drove a narrow megacap melt-up: the Dow cleared 52,000 for the first time on Tuesday and printed a record 52,319 on Wednesday, though roughly 23.",
+      "status": "UNVERIFIED",
+      "superlative": "record 5",
+      "superlativeKind": "high"
+    },
+    {
+      "key": "superlative:lowest",
+      "asset": "(unattributed)",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Equities",
+      "sentence": "5 billion dollars of that was mechanical quarter-end rebalancing and the correlation between the average stock and the cap-weighted index collapsed to 79 percent, the lowest ever recorded.",
+      "status": "UNVERIFIED",
+      "superlative": "lowest",
+      "superlativeKind": "low"
+    },
+    {
+      "key": "superlative:record-lows",
+      "asset": "(unattributed)",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Crypto",
+      "sentence": "Underneath, Strategy's preferred shares kept printing record lows and its permanent bid on its own coin turned conditional.",
+      "status": "UNVERIFIED",
+      "superlative": "record lows",
+      "superlativeKind": "high"
+    },
+    {
+      "key": "superlative:first-time-since",
+      "asset": "(unattributed)",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": "162",
+      "section": "Commodities & Rates",
+      "sentence": "The yen was the other extreme, breaking 162 for the first time since the Reagan administration while the dollar index held near 101.",
+      "status": "UNVERIFIED",
+      "superlative": "first time since",
+      "superlativeKind": "other"
+    },
+    {
+      "key": "superlative:record-low",
+      "asset": "(unattributed)",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Companies & Crypto",
+      "sentence": "STRC printed a record low near 74.",
+      "status": "UNVERIFIED",
+      "superlative": "record low",
+      "superlativeKind": "high"
+    },
+    {
+      "key": "superlative:lowest",
+      "asset": "(unattributed)",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": "2009",
+      "section": "THE SIGNAL",
+      "sentence": "Construction starts collapsed to roughly 1,076 units in the first quarter of 2025, the lowest since 2009, and because these buildings take two to three years to open, the 2028 inventory is substantially set and falls hundreds of thousands of units short, a gap near 275 billion dollars.",
+      "status": "UNVERIFIED",
+      "superlative": "lowest",
+      "superlativeKind": "low"
+    },
+    {
+      "key": "superlative:weakest-since",
+      "asset": "(unattributed)",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": null,
+      "section": "THE PREDICTIONS",
+      "sentence": "Instead the yen went the other way and kept going, to its weakest since the Reagan administration.",
+      "status": "UNVERIFIED",
+      "superlative": "weakest since",
+      "superlativeKind": "other"
+    }
+  ]
+}

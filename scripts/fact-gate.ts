@@ -530,8 +530,13 @@ function main() {
   }
 
   // Optional truth file. Default convention: daily-briefs/{date}-truth.json next to brief.
+  // Weekly files ("2026-W27-jun-28-jul-04.md" / "2026-W27-light.md") carry a week id
+  // instead of a date — without this fallback the ledger fell to cwd/factcheck.json
+  // and the weekly chain produced no ledger at all (W27 gap, wired 2026-07-05).
   let truth: any = null;
-  const dateMatch = path.basename(briefPath).match(/(\d{4}-\d{2}-\d{2})/);
+  const dateMatch =
+    path.basename(briefPath).match(/(\d{4}-\d{2}-\d{2})/) ??
+    path.basename(briefPath).match(/(\d{4}-W\d{1,2})/i);
   const briefDate = dateMatch ? dateMatch[1] : null;
   const defaultTruth = briefDate ? path.join(path.dirname(briefPath), `${briefDate}-truth.json`) : null;
   const truthPath = truthArg
