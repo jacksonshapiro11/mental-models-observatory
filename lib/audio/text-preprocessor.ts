@@ -373,6 +373,22 @@ function deduplicateExpansions(text: string): string {
   return text;
 }
 
+/** Collapse doubled words and article collisions left by abbreviation expansion.
+ *  Caught live in W27 audio (2026-07-05): "at the the E.C.B.'s", "WTI crude crude oil",
+ *  and "a the Bank of Japan hike" (expansion of "a BOJ hike"). deduplicateExpansions only
+ *  covers known expansion strings; this is the general mechanical backstop. */
+function collapseDoubledWords(text: string): string {
+  // Legit English doubles we must not touch.
+  const legit = new Set(['had', 'that', 'very', 'many']);
+  // "the the", "crude crude", "Japan Japan" — immediate case-insensitive duplicates.
+  text = text.replace(/\b([A-Za-z][\w.&'’-]*)(\s+\1)\b/gi, (m, w1: string) =>
+    legit.has(w1.toLowerCase()) ? m : w1
+  );
+  // Article collision: "a the Bank of Japan" / "an the E.C.B." → "the ...".
+  text = text.replace(/\b[Aa]n?\s+(the\s+)/g, '$1');
+  return text;
+}
+
 /** Apply all regex-based normalizations */
 function regexNormalize(text: string): string {
   text = expandCurrency(text);
@@ -386,6 +402,7 @@ function regexNormalize(text: string): string {
   text = expandAbbreviations(text);
   text = cleanFormatting(text);
   text = deduplicateExpansions(text);
+  text = collapseDoubledWords(text);
   return text;
 }
 
@@ -596,6 +613,112 @@ function extractCommentaryOnly(content: string): string {
   return commentaryLines.join('\n\n');
 }
 
+// ─── Section-name canonical matching ─────────────────────────────────────────
+// Writer header drift ("## The Wild Card" vs "## Wild Card") silently dropped the
+// Wild Card transition AND its instruction from BOTH the daily and the weekly
+// (confirmed in the 2026-07-04 and 2026-W27 scripts — the section started cold).
+// Exact-match lookups are banned for section maps; every lookup goes through here.
+
+/** "The Six: The Wild Card" and "the six: wild card" both → "six: wild card" */
+function canonicalSectionKey(name: string): string {
+  return name
+    .split(':')
+    .map(p => p.trim().replace(/^the\s+/i, ''))
+    .join(': ')
+    .toLowerCase();
+}
+
+/** Map lookup by canonical section name — tolerant of "The " drift and casing. */
+function lookupSection<T>(dict: Record<string, T>, sectionName: string): T | undefined {
+  if (dict[sectionName] !== undefined) return dict[sectionName];
+  const target = canonicalSectionKey(sectionName);
+  for (const [key, val] of Object.entries(dict)) {
+    if (canonicalSectionKey(key) === target) return val;
+  }
+  return undefined;
+}
+
+// ─── Mechanical script gate ──────────────────────────────────────────────────
+// The written brief has five enforcement layers; until 2026-07-05 the audio script
+// had ZERO — every rule lived in a prompt, and prompts leak (banned phrases, gutted
+// sections, filler morals all shipped in W27/07-04 audio). This gate is the
+// mechanical layer: deterministic repairs where safe, one regeneration when a
+// section arrives gutted, loud warnings for everything else.
+
+/** Phrases the system prompt bans — now mechanically enforced on OUTPUT. */
+const BANNED_SCRIPT_PHRASES = [
+  'buckle up', 'strap in', 'hold on tight',
+  "here's where it gets interesting", "here's where it gets wild",
+  'let that sink in', 'read that again', 'without further ado',
+  'at the end of the day', 'game-changer', 'jaw-dropping',
+  "let's dive into", "let's dive in", "let's jump in!", 'switching gears', "let's shift gears",
+  'that wraps up', 'get ready to explore',
+];
+
+/** Filler-moral endings the scriptwriter invents when it has cut real substance. */
+const FILLER_ENDING_PATTERNS = [
+  /these stories highlight[^.!?]*[.!?]\s*$/i,
+  /it (all )?goes to show[^.!?]*[.!?]\s*$/i,
+  /keep (this|that) in mind[^.!?]*[.!?]\s*$/i,
+  /something to (keep in mind|think about|watch)[^.!?]*[.!?]\s*$/i,
+];
+
+/** Sections that teach — they must not compress much, or the teaching dies. */
+const SUBSTANCE_PROTECTED_SECTIONS = ['inner game', 'model', 'discovery', 'meditation', 'take', 'close'];
+
+interface ScriptCheckResult {
+  script: string;
+  warnings: string[];
+  /** true when the section should be regenerated (gutted beyond repair) */
+  needsRetry: boolean;
+}
+
+/** Deterministic repairs + checks on a single section's script. */
+function enforceScriptRules(sectionName: string, script: string, sourceContent: string): ScriptCheckResult {
+  const warnings: string[] = [];
+  let out = script.trim();
+
+  // 1) Strip a banned-phrase LEAD sentence ("Let's dive into some fascinating stories...").
+  //    The deterministic transition already did the intro; a banned lead is pure double-intro.
+  const firstSentence = out.match(/^[^.!?\n]{0,160}[.!?]/)?.[0] ?? '';
+  if (firstSentence && BANNED_SCRIPT_PHRASES.some(p => firstSentence.toLowerCase().includes(p))) {
+    out = out.slice(firstSentence.length).trim();
+    warnings.push(`${sectionName}: stripped banned lead sentence ("${firstSentence.trim()}")`);
+  }
+
+  // 2) Strip invented filler-moral endings ("These stories highlight the complex...").
+  for (const pattern of FILLER_ENDING_PATTERNS) {
+    if (pattern.test(out)) {
+      out = out.replace(pattern, '').trim();
+      warnings.push(`${sectionName}: stripped filler-moral ending`);
+    }
+  }
+
+  // 3) Remaining banned phrases mid-script — warn loudly (semantic edit isn't safe here).
+  for (const phrase of BANNED_SCRIPT_PHRASES) {
+    if (out.toLowerCase().includes(phrase)) {
+      warnings.push(`${sectionName}: banned phrase survived in script body: "${phrase}"`);
+    }
+  }
+
+  // 4) Substance floor. Teaching sections must keep >=55% of source length; others >=35%.
+  //    Below the floor = gutted → regenerate once with explicit feedback.
+  const srcWords = sourceContent.split(/\s+/).filter(Boolean).length;
+  const outWords = out.split(/\s+/).filter(Boolean).length;
+  const canonical = canonicalSectionKey(sectionName);
+  const isProtected = SUBSTANCE_PROTECTED_SECTIONS.some(s => canonical.includes(s));
+  const floor = isProtected ? 0.55 : 0.35;
+  const ratio = srcWords > 0 ? outWords / srcWords : 1;
+  const needsRetry = srcWords > 120 && ratio < floor;
+  if (needsRetry) {
+    warnings.push(
+      `${sectionName}: GUTTED — script is ${Math.round(ratio * 100)}% of source (floor ${Math.round(floor * 100)}%), regenerating once`
+    );
+  }
+
+  return { script: out, warnings, needsRetry };
+}
+
 // ─── GPT-4o per-section scriptwriter ─────────────────────────────────────────
 // Sending all 35K+ chars to GPT-4o in one shot causes massive compression (~4K out).
 // Instead: rewrite each section individually, then stitch together.
@@ -732,7 +855,7 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'The Predictions': 'Do NOT introduce or announce this section. A separate transition handles that. Start with the framing sentence, then deliver the standing calls. There is one call per horizon: next week, next month, next year. For EACH call, say the call clearly AND its single kill-switch condition (the one thing that would prove it wrong). The kill switch is as important as the call, never drop it. Keep it tight and concrete. Stay close to the written text; do not invent or re-direct a call.',
   'The Model': 'Do NOT introduce or announce this section. A separate transition handles that. Teach this mental model as a standalone concept using the timeless examples from the written text — do NOT connect it to today\'s news, markets, or any companies mentioned in earlier sections. Name the model, explain it with genuine intellectual energy, and land on the decision tool. This is an intellectual gift the listener keeps forever. The listener should feel like they just gained a new thinking tool.',
   'Inner Game': 'Do NOT introduce or announce this section. A separate transition handles that. Just start reading warmly and with genuine presence. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode. Let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift. The listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
-  'Discovery': 'Do NOT introduce or announce this section. A separate transition handles that. Just start telling the story. This is an original essay. NOT a reading recommendation, NOT a list of cool facts (that was Wild Card). Discovery is ONE deep narrative with a single through-line argument. The energy here is slower, more reflective, more intellectually weighty than Wild Card. Tell the story with fascination but let it build. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. Stay very close to the written text. The essay was carefully constructed. End the episode on intellectual wonder.',
+  'Discovery': 'Do NOT introduce or announce this section. A separate transition handles that. Just start telling the story. This is an original essay. NOT a reading recommendation, NOT a list of cool facts (that was Wild Card). Discovery is ONE deep narrative with a single through-line argument. The energy here is slower, more reflective, more intellectually weighty than Wild Card. Tell the story with fascination but let it build. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. Stay very close to the written text. The essay was carefully constructed. End the episode on intellectual wonder. You are the FINAL content section: your last line must land like an ending, not a cliffhanger or an open loop — the sign-off follows immediately, so close the thought completely before you stop.',
   // Optional sections
   'Overnight': 'Quick overnight catch-up. Three to four key developments since last night. Keep it brisk and factual with "here\'s what happened while you were sleeping" energy. Each item gets 1-2 sentences. CRITICAL: Check the ALREADY COVERED list carefully. If an overnight development is already covered in the Dashboard or Markets & Macro, do NOT restate it. Either skip it entirely or say "we\'ll get into that in a moment" and move on. The listener should NEVER hear the same fact in Overnight and then again in the Dashboard or Six. Overnight only adds what\'s genuinely new since the evening brief was written.',
   'Deep Read / Listen': 'Skip this section entirely in audio. Do not read it. These are external link recommendations that don\'t work in audio format.',
@@ -795,15 +918,24 @@ interface SectionContext {
 // Act transitions are now handled by deterministic SECTION_TRANSITIONS in rewriteAsScript().
 // No need for AI-generated act boundary cues — the transitions are structural scaffolding.
 
+interface RewriteOpts {
+  instructions?: Record<string, string>;
+  systemPrompt?: string;
+  /** Appended to the section instruction (weekly close handling, retry feedback, etc.) */
+  instructionAddendum?: string;
+  /** Appended to the system prompt (weekly edition framing) */
+  systemPromptAddendum?: string;
+}
+
 /** Rewrite a single section via GPT-4o with retry */
-async function rewriteSection(client: OpenAI, sectionName: string, content: string, context?: SectionContext, opts?: { instructions?: Record<string, string>; systemPrompt?: string }): Promise<string> {
+async function rewriteSection(client: OpenAI, sectionName: string, content: string, context?: SectionContext, opts?: RewriteOpts): Promise<string> {
   // Which instruction set + system prompt to use. The super brief passes its own
   // (LIGHT_SECTION_INSTRUCTIONS + LIGHT_SECTION_SYSTEM_PROMPT) so its per-section
   // guidance actually applies — previously it was silently ignored.
   const instrDict = opts?.instructions ?? SECTION_INSTRUCTIONS;
-  const systemPrompt = opts?.systemPrompt ?? SECTION_SYSTEM_PROMPT;
-  // Look up exact match first, then try prefix match for sub-sections
-  let instruction = instrDict[sectionName];
+  const systemPrompt = (opts?.systemPrompt ?? SECTION_SYSTEM_PROMPT) + (opts?.systemPromptAddendum ?? '');
+  // Canonical lookup — tolerant of "The " header drift (see canonicalSectionKey).
+  let instruction = lookupSection(instrDict, sectionName);
   if (!instruction) {
     for (const [key, val] of Object.entries(instrDict)) {
       if (sectionName.startsWith(key.split(':')[0] + ':')) {
@@ -813,6 +945,7 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
     }
   }
   if (!instruction) instruction = `Convert this "${sectionName}" section into natural spoken podcast form. Include ALL substantive content. Do not skip or compress anything.`;
+  if (opts?.instructionAddendum) instruction += opts.instructionAddendum;
 
   // Build context for dedup and section awareness.
   // Transitions between sections are also injected deterministically after scriptwriting,
@@ -864,6 +997,43 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
     console.warn(`[audio] Section "${sectionName}" LLM failed after retries (${err}), using regex fallback`);
     return regexNormalize(content);
   }
+}
+
+/**
+ * rewriteSection + mechanical script gate + one-shot regeneration on gutted output.
+ * Used by BOTH the full-brief and super-brief paths — this is the audio counterpart
+ * of the written pipeline's Validator: deterministic repair where safe, one retry
+ * with explicit feedback when a section arrives gutted, warnings for the rest.
+ */
+async function rewriteSectionChecked(
+  client: OpenAI,
+  sectionName: string,
+  content: string,
+  context?: SectionContext,
+  opts?: RewriteOpts,
+): Promise<{ script: string; warnings: string[] }> {
+  const first = await rewriteSection(client, sectionName, content, context, opts);
+  // Intros are intentionally short — gate the repairs but skip the substance floor.
+  const isIntro = /intro/i.test(sectionName);
+  let checked = enforceScriptRules(sectionName, first, isIntro ? '' : content);
+
+  if (checked.needsRetry && !isIntro) {
+    const retryOpts: RewriteOpts = {
+      ...opts,
+      instructionAddendum:
+        (opts?.instructionAddendum ?? '') +
+        ' RETRY FEEDBACK: your previous attempt cut too much substance from this section. Rewrite it keeping EVERY substantive point, number, example, and step of the argument. Compress delivery only, never content.',
+    };
+    const second = await rewriteSection(client, sectionName, content, context, retryOpts);
+    const secondChecked = enforceScriptRules(sectionName, second, content);
+    // Keep whichever attempt preserved more substance.
+    if (secondChecked.script.length > checked.script.length) {
+      checked = { ...secondChecked, warnings: [...checked.warnings, ...secondChecked.warnings] };
+    }
+  }
+
+  for (const w of checked.warnings) console.warn(`[audio:gate] ${w}`);
+  return { script: checked.script, warnings: checked.warnings };
 }
 
 /**
@@ -966,7 +1136,42 @@ function extractKeyFacts(text: string): string[] {
 }
 
 /** Rewrite the full brief as a podcast script. Tries parallel first, falls back to sequential. */
-async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string, epigraph: string): Promise<string> {
+// ─── Weekly edition framing ──────────────────────────────────────────────────
+// The Weekly ran through the daily's prompt, transitions, and sign-off on its first
+// live run (2026-W27): "today's Six" on a week-in-review, a "we'll be back tomorrow"
+// sign-off stacked cold on top of the weekly's own written close, and a sub-30-minute
+// target applied to a 35-minute-read product. Everything weekly-flavored lives here.
+
+const WEEKLY_SYSTEM_PROMPT_ADDENDUM = `
+
+WEEKLY EDITION (this episode is THE WEEKLY, the Sunday zoom-out over the whole week):
+- Say "this week" / "the week", never "today" — the listener is hearing a week in review.
+- LENGTH: the written Weekly is roughly a 35-minute read. Land the spoken version UNDER 40 minutes, NOT under 30. Do not compress it to a daily's length. The substance-beats-the-clock tiebreaker is even stronger here: if keeping everything runs long, run long.
+- The listener is on a slower Sunday clock. Let the teachings and the endings breathe.`;
+
+/** Weekly overrides for the deterministic transitions (canonical-name lookup). */
+const WEEKLY_TRANSITION_OVERRIDES: Record<string, string> = {
+  'The Six: Markets & Macro': 'OK, let\'s jump into the week\'s Six, starting with Markets and Macro.',
+  'The Six: Wild Card': 'Now for the week\'s Wild Card. The story that has nothing to do with markets and everything to do with how the world actually works.',
+  'The Take': 'Now let\'s take a deep dive into the biggest current running under the week. For this week\'s Take.',
+  'Inner Game': 'That\'s the week\'s markets. Let\'s take a deep breath, and settle into this week\'s meditation.',
+  'The Model': 'OK, let\'s get the brain working. Time for this week\'s Mental Model.',
+  'Discovery': 'And finally, this week\'s Discovery.',
+};
+
+const DAILY_SIGN_OFF = 'That\'s today\'s brief. Thank you for spending part of your morning with us. Hopefully you\'re walking away a bit more informed, a bit more grounded, and a bit more curious about what\'s forming around the corner. We\'ll be back tomorrow with more. Until then. Yesterday is history, tomorrow is a mystery, but today is a gift, and that is why it\'s called the present. Take care.';
+
+/** Weekly sign-off — opens with a bridge so it never lands cold after the close. */
+const WEEKLY_SIGN_OFF = 'And that closes out the week. Thank you for spending part of your Sunday with us. Hopefully you\'re stepping into the new week a bit more informed, a bit more grounded, and a bit more curious about what\'s forming around the corner. The daily brief is back tomorrow morning. Until then. Yesterday is history, tomorrow is a mystery, but today is a gift, and that is why it\'s called the present. Take care.';
+
+/** The weekly's written close (final paragraph after Discovery) has no section marker,
+ *  so it rides inside Discovery's content. W27 delivered the essay's falsification
+ *  challenge and then jumped cold to the week-summary close — this addendum makes the
+ *  scriptwriter treat the close as the episode's landing, not part of the essay. */
+const WEEKLY_DISCOVERY_CLOSE_ADDENDUM =
+  ' WEEKLY CLOSE (critical): the final paragraph of your content, after the essay ends, is the episode\'s written closing reflection on the whole week. It is NOT part of the essay. Finish the essay completely and let it land. Then start a new paragraph, bridge in one short line (for example: "Which brings us back to the week itself."), and deliver that closing reflection with the unhurried weight of an ending. It is the last thing the listener hears before the sign-off.';
+
+async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string, epigraph: string, isWeekly = false): Promise<string> {
   const client = new OpenAI({ apiKey: openaiApiKey });
 
   // Build all section tasks: intro + each content section
@@ -1033,6 +1238,16 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
   try {
     console.log(`[audio] Rewriting ${tasks.length} sections in parallel via GPT-4o...`);
 
+    const optsFor = (name: string): RewriteOpts | undefined =>
+      isWeekly
+        ? {
+            systemPromptAddendum: WEEKLY_SYSTEM_PROMPT_ADDENDUM,
+            ...(canonicalSectionKey(name).includes('discovery')
+              ? { instructionAddendum: WEEKLY_DISCOVERY_CLOSE_ADDENDUM }
+              : {}),
+          }
+        : undefined;
+
     const results = await Promise.all(
       tasks.map(async (task) => {
         console.log(`[audio] Section ${task.index + 1}: ${task.name}...`);
@@ -1043,7 +1258,7 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
           nextSection: nextTask?.name,
           alreadyCovered: cumulativeFacts.get(task.index),
         };
-        const script = await rewriteSection(client, task.name, task.content, context);
+        const { script } = await rewriteSectionChecked(client, task.name, task.content, context, optsFor(task.name));
         console.log(`[audio]   → ${script.length} chars`);
         return { index: task.index, name: task.name, script };
       })
@@ -1065,12 +1280,19 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i]!;
-      const transition = SECTION_TRANSITIONS[result.name];
+      // Canonical lookup + weekly overrides — exact-match lookups silently dropped
+      // the Wild Card transition for months when the header drifted to "The Wild Card".
+      const transition =
+        (isWeekly ? lookupSection(WEEKLY_TRANSITION_OVERRIDES, result.name) : undefined) ??
+        lookupSection(SECTION_TRANSITIONS, result.name);
 
       // Inject transition phrase before the section content (if one exists)
       if (transition) {
         stitchedParts.push(transition + '\n\n' + result.script);
       } else {
+        if (i > 0) {
+          console.warn(`[audio:gate] No transition for section "${result.name}" — it will start cold. Add it to SECTION_TRANSITIONS.`);
+        }
         stitchedParts.push(result.script);
       }
     }
@@ -1081,9 +1303,10 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
       stitchedParts[0] = `${cleanEpigraph}\n\n${stitchedParts[0]}`;
     }
 
-    // Append standard sign-off verbatim (never sent through GPT-4o)
-    const signOff = 'That\'s today\'s brief. Thank you for spending part of your morning with us. Hopefully you\'re walking away a bit more informed, a bit more grounded, and a bit more curious about what\'s forming around the corner. We\'ll be back tomorrow with more. Until then. Yesterday is history, tomorrow is a mystery, but today is a gift, and that is why it\'s called the present. Take care.';
-    stitchedParts.push(signOff);
+    // Append standard sign-off verbatim (never sent through GPT-4o).
+    // Weekly gets its own sign-off with a built-in bridge — the daily one said
+    // "today's brief / back tomorrow" cold on top of the weekly's written close.
+    stitchedParts.push(isWeekly ? WEEKLY_SIGN_OFF : DAILY_SIGN_OFF);
 
     // Add pause markers between sections for natural breathing room in TTS.
     const SECTION_PAUSE = '\n\n...\n\n';
@@ -1107,13 +1330,26 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
         nextSection: nextTask?.name,
         alreadyCovered: ti > 0 ? [...seqRunningFacts] : [],
       };
-      const script = await rewriteSection(client, task.name, task.content, context);
+      const seqOpts: RewriteOpts | undefined = isWeekly
+        ? {
+            systemPromptAddendum: WEEKLY_SYSTEM_PROMPT_ADDENDUM,
+            ...(canonicalSectionKey(task.name).includes('discovery')
+              ? { instructionAddendum: WEEKLY_DISCOVERY_CLOSE_ADDENDUM }
+              : {}),
+          }
+        : undefined;
+      const { script } = await rewriteSectionChecked(client, task.name, task.content, context, seqOpts);
 
-      // Inject deterministic transition before section content
-      const transition = SECTION_TRANSITIONS[task.name];
+      // Inject deterministic transition before section content (canonical lookup + weekly overrides)
+      const transition =
+        (isWeekly ? lookupSection(WEEKLY_TRANSITION_OVERRIDES, task.name) : undefined) ??
+        lookupSection(SECTION_TRANSITIONS, task.name);
       if (transition) {
         scriptParts.push(transition + '\n\n' + script);
       } else {
+        if (ti > 0) {
+          console.warn(`[audio:gate] No transition for section "${task.name}" — it will start cold. Add it to SECTION_TRANSITIONS.`);
+        }
         scriptParts.push(script);
       }
 
@@ -1128,8 +1364,7 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
       scriptParts[0] = `${cleanEpigraph}\n\n${scriptParts[0]}`;
     }
 
-    const signOff = 'That\'s today\'s brief. Thank you for spending part of your morning with us. Hopefully you\'re walking away a bit more informed, a bit more grounded, and a bit more curious about what\'s forming around the corner. We\'ll be back tomorrow with more. Until then. Yesterday is history, tomorrow is a mystery, but today is a gift, and that is why it\'s called the present. Take care.';
-    scriptParts.push(signOff);
+    scriptParts.push(isWeekly ? WEEKLY_SIGN_OFF : DAILY_SIGN_OFF);
 
     const SECTION_PAUSE_SEQ = '\n\n...\n\n';
     const totalChars = scriptParts.reduce((sum, s) => sum + s.length, 0);
@@ -1212,7 +1447,7 @@ export async function preprocessBriefForTTS(
   if (!options.skipLlmCleanup && options.openaiApiKey) {
     try {
       console.log('[audio] Rewriting as conversational podcast script (GPT-4o, per-section)...');
-      const script = await rewriteAsScript(parsed, options.openaiApiKey, epigraph);
+      const script = await rewriteAsScript(parsed, options.openaiApiKey, epigraph, options.isWeekly ?? false);
       // Step 3: Regex normalize the output to catch anything the LLM missed
       fullText = regexNormalize(script);
       console.log(`[audio] Script: ${fullText.length} characters`);
@@ -1419,7 +1654,7 @@ export async function preprocessBriefLightForTTS(
             || '')
         : (ordered[0]?.content?.split('\n')[0] || '');
       const introContent = `DATE: ${brief.displayDate}\nDAILY TITLE: ${brief.dailyTitle || ''}\nHEADLINE: ${ideaHeadline}`;
-      const introScript = await rewriteSection(client, 'light-intro', introContent, {}, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
+      const { script: introScript } = await rewriteSectionChecked(client, 'light-intro', introContent, {}, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
 
       // Rewrite each section individually with section-specific instructions
       const sectionScripts: string[] = [];
@@ -1455,7 +1690,7 @@ export async function preprocessBriefLightForTTS(
           : section.content;
 
         console.log(`[audio:light] Section: ${rewriteLabel}${section.title ? ` — ${section.title}` : ''}...`);
-        const script = await rewriteSection(client, rewriteLabel, rewriteContent, context, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
+        const { script } = await rewriteSectionChecked(client, rewriteLabel, rewriteContent, context, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
         console.log(`[audio:light]   → ${script.length} chars`);
 
         // Feed this section's figures forward so later sections (esp. MARKETS MINUTE) know
