@@ -147,6 +147,17 @@ check(
   a => !(a as string).includes('These stories highlight') && (a as string).includes('senior-housing shortage'),
 );
 
+const genericIntroLead =
+  'Here are some fascinating stories from this week worth remembering. ' +
+  'First up, Strategy’s stabilizer ran in reverse.';
+const introLeadResult = enforceScriptRules('Interesting Things', genericIntroLead, '');
+check(
+  'generic double-intro lead (not on the banned list) is stripped too',
+  introLeadResult.script,
+  a => (a as string).startsWith('First up, Strategy'),
+  'script starting at "First up" — announce-y lead gone even without a banned phrase',
+);
+
 const guttedSource = Array.from({ length: 300 }, (_, i) => `word${i}`).join(' ');
 const guttedScript = Array.from({ length: 60 }, (_, i) => `word${i}`).join(' ');
 check(

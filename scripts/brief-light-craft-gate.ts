@@ -106,6 +106,39 @@ function main(): number {
     warns.push('Full brief not provided; skipped NO-NEW-ATOMS number-provenance check. Pass the full brief path as arg 2.');
   }
 
+  // 10. STANDALONE LEGIBILITY — no cross-product references (Jackson 2026-07-05).
+  // The W27 light's OUR CALLS said "The Take's call runs on its own timeline" — but the
+  // light HAS no Take; the reader has no idea what that means. The light never references
+  // sections that only exist in the full product. Case-sensitive on section names to
+  // avoid hitting the common words take/six/signal.
+  const CROSS_PRODUCT_REFS: Array<[RegExp, string]> = [
+    [/\bThe Take\b/, 'The Take'],
+    [/\bThe Six\b/, 'The Six'],
+    [/\bThe Signal\b/, 'The Signal'],
+    [/\bThe Predictions\b/, 'The Predictions'],
+    [/\bAsset Spotlight\b/, 'Asset Spotlight'],
+    [/\bthe full (?:daily )?(?:brief|weekly)\b/i, 'the full brief/weekly'],
+  ];
+  for (const [re, label] of CROSS_PRODUCT_REFS) {
+    if (re.test(md)) fails.push(`Cross-product reference: "${label}" — the light has no such section; restate the point standalone or cut it.`);
+  }
+
+  // 11. INTERESTING THINGS structure — differentiated bold-led items, never a blob.
+  // W27 shipped one run-on paragraph; the viewer parsed zero items and rendered a text
+  // wall. Each item = "**Bold lead.** body" (or bold headline own-line).
+  const itBody = sectionBody(lines, /^##\s*▸\s*INTERESTING THINGS/i);
+  if (itBody.trim()) {
+    const itItems = itBody.split('\n').filter(l => /^\*\*[^*]/.test(l.trim())).length;
+    if (itItems < 2) fails.push(`INTERESTING THINGS has ${itItems} bold-led item(s); needs 2+ differentiated items ("**Bold lead.** body" per item), never a run-on paragraph.`);
+  }
+
+  // 12. THE MODEL format — "### [Model Name]" header (the viewer's title), not an
+  // inline-bold blob. Every daily light uses this; W27's self-heal shipped without it.
+  const modelBody = sectionBody(lines, /^##\s*▸\s*THE MODEL/i);
+  if (modelBody.trim() && !/^###\s+\S/m.test(modelBody)) {
+    fails.push('THE MODEL is missing its "### [Model Name]" header line (the website renders it as the model title).');
+  }
+
   // 9. DATA-POINT REPETITION — the "at most twice" rule (Jackson 2026-07-01).
   // A super brief previews the story-of-the-week in the lede, tells each story once in THE
   // UPDATE, and recaps levels in MARKETS MINUTE. That structure invites the same figure into

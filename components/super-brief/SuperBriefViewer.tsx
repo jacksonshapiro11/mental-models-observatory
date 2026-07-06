@@ -81,13 +81,22 @@ function inferSignalColor(headline: string, body: string): 'red' | 'green' | 'ye
 
 function inferDomain(headline: string, body: string): string {
   const t = (headline + ' ' + body).toLowerCase();
-  if (/bitcoin|btc|ethereum|eth|crypto|defi|aave|solana|protocol|blockchain|nft/.test(t)) return 'crypto · defi';
-  if (/ai\b|openai|anthropic|claude|gpt|gemini|llm|model|neural|compute|gpu/.test(t)) return 'ai · tech';
-  if (/geopolit|iran|china|russia|nato|war|hormuz|military|sanctions|tariff|trump|trade war/.test(t)) return 'geopolitics';
-  if (/s&p|nasdaq|dow|equit|stock|market|fed|rate|yield|treasury|dollar|euro|ecb|inflation|gdp/.test(t)) return 'markets · macro';
-  if (/oil|gold|brent|commodit|energy|copper|natural gas/.test(t)) return 'commodities';
-  if (/quantum|encrypt|security|cyber|qubit|nist/.test(t)) return 'tech · security';
-  if (/health|protein|cognitive|brain|pharma|biotech|fda/.test(t)) return 'science · health';
+  // Word boundaries are load-bearing: the unboundaried version tagged any story
+  // containing "whether" as crypto ("wh[eth]er") — live on the W27 super brief.
+  // The headline is weighted first: it names what the story is actually ABOUT,
+  // while the body often name-drops other domains (an M&A story mentioning AI).
+  const h = headline.toLowerCase();
+  const rules: Array<[RegExp, string]> = [
+    [/\b(?:geopolit\w*|iran|china|russia|ukraine|nato|war|hormuz|military|missile|drone|sanctions|ceasefire)\b/, 'geopolitics'],
+    [/\b(?:bitcoin|btc|ethereum|eth|crypto|defi|stablecoin|aave|solana|blockchain|nft|tether|coinbase|circle)\b/, 'crypto · defi'],
+    [/\b(?:ai|a\.i\.|openai|anthropic|claude|gpt|gemini|llm|neural|semiconductor|chips?|gpus?|compute)\b/, 'ai · tech'],
+    [/\b(?:oil|gold|brent|wti|commodit\w*|copper|helium|phosphate|natural gas|lng)\b/, 'commodities'],
+    [/\b(?:s&p|nasdaq|dow|equit\w*|stocks?|fed|rates?|yields?|treasur\w*|dollar|euro|ecb|boj|yen|inflation|payrolls|gdp|m&a|merger|acquisition|private equity|kkr)\b/, 'markets · macro'],
+    [/\b(?:quantum|encrypt\w*|security|cyber|qubit|nist)\b/, 'tech · security'],
+    [/\b(?:health|protein|cognitive|brain|pharma|biotech|fda|parasite|livestock|disease)\b/, 'science · health'],
+  ];
+  for (const [re, tag] of rules) if (re.test(h)) return tag;
+  for (const [re, tag] of rules) if (re.test(t)) return tag;
   return 'signal';
 }
 
@@ -278,6 +287,10 @@ export default function SuperBriefViewer({
   /** Base path for this product's own share URL. Daily → /super-brief, weekly → /weekly-super. */
   selfBasePath?: string;
 }) {
+  // Weekly light renders through this same viewer — derive it from the slug so
+  // section labels say "the week" instead of "today" (W27 shipped daily wording).
+  const isWeekly = /^\d{4}-W\d{1,2}$/i.test(brief.date);
+
   // Find sections by ID
   const updateSection = brief.sections.find(s => s.id === 'the-update');     // legacy selection format
   const ideaSections = brief.sections.filter(s => s.id === 'the-idea');      // ideas-first format
@@ -395,7 +408,7 @@ export default function SuperBriefViewer({
       <section className="bg-ct-dark px-4 py-3 border-t border-[#1a1a1a]">
         <div className="max-w-lg mx-auto">
           <div className="font-mono text-[9px] text-ct-pink uppercase tracking-wider font-medium mb-2">
-            Today&apos;s signals
+            {isWeekly ? 'The week’s signals' : 'Today’s signals'}
           </div>
 
           {/* All signals */}
@@ -455,7 +468,7 @@ export default function SuperBriefViewer({
               href={`${fullBriefBasePath}/${brief.date}`}
               className="text-[11px] text-ct-pink font-medium mt-3 block no-underline"
             >
-              More in today&apos;s full brief →
+              {isWeekly ? 'More in this week’s full brief →' : 'More in today’s full brief →'}
             </Link>
           </div>
         </section>

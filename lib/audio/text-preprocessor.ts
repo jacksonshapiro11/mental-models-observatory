@@ -663,6 +663,14 @@ const FILLER_ENDING_PATTERNS = [
   /something to (keep in mind|think about|watch)[^.!?]*[.!?]\s*$/i,
 ];
 
+/** Generic double-intro leads. The deterministic transition already introduced the
+ *  section; ANY announce-y first sentence is a double intro, banned phrase or not
+ *  (W27 light: transition said "caught our eye outside the main stories", then the
+ *  script added "Let's dive into some fascinating stories from this week..."). */
+const INTRO_LEAD_PATTERNS = [
+  /^(?:let'?s|here (?:are|is)|these are|now for|time for|first,? let'?s|get ready|welcome)\b[^.!?]{0,120}\b(?:stories|things|ideas|items|highlights|moments)\b[^.!?]{0,60}[.!?]/i,
+];
+
 /** Sections that teach — they must not compress much, or the teaching dies. */
 const SUBSTANCE_PROTECTED_SECTIONS = ['inner game', 'model', 'discovery', 'meditation', 'take', 'close'];
 
@@ -685,12 +693,15 @@ export function enforceScriptRules(sectionName: string, script: string, sourceCo
   const warnings: string[] = [];
   let out = script.trim();
 
-  // 1) Strip a banned-phrase LEAD sentence ("Let's dive into some fascinating stories...").
-  //    The deterministic transition already did the intro; a banned lead is pure double-intro.
+  // 1) Strip a double-intro LEAD sentence ("Let's dive into some fascinating stories...").
+  //    The deterministic transition already did the intro; an announce-y lead is pure
+  //    double-intro whether or not it uses a phrase from the banned list.
   const firstSentence = out.match(/^[^.!?\n]{0,160}[.!?]/)?.[0] ?? '';
-  if (firstSentence && BANNED_SCRIPT_PHRASES.some(p => normalizeForPhraseMatch(firstSentence).includes(p))) {
+  const isBannedLead = firstSentence && BANNED_SCRIPT_PHRASES.some(p => normalizeForPhraseMatch(firstSentence).includes(p));
+  const isIntroLead = firstSentence && INTRO_LEAD_PATTERNS.some(p => p.test(normalizeForPhraseMatch(firstSentence)));
+  if (isBannedLead || isIntroLead) {
     out = out.slice(firstSentence.length).trim();
-    warnings.push(`${sectionName}: stripped banned lead sentence ("${firstSentence.trim()}")`);
+    warnings.push(`${sectionName}: stripped double-intro lead sentence ("${firstSentence.trim()}")`);
   }
 
   // 2) Strip invented filler-moral endings ("These stories highlight the complex...").
@@ -885,9 +896,9 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'The Six: Inner Game': 'Read this warmly and slowly. Include the quote, the teaching, and the practical action. This is the personal, human moment. Let it breathe. No market references.',
 
   // Brief Light (Super Brief) sections
-  'The Update': 'Cover every story. Each one gets its headline, the key numbers, why it matters, and the "so what." Thread stories together naturally when they connect. Do NOT skip any story. Stay close to the source text. The specificity is the value. Get to the insight fast. No throat-clearing.',
-  'Markets Minute': 'Quick, punchy market read. What\'s the character of today\'s session? Connect the dots between equities, crypto, commodities, and rates. If divergences tell a story, say so. Round prices naturally for speech. This should feel brisk but insightful.',
-  'Interesting Things': 'Lighter energy, genuine curiosity. These are fascinating things outside the main market stories. Science, health, breakthroughs. Give each one what it needs to land. If items connect, say so. Stay close to the written text.',
+  'The Update': 'Do NOT introduce or announce this section — the transition handles it. Cover every story. Each one gets its headline, the key numbers, why it matters, and the "so what." STORY BOUNDARIES (critical): each story is its own beat. Open every new story with a brief, VARIED turn signal in a few words (Meanwhile / One more / The quieter one / On a different front) so the listener always knows a new story just started. Never let two stories blur into one sentence stream, and never bridge them with a fabricated connection. Do NOT skip any story. Stay close to the source text. The specificity is the value. Get to the insight fast. No throat-clearing.',
+  'Markets Minute': 'Do NOT introduce or announce this section — the transition handles it. Quick, punchy market read. What\'s the character of the session or the week? Connect the dots between equities, crypto, commodities, and rates. If divergences tell a story, say so. Round prices naturally for speech. This should feel brisk but insightful.',
+  'Interesting Things': 'Do NOT introduce or announce this section — the transition handles it; start directly with the first item. Lighter energy, genuine curiosity. These are fascinating things OUTSIDE the main stories. Science, health, breakthroughs, oddities. Each item is its own clear beat: open each new item on its own turn, never run two items together into one stream. Give each one what it needs to land. If items genuinely connect, say so. No invented wrap-up moral at the end — land the last item and stop. Stay close to the written text.',
   'The Meditation': 'Warm, present, reflective. Include the full quote and attribution. Then deliver the teaching and the practical action. Let it breathe. No rushing. This is the human moment. The listener should feel grounded after hearing it.',
 };
 
@@ -1537,13 +1548,26 @@ const LIGHT_SECTION_ORDER = [
 const LIGHT_SECTION_TRANSITIONS: Record<string, string> = {
   'the-idea': 'Let\'s get into today\'s biggest ideas.', // fired once before the first idea
   'also-moving': 'A few other things moving today.',
-  'markets-minute': '', // mid-flow after the ideas; no lead-in needed
+  // Markets Minute was '' (mid-flow) — Jackson 2026-07-05: the turn into it was
+  // unclear. Every section gets an explicit deterministic lead-in.
+  'markets-minute': 'Quick markets minute. Today\'s tape, fast.',
   'the-update': 'Alright, here\'s what\'s driving the conversation today.',
-  'interesting-things': 'A couple things that caught our eye outside the main stories.',
+  // "A couple" shipped over five items on W27 — count-agnostic wording.
+  'interesting-things': 'A few things that caught our eye outside the main stories.',
   'our-calls': 'And quickly, where our standing calls sit going forward.',
   'the-meditation': 'OK. Let\'s take a breath. Time for today\'s meditation.',
   'the-model': 'And finally, today\'s mental model.',
   'the-close': '',  // No transition — the close IS the sign-off
+};
+
+/** Weekly-light overrides — the Sunday product must not say "today" (W27 shipped
+ *  "driving the conversation today" on a week-in-review). Resolved before the
+ *  daily map when PreprocessOptions.isWeekly is set. */
+const LIGHT_WEEKLY_TRANSITION_OVERRIDES: Record<string, string> = {
+  'the-update': 'Alright, here\'s what drove the week.',
+  'markets-minute': 'Quick markets minute. The week\'s tape, fast.',
+  'the-meditation': 'OK. Let\'s take a breath. Time for this week\'s meditation.',
+  'the-model': 'And finally, this week\'s mental model.',
 };
 
 // Dedicated system prompt for the SUPER BRIEF. The super brief is already curated and
@@ -1576,9 +1600,9 @@ const LIGHT_SECTION_INSTRUCTIONS: Record<string, string> = {
   'light-intro': 'Open the episode in two or three warm, energetic sentences. Use the DAILY TITLE and the lead idea HEADLINE to set up the big ideas coming, and make the listener want to stay. Do not summarize the whole brief; just open the door. No "welcome back," no throat-clearing.',
   'The Idea': 'Deliver this as one genuine market idea: state the idea and why it matters, ground it in the news that surfaced it, and include the honest "what would change my mind." Keep the through-line tight — the idea is the point, the news is the evidence. Stay close to the source text; do not invent numbers or calls not in it.',
   'Also Moving': 'Brisk and secondary. A couple of things moving that did not rise to a full idea today. One or two sentences each. Keep it light and quick.',
-  'The Update': 'Cover every story. Each one gets its headline, the key numbers, why it matters, and the "so what." Thread stories together naturally when they connect. Do NOT skip any story. Stay close to the source text. The specificity is the value. Get to the insight fast. No throat-clearing.',
-  'Markets Minute': 'Quick, punchy market read. What\'s the character of today\'s session? Connect the dots between equities, crypto, commodities, and rates. If divergences tell a story, say so. Round prices naturally for speech. This should feel brisk but insightful.',
-  'Interesting Things': 'Lighter energy, genuine curiosity. These are fascinating things outside the main market stories. Science, health, breakthroughs. Give each one what it needs to land. If items connect, say so. Stay close to the written text.',
+  'The Update': 'Do NOT introduce or announce this section — the transition handles it. Cover every story. Each one gets its headline, the key numbers, why it matters, and the "so what." STORY BOUNDARIES (critical): each story is its own beat. Open every new story with a brief, VARIED turn signal in a few words (Meanwhile / One more / The quieter one / On a different front) so the listener always knows a new story just started. Never let two stories blur into one sentence stream, and never bridge them with a fabricated connection. Do NOT skip any story. Stay close to the source text. The specificity is the value. Get to the insight fast. No throat-clearing.',
+  'Markets Minute': 'Do NOT introduce or announce this section — the transition handles it. Quick, punchy market read. What\'s the character of the session or the week? Connect the dots between equities, crypto, commodities, and rates. If divergences tell a story, say so. Round prices naturally for speech. This should feel brisk but insightful.',
+  'Interesting Things': 'Do NOT introduce or announce this section — the transition handles it; start directly with the first item. Lighter energy, genuine curiosity. These are fascinating things OUTSIDE the main stories. Science, health, breakthroughs, oddities. Each item is its own clear beat: open each new item on its own turn, never run two items together into one stream. Give each one what it needs to land. If items genuinely connect, say so. No invented wrap-up moral at the end — land the last item and stop. Stay close to the written text.',
   'Our Calls': 'Brisk and concrete. These are our three standing calls going forward: next week, next month, next year. Say each call in one clear line AND its single kill-switch condition (the one thing that would prove it wrong). If a call came due, give its one-line grade first. Keep it tight, this is the accountability nod, not a deep dive. Stay close to the written text; do not invent or re-direct a call.',
   'The Meditation': 'Warm, present, reflective. This is the FULL Inner Game and a centerpiece of the brief: read it complete, do NOT shorten or summarize. Deliver the opening setup, the full quote and attribution, the entire reflection, and the closing practice. Let it breathe. No rushing. This is the human moment. The listener should feel grounded after hearing it.',
   'The Model': 'This is the brief\'s deep keeper: the one reusable idea the listener takes away. Teach it, do not just name it. Give the vivid example, explain the mechanism (why it is true), then land on the bolded "Use it" decision tool they can apply today. Use the timeless examples from the written text and do NOT tie it to today\'s news, markets, or companies. Keep it clear and unhurried; the listener should finish with something genuinely useful they will reuse.',
@@ -1712,7 +1736,9 @@ export async function preprocessBriefLightForTTS(
         if (LIGHT_SECTION_TRANSITIONS[section.id] === undefined) {
           console.warn(`[audio:gate] No light transition mapped for section id "${section.id}" — it will start cold. Add it to LIGHT_SECTION_TRANSITIONS.`);
         }
-        const transition = LIGHT_SECTION_TRANSITIONS[section.id] || '';
+        const transition =
+          (options.isWeekly ? LIGHT_WEEKLY_TRANSITION_OVERRIDES[section.id] : undefined) ??
+          (LIGHT_SECTION_TRANSITIONS[section.id] || '');
         if (transition && !usedTransitions.has(section.id)) {
           sectionScripts.push(`${transition}\n\n${script}`);
           usedTransitions.add(section.id);
