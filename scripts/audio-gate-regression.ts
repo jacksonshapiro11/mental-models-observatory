@@ -31,6 +31,13 @@ import {
   DAILY_SIGN_OFF,
   WEEKLY_SIGN_OFF,
 } from '../lib/audio/text-preprocessor';
+import {
+  buildDeterministicIntroPrefix,
+  formatSpokenDateFromSlug,
+  validateIntroDate,
+  validateDisplayDateMatchesSlug,
+} from '../lib/brief-date';
+import { auditAudioIntro } from '../lib/audio/audio-intro-gate';
 
 let failures = 0;
 function check(name: string, actual: unknown, predicate: (a: unknown) => boolean, detail?: string) {
@@ -174,6 +181,46 @@ check(
   'banned phrase mid-body is warned, not silently ignored',
   enforceScriptRules('The Take', 'The setup matters here. But here’s where it gets interesting: the appeal.', ''),
   a => (a as { warnings: string[] }).warnings.some(w => w.includes('banned phrase')),
+);
+
+console.log('── 5. Intro date gate (July 7 displayDate/audio bug) ──');
+
+check(
+  'spoken date format for 2026-07-07',
+  formatSpokenDateFromSlug('2026-07-07'),
+  a => a === 'Tuesday, July seventh, twenty twenty-six',
+);
+check(
+  'deterministic intro prefix includes spoken date + title',
+  buildDeterministicIntroPrefix('2026-07-07', '4,800 Out, 6,000 In'),
+  a => (a as string).includes('July seventh') && (a as string).includes('4,800 Out, 6,000 In'),
+);
+check(
+  'validateIntroDate PASS on deterministic prefix + lede hook',
+  validateIntroDate(
+    `${buildDeterministicIntroPrefix('2026-07-07', '4,800 Out, 6,000 In')}\n\nNATO opens in Ankara with $140 billion pledged.`,
+    '2026-07-07',
+  ).ok,
+  a => a === true,
+);
+check(
+  'validateIntroDate FAIL on wrong year',
+  validateIntroDate('Welcome. It is Tuesday, July seventh, twenty twenty-five.', '2026-07-07').ok,
+  a => a === false,
+);
+check(
+  'validateDisplayDateMatchesSlug rejects headline-as-date',
+  validateDisplayDateMatchesSlug('4,800 Out, 6,000 In', '2026-07-07').ok,
+  a => a === false,
+);
+check(
+  'auditAudioIntro PASS on stitched intro sample',
+  auditAudioIntro(
+    `${buildDeterministicIntroPrefix('2026-07-07', '4,800 Out, 6,000 In')}\n\nHook lede here.\n\n...\n\nOK, let's get started with today's brief.`,
+    '2026-07-07',
+    'Tuesday, July 7, 2026',
+  ).ok,
+  a => a === true,
 );
 
 console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);

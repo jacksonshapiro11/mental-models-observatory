@@ -1,5 +1,12 @@
 import fs from 'fs';
 import path from 'path';
+import {
+  extractDisplayDateFromLine,
+  formatDisplayDateFromSlug,
+  isDisplayDateLine,
+} from './brief-date';
+
+export { isDisplayDateLine } from './brief-date';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -100,13 +107,29 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
       // Strip leading/trailing quotes — the renderer adds its own typographic quotes
       epigraph = epigraph.replace(/^[""\u201C\u201D]+/, '').replace(/[""\u201C\u201D]+$/, '').trim();
     }
-    if (line.startsWith('## ') && !displayDate) {
-      displayDate = line.replace('## ', '');
+    // New format: **Tuesday, July 7, 2026** (bold date line)
+    if (!displayDate && line.startsWith('**') && line.endsWith('**') && isDisplayDateLine(line)) {
+      displayDate = extractDisplayDateFromLine(line);
       headerEndIndex = i + 1;
     }
-    // Daily Title: ### The Bypass That Wasn't
+    // Old format: ## Monday, February 23, 2026
+    if (!displayDate && line.startsWith('## ') && !line.includes('▸') && isDisplayDateLine(line)) {
+      displayDate = extractDisplayDateFromLine(line);
+      headerEndIndex = i + 1;
+    }
+    // New format daily title: ## 4,800 Out, 6,000 In (after bold date, not itself a date)
+    if (
+      !dailyTitle &&
+      displayDate &&
+      line.startsWith('## ') &&
+      !line.includes('▸') &&
+      !isDisplayDateLine(line)
+    ) {
+      dailyTitle = line.replace(/^##\s+/, '');
+    }
+    // Old format daily title: ### The Bypass That Wasn't
     if (line.startsWith('### ') && !dailyTitle && !line.includes('▸')) {
-      dailyTitle = line.replace('### ', '');
+      dailyTitle = line.replace(/^###\s+/, '');
     }
     // Capture bold TLDR line (e.g. "**News TLDR:** ...")
     if (headerEndIndex > 0 && i > headerEndIndex && line.startsWith('**') && !lede) {
@@ -139,6 +162,10 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
   }
   // Orientation is no longer rendered but keep parsing for backward compat
   orientation = '';
+
+  if (!displayDate) {
+    displayDate = formatDisplayDateFromSlug(dateSlug);
+  }
 
   // Split into sections
   const sections: BriefSection[] = [];

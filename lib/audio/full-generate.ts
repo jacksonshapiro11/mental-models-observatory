@@ -9,6 +9,8 @@ import OpenAI from 'openai';
 import { getBriefByDate, getWeeklyBySlug } from '@/lib/daily-update-parser';
 import { isStaleForAutoPublish, todayET } from '@/lib/publish-date';
 import { preprocessBriefForTTS, checkScriptFidelity } from '@/lib/audio/text-preprocessor';
+import { auditAudioIntroOrThrow } from '@/lib/audio/audio-intro-gate';
+import { resolveDisplayDate } from '@/lib/brief-date';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
 import { writeEpisodeMetadata, readEpisodeMetadata } from '@/lib/audio/podcast-feed';
 import { weeklyFullEpisodeKey } from '@/lib/audio/episode-keys';
@@ -166,6 +168,10 @@ export async function generateFullBriefAudio(
     console.log(
       `[audio:full] Script: ${preprocessed.characterCount} characters, ${preprocessed.sections.length} sections`,
     );
+
+    const resolvedDisplayDate = resolveDisplayDate(brief.displayDate, brief.date);
+    auditAudioIntroOrThrow(preprocessed.fullText, brief.date, resolvedDisplayDate);
+    console.log(`[audio:full] Intro date audit PASS for ${brief.date}`);
 
     const fidelity = checkScriptFidelity(rawMarkdown || '', preprocessed.fullText, { minRatio: 0.45 });
     for (const w of fidelity.warnings) console.warn(`[audio:full] ⚠ FIDELITY — ${w}`);

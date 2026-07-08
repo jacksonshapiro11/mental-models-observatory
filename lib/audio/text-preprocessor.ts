@@ -10,6 +10,10 @@
  */
 
 import OpenAI from 'openai';
+import {
+  buildDeterministicIntroPrefix,
+  resolveDisplayDate,
+} from '../brief-date';
 
 // ─── Ticker / abbreviation dictionaries ─────────────────────────────────────
 
@@ -410,6 +414,7 @@ function regexNormalize(text: string): string {
 
 interface ParsedBriefForAudio {
   displayDate: string;
+  dailyTitle: string;
   lede: string;
   sections: { name: string; content: string; mode: string }[];
 }
@@ -419,7 +424,7 @@ interface ParsedBriefForAudio {
  * Dashboard uses commentary-only mode (italic paragraphs + sub-headers, skip tables).
  */
 function extractRawContent(
-  brief: { date: string; displayDate: string; epigraph: string; lede: string; sections: { id: string; label: string; content: string }[] },
+  brief: { date: string; displayDate: string; dailyTitle?: string; epigraph: string; lede: string; sections: { id: string; label: string; content: string }[] },
   rawMarkdown?: string,
   isWeekly = false
 ): { rawContent: string; parsed: ParsedBriefForAudio } {
@@ -430,7 +435,8 @@ function extractRawContent(
   // If we have the raw markdown, parse sections directly from it (more reliable for markers)
   // Otherwise fall back to the parsed sections from daily-update-parser
   const parsed: ParsedBriefForAudio = {
-    displayDate: brief.displayDate,
+    displayDate: resolveDisplayDate(brief.displayDate, brief.date),
+    dailyTitle: brief.dailyTitle ?? '',
     lede: brief.lede
       .replace(/\*\*(.+?)\*\*/g, '$1')
       .replace(/\*(.+?)\*/g, '$1'),
@@ -865,7 +871,7 @@ Return ONLY the spoken script for this section. No meta-commentary, no [brackete
  * effects, the "why this matters" reasoning. Simplify the language, not the thinking.
  */
 const SECTION_INSTRUCTIONS: Record<string, string> = {
-  'intro': 'Write a SHORT, energizing podcast opening. Say "Welcome to Markets, Meditations, and Mental Models" and the date naturally. Then say the episode title (the Daily Title from the brief — it appears as an H3 below the date). Then give the Intro Summary from the brief (the 2-3 italic sentences below the Daily Title). Keep it under 45 seconds when spoken. Direct and conversational, like greeting a friend. Do NOT include any quotes or epigraphs. The daily word of encouragement will be added separately. Do NOT use hype language. Do NOT introduce or preview The Dashboard at the end. A separate transition will handle that.',
+  'intro': 'Write a SHORT, energizing podcast opening hook ONLY. Do NOT say the welcome, show name, or date — those are injected verbatim before your output. Do NOT repeat the Daily Title if it was already stated in the injected prefix; go straight into the Intro Summary (the italic lede). Keep it under 30 seconds when spoken. Direct and conversational. Do NOT include any quotes or epigraphs. The daily word of encouragement will be added separately. Do NOT use hype language. Do NOT introduce or preview The Dashboard at the end. A separate transition will handle that.',
   'light-intro': 'Write a SHORT, punchy podcast opening for the Super Brief. Say "Welcome to the Super Brief" and the date naturally. Then say the Daily Title (the editorial headline for the day). Then tease the top 1-2 stories in one sentence. Keep it under 20 seconds when spoken. Fast, direct, energized. No hype language. No quotes. Jump right in.',
   'The Dashboard': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the content. Structural regime read: what\'s the session\'s character, what regime is forming or breaking, and one structural observation per sub-section (Equities, Crypto, Commodities & Rates). The editorial product is the commentary. The website renders the data. Do NOT recite prices the listener can check themselves. Do NOT preview stories from The Six. Keep the full analytical depth. Simplify language, not thinking. Thread between sub-sections: if equities tell one story and bonds tell another, connect them.',
   'The Take': 'Do NOT introduce or announce this section by name. A separate transition handles that. Start with the topic: "We\'re looking at [topic/headline from the content]." Give the listener a one-sentence setup of what question or argument you\'re about to unpack. THEN build the argument naturally, like you\'re thinking through it in real time. This is the heart of the Markets section. Give it full treatment, don\'t compress. Explain any frameworks in plain language. If the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance. The "where this might be wrong" is just as important as the thesis.',
@@ -1232,7 +1238,13 @@ export const WEEKLY_SIGN_OFF = 'And that closes out the week. Thank you for spen
 const WEEKLY_DISCOVERY_CLOSE_ADDENDUM =
   ' WEEKLY CLOSE (critical): the final paragraph of your content, after the essay ends, is the episode\'s written closing reflection on the whole week. It is NOT part of the essay. Finish the essay completely and let it land. Then start a new paragraph, bridge in one short line (for example: "Which brings us back to the week itself."), and deliver that closing reflection with the unhurried weight of an ending. It is the last thing the listener hears before the sign-off.';
 
-async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string, epigraph: string, isWeekly = false): Promise<string> {
+async function rewriteAsScript(
+  parsed: ParsedBriefForAudio,
+  openaiApiKey: string,
+  epigraph: string,
+  dateSlug: string,
+  isWeekly = false,
+): Promise<string> {
   const client = new OpenAI({ apiKey: openaiApiKey });
 
   // Build all section tasks: intro + each content section
@@ -1243,7 +1255,7 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
   tasks.push({
     index: 0,
     name: 'intro',
-    content: `DATE: ${parsed.displayDate}\nLEDE: ${parsed.lede}`,
+    content: `DAILY TITLE: ${parsed.dailyTitle}\nLEDE: ${parsed.lede}`,
     _epigraph: epigraph, // carried through for post-processing
   } as any);
 
@@ -1339,10 +1351,13 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
       }
     }
 
-    // Hard-inject the epigraph into the intro (index 0) — leads the episode
-    if (epigraph && stitchedParts[0]) {
-      const cleanEpigraph = epigraph.replace(/\*+/g, '').replace(/[_~`]/g, '').trim();
-      stitchedParts[0] = `${cleanEpigraph}\n\n${stitchedParts[0]}`;
+    // Hard-inject epigraph + deterministic welcome/date/title into intro (index 0)
+    if (stitchedParts[0]) {
+      const introPrefix = buildDeterministicIntroPrefix(dateSlug, parsed.dailyTitle);
+      const cleanEpigraph = epigraph ? epigraph.replace(/\*+/g, '').replace(/[_~`]/g, '').trim() : '';
+      stitchedParts[0] = cleanEpigraph
+        ? `${cleanEpigraph}\n\n${introPrefix}\n\n${stitchedParts[0]}`
+        : `${introPrefix}\n\n${stitchedParts[0]}`;
     }
 
     // Append standard sign-off verbatim (never sent through GPT-4o).
@@ -1401,10 +1416,13 @@ async function rewriteAsScript(parsed: ParsedBriefForAudio, openaiApiKey: string
       await new Promise(r => setTimeout(r, 300));
     }
 
-    // Hard-inject epigraph into intro (sequential path)
-    if (epigraph && scriptParts[0]) {
-      const cleanEpigraph = epigraph.replace(/\*+/g, '').replace(/[_~`]/g, '').trim();
-      scriptParts[0] = `${cleanEpigraph}\n\n${scriptParts[0]}`;
+    // Hard-inject epigraph + deterministic welcome/date/title into intro (sequential path)
+    if (scriptParts[0]) {
+      const introPrefix = buildDeterministicIntroPrefix(dateSlug, parsed.dailyTitle);
+      const cleanEpigraph = epigraph ? epigraph.replace(/\*+/g, '').replace(/[_~`]/g, '').trim() : '';
+      scriptParts[0] = cleanEpigraph
+        ? `${cleanEpigraph}\n\n${introPrefix}\n\n${scriptParts[0]}`
+        : `${introPrefix}\n\n${scriptParts[0]}`;
     }
 
     scriptParts.push(isWeekly ? WEEKLY_SIGN_OFF : DAILY_SIGN_OFF);
@@ -1445,7 +1463,7 @@ export interface PreprocessOptions {
  * Pipeline: extract raw content → GPT-4o scriptwriter rewrite → regex normalization
  */
 export async function preprocessBriefForTTS(
-  brief: { date: string; displayDate: string; epigraph: string; lede: string; sections: { id: string; label: string; content: string }[] },
+  brief: { date: string; displayDate: string; dailyTitle?: string; epigraph: string; lede: string; sections: { id: string; label: string; content: string }[] },
   options: PreprocessOptions = {}
 ): Promise<PreprocessedBrief> {
   // Step 1: Extract raw content from selected sections
@@ -1490,7 +1508,7 @@ export async function preprocessBriefForTTS(
   if (!options.skipLlmCleanup && options.openaiApiKey) {
     try {
       console.log('[audio] Rewriting as conversational podcast script (GPT-4o, per-section)...');
-      const script = await rewriteAsScript(parsed, options.openaiApiKey, epigraph, options.isWeekly ?? false);
+      const script = await rewriteAsScript(parsed, options.openaiApiKey, epigraph, brief.date, options.isWeekly ?? false);
       // Step 3: Regex normalize the output to catch anything the LLM missed
       fullText = regexNormalize(script);
       console.log(`[audio] Script: ${fullText.length} characters`);

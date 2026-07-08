@@ -24,6 +24,11 @@ import { spawnSync } from 'child_process';
 // getModelBySlug from lib/data.ts.
 import { READWISE_MODELS, READWISE_DOMAINS } from '../lib/readwise-data.ts';
 import { checkRepetition } from '../lib/repetition-check.ts';
+import {
+  extractDisplayDateFromLine,
+  isDisplayDateLine,
+  validateDisplayDateMatchesSlug,
+} from '../lib/brief-date.ts';
 function getModelBySlug(slug: string) {
   return READWISE_MODELS.find((m: any) => m.slug === slug);
 }
@@ -72,6 +77,34 @@ function stripComments(src: string): string {
   let result = src.replace(/<!--\s*DEPTH-TREATMENT\s*-->/g, DT_TOKEN);
   result = result.replace(/<!--[\s\S]*?-->/g, '');
   return result;
+}
+
+function extractDisplayDateFromHeader(body: string): string | null {
+  for (const line of body.split('\n').slice(0, 25)) {
+    const trimmed = line.trim();
+    if (isDisplayDateLine(trimmed)) {
+      return extractDisplayDateFromLine(trimmed);
+    }
+  }
+  return null;
+}
+
+function checkDisplayDateMatchesSlug(body: string, briefDate: string): Failure[] {
+  const displayDate = extractDisplayDateFromHeader(body);
+  if (!displayDate) {
+    return [{
+      check: 'display-date-slug',
+      message: `No display date line in brief header (expected **Weekday, Month D, YYYY** or ## Weekday, Month D, YYYY matching ${briefDate}).`,
+    }];
+  }
+  const result = validateDisplayDateMatchesSlug(displayDate, briefDate);
+  if (!result.ok) {
+    return [{
+      check: 'display-date-slug',
+      message: result.message ?? `displayDate does not match slug ${briefDate}.`,
+    }];
+  }
+  return [];
 }
 
 function checkHeaders(body: string): Failure[] {
@@ -1693,6 +1726,11 @@ function main() {
   const briefDir = path.dirname(absPath);
 
   const failures: Failure[] = [];
+  // --- Header display date must match filename slug (July 7, 2026 — parser/audio date bug) ---
+  const briefDateMatch = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
+  if (briefDateMatch) {
+    failures.push(...checkDisplayDateMatchesSlug(body, briefDateMatch[1]));
+  }
   // --- Original mechanical checks ---
   failures.push(...checkHeaders(body));
   failures.push(...checkOrientationBanned(body));
