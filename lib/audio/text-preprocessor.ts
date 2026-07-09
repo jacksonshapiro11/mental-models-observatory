@@ -12,6 +12,7 @@
 import OpenAI from 'openai';
 import {
   buildDeterministicIntroPrefix,
+  buildDeterministicLightIntroPrefix,
   resolveDisplayDate,
 } from '../brief-date';
 
@@ -380,12 +381,21 @@ function deduplicateExpansions(text: string): string {
 /** Collapse doubled words and article collisions left by abbreviation expansion.
  *  Caught live in W27 audio (2026-07-05): "at the the E.C.B.'s", "WTI crude crude oil",
  *  and "a the Bank of Japan hike" (expansion of "a BOJ hike"). deduplicateExpansions only
- *  covers known expansion strings; this is the general mechanical backstop. */
+ *  covers known expansion strings; this is the general mechanical backstop.
+ *
+ *  2026-07-08: must NOT collapse century-year speech. yearToSpoken(2026) →
+ *  "twenty twenty-six"; the old `\b...\b` match treated the second "twenty" as a
+ *  whole word (word-boundary before the hyphen) and produced audible "twenty-six"
+ *  while validateIntroDate still parsed that as 2026 and passed. Guard "twenty"
+ *  doubles AND refuse to collapse when the second copy is the head of a
+ *  hyphenated compound (`(?!-)`). */
 export function collapseDoubledWords(text: string): string {
   // Legit English doubles we must not touch.
-  const legit = new Set(['had', 'that', 'very', 'many']);
+  const legit = new Set(['had', 'that', 'very', 'many', 'twenty']);
   // "the the", "crude crude", "Japan Japan" — immediate case-insensitive duplicates.
-  text = text.replace(/\b([A-Za-z][\w.&'’-]*)(\s+\1)\b/gi, (m, w1: string) =>
+  // (?!-) : do not collapse when the second copy starts a hyphenated word
+  // (e.g. "twenty twenty-six" must stay intact for spoken years).
+  text = text.replace(/\b([A-Za-z][\w.&'’-]*)(\s+\1)\b(?!-)/gi, (m, w1: string) =>
     legit.has(w1.toLowerCase()) ? m : w1
   );
   // Article collision: "a the Bank of Japan" / "an the E.C.B." → "the ...".
@@ -699,6 +709,26 @@ export function enforceScriptRules(sectionName: string, script: string, sourceCo
   const warnings: string[] = [];
   let out = script.trim();
 
+  // 0) Light intro: welcome/date/title are hard-injected. Strip residual GPT welcome/date
+  //    so we never double-announce (Jul 8 class + general transition doubles).
+  if (sectionName === 'light-intro' || canonicalSectionKey(sectionName) === 'light-intro') {
+    const before = out;
+    out = out
+      .replace(/^(?:welcome(?:\s+back)?(?:\s+to(?:\s+the)?\s+super\s+brief)?[^.!?\n]*[.!?]\s*)+/i, '')
+      .replace(
+        /^(?:it'?s\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)[^.!?\n]*[.!?]\s*/i,
+        '',
+      )
+      .replace(
+        /^(?:today(?:'s)?\s+(?:date|brief|super\s+brief)\s+is\s+)[^.!?\n]*[.!?]\s*/i,
+        '',
+      )
+      .trim();
+    if (out !== before) {
+      warnings.push(`${sectionName}: stripped residual welcome/date (hard-inject owns those)`);
+    }
+  }
+
   // 1) Strip a double-intro LEAD sentence ("Let's dive into some fascinating stories...").
   //    The deterministic transition already did the intro; an announce-y lead is pure
   //    double-intro whether or not it uses a phrase from the banned list.
@@ -872,7 +902,7 @@ Return ONLY the spoken script for this section. No meta-commentary, no [brackete
  */
 const SECTION_INSTRUCTIONS: Record<string, string> = {
   'intro': 'Write a SHORT, energizing podcast opening hook ONLY. Do NOT say the welcome, show name, or date — those are injected verbatim before your output. Do NOT repeat the Daily Title if it was already stated in the injected prefix; go straight into the Intro Summary (the italic lede). Keep it under 30 seconds when spoken. Direct and conversational. Do NOT include any quotes or epigraphs. The daily word of encouragement will be added separately. Do NOT use hype language. Do NOT introduce or preview The Dashboard at the end. A separate transition will handle that.',
-  'light-intro': 'Write a SHORT, punchy podcast opening for the Super Brief. Say "Welcome to the Super Brief" and the date naturally. Then say the Daily Title (the editorial headline for the day). Then tease the top 1-2 stories in one sentence. Keep it under 20 seconds when spoken. Fast, direct, energized. No hype language. No quotes. Jump right in.',
+  'light-intro': 'Write a SHORT, punchy podcast opening hook ONLY for the Super Brief. Do NOT say the welcome, show name, or date — those are injected verbatim before your output. Do NOT repeat the Daily Title if it was already stated in the injected prefix; go straight into a one-sentence tease of the top 1-2 stories. Keep it under 15 seconds when spoken. Fast, direct, energized. No hype language. No quotes. Jump right in.',
   'The Dashboard': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the content. Structural regime read: what\'s the session\'s character, what regime is forming or breaking, and one structural observation per sub-section (Equities, Crypto, Commodities & Rates). The editorial product is the commentary. The website renders the data. Do NOT recite prices the listener can check themselves. Do NOT preview stories from The Six. Keep the full analytical depth. Simplify language, not thinking. Thread between sub-sections: if equities tell one story and bonds tell another, connect them.',
   'The Take': 'Do NOT introduce or announce this section by name. A separate transition handles that. Start with the topic: "We\'re looking at [topic/headline from the content]." Give the listener a one-sentence setup of what question or argument you\'re about to unpack. THEN build the argument naturally, like you\'re thinking through it in real time. This is the heart of the Markets section. Give it full treatment, don\'t compress. Explain any frameworks in plain language. If the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance. The "where this might be wrong" is just as important as the thesis.',
   // Weekly-only top-level sections (THE SIGNAL and THE PREDICTIONS appear only in the Weekly)
@@ -1638,7 +1668,9 @@ NO SECTION INTROS: a deterministic transition is added before your section. Do n
 BANNED: em-dashes (use a period or a comma instead), "buckle up," "here's where it gets interesting," "let that sink in," "at the end of the day," and hype filler. Spell numbers for natural speech and round where it helps. Skip markdown, links, and reference markers.`;
 
 const LIGHT_SECTION_INSTRUCTIONS: Record<string, string> = {
-  'light-intro': 'Open the episode in two or three warm, energetic sentences. Use the DAILY TITLE and the lead idea HEADLINE to set up the big ideas coming, and make the listener want to stay. Do not summarize the whole brief; just open the door. No "welcome back," no throat-clearing.',
+  // Welcome + date + title are hard-injected via buildDeterministicLightIntroPrefix —
+  // GPT must NOT speak them (Jul 8: GPT date + collapseDoubledWords → audible "July 8th 26").
+  'light-intro': 'Write a SHORT opening hook ONLY — two sentences max. Do NOT say welcome, the show name, the date, or the Daily Title; those are injected verbatim before your output. Use the HEADLINE to tease the top 1-2 ideas and make the listener want to stay. No "welcome back," no throat-clearing, no calendar date.',
   'The Idea': 'Deliver this as one genuine market idea: state the idea and why it matters, ground it in the news that surfaced it, and include the honest "what would change my mind." Keep the through-line tight — the idea is the point, the news is the evidence. Stay close to the source text; do not invent numbers or calls not in it.',
   'Also Moving': 'Brisk and secondary. A couple of things moving that did not rise to a full idea today. One or two sentences each. Keep it light and quick.',
   'The Update': 'Do NOT introduce or announce this section — the transition handles it. Cover every story. Each one gets its headline, the key numbers, why it matters, and the "so what." STORY BOUNDARIES (critical): each story is its own beat. Open every new story with a brief, VARIED turn signal in a few words (Meanwhile / One more / The quieter one / On a different front) so the listener always knows a new story just started. Never let two stories blur into one sentence stream, and never bridge them with a fabricated connection. Do NOT skip any story. Stay close to the source text. The specificity is the value. Get to the insight fast. No throat-clearing.',
@@ -1717,9 +1749,9 @@ export async function preprocessBriefLightForTTS(
       console.log('[audio:light] Rewriting as Super Brief podcast script (GPT-4o, per-section)...');
       const client = new OpenAI({ apiKey: options.openaiApiKey });
 
-      // Build intro — include Daily Title so the opening uses the same headline as the brief.
-      // Anchor the HEADLINE hint to the lead IDEA (not ordered[0], which is now Markets Minute),
-      // so the intro still previews the ideas even though Markets Minute is spoken first.
+      // Build intro hook — welcome/date/title are hard-injected (same pattern as full brief).
+      // GPT only writes the tease; DATE is NOT passed so it cannot invent a spoken date.
+      // Anchor the HEADLINE hint to the lead IDEA (not ordered[0], which may be Markets Minute).
       const firstIdea = ordered.find(s => s.id === 'the-idea');
       const ideaHeadline = firstIdea
         ? (firstIdea.title
@@ -1727,19 +1759,20 @@ export async function preprocessBriefLightForTTS(
             || firstIdea.content.split('\n')[0]
             || '')
         : (ordered[0]?.content?.split('\n')[0] || '');
-      const introContent = `DATE: ${brief.displayDate}\nDAILY TITLE: ${brief.dailyTitle || ''}\nHEADLINE: ${ideaHeadline}`;
-      const { script: introScript } = await rewriteSectionChecked(client, 'light-intro', introContent, {}, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
+      const introContent = `DAILY TITLE: ${brief.dailyTitle || ''}\nHEADLINE: ${ideaHeadline}`;
+      const { script: introHook } = await rewriteSectionChecked(client, 'light-intro', introContent, {}, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
 
       // Rewrite each section individually with section-specific instructions
       const sectionScripts: string[] = [];
 
-      // Prepend epigraph + intro
+      // Hard-inject epigraph + deterministic welcome/date/title, then GPT hook
+      const introPrefix = buildDeterministicLightIntroPrefix(brief.date, brief.dailyTitle);
       const cleanEpigraph = epigraph.replace(/\*+/g, '').replace(/[_~`]/g, '').trim();
-      if (cleanEpigraph) {
-        sectionScripts.push(`${cleanEpigraph}\n\n${introScript}`);
-      } else {
-        sectionScripts.push(introScript);
-      }
+      sectionScripts.push(
+        cleanEpigraph
+          ? `${cleanEpigraph}\n\n${introPrefix}\n\n${introHook}`
+          : `${introPrefix}\n\n${introHook}`,
+      );
 
       // Process each section. The light path is sequential (this for-await loop), so we can
       // carry a running fact list forward: each section is told what earlier ones already

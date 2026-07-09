@@ -3,6 +3,7 @@
  */
 
 import {
+  assertAudibleYearIntact,
   extractIntroFromFullScript,
   validateDisplayDateMatchesSlug,
   validateIntroDate,
@@ -16,7 +17,7 @@ export interface AudioIntroAuditResult {
   errors: string[];
 }
 
-/** Run intro date + displayDate defense-in-depth checks before TTS. */
+/** Run intro date + displayDate + audible-year defense-in-depth checks before TTS. */
 export function auditAudioIntro(
   fullScript: string,
   dateSlug: string,
@@ -33,6 +34,13 @@ export function auditAudioIntro(
   const introCheck = validateIntroDate(intro, dateSlug);
   if (!introCheck.ok && introCheck.message) {
     errors.push(`intro-date: ${introCheck.message}`);
+  }
+
+  // Catches the Jul 8 class: parser accepts "twenty-six" as 2026, but the ear hears
+  // the wrong year. Require the full century phrase still present in the script.
+  const audibleYear = assertAudibleYearIntact(fullScript, dateSlug);
+  if (!audibleYear.ok && audibleYear.message) {
+    errors.push(`audible-year: ${audibleYear.message}`);
   }
 
   return { ok: errors.length === 0, errors };

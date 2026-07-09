@@ -7,6 +7,8 @@ import { getBriefLightByDate } from '@/lib/brief-light-parser';
 import { getWeeklyLightBySlug } from '@/lib/weekly-light-parser';
 import { isStaleForAutoPublish, todayET } from '@/lib/publish-date';
 import { preprocessBriefLightForTTS, checkScriptFidelity } from '@/lib/audio/text-preprocessor';
+import { auditAudioIntroOrThrow } from '@/lib/audio/audio-intro-gate';
+import { resolveDisplayDate } from '@/lib/brief-date';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
 import { writeLightEpisodeMetadata, readLightEpisodeMetadata } from '@/lib/audio/podcast-feed';
 import { weeklyLightEpisodeKey } from '@/lib/audio/episode-keys';
@@ -110,6 +112,10 @@ export async function generateLightAudio(
     console.log(
       `[audio:light] Script: ${preprocessed.characterCount} characters, ${preprocessed.sections.length} sections`,
     );
+
+    const resolvedDisplayDate = resolveDisplayDate(brief.displayDate, brief.date);
+    auditAudioIntroOrThrow(preprocessed.fullText, brief.date, resolvedDisplayDate);
+    console.log(`[audio:light] Intro date audit PASS for ${brief.date}`);
 
     const fidelity = checkScriptFidelity(
       brief.sections.map((s) => s.content).join('\n'),

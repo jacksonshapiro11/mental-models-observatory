@@ -33,11 +33,16 @@ import {
 } from '../lib/audio/text-preprocessor';
 import {
   buildDeterministicIntroPrefix,
+  buildDeterministicLightIntroPrefix,
   formatSpokenDateFromSlug,
   validateIntroDate,
   validateDisplayDateMatchesSlug,
+  assertAudibleYearIntact,
 } from '../lib/brief-date';
 import { auditAudioIntro } from '../lib/audio/audio-intro-gate';
+import { _test as preprocessorTest } from '../lib/audio/text-preprocessor';
+
+const { regexNormalize } = preprocessorTest;
 
 let failures = 0;
 function check(name: string, actual: unknown, predicate: (a: unknown) => boolean, detail?: string) {
@@ -77,6 +82,25 @@ check(
   'negative control: clean sentence untouched',
   collapseDoubledWords('The ten-year yield ran 4.39 to 4.47 and back.'),
   a => a === 'The ten-year yield ran 4.39 to 4.47 and back.',
+);
+check(
+  'Jul 8 audible-year: "twenty twenty-six" must NOT collapse to "twenty-six"',
+  collapseDoubledWords('It\'s Wednesday, July eighth, twenty twenty-six.'),
+  a => a === 'It\'s Wednesday, July eighth, twenty twenty-six.',
+);
+check(
+  'Jul 8 audible-year: full deterministic prefix survives collapse',
+  collapseDoubledWords(buildDeterministicIntroPrefix('2026-07-08', 'Test Title')),
+  a => {
+    const s = a as string;
+    // Must keep the century form; reject decade-only mangling ("..., twenty-six.")
+    return s.includes('twenty twenty-six') && !/,\s*twenty-six\./.test(s);
+  },
+);
+check(
+  'year double still collapses when NOT a hyphenated decade (the the stays fixed)',
+  collapseDoubledWords('the the market'),
+  a => a === 'the market',
 );
 
 console.log('── 2. Section-name drift (the silent Wild Card cold start) ──');
@@ -221,6 +245,63 @@ check(
     'Tuesday, July 7, 2026',
   ).ok,
   a => a === true,
+);
+
+console.log('── 6. Audible year + light hard-inject (Jul 8 "July 8th 26" class) ──');
+
+const jul8Prefix = buildDeterministicIntroPrefix('2026-07-08', 'Pipeline Fix');
+const jul8Collapsed = collapseDoubledWords(jul8Prefix);
+check(
+  'assertAudibleYearIntact PASS when century phrase present',
+  assertAudibleYearIntact(jul8Collapsed, '2026-07-08').ok,
+  a => a === true,
+);
+check(
+  'assertAudibleYearIntact FAIL on collapsed "twenty-six" (the old silent pass)',
+  assertAudibleYearIntact(
+    'Welcome. It\'s Wednesday, July eighth, twenty-six. Today\'s episode: Pipeline Fix.',
+    '2026-07-08',
+  ).ok,
+  a => a === false,
+);
+check(
+  'validateIntroDate FAIL on collapsed decade-only year (no longer parses as 2026)',
+  validateIntroDate(
+    'Welcome. It\'s Wednesday, July eighth, twenty-six.',
+    '2026-07-08',
+  ).ok,
+  a => a === false,
+);
+check(
+  'regexNormalize preserves twenty twenty-six through full normalize path',
+  regexNormalize(jul8Prefix),
+  a => (a as string).includes('twenty twenty-six'),
+);
+check(
+  'light hard-inject prefix includes Super Brief + century year + title',
+  buildDeterministicLightIntroPrefix('2026-07-08', 'Pipeline Fix'),
+  a =>
+    (a as string).includes('Welcome to the Super Brief') &&
+    (a as string).includes('twenty twenty-six') &&
+    (a as string).includes('Pipeline Fix'),
+);
+check(
+  'auditAudioIntro FAIL on collapsed year even if month/day match',
+  auditAudioIntro(
+    'Welcome to Markets, Meditations, and Mental Models. It\'s Wednesday, July eighth, twenty-six.\n\nHook.\n\n...\n\nOK, let\'s get started with today\'s brief.',
+    '2026-07-08',
+    'Wednesday, July 8, 2026',
+  ).ok,
+  a => a === false,
+);
+check(
+  'light-intro residual welcome/date stripped by enforceScriptRules',
+  enforceScriptRules(
+    'light-intro',
+    'Welcome to the Super Brief. It\'s Wednesday, July eighth. NATO opens with a big pledge.',
+    '',
+  ).script,
+  a => !(a as string).toLowerCase().includes('welcome') && !(a as string).toLowerCase().includes('wednesday'),
 );
 
 console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);

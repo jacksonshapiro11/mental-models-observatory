@@ -29,11 +29,18 @@ export async function runWeeklyPublishComplete(weeklySlug: string) {
   const lightEpisodeKey = weeklyLightEpisodeKey(weeklySlug);
 
   if (!getWeeklyLightBySlug(weeklySlug)) {
-    return NextResponse.json({
-      weekly: weeklySlug,
-      skipped: true,
-      reason: `No Weekly Light published for ${weeklySlug}`,
-    });
+    console.error(
+      `[publish/complete] SKIPPED — No Weekly Light published for ${weeklySlug} on deployed filesystem.`,
+    );
+    return NextResponse.json(
+      {
+        weekly: weeklySlug,
+        skipped: true,
+        reason: `No Weekly Light published for ${weeklySlug}`,
+        success: false,
+      },
+      { status: 409 },
+    );
   }
 
   console.log(`[publish/complete] Starting weekly pipeline for ${weeklySlug}`);

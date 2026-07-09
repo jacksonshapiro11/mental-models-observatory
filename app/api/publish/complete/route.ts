@@ -4,8 +4,9 @@
  * Fires full podcast audio, light audio, distribution (email + X), and
  * marketing pack in parallel. Each step is idempotent — skips work already done.
  *
- * Primary trigger: publish.py after GitHub push + deploy wait.
- * Failsafe: Vercel cron at ~5:55 AM ET (55 9 * * * UTC during EDT).
+ * Primary trigger: publish.py after GitHub push + health poll.
+ * Failsafes: Vercel crons ~5:55 AM ET (55 9 * * *) and ~6:30 AM ET (30 10 * * *) UTC during EDT.
+ * Both are idempotent — safe if the primary path already succeeded.
  *
  * Query: ?date=YYYY-MM-DD (optional, defaults to today ET)
  *         ?weekly=YYYY-Www (optional — weekly audio + email instead of daily)
@@ -55,11 +56,19 @@ async function runPublishComplete(req: NextRequest) {
   const { date: dateSlug, manual } = resolvePublishDate(req.nextUrl.searchParams.get('date'));
 
   if (!getBriefLightByDate(dateSlug)) {
-    return NextResponse.json({
-      date: dateSlug,
-      skipped: true,
-      reason: `No brief published for ${dateSlug}`,
-    });
+    console.error(
+      `[publish/complete] SKIPPED — No brief published for ${dateSlug} on deployed filesystem. ` +
+        `Caller should poll /api/publish/health?date=${dateSlug} until lightBrief=true before retrying.`,
+    );
+    return NextResponse.json(
+      {
+        date: dateSlug,
+        skipped: true,
+        reason: `No brief published for ${dateSlug}`,
+        success: false,
+      },
+      { status: 409 },
+    );
   }
 
   console.log(`[publish/complete] Starting parallel pipeline for ${dateSlug}`);

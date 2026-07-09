@@ -231,13 +231,17 @@ function parseSpokenYear(text: string): number | null {
     if (n !== undefined) return 2000 + n;
   }
 
+  // Century form required: "twenty twenty-six" → 2026. A bare "twenty-six" must
+  // NOT parse as 2026 — that was the Jul 8 audible-year hole: collapseDoubledWords
+  // mangled the century form, then this fallback made validateIntroDate pass.
   if (lower.startsWith('twenty ')) {
-    const lastTwo = parseSpokenTwoDigits(lower.slice('twenty '.length));
+    const rest = lower.slice('twenty '.length).trim();
+    // Reject collapsed leftovers like "twenty-six" mis-read as century+decade
+    // when the original was already mangled to a single "twenty-six" token —
+    // handled below as null. Here rest is the decade portion after century "twenty ".
+    const lastTwo = parseSpokenTwoDigits(rest);
     if (lastTwo !== null) return 2000 + lastTwo;
   }
-
-  const lastTwoOnly = parseSpokenTwoDigits(lower);
-  if (lastTwoOnly !== null && lastTwoOnly >= 10) return 2000 + lastTwoOnly;
 
   return null;
 }
@@ -334,6 +338,25 @@ export function buildDeterministicIntroPrefix(dateSlug: string, dailyTitle?: str
   const spokenDate = formatSpokenDateFromSlug(dateSlug);
   const titlePart = dailyTitle?.trim() ? ` Today's episode: ${dailyTitle.trim()}.` : '';
   return `Welcome to Markets, Meditations, and Mental Models. It's ${spokenDate}.${titlePart}`;
+}
+
+/** Super Brief welcome + date + title — GPT must not speak the date on the light path. */
+export function buildDeterministicLightIntroPrefix(dateSlug: string, dailyTitle?: string): string {
+  const spokenDate = formatSpokenDateFromSlug(dateSlug);
+  const titlePart = dailyTitle?.trim() ? ` Today's Super Brief: ${dailyTitle.trim()}.` : '';
+  return `Welcome to the Super Brief. It's ${spokenDate}.${titlePart}`;
+}
+
+/** Assert the spoken script still contains the unambiguous century-year phrase
+ *  (e.g. "twenty twenty-six"), not a collapsed decade-only form. */
+export function assertAudibleYearIntact(script: string, dateSlug: string): DateValidationResult {
+  const expectedYear = yearToSpoken(parseSlugDate(dateSlug).year);
+  const lower = script.toLowerCase().slice(0, 1500);
+  if (lower.includes(expectedYear.toLowerCase())) return { ok: true };
+  return {
+    ok: false,
+    message: `Spoken script missing unambiguous year phrase "${expectedYear}" in intro window (possible collapseDoubledWords mangling).`,
+  };
 }
 
 /** Resolve displayDate from parser output with slug fallback. */
