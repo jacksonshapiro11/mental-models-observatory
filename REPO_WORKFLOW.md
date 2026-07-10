@@ -73,11 +73,14 @@ brief-morning (~5:20 AM ET)
             └─ marketing pack (parallel)
        └─ if health times out: ALERT + do NOT call complete (failsafes recover)
 
-FAILSAFE A — GitHub Action `.github/workflows/publish-complete.yml`
+FAILSAFE A — GitHub Action (install once)
+  Template committed at `docs/ops/publish-complete.workflow.yml`.
+  Copy to `.github/workflows/publish-complete.yml` and push with a token that has
+  the `workflow` scope (fine-grained PAT / SSH), then add repo Action secret
+  `CRON_SECRET` or `SNAPSHOT_SECRET`.
   on push to main of content/daily-updates/** (and workflow_dispatch)
   └─ poll https://www.cosmictrex.com/api/publish/health (custom domain)
        └─ POST /api/publish/complete with Bearer CRON_SECRET or SNAPSHOT_SECRET
-  Requires repo Action secret: CRON_SECRET and/or SNAPSHOT_SECRET
 
 FAILSAFE B — Vercel crons (UTC, EDT ≈ UTC-4):
   9:00 Mon–Fri  /api/dashboard/snapshot
