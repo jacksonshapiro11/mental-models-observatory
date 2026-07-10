@@ -5,19 +5,21 @@
  * marketing pack in parallel. Each step is idempotent — skips work already done.
  *
  * Primary trigger: publish.py after GitHub push + health poll.
- * Failsafes: Vercel crons ~5:55 AM ET (55 9 * * *) and ~6:30 AM ET (30 10 * * *) UTC during EDT.
- * Both are idempotent — safe if the primary path already succeeded.
+ * Failsafes:
+ *   - GitHub Action on content/daily-updates/** push (polls custom domain, then POST)
+ *   - Vercel crons ~5:55 / ~6:30 / ~7:15 AM ET (UTC during EDT)
  *
  * Query: ?date=YYYY-MM-DD (optional, defaults to today ET)
  *         ?weekly=YYYY-Www (optional — weekly audio + email instead of daily)
- * Auth: Bearer CRON_SECRET or SNAPSHOT_SECRET
+ * Auth: see lib/cron-auth.ts (Vercel cron markers, Bearer CRON_SECRET / SNAPSHOT_SECRET)
  */
 
 export const maxDuration = 300;
+export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { isCronAuthorized } from '@/lib/cron-auth';
+import { getCronAuthPath } from '@/lib/cron-auth';
 import { resolvePublishDate } from '@/lib/publish-date';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
 import { getBriefByDate } from '@/lib/daily-update-parser';
@@ -30,10 +32,39 @@ import { audioNeedsRetry } from '@/lib/marketing/pipeline-status';
 import { readAudioLog, readMarketingPack, writeAudioLog } from '@/lib/marketing/distribute-log';
 import { runWeeklyPublishComplete } from '@/lib/publish/weekly-complete';
 
+/** Brief may land mid-request when cron races a deploy — wait before 409. */
+const BRIEF_WAIT_MS = 90_000;
+const BRIEF_POLL_MS = 5_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForLightBrief(dateSlug: string): Promise<boolean> {
+  if (getBriefLightByDate(dateSlug)) return true;
+  const deadline = Date.now() + BRIEF_WAIT_MS;
+  let attempt = 0;
+  while (Date.now() < deadline) {
+    attempt += 1;
+    console.warn(
+      `[publish/complete] light brief missing for ${dateSlug} — waiting (${attempt}, up to ${BRIEF_WAIT_MS / 1000}s)`,
+    );
+    await sleep(BRIEF_POLL_MS);
+    if (getBriefLightByDate(dateSlug)) {
+      console.log(`[publish/complete] light brief appeared for ${dateSlug} after wait`);
+      return true;
+    }
+  }
+  return false;
+}
+
 export async function POST(req: NextRequest) {
-  if (!isCronAuthorized(req)) {
+  const authPath = getCronAuthPath(req);
+  if (!authPath) {
+    console.warn('[publish/complete] Unauthorized — no matching cron auth path');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  console.log(`[publish/complete] auth=${authPath}`);
 
   try {
     return await runPublishComplete(req);
@@ -55,9 +86,9 @@ async function runPublishComplete(req: NextRequest) {
 
   const { date: dateSlug, manual } = resolvePublishDate(req.nextUrl.searchParams.get('date'));
 
-  if (!getBriefLightByDate(dateSlug)) {
+  if (!(await waitForLightBrief(dateSlug))) {
     console.error(
-      `[publish/complete] SKIPPED — No brief published for ${dateSlug} on deployed filesystem. ` +
+      `[publish/complete] SKIPPED — No brief published for ${dateSlug} on deployed filesystem after ${BRIEF_WAIT_MS / 1000}s wait. ` +
         `Caller should poll /api/publish/health?date=${dateSlug} until lightBrief=true before retrying.`,
     );
     return NextResponse.json(
@@ -65,6 +96,7 @@ async function runPublishComplete(req: NextRequest) {
         date: dateSlug,
         skipped: true,
         reason: `No brief published for ${dateSlug}`,
+        waitedMs: BRIEF_WAIT_MS,
         success: false,
       },
       { status: 409 },

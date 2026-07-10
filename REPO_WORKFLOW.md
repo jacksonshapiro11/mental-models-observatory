@@ -66,29 +66,41 @@ brief-morning (~5:20 AM ET)
   └─ publish.py → GitHub push (full + light .md)
        └─ poll GET /api/publish/health?date=YYYY-MM-DD until lightBrief=true
             (initial 15s delay, then every 10s, timeout 300s)
-       └─ THEN POST /api/publish/complete
+       └─ THEN POST /api/publish/complete  (thread is JOINed — not fire-and-forget)
             ├─ full podcast audio (parallel)
             ├─ super brief audio (parallel)
             ├─ email + X distribute (parallel)
             └─ marketing pack (parallel)
-       └─ if health times out: ALERT + do NOT call complete (failsafe cron recovers)
+       └─ if health times out: ALERT + do NOT call complete (failsafes recover)
 
-brief-morning-verify (~5:50 AM ET)  ← ADD THIS SCHEDULED TASK if missing
-  └─ publish.py --verify --content-dir content/daily-updates
-       └─ auto-re-publishes any missing files from local copies
+FAILSAFE A — GitHub Action `.github/workflows/publish-complete.yml`
+  on push to main of content/daily-updates/** (and workflow_dispatch)
+  └─ poll https://www.cosmictrex.com/api/publish/health (custom domain)
+       └─ POST /api/publish/complete with Bearer CRON_SECRET or SNAPSHOT_SECRET
+  Requires repo Action secret: CRON_SECRET and/or SNAPSHOT_SECRET
 
-Vercel crons (UTC, EDT ≈ UTC-4):
+FAILSAFE B — Vercel crons (UTC, EDT ≈ UTC-4):
   9:00 Mon–Fri  /api/dashboard/snapshot
-  9:50 daily    /api/publish/backup     — content health check (GitHub + deployed site)
-  9:55 daily    /api/publish/complete   — primary idempotent failsafe (~5:55 AM ET)
-  10:30 daily   /api/publish/complete   — second retry (~6:30 AM ET); no-op if already done
+  9:50 daily    /api/publish/backup     — content health check
+  9:55 daily    /api/publish/complete   — ~5:55 AM ET
+  10:30 daily   /api/publish/complete   — ~6:30 AM ET
+  11:15 daily   /api/publish/complete   — ~7:15 AM ET (late catch)
+  10:15 daily   /api/publish/complete-weekly
 ```
 
-**Why poll, not sleep:** `/api/publish/complete` reads the **deployed Vercel filesystem** via `getBriefLightByDate()`, not GitHub. A fixed 90s wait often raced the deploy (2026-07-08 morning → `skipped: true`). Health poll waits until the live site actually has the light brief.
+**Why poll, not sleep:** `/api/publish/complete` reads the **deployed Vercel filesystem** via `getBriefLightByDate()`, not GitHub. A fixed 90s wait often raced the deploy (2026-07-08 morning → `skipped: true`). Health poll waits until the live site actually has the light brief. complete itself also waits up to 90s before returning 409.
 
-**Skipped is not success:** complete returns HTTP 409 + `skipped: true` when the brief is missing; publish.py prints `ALERT:` and relies on the failsafe crons (9:55 + 10:30 UTC).
+**Skipped is not success:** complete returns HTTP 409 + `skipped: true` when the brief is missing after wait; publish.py prints `ALERT:`.
 
-**Residual risk (honest):** Vercel Cron is best-effort, not a literal SLA. Two spaced idempotent retries + health-poll ALERT cover the common deploy-race and single-miss cases; a platform-wide cron outage still needs manual `POST /api/publish/complete`. `publish.py` itself is local (gitignored under `.claude/`) — the morning machine must already have the health-poll script.
+### Critical: Vercel Cron + Deployment Protection (Jul 10 2026)
+
+Vercel Cron invokes the **deployment `*.vercel.app` host**, not the custom domain. With SSO Protection set to `all_except_custom_domains`, those requests get **HTTP 302 → Vercel login**. Cron jobs **do not follow redirects**, so every failsafe silently no-ops while looking "successful" in the dashboard.
+
+**Required setting:** Project → Deployment Protection → Vercel Authentication → **Preview only** (`ssoProtection.deploymentType = "preview"`). Custom domain stays public; production `*.vercel.app` must reach the function (401 from our auth is fine; 302 is fatal).
+
+**Auth:** `lib/cron-auth.ts` accepts `x-vercel-cron` / `x-vercel-cron-schedule` / `User-Agent: vercel-cron`, Bearer `CRON_SECRET`/`SNAPSHOT_SECRET`, or `?secret=`.
+
+**Residual risk (honest):** Vercel Cron remains best-effort. GHA on content push is the reliable event-driven backup (hits cosmictrex.com). `publish.py` is local (gitignored under `.claude/`) — morning machine must have the join+health-poll script. Repo must have `CRON_SECRET` or `SNAPSHOT_SECRET` in GitHub Actions secrets for the workflow.
 
 ### Content backup
 

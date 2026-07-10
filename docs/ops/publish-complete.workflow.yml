@@ -1,0 +1,93 @@
+name: Morning publish complete
+
+# Event-driven failsafe: when briefs land on main, wait for the live site,
+# then POST /api/publish/complete on the custom domain (not *.vercel.app).
+# This survives Vercel Cron SSO/redirect failures (Jul 10 2026 incident).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'content/daily-updates/**'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Brief date YYYY-MM-DD (defaults to today ET)'
+        required: false
+        type: string
+
+concurrency:
+  group: publish-complete-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  complete:
+    name: Health poll → publish/complete
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Resolve brief date + trigger complete
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SNAPSHOT_SECRET: ${{ secrets.SNAPSHOT_SECRET }}
+          INPUT_DATE: ${{ inputs.date }}
+          SITE_URL: https://www.cosmictrex.com
+        run: |
+          set -euo pipefail
+
+          SECRET="${CRON_SECRET:-}"
+          if [ -z "$SECRET" ]; then
+            SECRET="${SNAPSHOT_SECRET:-}"
+          fi
+          if [ -z "$SECRET" ]; then
+            echo "::error::Neither CRON_SECRET nor SNAPSHOT_SECRET is set in repo Actions secrets."
+            echo "Add one under Settings → Secrets and variables → Actions, then re-run."
+            exit 1
+          fi
+
+          if [ -n "${INPUT_DATE:-}" ]; then
+            DATE="$INPUT_DATE"
+          else
+            DATE=$(TZ=America/New_York date +%F)
+          fi
+          echo "BRIEF_DATE=$DATE"
+
+          # Only run when today's full or light brief is in this push (or manual).
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if ! git fetch --depth=2 origin main >/dev/null 2>&1; then
+              true
+            fi
+          fi
+
+          echo "Polling $SITE_URL/api/publish/health?date=$DATE ..."
+          READY=0
+          for i in $(seq 1 36); do
+            BODY=$(curl -sS "$SITE_URL/api/publish/health?date=$DATE" || true)
+            echo "  poll #$i: $BODY"
+            echo "$BODY" | grep -q '"lightBrief":true' && READY=1 && break
+            sleep 10
+          done
+
+          if [ "$READY" != "1" ]; then
+            echo "::error::Deploy health timeout — lightBrief never true for $DATE"
+            exit 1
+          fi
+
+          echo "POSTing publish/complete..."
+          HTTP=$(curl -sS -o /tmp/complete.json -w "%{http_code}" \
+            -X POST "$SITE_URL/api/publish/complete?date=$DATE" \
+            -H "Authorization: Bearer $SECRET" \
+            -H "User-Agent: mmo-gha-publish-complete")
+          echo "HTTP $HTTP"
+          cat /tmp/complete.json
+          echo
+
+          if [ "$HTTP" = "409" ]; then
+            echo "::error::complete skipped (409) for $DATE"
+            exit 1
+          fi
+          if [ "$HTTP" != "200" ] && [ "$HTTP" != "207" ]; then
+            echo "::error::complete failed HTTP $HTTP"
+            exit 1
+          fi
+          echo "publish/complete OK for $DATE"
