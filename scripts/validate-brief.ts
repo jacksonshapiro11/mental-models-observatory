@@ -572,6 +572,11 @@ function checkInternalTagLeak(body: string): Failure[] {
     { name: 'VERIFIED tag', re: /\[VERIFIED:[^\]]*\]/ },
     { name: 'MODEL SELECTION declaration', re: /^MODEL SELECTION:/m },
     { name: 'INNER GAME STRUCTURE declaration', re: /^INNER GAME STRUCTURE:/m },
+    // Payoff-intro placeholder (2026-07-10, Ceiling Doctrine v0.5 §4): the Writer drafts
+    // sections first with a placeholder intro and MUST replace it before the Validator.
+    // A surviving placeholder is a floor failure — the front door of the product is broken.
+    // This is the mechanical leg of the written-last rule (prose-only rules are unenforced).
+    { name: 'PAYOFF placeholder (intro was never written last)', re: /\[PAYOFF[^\]]*\]/i },
   ];
   const out: Failure[] = [];
   for (const p of patterns) {
@@ -1571,10 +1576,17 @@ function checkQGInnerGameAudit(briefDir: string, absPath: string): Failure[] {
   return out;
 }
 
-// --- Convergence class presence-check (July 3, 2026) ---
-// E-CONVERGENCE-ASSEMBLY-01 🟡 Day 2. When the QG log records a synthesis designation,
-// assert a CONVERGENCE CLASS line exists and reads MECHANISM — a designated synthesis
-// with a THEME class or missing class line is a hard fail.
+// --- Payoff class contract check (reworked 2026-07-10 — Ceiling Doctrine v0.5 §4; was the
+// July 3 Convergence-class presence-check). Convergence-threading is RETIRED
+// (E-CONVERGENCE-ASSEMBLY-01 CLOSED-SUPERSEDED): the synthesis now lives in the Intro
+// Summary (the payoff), written last. This check asserts the QG's PAYOFF log contract:
+//   1. LEGACY DRIFT: an executed SYNTHESIS DESIGNATION in the QG log means the QG ran the
+//      retired spec — same hard-fail semantics as the old check (drift detection).
+//   2. THEME/INVENTORY shipped un-rewritten: a 'PAYOFF CLASS: THEME|INVENTORY' line whose
+//      action reads 'none-needed'/'already payoff-grade' violates PASS 1g step 4 (the QG
+//      MUST rewrite a label/inventory intro toward MECHANISM/TENSION or parallel-tracks).
+//   3. Identified-not-executed: a MECHANISM/TENSION payoff class with no PAYOFF EXECUTION
+//      line = the gate was skipped (same failure shape the old execution checkpoint caught).
 function checkConvergenceClass(briefDir: string, absPath: string): Failure[] {
   const out: Failure[] = [];
   const briefDateMatch = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
@@ -1583,19 +1595,34 @@ function checkConvergenceClass(briefDir: string, absPath: string): Failure[] {
   const qgLog = path.join(briefDir, `${bd}-quality-gate-log.md`);
   if (!fs.existsSync(qgLog)) return out;
   const qgContent = fs.readFileSync(qgLog, 'utf8');
-  // Check if a synthesis designation exists
+
+  // 1. Legacy drift: the retired body-threading gate executed.
   const hasSynthesis = qgContent.includes('SYNTHESIS DESIGNATION:') &&
     !qgContent.includes('not triggered');
   if (hasSynthesis) {
-    if (!qgContent.includes('CONVERGENCE CLASS:')) {
+    out.push({
+      check: 'retired-synthesis-designation-executed',
+      message: `🔴 FAIL: QG log contains an executed SYNTHESIS DESIGNATION — the body-threading synthesis gate was RETIRED 2026-07-10 (Ceiling Doctrine v0.5; the synthesis lives in the Intro Summary now). The QG ran a stale spec: reload system/Novelty_Audit.md (PASS 1g PAYOFF CHECK) and remove the body cross-reference.`,
+    });
+  }
+
+  // 2 + 3. New payoff-class contract (fires only on the new grammar; silent on old logs).
+  const payoffLine = qgContent.match(/PAYOFF CLASS:\s*([^\n]*)/i);
+  if (payoffLine) {
+    const line = payoffLine[1];
+    const cls = /MECHANISM/i.test(line) ? 'MECHANISM' : /TENSION/i.test(line) ? 'TENSION'
+      : /THEME/i.test(line) ? 'THEME' : /INVENTORY/i.test(line) ? 'INVENTORY' : 'UNKNOWN';
+    const noRewrite = /action\s*=\s*\[?\s*(none-needed|already payoff-grade)/i.test(line);
+    if ((cls === 'THEME' || cls === 'INVENTORY') && noRewrite) {
       out.push({
-        check: 'convergence-class-missing',
-        message: `🔴 FAIL: QG log has a SYNTHESIS DESIGNATION but no 'CONVERGENCE CLASS:' line. Per the MECHANISM-VS-THEME CLASSIFICATION rule (July 3), every synthesis must be classified as MECHANISM or THEME before designation.`,
+        check: 'payoff-theme-shipped-unrewritten',
+        message: `🔴 FAIL: QG log classifies the intro payoff as ${cls} with action=none-needed/already-payoff-grade. PASS 1g step 4 REQUIRES the rewrite: a THEME label or headline inventory may not stand as the intro's conclusion — rewrite to the sweep's MECHANISM/TENSION candidate or to the parallel-tracks lead (strongest story + watch).`,
       });
-    } else if (/CONVERGENCE CLASS:.*THEME/i.test(qgContent)) {
+    }
+    if ((cls === 'MECHANISM' || cls === 'TENSION') && !/PAYOFF EXECUTION:/i.test(qgContent)) {
       out.push({
-        check: 'convergence-theme-claimed-as-assembly',
-        message: `🔴 FAIL: QG log classifies the convergence as THEME but has a SYNTHESIS DESIGNATION. Only MECHANISM-class convergences may proceed to synthesis. A THEME may shape the intro/title but must not be claimed as assembly.`,
+        check: 'payoff-identified-not-executed',
+        message: `🔴 FAIL: QG log has PAYOFF CLASS: ${cls} but no 'PAYOFF EXECUTION:' line — the payoff was identified but the execution checkpoint (classify → rewrite-if-owed → verify watch → log) did not run. Equivalent to not running the gate.`,
       });
     }
   }
@@ -1836,10 +1863,15 @@ function main() {
   const subGates: { file: string; extra: string[] }[] = [
     { file: 'fact-gate.ts', extra: ['--allow-unverified'] },
     { file: 'novelty-gate.ts', extra: [] },
-    // assembly-gate is ADVISORY here (no --strict → exits 0 and prints its
-    // "named not cashed out" finding without failing this stage). The Editor Gate
-    // and the Critic are REQUIRED to resolve any assembly finding — that's where it binds.
+    // assembly-gate (the PAYOFF gate since 2026-07-10) is ADVISORY here — exits 0 and
+    // prints leftover-marker / payoff-class / fresh-frame-sweep FLAGs without failing
+    // this stage. Editor Gate 14 and the Critic are REQUIRED to resolve them.
     { file: 'assembly-gate.ts', extra: [] },
+    // ceiling-lint (added 2026-07-10, Ceiling Doctrine v0.5 §9) is ADVISORY — exits 0,
+    // FLAGs the intro/section counterfeits (preview padding, missing watch, through-line
+    // label, numberless bullets, hollow significance, thematic echo). This spawn is the
+    // mechanical wiring that guarantees it runs every night; Editor Gate 14(e) acts on it.
+    { file: 'ceiling-lint.ts', extra: [] },
   ];
   for (const g of subGates) {
     const gp = path.join(scriptsDir, g.file);
