@@ -32,17 +32,35 @@
  *      an editorial agent records what it verified against primary sources),
  *      compares each extracted claim's DIRECTION and magnitude to ground truth.
  *
+ *   5. DRAMATIC-EVENT REUSE (added 2026-07-10 — KOSPI circuit-breaker class).
+ *      Circuit breakers / trading halts / sidecars presented as FRESH (Overnight
+ *      or undated present tense) while an identical venue+event already shipped
+ *      in a prior brief within ~5 days → FAIL. Past-date anchors ("on Tuesday",
+ *      "July 7") silence the check. Worked failure: 07-10 Overnight restated
+ *      Tuesday 07-07's KOSPI halt (−4.91% / >8% intraday / sixth of 2026) while
+ *      Thu 07-09 closed +0.62% and Fri 07-10 was rallying ~5%.
+ *
+ *   6. STORY-FINGERPRINT REUSE (added 2026-07-10 — "don't repeat 3-day-old
+ *      stories as fresh"). Same asset/company + direction + magnitude (±0.4pp)
+ *      presented as FRESH while our archive already printed that move within
+ *      ~3 days → FAIL. Catches the companion class: Jul 10 Overnight also
+ *      restated Tuesday's "Nikkei fell 2.1 percent" without dating it. Past-date
+ *      anchors silence. First occurrence and correctly dated follow-ups stay silent.
+ *
  * Gate logic:
  *   - Any registry contradiction (e.g. Powell-as-current-chair)        -> FAIL
  *   - Any superlative contradicted by our own archive                  -> FAIL
  *   - Any truth contradiction (direction mismatch on any claim)        -> FAIL
  *   - Any CRITICAL claim left UNVERIFIED (no truth entry), unless
  *     --allow-unverified                                               -> FAIL
+ *   - Dramatic market event reused as fresh from a prior brief         -> FAIL
+ *   - Story fingerprint (same % move) reused undated within ~3 days    -> FAIL
  *   - A stated price far from our recent archive                       -> FLAG (verify)
  *   FAIL -> exit 1 (details + worklist written). FLAG is advisory.
  *
  * Usage:
  *   node --experimental-strip-types scripts/fact-gate.ts <brief.md> [--truth <truth.json>] [--allow-unverified] [--archive-days N]
+ *   node --experimental-strip-types scripts/fact-gate.ts --selftest
  *
  * Exit codes: 0 pass · 1 fact failure (details printed + ledger written) · 2 usage error
  */
@@ -145,10 +163,14 @@ function sentenceAround(body: string, idx: number): string {
   return body.slice(start, end + 1).replace(/\s+/g, ' ').trim();
 }
 
+// "%" or the word "percent"/"pct" — editorial prose almost always uses the word.
+// Do NOT put \b after "%" — "%" is non-word, so \b fails before a space/end.
+const PCT_RE = /(\d+(?:\.\d+)?)\s*(?:%|percent\b|pct\b)/i;
+
 function detectDirection(window: string): { dir: 'up' | 'down' | 'unknown'; mag: number | null } {
   const lower = window.toLowerCase();
   // Signed percent takes priority if explicit.
-  const signed = window.match(/([+−-])\s*(\d+(?:\.\d+)?)\s*%/);
+  const signed = window.match(/([+−-])\s*(\d+(?:\.\d+)?)\s*(?:%|percent\b|pct\b)/i);
   let dir: 'up' | 'down' | 'unknown' = 'unknown';
   if (signed) dir = signed[1] === '+' ? 'up' : 'down';
   if (dir === 'unknown') {
@@ -157,7 +179,7 @@ function detectDirection(window: string): { dir: 'up' | 'down' | 'unknown'; mag:
     if (firstUp < firstDown) dir = 'up';
     else if (firstDown < firstUp) dir = 'down';
   }
-  const magMatch = window.match(/(\d+(?:\.\d+)?)\s*%/);
+  const magMatch = window.match(PCT_RE);
   const mag = magMatch ? parseFloat(magMatch[1]) : null;
   return { dir, mag };
 }
@@ -188,8 +210,8 @@ function extractClaims(body: string): Claim[] {
       const start = m.index;
       const end = start + m[0].length;
       if (overlaps(start, end)) continue;
-      // Direction window: 60 chars after the asset mention (covers "futures down 2.6%").
-      const window = body.slice(end, Math.min(body.length, end + 60));
+      // Direction window: 100 chars after the asset mention (covers "closed down 4.91 percent after…").
+      const window = body.slice(end, Math.min(body.length, end + 100));
       const { dir, mag } = detectDirection(window);
       if (dir === 'unknown' && mag === null) continue; // mention without a move; not a checkable claim
       consumed.push([start, end]);
@@ -348,6 +370,216 @@ function loadBearingNote(section: string): string {
   return ' If load-bearing (the section thesis/lede), REWRITE the section on a verified premise; patch or strike only if incidental.';
 }
 
+// ---------------------------------------------------------------------------
+// Dramatic-event reuse (zero-network). Catches "yesterday's halt as today's Overnight."
+// ---------------------------------------------------------------------------
+// Require an ACTIVATION (triggered/tripped/activated…), not the bare mechanism noun
+// (07-06 Take said "blunted by … circuit breakers" as structure — that must stay silent).
+const DRAMATIC_EVENT_RE = new RegExp([
+  '(?:triggered|tripped|activated|issued|hit)\\b[^.\\n]{0,60}circuit\\s+breaker',
+  'circuit\\s+breaker\\b[^.\\n]{0,60}(?:triggered|tripped|activated|issued|hit)',
+  '(?:trading\\s+halt|halt(?:ed|ing)\\s+(?:trade|trading)(?:\\s+for)?)',
+  '(?:buy|sell)[- ]?side\\s+sidecar\\s+(?:was\\s+)?(?:triggered|activated|issued)',
+  '(?:triggered|activated|issued)\\b[^.\\n]{0,40}(?:buy|sell)[- ]?side\\s+sidecar',
+].join('|'), 'gi');
+
+const VENUE_PATTERNS: { key: string; re: RegExp }[] = [
+  { key: 'kospi', re: /\bKOSPI\b|\bKospi\b|South\s+Korea(?:'s)?|Korea(?:'s)?\s+(?:KOSPI|market|bourse)/i },
+  { key: 'nikkei', re: /\bNikkei\b/i },
+  { key: 'hang_seng', re: /\bHang\s+Seng\b/i },
+  { key: 'shanghai', re: /\bShanghai\b|\bCSI\s*300\b/i },
+  { key: 'nyse', re: /\bNYSE\b|\bNew\s+York\s+Stock\s+Exchange\b/i },
+  { key: 'nasdaq', re: /\bNasdaq\b/i },
+];
+
+// Explicit past-date anchors that make a recycled event legitimate history, not Overnight news.
+const PAST_DATE_ANCHOR_RE = /\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:'s)?\s+(?:close|session|selloff|rout|crash|halt|plunge)\b|\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}\b|\byesterday\b|\bearlier\s+this\s+week\b|\blast\s+(?:tuesday|wednesday|thursday|friday|monday|week)\b/i;
+
+function venueNear(text: string, idx: number, radius = 220): string | null {
+  const start = Math.max(0, idx - radius);
+  const window = text.slice(start, Math.min(text.length, idx + radius));
+  for (const v of VENUE_PATTERNS) {
+    if (v.re.test(window)) return v.key;
+  }
+  return null;
+}
+
+function extractDramaticEvents(body: string): { venue: string; idx: number; sentence: string; section: string; pastDated: boolean }[] {
+  const out: { venue: string; idx: number; sentence: string; section: string; pastDated: boolean }[] = [];
+  DRAMATIC_EVENT_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = DRAMATIC_EVENT_RE.exec(body)) !== null) {
+    const venue = venueNear(body, m.index);
+    if (!venue) continue;
+    const sentence = sentenceAround(body, m.index);
+    const section = sectionOf(body, m.index);
+    const ctx = body.slice(Math.max(0, m.index - 120), Math.min(body.length, m.index + m[0].length + 160));
+    out.push({
+      venue,
+      idx: m.index,
+      sentence,
+      section,
+      pastDated: PAST_DATE_ANCHOR_RE.test(sentence) || PAST_DATE_ANCHOR_RE.test(ctx),
+    });
+  }
+  return out;
+}
+
+function daysBetween(a: string, b: string): number {
+  const ms = Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z');
+  return Math.round(ms / 86400000);
+}
+
+/** FAIL when a dramatic halt/breaker is presented as fresh but already shipped recently. */
+function dramaticEventReuse(body: string, briefPath: string, briefDate: string | null, lookbackDays = 5): Finding[] {
+  const findings: Finding[] = [];
+  const current = extractDramaticEvents(body).filter((e) => !e.pastDated);
+  if (!current.length || !briefDate) return findings;
+
+  const dir = findArchiveDir(briefPath);
+  if (!dir) return findings;
+  let files: string[];
+  try { files = fs.readdirSync(dir); } catch { return findings; }
+
+  const priors = files
+    .filter((f) => /^\d{4}-\d{2}-\d{2}\.md$/.test(f))
+    .map((f) => ({ f, d: f.slice(0, 10) }))
+    .filter((x) => x.d < briefDate && daysBetween(x.d, briefDate) <= lookbackDays);
+
+  for (const ev of current) {
+    if (findings.some((f) => f.message.startsWith(`${ev.venue} `))) continue; // one FAIL per venue
+    for (const { f, d } of priors) {
+      let priorTxt: string;
+      try { priorTxt = fs.readFileSync(path.join(dir, f), 'utf8'); } catch { continue; }
+      const priorHits = extractDramaticEvents(priorTxt).filter((p) => p.venue === ev.venue);
+      if (!priorHits.length) continue;
+      findings.push({
+        check: 'dramatic-event-reuse',
+        severity: 'FAIL',
+        message: `${ev.venue} dramatic market event ("${ev.sentence.slice(0, 100)}…") is presented as FRESH in ${ev.section}, but our ${d} brief already reported the same venue+event class. Yesterday's halt as today's Overnight is 🔴 — either date it explicitly ("on Tuesday" / "July 7") as history, or verify a NEW halt against a primary source and rewrite. Worked failure: 2026-07-10 restated 07-07's KOSPI circuit breaker while Korea was rebounding.`,
+      });
+      break; // one finding per current venue is enough
+    }
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// Story-fingerprint reuse (zero-network). Catches "Tuesday's Nikkei −2.1% as
+// Friday Overnight" — the broader freshness class beyond circuit breakers.
+// ---------------------------------------------------------------------------
+// Named companies that ship as story leads even when not in the ASSETS lexicon.
+const STORY_ENTITIES: { key: string; asset: string; re: RegExp }[] = [
+  { key: 'nikkei', asset: 'Nikkei', re: /\bNikkei\b/gi },
+  { key: 'samsung', asset: 'Samsung', re: /\bSamsung(?:\s+Electronics)?\b/gi },
+  { key: 'sk_hynix', asset: 'SK Hynix', re: /\bSK\s*Hynix\b/gi },
+  { key: 'micron', asset: 'Micron', re: /\bMicron\b/gi },
+  { key: 'tsmc', asset: 'TSMC', re: /\bTSMC\b/gi },
+  { key: 'nvidia', asset: 'NVIDIA', re: /\bNVIDIA\b|\bNvidia\b/gi },
+];
+
+const STORY_MOVE_ASSETS = [
+  ...ASSETS.filter((a) =>
+    ['kospi', 'hang_seng', 'nasdaq', 'sp500', 'dow', 'russell', 'btc', 'eth', 'gold', 'wti', 'brent'].includes(a.key)
+  ),
+  ...STORY_ENTITIES,
+];
+
+interface StoryFingerprint {
+  key: string;
+  asset: string;
+  direction: 'up' | 'down';
+  magnitudePct: number;
+  level: string | null;
+  sentence: string;
+  section: string;
+  pastDated: boolean;
+}
+
+const MIN_STORY_MAG = 1.5; // ignore sub-1.5% noise; material moves only
+const MAG_TOLERANCE = 0.4; // 4.91 vs 4.9, 2.1 vs 2.12
+
+function extractStoryFingerprints(body: string): StoryFingerprint[] {
+  const out: StoryFingerprint[] = [];
+  const seen = new Set<string>();
+  for (const a of STORY_MOVE_ASSETS) {
+    a.re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = a.re.exec(body)) !== null) {
+      const start = m.index;
+      const end = start + m[0].length;
+      const window = body.slice(end, Math.min(body.length, end + 110));
+      const { dir, mag } = detectDirection(window);
+      if (dir !== 'up' && dir !== 'down') continue;
+      if (mag == null || mag < MIN_STORY_MAG) continue;
+      const levelMatch = window.match(/(?:to|near|at)\s*\$?([\d,]+(?:\.\d+)?)/);
+      const sentence = sentenceAround(body, start);
+      const ctx = body.slice(Math.max(0, start - 120), Math.min(body.length, end + 160));
+      const pastDated = PAST_DATE_ANCHOR_RE.test(sentence) || PAST_DATE_ANCHOR_RE.test(ctx);
+      const dedupe = `${a.key}|${dir}|${mag}`;
+      if (seen.has(dedupe)) continue;
+      seen.add(dedupe);
+      out.push({
+        key: a.key,
+        asset: a.asset,
+        direction: dir,
+        magnitudePct: mag,
+        level: levelMatch ? levelMatch[1].replace(/,/g, '') : null,
+        sentence,
+        section: sectionOf(body, start),
+        pastDated,
+      });
+    }
+  }
+  return out;
+}
+
+function fingerprintsMatch(a: StoryFingerprint, b: StoryFingerprint): boolean {
+  if (a.key !== b.key || a.direction !== b.direction) return false;
+  if (Math.abs(a.magnitudePct - b.magnitudePct) <= MAG_TOLERANCE) return true;
+  // Same close level is also a fingerprint (68,257 vs 68,256) even if mag wording drifts.
+  if (a.level && b.level) {
+    const la = parseFloat(a.level);
+    const lb = parseFloat(b.level);
+    if (!isNaN(la) && !isNaN(lb) && la >= 100 && Math.abs(la - lb) / la < 0.002) return true;
+  }
+  return false;
+}
+
+/** FAIL when a material % move is presented as fresh but already shipped within ~3 days. */
+function storyFingerprintReuse(body: string, briefPath: string, briefDate: string | null, lookbackDays = 3): Finding[] {
+  const findings: Finding[] = [];
+  const current = extractStoryFingerprints(body).filter((e) => !e.pastDated);
+  if (!current.length || !briefDate) return findings;
+
+  const dir = findArchiveDir(briefPath);
+  if (!dir) return findings;
+  let files: string[];
+  try { files = fs.readdirSync(dir); } catch { return findings; }
+
+  const priors = files
+    .filter((f) => /^\d{4}-\d{2}-\d{2}\.md$/.test(f))
+    .map((f) => ({ f, d: f.slice(0, 10) }))
+    .filter((x) => x.d < briefDate && daysBetween(x.d, briefDate) <= lookbackDays);
+
+  for (const fp of current) {
+    if (findings.some((f) => f.check === 'story-fingerprint-reuse' && f.message.startsWith(`${fp.asset} `))) continue;
+    for (const { f, d } of priors) {
+      let priorTxt: string;
+      try { priorTxt = fs.readFileSync(path.join(dir, f), 'utf8'); } catch { continue; }
+      const priorHits = extractStoryFingerprints(priorTxt).filter((p) => fingerprintsMatch(fp, p));
+      if (!priorHits.length) continue;
+      findings.push({
+        check: 'story-fingerprint-reuse',
+        severity: 'FAIL',
+        message: `${fp.asset} ${fp.direction} ${fp.magnitudePct}% ("${fp.sentence.slice(0, 100)}…") is presented as FRESH in ${fp.section}, but our ${d} brief already reported the same move fingerprint. Recycled 3-day-old tape as today's news is 🔴 — date it explicitly ("on Tuesday" / "${d}") as history, or verify a NEW move against a primary source and rewrite. Worked failure: 2026-07-10 Overnight restated 07-07's Nikkei −2.1% / KOSPI −4.91% while Asia was rebounding.`,
+      });
+      break;
+    }
+  }
+  return findings;
+}
+
 // Superlative contradictions (FAIL) + price-vs-archive deviations (FLAG).
 function archiveBackstop(superlatives: Claim[], briefPrices: Record<string, number>, archive: Record<string, ArchivePoint[]>): Finding[] {
   const findings: Finding[] = [];
@@ -501,17 +733,92 @@ function crossCheck(claims: Claim[], truth: any): Finding[] {
   return findings;
 }
 
+function selftest(): number {
+  const root = process.cwd();
+  const jul10 = path.join(root, 'content/daily-updates/2026-07-10.md');
+  const jul09 = path.join(root, 'content/daily-updates/2026-07-09.md');
+  const jul07 = path.join(root, 'content/daily-updates/2026-07-07.md');
+  for (const p of [jul10, jul09, jul07]) {
+    if (!fs.existsSync(p)) {
+      console.error(`SELFTEST FAIL — missing fixture: ${p}`);
+      return 1;
+    }
+  }
+
+  const jul10Body = fs.readFileSync(jul10, 'utf8');
+  const jul09Body = fs.readFileSync(jul09, 'utf8');
+  const jul07Body = fs.readFileSync(jul07, 'utf8');
+
+  const fire = dramaticEventReuse(jul10Body, jul10, '2026-07-10');
+  const silentDated = dramaticEventReuse(jul09Body, jul09, '2026-07-09');
+  const silentFirst = dramaticEventReuse(jul07Body, jul07, '2026-07-07');
+
+  const fpFire = storyFingerprintReuse(jul10Body, jul10, '2026-07-10');
+  const fpSilentDated = storyFingerprintReuse(jul09Body, jul09, '2026-07-09');
+  const fpSilentFirst = storyFingerprintReuse(jul07Body, jul07, '2026-07-07');
+
+  // Percent-word magnitude: "4.91 percent" must parse (the 07-10 hole).
+  const magWord = detectDirection(' triggered a circuit breaker and closed down 4.91 percent after');
+  const magSym = detectDirection(' futures down 2.6% into the close');
+
+  const okFire = fire.some((f) => f.check === 'dramatic-event-reuse' && f.severity === 'FAIL');
+  const okSilentDated = silentDated.length === 0;
+  const okSilentFirst = silentFirst.length === 0;
+  const okFpFire = fpFire.some((f) => f.check === 'story-fingerprint-reuse' && f.severity === 'FAIL');
+  const okFpNikkei = fpFire.some((f) => /Nikkei/i.test(f.message));
+  const okFpSilentDated = fpSilentDated.length === 0;
+  const okFpSilentFirst = fpSilentFirst.length === 0;
+  const okMagWord = magWord.mag === 4.91 && magWord.dir === 'down';
+  const okMagSym = magSym.mag === 2.6 && magSym.dir === 'down';
+
+  console.log('fact-gate --selftest');
+  console.log(`  FAIL on real 07-10 KOSPI Overnight reuse: ${okFire ? '✓' : '✗'} (${fire.length} finding(s))`);
+  console.log(`  SILENT on real 07-09 ("on Tuesday" dated): ${okSilentDated ? '✓' : '✗'} (${silentDated.length} finding(s))`);
+  console.log(`  SILENT on real 07-07 (first occurrence): ${okSilentFirst ? '✓' : '✗'} (${silentFirst.length} finding(s))`);
+  console.log(`  FAIL on real 07-10 story-fingerprint reuse: ${okFpFire ? '✓' : '✗'} (${fpFire.length} finding(s))`);
+  console.log(`  FAIL includes Nikkei −2.1% companion: ${okFpNikkei ? '✓' : '✗'}`);
+  console.log(`  SILENT story-fp on dated 07-09: ${okFpSilentDated ? '✓' : '✗'} (${fpSilentDated.length} finding(s))`);
+  console.log(`  SILENT story-fp on first-occurrence 07-07: ${okFpSilentFirst ? '✓' : '✗'} (${fpSilentFirst.length} finding(s))`);
+  console.log(`  magnitude parses "4.91 percent": ${okMagWord ? '✓' : '✗'} (got ${magWord.mag}/${magWord.dir})`);
+  console.log(`  magnitude parses "2.6%": ${okMagSym ? '✓' : '✗'} (got ${magSym.mag}/${magSym.dir})`);
+
+  const ok =
+    okFire && okSilentDated && okSilentFirst &&
+    okFpFire && okFpNikkei && okFpSilentDated && okFpSilentFirst &&
+    okMagWord && okMagSym;
+  if (ok) {
+    console.log('\n✅ SELFTEST PASS — gate bites the 07-10 failure and stays silent on dated/first-occurrence healthy cases.');
+    return 0;
+  }
+  console.error('\n❌ SELFTEST FAIL');
+  if (!okFpSilentDated) {
+    for (const f of fpSilentDated) console.error(`  unexpected: ${f.message.slice(0, 160)}`);
+  }
+  return 1;
+}
+
 function main() {
   const args = process.argv.slice(2);
+  if (args.includes('--selftest')) {
+    process.exit(selftest());
+  }
   const briefArg = args.find((a) => !a.startsWith('--'));
   const truthIdx = args.indexOf('--truth');
   const truthArg = truthIdx >= 0 ? args[truthIdx + 1] : null;
   const allowUnverified = args.includes('--allow-unverified');
+  // --require-resolved (added 2026-07-10 — the MORNING TRUTH GATE mode; overrides --allow-unverified.
+  // Receipt: the 07-10 brief published with truthFile:null and ALL 13 extracted claims UNVERIFIED —
+  // "fact-gate PASS" meant "no contradictions found against nothing." In this mode the gate FAILS
+  // unless (a) a truth file exists and (b) every critical market claim is verified PASS against it.
+  // The Morning Updater writes {date}-truth.json from its refreshed market data, then runs this
+  // mode; publish is blocked until it exits 0.)
+  const requireResolved = args.includes('--require-resolved');
   const archiveDaysIdx = args.indexOf('--archive-days');
   const archiveDays = archiveDaysIdx >= 0 ? parseInt(args[archiveDaysIdx + 1], 10) || 14 : 14;
 
   if (!briefArg) {
     console.error('Usage: fact-gate.ts <brief.md> [--truth <truth.json>] [--allow-unverified] [--archive-days N]');
+    console.error('       fact-gate.ts --selftest');
     process.exit(2);
   }
   const briefPath = path.isAbsolute(briefArg) ? briefArg : path.join(process.cwd(), briefArg);
@@ -562,6 +869,12 @@ function main() {
   const briefPrices = assetValuesIn(body);
   findings.push(...archiveBackstop(superlatives, briefPrices, archive));
 
+  // 4b. Dramatic-event reuse (zero-network): yesterday's halt as today's Overnight.
+  findings.push(...dramaticEventReuse(body, briefPath, briefDate));
+
+  // 4c. Story-fingerprint reuse (zero-network): 3-day-old % moves restated as fresh.
+  findings.push(...storyFingerprintReuse(body, briefPath, briefDate));
+
   // 5. Truth cross-check (if truth present)
   if (truth) findings.push(...crossCheck(claims, truth));
 
@@ -573,6 +886,30 @@ function main() {
         check: 'unverified-critical',
         severity: 'FAIL',
         message: `CRITICAL claim not verified against ground truth — ${c.asset} "${c.direction}"${c.magnitudePct ? ` ${c.magnitudePct}%` : ''} (${c.section}). No truth entry. "No number from memory": verify it and record {date}-truth.json, or pass --allow-unverified for a dry run.`,
+      });
+    }
+  }
+
+  // 6b. TRUTH BYPASS accounting (added 2026-07-10). A missing truth file with critical claims on
+  // board means the gate verified NOTHING — that state must be LOUD in every mode, and it must
+  // BLOCK in --require-resolved mode. Unverified ≠ verified; an empty truth source is an
+  // infrastructure failure, not a clean pass. (07-10 receipt: 6 market claims + 7 superlatives,
+  // 0 pass / 0 fail / 13 unverified, truthFile null → published. Among them: the 30Y-JGB
+  // superlative that was actually the 10Y's record — right number, wrong asset.)
+  const truthBypass = !truth && (claims.length > 0 || superlatives.length > 0);
+  if (truthBypass) {
+    findings.push({
+      check: 'truth-bypass',
+      severity: requireResolved ? 'FAIL' : 'FLAG',
+      message: `TRUTH BYPASS — no truth file loaded; ${claims.length} market claim(s) + ${superlatives.length} superlative(s) ride entirely unverified. The gate has verified NOTHING about this brief. Before publish, the Morning Updater must write {BRIEF_DATE}-truth.json from refreshed market data and re-run with --require-resolved. Verify the ASSET as well as the number — the 07-10 failure was a transposition (the 10Y JGB's record attributed to the 30Y), which a number-only re-check cannot catch.`,
+    });
+  }
+  if (requireResolved) {
+    for (const c of unverifiedCritical) {
+      findings.push({
+        check: 'unresolved-before-publish',
+        severity: 'FAIL',
+        message: `MORNING TRUTH GATE — critical claim still unverified at publish time: ${c.asset} "${c.direction}"${c.magnitudePct ? ` ${c.magnitudePct}%` : ''} (${c.section}). Verify against the refreshed tape and record it in {BRIEF_DATE}-truth.json, correct the sentence, or strip the number. Do not publish a critical number nobody checked.`,
       });
     }
   }
@@ -592,6 +929,8 @@ function main() {
       unverified: allClaims.filter((c) => c.status === 'UNVERIFIED').length,
       officeHolderFacts: office.checked,
       archiveAssetsKnown,
+      truthBypass,
+      unresolvedCritical: unverifiedCritical.length,
     },
     findings,
     claims: allClaims,
