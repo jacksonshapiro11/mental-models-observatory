@@ -49,9 +49,50 @@ export function extractDisplayDateFromLine(line: string): string {
   return trimmed;
 }
 
-/** Canonical display date from YYYY-MM-DD slug (matches OG route). */
+/** True for ISO week ids like "2026-W28" (weekly audio / publish slugs). */
+export function isIsoWeekSlug(slug: string): boolean {
+  return /^\d{4}-W\d{1,2}$/i.test(slug.trim());
+}
+
+/**
+ * Sunday (last day) of an ISO week id like "2026-W28" → "2026-07-12".
+ * ISO weeks run Mon–Sun; Jan 4 is always in week 1.
+ */
+export function isoWeekSunday(weekId: string): string | null {
+  const m = /^(\d{4})-W(\d{1,2})$/i.exec(weekId.trim());
+  if (!m) return null;
+  const year = Number(m[1]);
+  const week = Number(m[2]);
+  if (week < 1 || week > 53) return null;
+
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const isoWeekday = jan4.getUTCDay() === 0 ? 7 : jan4.getUTCDay();
+  const sunday = new Date(jan4);
+  sunday.setUTCDate(jan4.getUTCDate() - (isoWeekday - 1) + (week - 1) * 7 + 6);
+  return sunday.toISOString().slice(0, 10);
+}
+
+/**
+ * Resolve a brief slug to a calendar YYYY-MM-DD.
+ * Daily slugs pass through; ISO week ids map to that week's Sunday
+ * (week-ending date used for spoken/display intro dates).
+ */
+export function calendarDateFromSlug(dateSlug: string): string {
+  const trimmed = dateSlug.trim();
+  const weekSunday = isoWeekSunday(trimmed);
+  if (weekSunday) return weekSunday;
+  return trimmed;
+}
+
+/** Canonical display date from YYYY-MM-DD or ISO week slug (matches OG route). */
 export function formatDisplayDateFromSlug(dateSlug: string): string {
-  const d = new Date(`${dateSlug}T12:00:00`);
+  const calendar = calendarDateFromSlug(dateSlug);
+  const d = new Date(`${calendar}T12:00:00`);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(
+      `Cannot format display date from slug "${dateSlug}" (resolved calendar "${calendar}")`,
+    );
+  }
   return d.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -69,7 +110,13 @@ export interface SlugDateParts {
 }
 
 export function parseSlugDate(dateSlug: string): SlugDateParts {
-  const d = new Date(`${dateSlug}T12:00:00`);
+  const calendar = calendarDateFromSlug(dateSlug);
+  const d = new Date(`${calendar}T12:00:00`);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(
+      `Cannot parse slug date "${dateSlug}" (resolved calendar "${calendar}")`,
+    );
+  }
   return {
     year: d.getUTCFullYear(),
     month: d.getUTCMonth() + 1,

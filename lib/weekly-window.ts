@@ -16,22 +16,10 @@ import { getAllBriefDates, getAllWeeklySlugs } from './daily-update-parser';
 import { getLatestBriefLight } from './brief-light-parser';
 import { getAllWeeklyLightSlugs } from './weekly-light-parser';
 import { todayET } from './publish-date';
+import { isoWeekSunday } from './brief-date';
 
-/** Sunday (last day) of an ISO week id like "2026-W27" → "2026-07-05". */
-export function isoWeekSunday(weekId: string): string | null {
-  const m = /^(\d{4})-W(\d{1,2})$/i.exec(weekId.trim());
-  if (!m) return null;
-  const year = Number(m[1]);
-  const week = Number(m[2]);
-  if (week < 1 || week > 53) return null;
-
-  // ISO 8601: Jan 4 is always in week 1; weeks run Mon–Sun.
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  const isoWeekday = jan4.getUTCDay() === 0 ? 7 : jan4.getUTCDay();
-  const sunday = new Date(jan4);
-  sunday.setUTCDate(jan4.getUTCDate() - (isoWeekday - 1) + (week - 1) * 7 + 6);
-  return sunday.toISOString().slice(0, 10);
-}
+/** Re-export — calendar math lives in brief-date (audio intro + weekly window share it). */
+export { isoWeekSunday };
 
 /**
  * Weekly wins iff its Sunday has arrived (ET) and no daily is dated on/after it.

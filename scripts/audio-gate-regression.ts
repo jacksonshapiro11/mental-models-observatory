@@ -34,7 +34,11 @@ import {
 import {
   buildDeterministicIntroPrefix,
   buildDeterministicLightIntroPrefix,
+  calendarDateFromSlug,
+  formatDisplayDateFromSlug,
   formatSpokenDateFromSlug,
+  isoWeekSunday,
+  resolveDisplayDate,
   validateIntroDate,
   validateDisplayDateMatchesSlug,
   assertAudibleYearIntact,
@@ -302,6 +306,67 @@ check(
     '',
   ).script,
   a => !(a as string).toLowerCase().includes('welcome') && !(a as string).toLowerCase().includes('wednesday'),
+);
+
+console.log('── 7. Weekly ISO week slugs (W28 Invalid Date class) ──');
+
+const WEEK_CASES: { week: string; sunday: string; weekday: string }[] = [
+  { week: '2026-W26', sunday: '2026-06-28', weekday: 'Sunday' },
+  { week: '2026-W27', sunday: '2026-07-05', weekday: 'Sunday' },
+  { week: '2026-W28', sunday: '2026-07-12', weekday: 'Sunday' },
+];
+
+for (const { week, sunday, weekday } of WEEK_CASES) {
+  check(
+    `${week} calendarDateFromSlug → Sunday ${sunday}`,
+    calendarDateFromSlug(week),
+    a => a === sunday,
+  );
+  check(
+    `${week} isoWeekSunday matches`,
+    isoWeekSunday(week),
+    a => a === sunday,
+  );
+  const display = formatDisplayDateFromSlug(week);
+  check(
+    `${week} formatDisplayDateFromSlug is not Invalid Date`,
+    display,
+    a => typeof a === 'string' && !(a as string).includes('Invalid') && (a as string).startsWith(weekday),
+    display,
+  );
+  check(
+    `${week} spoken date has century year (no Invalid Date)`,
+    formatSpokenDateFromSlug(week),
+    a =>
+      typeof a === 'string' &&
+      !(a as string).includes('Invalid') &&
+      (a as string).includes('twenty twenty-six') &&
+      (a as string).toLowerCase().startsWith('sunday'),
+  );
+  const resolved = resolveDisplayDate('Week of July 5 to 11, 2026', week);
+  check(
+    `${week} resolveDisplayDate recovers from weekly headline header`,
+    resolved,
+    a => typeof a === 'string' && !(a as string).includes('Invalid') && validateDisplayDateMatchesSlug(a as string, week).ok,
+  );
+  const fullPrefix = buildDeterministicIntroPrefix(week, 'The Rent Moved Downstairs');
+  const lightPrefix = buildDeterministicLightIntroPrefix(week, 'The Rent Moved Downstairs');
+  check(
+    `${week} full intro audit PASS (hard-inject + displayDate)`,
+    auditAudioIntro(`${fullPrefix}\n\nHook.\n\n...\n\nOK, let's jump into the week's Six.`, week, resolved).ok,
+    a => a === true,
+  );
+  check(
+    `${week} light intro audit PASS (hard-inject + displayDate)`,
+    auditAudioIntro(`${lightPrefix}\n\nHook.\n\n...\n\n`, week, resolved).ok,
+    a => a === true,
+  );
+}
+
+check(
+  'daily YYYY-MM-DD still formats unchanged',
+  formatDisplayDateFromSlug('2026-07-07'),
+  a => a === 'Tuesday, July 7, 2026',
 );
 
 console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);
