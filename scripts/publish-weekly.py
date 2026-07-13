@@ -12,27 +12,42 @@ It exists because that publisher is date-addressed (content/daily-updates/{date}
 and the interactive agent cannot edit files under .claude/. Same robust transport:
 clone to /tmp, commit, push (avoids the repo's stale .git/index.lock).
 
+After a successful push this script polls
+    GET {SITE_URL}/api/publish/health?weekly={slug}
+until lightBrief is on the deployed filesystem, then POSTs
+    /api/publish/complete?weekly={slug}
+(mirrors the daily publisher — W28 2026-07-12 shipped content with no audio
+because this step only printed "Next: trigger…" and never fired).
+
 Usage:
     python scripts/publish-weekly.py 2026-W27            # publish both files for the week
     python scripts/publish-weekly.py 2026-W27 --dry-run  # validate + preview, no push
     python scripts/publish-weekly.py 2026-W27 --file content/daily-updates/weekly/2026-W27-light.md
 
 Requires GITHUB_TOKEN (falls back to .env.local at repo root, like publish.py).
-After a successful publish, trigger audio + email:
-    POST {SITE_URL}/api/publish/complete?weekly=2026-W27
+Pipeline trigger needs SNAPSHOT_SECRET (or relies on complete-weekly cron / GHA).
 """
 
 import argparse
+import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
 import shutil
+import time
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
 REPO = "jacksonshapiro11/mental-models-observatory"
 BRANCH_MAIN = "main"
 WEEKLY_DIR = "content/daily-updates/weekly"
+SITE_URL = os.environ.get("SITE_URL", "https://www.cosmictrex.com")
+
+PUBLISH_HEALTH_TIMEOUT = 360
+PUBLISH_HEALTH_POLL_INTERVAL = 10
+PUBLISH_HEALTH_INITIAL_DELAY = 15
 
 # Full weekly masthead is "# MARKETS, MEDITATIONS & MENTAL MODELS: THE WEEKLY";
 # the base string below is a substring of it, so this matches.
@@ -152,11 +167,115 @@ def publish_via_git(rel_paths, slug, token, dry_run=False):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def wait_for_deployed_weekly(slug, timeout=None, interval=None):
+    """Poll GET /api/publish/health?weekly= until lightBrief is on the live site."""
+    timeout = timeout if timeout is not None else PUBLISH_HEALTH_TIMEOUT
+    interval = interval if interval is not None else PUBLISH_HEALTH_POLL_INTERVAL
+    health_url = f"{SITE_URL}/api/publish/health?weekly={slug}"
+    deadline = time.time() + timeout
+    attempt = 0
+
+    if PUBLISH_HEALTH_INITIAL_DELAY > 0:
+        print(f"Waiting {PUBLISH_HEALTH_INITIAL_DELAY}s for Vercel deploy to start...")
+        time.sleep(PUBLISH_HEALTH_INITIAL_DELAY)
+
+    print(f"Polling {health_url} until lightBrief=true (timeout {timeout}s)...")
+    while time.time() < deadline:
+        attempt += 1
+        body = None
+        try:
+            req = Request(health_url, method="GET", headers={"User-Agent": "publish-weekly"})
+            with urlopen(req, timeout=20) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+        except HTTPError as e:
+            try:
+                body = json.loads(e.read().decode("utf-8"))
+            except Exception:
+                print(f"  health poll #{attempt}: HTTP {e.code} (no JSON) — retrying")
+                time.sleep(interval)
+                continue
+        except Exception as e:
+            print(f"  health poll #{attempt}: error ({str(e)[:120]}) — retrying")
+            time.sleep(interval)
+            continue
+
+        light = bool(body.get("lightBrief"))
+        full = bool(body.get("fullBrief"))
+        print(f"  health poll #{attempt}: fullBrief={full} lightBrief={light}")
+        if light:
+            return True
+        time.sleep(interval)
+
+    print(
+        f"ALERT: Deploy health timeout after {timeout}s — weekly lightBrief still false for {slug}. "
+        f"NOT calling complete (would skip). Failsafe: complete-weekly cron + GHA."
+    )
+    return False
+
+
+def trigger_weekly_complete(slug):
+    """Wait until Weekly Light is on the deployed site, then POST complete?weekly=."""
+    load_env_file()
+    secret = os.environ.get("SNAPSHOT_SECRET") or os.environ.get("CRON_SECRET")
+    if not secret:
+        print("Note: SNAPSHOT_SECRET/CRON_SECRET not set — skipping weekly pipeline trigger.")
+        print(f"Manual recovery:\n  curl -X POST \"{SITE_URL}/api/publish/complete?weekly={slug}\" \\\n    -H \"Authorization: Bearer $CRON_SECRET\"")
+        print("Failsafe: Vercel cron /api/publish/complete-weekly (15 10 * * * UTC).")
+        return
+
+    if not wait_for_deployed_weekly(slug):
+        print(
+            f"ALERT: publish/complete?weekly= NOT fired for {slug} — deploy never showed lightBrief. "
+            "Relying on complete-weekly cron / GHA failsafe."
+        )
+        return
+
+    url = f"{SITE_URL}/api/publish/complete?secret={secret}&weekly={slug}"
+    print(f"Deploy ready — POSTing {SITE_URL}/api/publish/complete?weekly={slug}")
+    try:
+        req = Request(url, method="POST", headers={"User-Agent": "publish-weekly"})
+        with urlopen(req, timeout=300) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+            status = resp.status
+            if result.get("skipped"):
+                print(
+                    f"ALERT: Weekly pipeline SKIPPED for {slug}: {result.get('reason', 'unknown')} "
+                    f"(HTTP {status}). Failsafe cron will retry."
+                )
+            elif result.get("success"):
+                print(f"Weekly publish pipeline complete for {slug}!")
+                full = result.get("fullAudio", {})
+                light = result.get("lightAudio", {})
+                dist = result.get("distribute", {})
+                print(f"  Full podcast: {full.get('status', 'n/a')}")
+                print(f"  Weekly light audio: {light.get('status', 'n/a')}")
+                if dist.get("email"):
+                    print(f"  Email: {dist['email'].get('details', dist['email'].get('success'))}")
+            else:
+                print(f"Weekly pipeline partial/failed (HTTP {status}): {json.dumps(result, indent=2)[:500]}")
+                print("Failsafe complete-weekly cron will retry missing steps.")
+    except HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8")[:500]
+        except Exception:
+            pass
+        if e.code == 409 or '"skipped":true' in body.replace(" ", "").lower():
+            print(f"ALERT: Weekly pipeline SKIPPED (HTTP {e.code}) for {slug}: {body}")
+        else:
+            print(f"Weekly pipeline trigger failed (HTTP {e.code}): {body or e}")
+        print("Failsafe complete-weekly cron will retry.")
+    except Exception as e:
+        print(f"Weekly pipeline trigger failed: {e}")
+        print("Failsafe complete-weekly cron will retry.")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("slug", help="Week id, e.g. 2026-W27")
     ap.add_argument("--file", help="Publish one explicit file instead of resolving both")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--skip-pipeline", action="store_true", help="Push only; do not trigger audio/email")
     args = ap.parse_args()
 
     if not re.match(r"^\d{4}-W\d{1,2}$", args.slug):
@@ -173,9 +292,10 @@ def main():
     ok = publish_via_git(files, args.slug, token, dry_run=args.dry_run)
     if not ok:
         sys.exit(1)
-    if not args.dry_run:
-        site = os.environ.get("SITE_URL", "https://www.cosmictrex.com")
-        print(f"\nNext: trigger audio + email →\n  POST {site}/api/publish/complete?weekly={args.slug}")
+    if not args.dry_run and not args.skip_pipeline and not os.environ.get("SKIP_PIPELINE"):
+        trigger_weekly_complete(args.slug)
+    elif not args.dry_run:
+        print(f"\nSkipped pipeline. Manual:\n  curl -X POST \"{SITE_URL}/api/publish/complete?weekly={args.slug}\" \\\n    -H \"Authorization: Bearer $CRON_SECRET\"")
 
 
 if __name__ == "__main__":

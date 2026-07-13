@@ -2,8 +2,9 @@
  * Brief publish health — deployed site + optional GitHub API verification.
  */
 
-import { getBriefByDate } from '@/lib/daily-update-parser';
+import { getBriefByDate, getWeeklyBySlug } from '@/lib/daily-update-parser';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
+import { getWeeklyLightBySlug } from '@/lib/weekly-light-parser';
 import { todayET } from '@/lib/publish-date';
 
 const GITHUB_REPO = 'jacksonshapiro11/mental-models-observatory';
@@ -14,6 +15,8 @@ export interface BriefHealth {
   fullBrief: boolean;
   lightBrief: boolean;
   ready: boolean;
+  /** Present when health was checked for a weekly slug (?weekly=YYYY-Www). */
+  weekly?: string;
 }
 
 export interface GitHubBriefStatus {
@@ -30,6 +33,19 @@ export function checkDeployedBriefHealth(date: string = todayET()): BriefHealth 
     fullBrief,
     lightBrief,
     ready: fullBrief && lightBrief,
+  };
+}
+
+/** Deployed-FS health for a Weekly slug (full + light). ready = light present (audio gate). */
+export function checkDeployedWeeklyHealth(weeklySlug: string): BriefHealth {
+  const fullBrief = !!getWeeklyBySlug(weeklySlug);
+  const lightBrief = !!getWeeklyLightBySlug(weeklySlug);
+  return {
+    date: weeklySlug,
+    weekly: weeklySlug,
+    fullBrief,
+    lightBrief,
+    ready: lightBrief,
   };
 }
 

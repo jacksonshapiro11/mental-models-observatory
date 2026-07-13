@@ -123,7 +123,19 @@ curl -X POST "https://www.cosmictrex.com/api/publish/complete" \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-Optional backfill: `?date=YYYY-MM-DD`. Step logs in Redis (`distribute:log:{date}`, `audio:log:{date}`, `marketing:pack:{date}`). Full podcast idempotency via `readEpisodeMetadata`.
+Optional backfill: `?date=YYYY-MM-DD`. Weekly: `?weekly=YYYY-Www` (or `/api/publish/complete-weekly?weekly=YYYY-Www`).
+
+```bash
+# Weekly audio + email recovery (e.g. W28 stranded 2026-07-12)
+curl -X POST "https://www.cosmictrex.com/api/publish/complete?weekly=2026-W28" \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+Weekly health poll: `GET /api/publish/health?weekly=YYYY-Www` → `{ lightBrief, fullBrief, ready }`.
+`scripts/publish-weekly.py` now health-polls then POSTs complete (same contract as daily `publish.py`).
+GHA `publish-complete.yml` detects `content/daily-updates/weekly/` pushes and calls `complete?weekly=`.
+
+Step logs in Redis (`distribute:log:{date}`, `audio:log:{date}`, `marketing:pack:{date}`). Full podcast idempotency via `readEpisodeMetadata`.
 
 ### Env vars for pipeline
 

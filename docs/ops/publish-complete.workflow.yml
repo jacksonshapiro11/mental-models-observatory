@@ -3,6 +3,11 @@ name: Morning publish complete
 # Event-driven failsafe: when briefs land on main, wait for the live site,
 # then POST /api/publish/complete on the custom domain (not *.vercel.app).
 # This survives Vercel Cron SSO/redirect failures (Jul 10 2026 incident).
+#
+# Handles BOTH:
+#   - daily: content/daily-updates/YYYY-MM-DD(-light).md → complete?date=
+#   - weekly: content/daily-updates/weekly/YYYY-Www*.md → complete?weekly=
+#     (W28 2026-07-12: daily-only poll left weekly audio stranded)
 
 on:
   push:
@@ -12,7 +17,11 @@ on:
   workflow_dispatch:
     inputs:
       date:
-        description: 'Brief date YYYY-MM-DD (defaults to today ET)'
+        description: 'Brief date YYYY-MM-DD (daily path; defaults to today ET)'
+        required: false
+        type: string
+      weekly:
+        description: 'Week id YYYY-Www (weekly path; overrides date when set)'
         required: false
         type: string
 
@@ -26,11 +35,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Resolve brief date + trigger complete
+      - name: Checkout (for changed-file detection)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Resolve target + trigger complete
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SNAPSHOT_SECRET: ${{ secrets.SNAPSHOT_SECRET }}
           INPUT_DATE: ${{ inputs.date }}
+          INPUT_WEEKLY: ${{ inputs.weekly }}
           SITE_URL: https://www.cosmictrex.com
         run: |
           set -euo pipefail
@@ -45,37 +60,57 @@ jobs:
             exit 1
           fi
 
-          if [ -n "${INPUT_DATE:-}" ]; then
+          WEEKLY=""
+          DATE=""
+
+          if [ -n "${INPUT_WEEKLY:-}" ]; then
+            WEEKLY="$INPUT_WEEKLY"
+          elif [ -n "${INPUT_DATE:-}" ]; then
             DATE="$INPUT_DATE"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            # Prefer weekly files in this push; else today's daily date.
+            CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'content/daily-updates/**' 2>/dev/null || true)
+            echo "Changed content paths:"
+            echo "$CHANGED"
+            WEEKLY=$(echo "$CHANGED" | grep -oE 'content/daily-updates/weekly/20[0-9]{2}-W[0-9]{1,2}' | head -1 | grep -oE '20[0-9]{2}-W[0-9]{1,2}' || true)
+            if [ -z "$WEEKLY" ]; then
+              DATE=$(TZ=America/New_York date +%F)
+            fi
           else
             DATE=$(TZ=America/New_York date +%F)
           fi
-          echo "BRIEF_DATE=$DATE"
 
-          # Only run when today's full or light brief is in this push (or manual).
-          if [ "${{ github.event_name }}" = "push" ]; then
-            if ! git fetch --depth=2 origin main >/dev/null 2>&1; then
-              true
-            fi
+          if [ -n "$WEEKLY" ]; then
+            echo "WEEKLY=$WEEKLY"
+            HEALTH_URL="$SITE_URL/api/publish/health?weekly=$WEEKLY"
+            COMPLETE_URL="$SITE_URL/api/publish/complete?weekly=$WEEKLY"
+            READY_KEY='lightBrief'
+            LABEL="weekly $WEEKLY"
+          else
+            echo "BRIEF_DATE=$DATE"
+            HEALTH_URL="$SITE_URL/api/publish/health?date=$DATE"
+            COMPLETE_URL="$SITE_URL/api/publish/complete?date=$DATE"
+            READY_KEY='lightBrief'
+            LABEL="daily $DATE"
           fi
 
-          echo "Polling $SITE_URL/api/publish/health?date=$DATE ..."
+          echo "Polling $HEALTH_URL ..."
           READY=0
           for i in $(seq 1 36); do
-            BODY=$(curl -sS "$SITE_URL/api/publish/health?date=$DATE" || true)
+            BODY=$(curl -sS "$HEALTH_URL" || true)
             echo "  poll #$i: $BODY"
-            echo "$BODY" | grep -q '"lightBrief":true' && READY=1 && break
+            echo "$BODY" | grep -q "\"$READY_KEY\":true" && READY=1 && break
             sleep 10
           done
 
           if [ "$READY" != "1" ]; then
-            echo "::error::Deploy health timeout — lightBrief never true for $DATE"
+            echo "::error::Deploy health timeout — lightBrief never true for $LABEL"
             exit 1
           fi
 
-          echo "POSTing publish/complete..."
+          echo "POSTing $COMPLETE_URL ..."
           HTTP=$(curl -sS -o /tmp/complete.json -w "%{http_code}" \
-            -X POST "$SITE_URL/api/publish/complete?date=$DATE" \
+            -X POST "$COMPLETE_URL" \
             -H "Authorization: Bearer $SECRET" \
             -H "User-Agent: mmo-gha-publish-complete")
           echo "HTTP $HTTP"
@@ -83,11 +118,11 @@ jobs:
           echo
 
           if [ "$HTTP" = "409" ]; then
-            echo "::error::complete skipped (409) for $DATE"
+            echo "::error::complete skipped (409) for $LABEL"
             exit 1
           fi
           if [ "$HTTP" != "200" ] && [ "$HTTP" != "207" ]; then
             echo "::error::complete failed HTTP $HTTP"
             exit 1
           fi
-          echo "publish/complete OK for $DATE"
+          echo "publish/complete OK for $LABEL"

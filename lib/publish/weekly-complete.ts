@@ -22,21 +22,49 @@ import { runDistributeIfNeeded } from '@/lib/distribute/run-if-needed';
 import { audioNeedsRetry } from '@/lib/marketing/pipeline-status';
 import { readAudioLog, writeAudioLog } from '@/lib/marketing/distribute-log';
 
+/** Weekly may land mid-request when cron races a deploy — wait before 409. */
+const WEEKLY_WAIT_MS = 90_000;
+const WEEKLY_POLL_MS = 5_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForWeeklyLight(weeklySlug: string): Promise<boolean> {
+  if (getWeeklyLightBySlug(weeklySlug)) return true;
+  const deadline = Date.now() + WEEKLY_WAIT_MS;
+  let attempt = 0;
+  while (Date.now() < deadline) {
+    attempt += 1;
+    console.warn(
+      `[publish/complete] weekly light missing for ${weeklySlug} — waiting (${attempt}, up to ${WEEKLY_WAIT_MS / 1000}s)`,
+    );
+    await sleep(WEEKLY_POLL_MS);
+    if (getWeeklyLightBySlug(weeklySlug)) {
+      console.log(`[publish/complete] weekly light appeared for ${weeklySlug} after wait`);
+      return true;
+    }
+  }
+  return false;
+}
+
 export async function runWeeklyPublishComplete(weeklySlug: string) {
   const manual = true;
   const logKey = weeklySlug;
   const fullEpisodeKey = weeklyFullEpisodeKey(weeklySlug);
   const lightEpisodeKey = weeklyLightEpisodeKey(weeklySlug);
 
-  if (!getWeeklyLightBySlug(weeklySlug)) {
+  if (!(await waitForWeeklyLight(weeklySlug))) {
     console.error(
-      `[publish/complete] SKIPPED — No Weekly Light published for ${weeklySlug} on deployed filesystem.`,
+      `[publish/complete] SKIPPED — No Weekly Light published for ${weeklySlug} on deployed filesystem after ${WEEKLY_WAIT_MS / 1000}s wait. ` +
+        `Caller should poll /api/publish/health?weekly=${weeklySlug} until lightBrief=true before retrying.`,
     );
     return NextResponse.json(
       {
         weekly: weeklySlug,
         skipped: true,
         reason: `No Weekly Light published for ${weeklySlug}`,
+        waitedMs: WEEKLY_WAIT_MS,
         success: false,
       },
       { status: 409 },
