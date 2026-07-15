@@ -403,15 +403,65 @@ export function collapseDoubledWords(text: string): string {
   return text;
 }
 
+/** Speak credit ratings as words. "BBB-" -> "triple-B-minus", "AA+" -> "double-A-plus",
+ *  "Baa1" -> "triple-B one". TTS voices bare "BBB-" as "bee bee bee dash"; ratings cluster in
+ *  the weekly (e.g. an Oracle downgrade) so it surfaced there, but this layer is shared so the
+ *  daily gets it too. Runs BEFORE expandTickers so a rating like "AA" is not grabbed by a ticker
+ *  map (Alcoa=AA); a bare Alcoa "AA" is effectively absent from the briefs. */
+const SP_RATING_WORDS: Record<string, string> = {
+  AAA: 'triple-A', AA: 'double-A', BBB: 'triple-B', BB: 'double-B', CCC: 'triple-C', CC: 'double-C',
+};
+const MOODY_RATING_WORDS: Record<string, string> = {
+  Aaa: 'triple-A', Aa: 'double-A', Baa: 'triple-B', Ba: 'double-B', Caa: 'triple-C', Ca: 'double-C',
+};
+const RATING_MOD_WORDS: Record<string, string> = { '1': 'one', '2': 'two', '3': 'three' };
+export function expandCreditRatings(text: string): string {
+  // Moody's-style mixed-case, optional 1-3 modifier (Aa1, Baa3, Aa). Case-sensitive and
+  // word-boundaried, so ordinary words are never touched.
+  text = text.replace(/\b(Aaa|Aa|Baa|Ba|Caa|Ca)([1-3])?\b/g, (_m, cluster: string, mod?: string) => {
+    const base = MOODY_RATING_WORDS[cluster] ?? cluster;
+    return mod ? `${base} ${RATING_MOD_WORDS[mod] ?? mod}` : base;
+  });
+  // S&P / Fitch all-caps letter clusters with optional +/- (BBB-, AA+, CCC). The trailing
+  // negative lookahead keeps tickers (AAPL, BBBY) from partial-matching.
+  text = text.replace(/\b(AAA|AA|BBB|BB|CCC|CC)([+-])?(?![A-Za-z0-9])/g, (_m, cluster: string, sign?: string) => {
+    const base = SP_RATING_WORDS[cluster] ?? cluster;
+    const suffix = sign === '+' ? '-plus' : sign === '-' ? '-minus' : '';
+    return `${base}${suffix}`;
+  });
+  return text;
+}
+
+/** Speak bare dollar amounts the magnitude expander did not catch. Moves the "$" glyph to a
+ *  trailing "dollars" so TTS never voices the symbol in the wrong place, and turns "$1.8 trillion"
+ *  into "1.8 trillion dollars". Does NOT round (rounding is the scriptwriter's editorial call per
+ *  the NUMBERS rules); this only guarantees the pronunciation is correct. Runs AFTER expandCurrency
+ *  so "$1.2B" is already handled. */
+export function expandBareDollarAmounts(text: string): string {
+  // "$1.8 trillion" / "$140 billion" -> "1.8 trillion dollars"
+  text = text.replace(
+    /\$\s?(\d+(?:,\d{3})*(?:\.\d+)?)\s+(trillion|billion|million|thousand)\b/gi,
+    (_m, num: string, mag: string) => `${num} ${mag.toLowerCase()} dollars`,
+  );
+  // Bare "$62,800" / "$4.67" / "$149" with no magnitude word after -> "62,800 dollars"
+  text = text.replace(
+    /\$\s?(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)(?!\s*(?:trillion|billion|million|thousand|percent|per\b|bp|bps))/gi,
+    (_m, num: string) => `${num} dollars`,
+  );
+  return text;
+}
+
 /** Apply all regex-based normalizations */
 function regexNormalize(text: string): string {
   text = expandCurrency(text);
+  text = expandBareDollarAmounts(text);
   text = expandBasisPoints(text);
   text = expandMovingAverages(text);
   text = expandYearAbbreviations(text);
   text = expandMultipliers(text);
   text = expandQuarters(text);
   text = expandPercentages(text);
+  text = expandCreditRatings(text);
   text = expandTickers(text);
   text = expandAbbreviations(text);
   text = cleanFormatting(text);
@@ -865,6 +915,7 @@ NUMBERS (CRITICAL FOR NATURAL SPEECH):
 - Basis points: Say "twenty-five basis points" NOT "25 bps." For context, "a quarter point" works too.
 - Dates: Say "March sixth" NOT "March 6, 2026." Say "last Thursday" when the exact date isn't critical.
 - Use natural approximation: "roughly," "about," "just under," "a little over," "nearly."
+- Credit ratings: say them as words, never raw letters. "BBB-" is "triple-B-minus," "AA+" is "double-A-plus," "Baa1" is "triple-B one." A downgrade "to BBB-" is "to triple-B-minus."
 
 REPETITION (CRITICAL — THIS IS THE #1 LISTENER COMPLAINT):
 - If a topic, fact, or data point was already covered in a previous section of this podcast (check the ALREADY COVERED list in TRANSITION CONTEXT), do NOT re-explain it. Reference it with a brief callback ("like we covered earlier") and move IMMEDIATELY to the NEW information this section adds.

@@ -23,6 +23,8 @@
 
 import {
   collapseDoubledWords,
+  expandCreditRatings,
+  expandBareDollarAmounts,
   canonicalSectionKey,
   lookupSection,
   enforceScriptRules,
@@ -367,6 +369,59 @@ check(
   'daily YYYY-MM-DD still formats unchanged',
   formatDisplayDateFromSlug('2026-07-07'),
   a => a === 'Tuesday, July 7, 2026',
+);
+
+console.log('── 8. Numbers & credit ratings (W28 weekly pronunciation) ──');
+
+check(
+  'BBB- → triple-B-minus (the Oracle downgrade that shipped raw in W28)',
+  expandCreditRatings('S&P cut Oracle to BBB-, one notch above junk'),
+  a => a === 'S&P cut Oracle to triple-B-minus, one notch above junk',
+);
+check(
+  'AA+ → double-A-plus',
+  expandCreditRatings('the sovereign held its AA+ rating'),
+  a => a === 'the sovereign held its double-A-plus rating',
+);
+check(
+  "Moody's Baa1 → triple-B one",
+  expandCreditRatings('downgraded to Baa1 by Moody'),
+  a => a === 'downgraded to triple-B one by Moody',
+);
+check(
+  'ticker AAPL is NOT mangled; bare rating letters ARE spoken',
+  expandCreditRatings('AAPL closed higher while BB and AA slipped'),
+  a => a === 'AAPL closed higher while double-B and double-A slipped',
+);
+check(
+  'regexNormalize wires ratings in end-to-end',
+  regexNormalize('S&P cut it to BBB-.'),
+  a => (a as string).includes('triple-B-minus'),
+);
+check(
+  'bare $62,800 → spoken dollars (no $ glyph)',
+  expandBareDollarAmounts('Bitcoin started the week near $62,800'),
+  a => a === 'Bitcoin started the week near 62,800 dollars',
+);
+check(
+  '$1.8 trillion → 1.8 trillion dollars',
+  expandBareDollarAmounts('the GPIF, with its $1.8 trillion portfolio'),
+  a => a === 'the GPIF, with its 1.8 trillion dollars portfolio',
+);
+check(
+  '$4.67 → 4.67 dollars',
+  expandBareDollarAmounts('the Brent-WTI spread to $4.67'),
+  a => a === 'the Brent-WTI spread to 4.67 dollars',
+);
+check(
+  'regexNormalize keeps an already-handled $1.2B path intact (no double dollars)',
+  regexNormalize('a $1.2B raise'),
+  a => (a as string) === 'a 1.2 billion dollars raise',
+);
+check(
+  'negative control: a plain year 2027 is left alone (not turned into dollars)',
+  regexNormalize('a deficit widening toward 42 billion by 2027'),
+  a => (a as string).includes('2027') && !/dollars\s+2027/.test(a as string),
 );
 
 console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);

@@ -14,25 +14,49 @@ export interface ArchiveBrief {
   sections: string[];
 }
 
-type ArchiveKind = 'brief' | 'super';
+type ArchiveKind = 'brief' | 'super' | 'weekly' | 'weekly-super';
+
+const KIND_META: Record<ArchiveKind, { label: string; href: string; badge: string; noun: string }> = {
+  brief: { label: 'Full Brief', href: '/daily-update', badge: 'FULL BRIEF', noun: 'brief' },
+  super: { label: 'Super Brief', href: '/super-brief', badge: 'SUPER BRIEF', noun: 'super brief' },
+  weekly: { label: 'Weekly', href: '/weekly', badge: 'THE WEEKLY', noun: 'weekly' },
+  'weekly-super': { label: 'Weekly Super', href: '/weekly-super', badge: 'WEEKLY LIGHT', noun: 'weekly super brief' },
+};
 
 interface ArchiveClientProps {
   briefs: ArchiveBrief[];
   superBriefs?: ArchiveBrief[];
+  weeklyBriefs?: ArchiveBrief[];
+  weeklyLightBriefs?: ArchiveBrief[];
 }
 
-export default function ArchiveClient({ briefs, superBriefs = [] }: ArchiveClientProps) {
+export default function ArchiveClient({
+  briefs,
+  superBriefs = [],
+  weeklyBriefs = [],
+  weeklyLightBriefs = [],
+}: ArchiveClientProps) {
   const [kind, setKind] = useState<ArchiveKind>('brief');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
 
-  const activeBriefs = kind === 'brief' ? briefs : superBriefs;
-  const hrefBase = kind === 'brief' ? '/daily-update' : '/super-brief';
-  const badgeLabel = kind === 'brief' ? 'FULL BRIEF' : 'SUPER BRIEF';
-  const noun = kind === 'brief' ? 'brief' : 'super brief';
+  const isWeeklyKind = kind === 'weekly' || kind === 'weekly-super';
+  const activeBriefs =
+    kind === 'brief'
+      ? briefs
+      : kind === 'super'
+        ? superBriefs
+        : kind === 'weekly'
+          ? weeklyBriefs
+          : weeklyLightBriefs;
+  const hrefBase = KIND_META[kind].href;
+  const badgeLabel = KIND_META[kind].badge;
+  const noun = KIND_META[kind].noun;
 
-  // Extract unique months from the active set
+  // Extract unique months from the active set. Weekly items are keyed by ISO-week
+  // slug (e.g. "2026-W28"), which is not a parseable Date — skip month chips there.
   const months = useMemo(() => {
+    if (isWeeklyKind) return [] as string[];
     const monthSet = new Set<string>();
     activeBriefs.forEach((b) => {
       const date = new Date(b.date);
@@ -75,24 +99,33 @@ export default function ArchiveClient({ briefs, superBriefs = [] }: ArchiveClien
 
   return (
     <>
-      {/* Brief / Super Brief toggle */}
-      <div className="mb-6 inline-flex rounded overflow-hidden border-2 border-ct-dark">
-        <button
-          onClick={() => switchKind('brief')}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${
-            kind === 'brief' ? 'bg-ct-dark text-ct-yellow' : 'bg-white text-text-primary hover:bg-surface-warm'
-          }`}
-        >
-          Full Brief
-        </button>
-        <button
-          onClick={() => switchKind('super')}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wide border-l-2 border-ct-dark transition-colors ${
-            kind === 'super' ? 'bg-ct-dark text-ct-yellow' : 'bg-white text-text-primary hover:bg-surface-warm'
-          }`}
-        >
-          Super Brief
-        </button>
+      {/* Brief kind toggle */}
+      <div className="mb-6 inline-flex rounded overflow-hidden border-2 border-ct-dark flex-wrap">
+        {(['brief', 'super', 'weekly', 'weekly-super'] as ArchiveKind[])
+          .filter(
+            (k) =>
+              (k === 'brief'
+                ? briefs
+                : k === 'super'
+                  ? superBriefs
+                  : k === 'weekly'
+                    ? weeklyBriefs
+                    : weeklyLightBriefs
+              ).length > 0,
+          )
+          .map((k, i) => (
+            <button
+              key={k}
+              onClick={() => switchKind(k)}
+              className={`px-4 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${
+                i > 0 ? 'border-l-2 border-ct-dark' : ''
+              } ${
+                kind === k ? 'bg-ct-dark text-ct-yellow' : 'bg-white text-text-primary hover:bg-surface-warm'
+              }`}
+            >
+              {KIND_META[k].label}
+            </button>
+          ))}
       </div>
 
       {/* Search Bar */}

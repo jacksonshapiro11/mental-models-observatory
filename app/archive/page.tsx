@@ -1,4 +1,5 @@
-import { getAllBriefDates, getBriefByDate } from '@/lib/daily-update-parser';
+import { getAllBriefDates, getBriefByDate, getAllWeeklySlugs, getWeeklyBySlug } from '@/lib/daily-update-parser';
+import { getAllWeeklyLightSlugs, getWeeklyLightBySlug } from '@/lib/weekly-light-parser';
 import { getAllBriefLightDates, getBriefLightByDate } from '@/lib/brief-light-parser';
 import ArchiveClient from '@/components/archive/ArchiveClient';
 import type { ArchiveBrief } from '@/components/archive/ArchiveClient';
@@ -48,6 +49,38 @@ export default function ArchivePage() {
     })
     .filter((b): b is ArchiveBrief => b !== null);
 
+  const weeklyBriefs: ArchiveBrief[] = getAllWeeklySlugs()
+    .map((slug) => {
+      const brief = getWeeklyBySlug(slug);
+      if (!brief) return null;
+      return {
+        date: slug,
+        displayDate: brief.displayDate,
+        dailyTitle: brief.dailyTitle || '',
+        epigraph: brief.epigraph || '',
+        lede: brief.lede || '',
+        sectionCount: brief.sections.length,
+        sections: brief.sections.map((s) => s.label),
+      };
+    })
+    .filter((b): b is ArchiveBrief => b !== null);
+
+  const weeklyLightBriefs: ArchiveBrief[] = getAllWeeklyLightSlugs()
+    .map((slug) => {
+      const brief = getWeeklyLightBySlug(slug);
+      if (!brief) return null;
+      return {
+        date: slug,
+        displayDate: brief.displayDate,
+        dailyTitle: brief.dailyTitle || '',
+        epigraph: brief.epigraph || '',
+        lede: (brief as { lede?: string }).lede || '',
+        sectionCount: brief.sections.length,
+        sections: brief.sections.map((s) => s.label),
+      };
+    })
+    .filter((b): b is ArchiveBrief => b !== null);
+
   return (
     <div className="min-h-screen bg-surface-reading">
       {/* Dark Header — server-rendered, always visible to crawlers */}
@@ -61,7 +94,7 @@ export default function ArchivePage() {
               Every published edition of Markets, Meditations &amp; Mental Models
             </p>
             <p className="text-text-on-dark-muted text-xs font-mono">
-              {briefs.length}+ full briefs · {superBriefs.length}+ super briefs | Published daily since February 2026
+              {briefs.length}+ full briefs · {superBriefs.length}+ super briefs · {weeklyBriefs.length}+ weeklies | Published daily since February 2026
             </p>
           </div>
         </div>
@@ -70,7 +103,7 @@ export default function ArchivePage() {
       {/* Main Content — interactive filtering + brief/super-brief toggle is client-side */}
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         <div className="max-w-4xl mx-auto">
-          <ArchiveClient briefs={briefs} superBriefs={superBriefs} />
+          <ArchiveClient briefs={briefs} superBriefs={superBriefs} weeklyBriefs={weeklyBriefs} weeklyLightBriefs={weeklyLightBriefs} />
         </div>
       </div>
     </div>
