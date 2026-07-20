@@ -23,6 +23,14 @@
     {
       "path": "/api/publish/complete-weekly",
       "schedule": "15 10 * * *"
+    },
+    {
+      "path": "/api/publish/complete-weekly",
+      "schedule": "0 22 * * 0"
+    },
+    {
+      "path": "/api/publish/complete-weekly",
+      "schedule": "0 1 * * 1"
     }
   ]
 }

@@ -7,9 +7,11 @@
  * the Weekly — not Saturday's daily. The moment Monday's daily lands, the daily
  * wins again automatically. No flags, no cron: pure comparison of what's on disk.
  *
- * Fail-safe preserved: if the weekly publish failed and the held daily was
- * force-published dated the same Sunday, the daily wins (dailyDate >= sunday),
- * matching the Controller's "site is never empty" rule.
+ * Same-day daily does NOT suppress the Weekly (W29 2026-07-19: zoom-out Sunday
+ * daily shipped in the morning and hid The Weekly all day via `>=`). Prefer the
+ * Weekly when it exists for that Sunday. If the Weekly is missing entirely, this
+ * helper returns false and the normal latest-daily path fills the site ("never
+ * empty").
  */
 
 import { getAllBriefDates, getAllWeeklySlugs } from './daily-update-parser';
@@ -22,12 +24,17 @@ import { isoWeekSunday } from './brief-date';
 export { isoWeekSunday };
 
 /**
- * Weekly wins iff its Sunday has arrived (ET) and no daily is dated on/after it.
+ * Weekly wins iff its Sunday has arrived (ET) and no NEWER daily has published.
+ * A daily dated the same Sunday does not win — zoom-out day prefers The Weekly.
  */
-function weeklyIsCurrent(weeklySunday: string | null, latestDailyDate: string | null): boolean {
+export function weeklyIsCurrent(
+  weeklySunday: string | null,
+  latestDailyDate: string | null,
+  today: string = todayET(),
+): boolean {
   if (!weeklySunday) return false;
-  if (weeklySunday > todayET()) return false;
-  if (latestDailyDate && latestDailyDate >= weeklySunday) return false;
+  if (weeklySunday > today) return false;
+  if (latestDailyDate && latestDailyDate > weeklySunday) return false;
   return true;
 }
 

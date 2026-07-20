@@ -7,7 +7,10 @@
  * the content was live). This route runs ON Vercel via cron, so no sandbox proxy
  * can block it. Closes Pipeline_Controller "ZOOM-OUT DAY / Build status" gap (1).
  *
- * Behavior (daily at 10:15Z, after the 9:55Z daily failsafe):
+ * Behavior (Vercel crons — see vercel.json):
+ *   - 10:15Z daily (morning failsafe, after 9:55Z daily complete)
+ *   - 22:00Z Sunday + 01:00Z Monday (evening catch — W29 2026-07-19 shipped
+ *     ~00:34Z Monday, after the morning cron had already skipped W28)
  *   - Resolves the newest published Weekly and its ISO-week Sunday.
  *   - Inside its Sun→Sat window: runs the idempotent weekly completion
  *     (audio + email — skips anything already done, so most days it's a no-op).

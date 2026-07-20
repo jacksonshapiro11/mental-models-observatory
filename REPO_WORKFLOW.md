@@ -73,12 +73,13 @@ brief-morning (~5:20 AM ET)
             └─ marketing pack (parallel)
        └─ if health times out: ALERT + do NOT call complete (failsafes recover)
 
-FAILSAFE A — GitHub Action (install once)
-  Template committed at `docs/ops/publish-complete.workflow.yml`.
-  Copy to `.github/workflows/publish-complete.yml` and push with a token that has
-  the `workflow` scope (fine-grained PAT / SSH), then add repo Action secret
-  `CRON_SECRET` or `SNAPSHOT_SECRET`.
+FAILSAFE A — GitHub Action (template ready — needs one-time install)
+  Weekly-aware template at `docs/ops/publish-complete.workflow.yml`.
+  Copy to `.github/workflows/publish-complete.yml` and push with a token that
+  has the `workflow` scope; add repo Action secret `CRON_SECRET` or
+  `SNAPSHOT_SECRET`. (2026-07-19: code push blocked without that scope.)
   on push to main of content/daily-updates/** (and workflow_dispatch)
+  └─ detects daily vs weekly paths
   └─ poll https://www.cosmictrex.com/api/publish/health (custom domain)
        └─ POST /api/publish/complete with Bearer CRON_SECRET or SNAPSHOT_SECRET
 
@@ -88,8 +89,15 @@ FAILSAFE B — Vercel crons (UTC, EDT ≈ UTC-4):
   9:55 daily    /api/publish/complete   — ~5:55 AM ET
   10:30 daily   /api/publish/complete   — ~6:30 AM ET
   11:15 daily   /api/publish/complete   — ~7:15 AM ET (late catch)
-  10:15 daily   /api/publish/complete-weekly
+  10:15 daily   /api/publish/complete-weekly — morning
+  22:00 Sunday  /api/publish/complete-weekly — ~6:00 PM ET (evening catch)
+  01:00 Monday  /api/publish/complete-weekly — ~9:00 PM ET Sun (late weekly)
 ```
+
+### Zoom-out Sunday front page (2026-07-19 / W29)
+
+`lib/weekly-window.ts`: The Weekly wins over a **same-day** daily (`latestDaily > weeklySunday`, not `>=`). Morning daily publish on zoom-out Sunday must still be HELD by the pipeline; this code fix keeps the Weekly on `/daily-update` even if the hold fails.
+
 
 **Why poll, not sleep:** `/api/publish/complete` reads the **deployed Vercel filesystem** via `getBriefLightByDate()`, not GitHub. A fixed 90s wait often raced the deploy (2026-07-08 morning → `skipped: true`). Health poll waits until the live site actually has the light brief. complete itself also waits up to 90s before returning 409.
 

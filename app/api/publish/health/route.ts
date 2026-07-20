@@ -9,6 +9,8 @@
  * No auth required (read-only filesystem check).
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { checkDeployedBriefHealth, checkDeployedWeeklyHealth } from '@/lib/publish/brief-health';
 import { todayET } from '@/lib/publish-date';
