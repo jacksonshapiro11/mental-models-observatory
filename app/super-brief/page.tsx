@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 
+/** Zoom-out Sunday must read disk at request time — do not bake daily vs weekly at build. */
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata(): Promise<Metadata> {
   const brief = getLatestBriefLight();
   const title = "Today's Super Brief — Cosmic Trex";

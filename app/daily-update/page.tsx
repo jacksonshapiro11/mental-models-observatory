@@ -6,6 +6,9 @@ import { redirect } from 'next/navigation';
 import { Newspaper } from 'lucide-react';
 import type { Metadata } from 'next';
 
+/** Zoom-out Sunday must read disk at request time — do not bake daily vs weekly at build. */
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Today's Daily Brief",
   description: 'Daily market intelligence brief — macro, crypto, AI, geopolitics, and the mental models that connect them. Every morning from Cosmic Trex.',
