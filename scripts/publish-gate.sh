@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # publish-gate.sh — the single hard gate before publish.
 #
-# Chains the four mechanical gates. Any non-zero exit blocks publish.
+# Chains the mechanical gates. Any non-zero exit blocks publish.
+#   0. reader-surface-gate.ts — residual HTML comments / internal tags on reader artifact
 #   1. validate-brief.ts  — structure / voice / dedup (existing)
 #   2. fact-gate.ts       — TRUTH (strict: also blocks unverified-critical numbers)
 #   3. novelty-gate.ts    — NOVELTY (bans repeating The Take's structural move)
@@ -19,13 +20,15 @@ cd "$ROOT"
 RUN=(node --experimental-strip-types)
 fail=0
 
-echo "════════════ 1/4 STRUCTURAL ════════════"
+echo "════════════ 0/5 READER SURFACE ════════════"
+"${RUN[@]}" scripts/reader-surface-gate.ts "$BRIEF" || fail=1
+echo ""; echo "════════════ 1/5 STRUCTURAL ════════════"
 "${RUN[@]}" scripts/validate-brief.ts "$BRIEF" || fail=1
-echo ""; echo "════════════ 2/4 TRUTH (strict) ════════════"
+echo ""; echo "════════════ 2/5 TRUTH (strict) ════════════"
 "${RUN[@]}" scripts/fact-gate.ts "$BRIEF" || fail=1
-echo ""; echo "════════════ 3/4 NOVELTY ════════════"
+echo ""; echo "════════════ 3/5 NOVELTY ════════════"
 "${RUN[@]}" scripts/novelty-gate.ts "$BRIEF" || fail=1
-echo ""; echo "════════════ 4/4 RELEVANCE ════════════"
+echo ""; echo "════════════ 4/5 RELEVANCE ════════════"
 "${RUN[@]}" scripts/relevance-gate.ts "$BRIEF" || fail=1
 
 echo ""
