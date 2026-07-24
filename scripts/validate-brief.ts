@@ -246,6 +246,50 @@ function checkModelRecency(body: string, briefDate: string): Failure[] {
   return out;
 }
 
+// MODEL ROTATION ASSIGNMENT (2026-07-24 — IMP-095 wiring). The daily model is ASSIGNED by the
+// deterministic rotation (scripts/select-daily-model.ts walking data/model-rotation-queue.json),
+// which replaced the stale prose cooldown that let `signal-vs-noise-information-quality` ship on
+// both 07-19 and 07-21. Usage Rule 4 tells the Writer to teach the assigned slug — but a prose
+// rule is the mechanism that already failed once. This gate is the mechanical leg: a brief that
+// teaches any other slug is REJECTED. Skips cleanly when it has no jurisdiction: weekly slugs,
+// dates before the rotation epoch (pre-epoch models were free-picked history), and checkouts
+// without the queue file. checkModelLink owns missing/invalid-link failures.
+// Escape hatch: `model-rotation` is FALSE-POSITIVE-OVERRIDE-eligible for genuine emergencies,
+// with evidence in the editor log — never silently.
+function checkModelAssigned(body: string, briefDate: string): Failure[] {
+  const out: Failure[] = [];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(briefDate)) return out; // weekly briefs are exempt
+  const qp = path.join(process.cwd(), 'data', 'model-rotation-queue.json');
+  if (!fs.existsSync(qp)) return out; // rotation not deployed in this checkout
+  let queue: { epoch?: string; models?: { slug: string; name?: string; domain?: string }[] };
+  try {
+    queue = JSON.parse(fs.readFileSync(qp, 'utf8'));
+  } catch {
+    return out;
+  }
+  const models = queue.models ?? [];
+  if (!queue.epoch || !/^\d{4}-\d{2}-\d{2}$/.test(queue.epoch) || models.length === 0) return out;
+  const day = (s: string) => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+  const days = Math.round((day(briefDate) - day(queue.epoch)) / 86_400_000);
+  if (days < 0) return out; // pre-epoch briefs predate the rotation
+  const assigned = models[days % models.length]!;
+  const section = extractModelSection(body);
+  const m = section?.match(/\*\*\[→ Explore this model\]\(https:\/\/www\.cosmictrex\.com\/models\/([a-z0-9-]+)\)\*\*/);
+  if (!m) return out; // checkModelLink owns the missing-link failure
+  if (m[1] !== assigned.slug) {
+    out.push({
+      check: 'model-rotation-assigned',
+      message:
+        `Model slug "${m[1]}" is not the rotation's assignment for ${briefDate} — the assigned model is ` +
+        `"${assigned.slug}" (${assigned.name ?? 'unknown'}, ${assigned.domain ?? 'unknown domain'}). The model is ` +
+        `ASSIGNED, not chosen (Model_Library Usage Rule 4): run \`node --experimental-strip-types ` +
+        `scripts/select-daily-model.ts --date ${briefDate}\` and teach that slug. If today genuinely cannot ` +
+        `teach it, declare a FALSE-POSITIVE OVERRIDE: [model-rotation-assigned] with evidence in the editor log.`,
+    });
+  }
+  return out;
+}
+
 // AI & Tech minimum 2-bullet floor (added June 14 — E-AI-SECTION-THINNESS-01 🟡 Day 3.
 // AI section shipped 1 bullet (162 words) on a weekend brief that should expand.
 // The Architect is dark so no upstream layer enforces a minimum. RC6 load-shedding.)
@@ -1912,6 +1956,9 @@ function main() {
   const recencyDateMatch = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
   if (recencyDateMatch) {
     failures.push(...checkModelRecency(body, recencyDateMatch[1]));
+    // Rotation assignment gate (2026-07-24 — IMP-095 wiring): the taught model must be the
+    // rotation's assignment for this date. Recency stays as the concept-name backstop.
+    failures.push(...checkModelAssigned(body, recencyDateMatch[1]));
   }
   failures.push(...checkCandCBalance(body));
   failures.push(...checkDashboardNoTables(body));
@@ -2037,6 +2084,9 @@ function main() {
   const overrideEligiblePrefixes = [
     'signal-staleness', 'wildcard-staleness', 'entity-lead', 'event-lead',
     'adjacent-sentence-dedup', 'data-point-repetition',
+    // Rotation assignment (2026-07-24): override-eligible so a genuine editorial emergency has
+    // a DECLARED path around the assignment — evidence in the editor log, never silence.
+    'model-rotation',
   ];
   {
     const dateMatchOverride = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
