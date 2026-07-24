@@ -10,9 +10,10 @@ name: Publish to Substack
 #
 # Required secrets (Settings → Secrets and variables → Actions):
 #   SUBSTACK_PUBLICATION_URL  e.g. https://cosmictrex.substack.com  (master switch; absent → no-op)
-#   SUBSTACK_EMAIL + SUBSTACK_PASSWORD   OR   SUBSTACK_COOKIES_STRING
+#   SUBSTACK_COOKIES_STRING   required for CI (Cloudflare blocks password login on runners)
 #     Cookie form: browser DevTools → Application → Cookies → substack.com
 #     copy as "substack.sid=…; substack.lli=…"
+#   SUBSTACK_EMAIL + SUBSTACK_PASSWORD  local-only fallback (fails in Actions)
 #
 # Variables (optional):
 #   SUBSTACK_MODE         draft (default) | publish

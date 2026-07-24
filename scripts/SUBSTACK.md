@@ -9,7 +9,7 @@ The **light brief** (`content/daily-updates/{date}-light.md`), verbatim, with a
 link block prepended (Spotify show + full brief on cosmictrex). Title = thesis
 headline (same convention as the email subject).
 
-## Triggers (hands-off once secrets are set)
+## Triggers (hands-off once cookie auth is set)
 
 1. **Push** of `content/daily-updates/*-light.md` to `main` (primary — fires when the brief lands)
 2. **Weekday cron** `45 14 * * 1-5` UTC (~10:45 ET) as backup if the push event is missed
@@ -24,8 +24,8 @@ Default mode is **draft**. Flip repo Variable `SUBSTACK_MODE=publish` after clea
 | Secret | Required? | Notes |
 |--------|-----------|-------|
 | `SUBSTACK_PUBLICATION_URL` | **Yes** (master switch) | e.g. `https://cosmictrex.substack.com`. Absent → workflow no-ops. |
-| `SUBSTACK_EMAIL` + `SUBSTACK_PASSWORD` | One auth path | Set a password on the Substack account first (magic-link-only accounts can't login from CI). |
-| `SUBSTACK_COOKIES_STRING` | Alt auth | Prefer if password login hits captcha from GitHub runners. DevTools → Application → Cookies → `substack.com` → copy as `substack.sid=…; substack.lli=…`. |
+| `SUBSTACK_COOKIES_STRING` | **Yes for CI** | Cloudflare blocks password login from GitHub runners. Browser DevTools → Application → Cookies → `substack.com` → copy as `substack.sid=…; substack.lli=…`. |
+| `SUBSTACK_EMAIL` + `SUBSTACK_PASSWORD` | Local only | Optional local fallback; **will fail in Actions** with Cloudflare challenge. |
 
 ### 2. Variables (optional)
 
@@ -36,14 +36,12 @@ Default mode is **draft**. Flip repo Variable `SUBSTACK_MODE=publish` after clea
 
 ### 3. Landing the workflow file
 
-Needs a token/credential with **Workflows: Read and write** (classic PAT scope `workflow`, or fine-grained → Repository permissions → Workflows).
-
-If push still fails: github.com → Settings → Developer settings → Personal access tokens → your token → enable Workflows, then re-push.
-Or paste via GitHub UI: Add file → Create new file → path `.github/workflows/publish-substack.yml`.
+Needs a token/credential with **Workflows: Read and write** (classic PAT scope `workflow`).
+Push with keychain/SSH — not a remote URL that embeds a PAT missing `workflow`.
 
 ## Test
 
-1. Secrets set (at least `SUBSTACK_PUBLICATION_URL` + auth).
+1. `SUBSTACK_PUBLICATION_URL` + `SUBSTACK_COOKIES_STRING` set.
 2. Actions → **Publish to Substack** → Run workflow → date `YYYY-MM-DD`.
 3. Open Substack editor — expect a **draft** titled from that day's thesis.
 4. Local dry-run (no secrets needed):
