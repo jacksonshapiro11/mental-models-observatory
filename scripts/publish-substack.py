@@ -21,12 +21,12 @@ Usage:
   python3 scripts/publish-substack.py --file=path/to.md     # explicit source file (testing)
 
 Env (GitHub secrets in CI; .env.local is read as a fallback for local runs):
-  SUBSTACK_COOKIES_STRING              **required for GitHub Actions** — Cloudflare
-                                       blocks password login from runners. Cookie
-                                       header from a logged-in browser session, e.g.
+  SUBSTACK_EMAIL / SUBSTACK_PASSWORD   login auth (set a password on the account
+                                       first — new Substack accounts are magic-link only)
+  SUBSTACK_COOKIES_STRING              alternative auth: cookie header string from a
+                                       logged-in browser session, e.g.
                                        "substack.sid=...; substack.lli=..."
-  SUBSTACK_EMAIL / SUBSTACK_PASSWORD   local-only fallback (set a password first —
-                                       magic-link-only accounts can't login via API)
+                                       (use if password login hits a captcha in CI)
   SUBSTACK_PUBLICATION_URL             e.g. https://cosmictrex.substack.com
   SUBSTACK_MODE                        draft | publish     (default: draft)
   SUBSTACK_SEND_EMAIL                  true | false        (default: true; publish mode only)
@@ -36,9 +36,8 @@ today, or not configured). 1 = real failure — CI goes red, fix and re-run via
 workflow_dispatch.
 
 Failure runbook:
-  - Cloudflare / "Just a moment..." / 403 on login → set SUBSTACK_COOKIES_STRING
-    (browser DevTools → Application → Cookies → substack.com → copy
-    substack.sid + substack.lli as "substack.sid=…; substack.lli=…").
+  - Login/captcha error → switch to SUBSTACK_COOKIES_STRING (browser DevTools →
+    Application → Cookies → substack.com → copy substack.sid + substack.lli).
   - Cookie expired (401s after months of working) → refresh the cookie secret.
   - Node-schema / API errors after a Substack change → bump python-substack pin
     in publish-substack.yml; the post can always be published by hand meanwhile.
@@ -246,16 +245,6 @@ def write_preview(post: dict, date_slug: str, out_dir: Path) -> tuple[Path, Path
 
 # ─── Substack client ─────────────────────────────────────────────────────────
 
-def _looks_like_cloudflare(err: BaseException) -> bool:
-    s = str(err)
-    return (
-        "Just a moment" in s
-        or "challenges.cloudflare.com" in s
-        or "cf-chl" in s
-        or ("<!DOCTYPE html>" in s and "cloudflare" in s.lower())
-    )
-
-
 def make_api(publication_url: str):
     from substack import Api
 
@@ -267,22 +256,11 @@ def make_api(publication_url: str):
         log("🔑 Auth: cookies string")
         return Api(cookies_string=cookies, publication_url=publication_url)
     if email and password:
-        # Password login works locally; GitHub runners hit Cloudflare and fail.
-        log(f"🔑 Auth: password login ({email}) — prefer SUBSTACK_COOKIES_STRING in CI")
-        try:
-            return Api(email=email, password=password, publication_url=publication_url)
-        except Exception as e:  # noqa: BLE001
-            if _looks_like_cloudflare(e):
-                raise RuntimeError(
-                    "Substack password login blocked by Cloudflare (expected on "
-                    "GitHub Actions). Set secret SUBSTACK_COOKIES_STRING from a "
-                    "logged-in browser: DevTools → Application → Cookies → "
-                    "substack.com → copy as 'substack.sid=…; substack.lli=…'."
-                ) from e
-            raise
+        log(f"🔑 Auth: password login ({email})")
+        return Api(email=email, password=password, publication_url=publication_url)
     raise RuntimeError(
-        "No Substack credentials: set SUBSTACK_COOKIES_STRING "
-        "(required for CI) or SUBSTACK_EMAIL + SUBSTACK_PASSWORD (local)"
+        "No Substack credentials: set SUBSTACK_EMAIL + SUBSTACK_PASSWORD "
+        "or SUBSTACK_COOKIES_STRING"
     )
 
 
