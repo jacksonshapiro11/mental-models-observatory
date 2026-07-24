@@ -113,6 +113,17 @@ export async function generateLightAudio(
       `[audio:light] Script: ${preprocessed.characterCount} characters, ${preprocessed.sections.length} sections`,
     );
 
+    // Surface the script-gate outcome where the run result can carry it — a warning that only
+    // ever hits console in an unattended scheduled run is a gate nobody sees. (2026-07-24)
+    const gateWarnings = preprocessed.warnings ?? [];
+    const fallbackCount = gateWarnings.filter((w) => w.includes('fell back to faithful voicing')).length;
+    if (gateWarnings.length) {
+      console.warn(
+        `[audio:light] ⚠ SCRIPT GATE — ${gateWarnings.length} warning(s), ${fallbackCount} section(s) shipped on faithful-voicing fallback:`,
+      );
+      for (const w of gateWarnings) console.warn(`[audio:light]   • ${w}`);
+    }
+
     const resolvedDisplayDate = resolveDisplayDate(brief.displayDate, brief.date);
     auditAudioIntroOrThrow(preprocessed.fullText, brief.date, resolvedDisplayDate);
     console.log(`[audio:light] Intro date audit PASS for ${brief.date}`);
@@ -198,7 +209,11 @@ Avoid: rushing, robotic cadence, singsong patterns, dramatic over-pausing, breat
     return {
       status: 'success',
       date: episodeKey,
-      details: `Generated ${characterCount} chars, ${chunks} chunks`,
+      details:
+        `Generated ${characterCount} chars, ${chunks} chunks` +
+        (gateWarnings.length
+          ? `; ${gateWarnings.length} script-gate warning(s)${fallbackCount ? `, ${fallbackCount} faithful-voicing fallback section(s)` : ''}`
+          : ''),
       episode,
     };
   } catch (err) {

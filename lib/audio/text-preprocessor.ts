@@ -853,9 +853,13 @@ export function enforceScriptRules(sectionName: string, script: string, sourceCo
   // must appear in speech). A dropped story erases its entities, so a low survival rate is a
   // gutted-beat signal a length ratio cannot see. Conservative: only applies when the source
   // leans on >=5 distinct entities, and tolerates a 30% incidental drop.
-  const srcEntities = extractNamedEntities(sourceContent);
-  const hay = out.toLowerCase();
-  const droppedEntities = srcEntities.filter(e => !hay.includes(e));
+  // Typography-normalize BOTH sides (curly→straight, via normalizeForPhraseMatch) and accept a
+  // possessive→bare rewrite: the briefs carry straight apostrophes while GPT-4o writes curly
+  // (documented in scripts/audio-gate-regression.ts fixtures), so "murdoch's" vs "murdoch’s"
+  // must never read as a dropped entity. (Review fix 2026-07-24.)
+  const srcEntities = [...new Set(extractNamedEntities(sourceContent).map(e => normalizeForPhraseMatch(e)))];
+  const hay = normalizeForPhraseMatch(out);
+  const droppedEntities = srcEntities.filter(e => !hay.includes(e) && !hay.includes(e.replace(/'s$/, '')));
   const entitySurvival = srcEntities.length ? 1 - droppedEntities.length / srcEntities.length : 1;
   const entitiesGutted = srcEntities.length >= 5 && entitySurvival < 0.70;
 
@@ -1181,7 +1185,7 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
 
 const QUOTE_MARKER = '[[VERBATIM_QUOTE]]';
 const QUOTE_MARKER_INSTRUCTION =
-  ` A placeholder token ${QUOTE_MARKER} marks where a verbatim quotation belongs. Reproduce the token ${QUOTE_MARKER} EXACTLY as written, on its own line, at the same point in the flow. Do NOT replace it with a quote, translate it, rephrase it, or drop it. Voice the setup before it and the reflection after it.`;
+  ` A placeholder token ${QUOTE_MARKER} marks where a verbatim quotation belongs. Reproduce the token ${QUOTE_MARKER} EXACTLY as written, on its own line, at the same point in the flow. Do NOT replace it with a quote, translate it, rephrase it, or drop it. The quotation itself is injected after you finish, so do NOT write any quoted passage of your own anywhere in this section — even if your instructions mention delivering the quote, the token IS the quote. Voice the setup before it and the reflection after it.`;
 
 /** Pull the verbatim quote + attribution out of a meditation / Inner Game section so it can be
  *  hard-injected instead of trusted to GPT (GPT paraphrases and drops quotes — the same reason
@@ -1274,11 +1278,16 @@ async function rewriteSectionChecked(
     };
     const second = restore(await rewriteSection(client, sectionName, gptContent, context, retryOpts));
     const secondChecked = enforceScriptRules(sectionName, second, content);
-    // Keep whichever attempt preserved more substance.
-    checked =
-      secondChecked.script.length > checked.script.length
-        ? { ...secondChecked, warnings: [...checked.warnings, ...secondChecked.warnings] }
-        : { ...checked, warnings: [...checked.warnings, ...secondChecked.warnings] };
+    // Keep the attempt that PASSED the gate; length only breaks ties. (Review fix 2026-07-24:
+    // length-alone kept a full-length-but-entity-gutted first attempt over a passing second
+    // attempt, then fell through to the regex fallback despite holding a healthy script. The
+    // first attempt is always flagged here — that is why we retried — so only the second can pass.)
+    const preferred = !secondChecked.needsRetry
+      ? secondChecked
+      : secondChecked.script.length > checked.script.length
+        ? secondChecked
+        : checked;
+    checked = { ...preferred, warnings: [...checked.warnings, ...secondChecked.warnings] };
 
     // Still gutted after a targeted regeneration? Do NOT ship the gutted script. Fall back to a
     // faithful voicing of the written section: plainer delivery, but every beat, number, and
@@ -1461,7 +1470,7 @@ async function rewriteAsScript(
   epigraph: string,
   dateSlug: string,
   isWeekly = false,
-): Promise<string> {
+): Promise<{ text: string; warnings: string[] }> {
   const client = new OpenAI({ apiKey: openaiApiKey });
 
   // Build all section tasks: intro + each content section
@@ -1529,9 +1538,9 @@ async function rewriteAsScript(
           prevTopic: prevTask ? extractSectionTopic(prevTask.content) : undefined,
           alreadyCovered: cumulativeFacts.get(task.index),
         };
-        const { script } = await rewriteSectionChecked(client, task.name, task.content, context, optsFor(task.name));
+        const { script, warnings } = await rewriteSectionChecked(client, task.name, task.content, context, optsFor(task.name));
         console.log(`[audio]   → ${script.length} chars`);
-        return { index: task.index, name: task.name, script };
+        return { index: task.index, name: task.name, script, warnings };
       })
     );
 
@@ -1545,6 +1554,7 @@ async function rewriteAsScript(
     }
 
     results.sort((a, b) => a.index - b.index);
+    const gateWarnings = results.flatMap(r => r.warnings);
 
     // ─── Stitch sections with deterministic transitions ───────────────
     const stitchedParts: string[] = [];
@@ -1586,13 +1596,14 @@ async function rewriteAsScript(
     const SECTION_PAUSE = '\n\n...\n\n';
     const totalChars = stitchedParts.reduce((sum, s) => sum + s.length, 0);
     console.log(`[audio] Total script: ${totalChars} chars across ${stitchedParts.length} sections`);
-    return stitchedParts.join(SECTION_PAUSE);
+    return { text: stitchedParts.join(SECTION_PAUSE), warnings: gateWarnings };
 
   } catch (parallelErr) {
     // Strategy 2: Sequential fallback (slower but gentler on rate limits)
     console.warn(`[audio] Parallel rewrite failed (${parallelErr}), falling back to sequential...`);
 
     const scriptParts: string[] = [];
+    const seqWarnings: string[] = [];
     const seqRunningFacts = [...ledeFacts];
     for (let ti = 0; ti < tasks.length; ti++) {
       const task = tasks[ti]!;
@@ -1613,7 +1624,8 @@ async function rewriteAsScript(
               : {}),
           }
         : undefined;
-      const { script } = await rewriteSectionChecked(client, task.name, task.content, context, seqOpts);
+      const { script, warnings: seqSectionWarnings } = await rewriteSectionChecked(client, task.name, task.content, context, seqOpts);
+      seqWarnings.push(...seqSectionWarnings);
 
       // Inject deterministic transition before section content (canonical lookup + weekly overrides)
       const transition =
@@ -1647,7 +1659,7 @@ async function rewriteAsScript(
     const SECTION_PAUSE_SEQ = '\n\n...\n\n';
     const totalChars = scriptParts.reduce((sum, s) => sum + s.length, 0);
     console.log(`[audio] Total script (sequential): ${totalChars} chars across ${scriptParts.length} sections`);
-    return scriptParts.join(SECTION_PAUSE_SEQ);
+    return { text: scriptParts.join(SECTION_PAUSE_SEQ), warnings: seqWarnings };
   }
 }
 
@@ -1660,6 +1672,10 @@ export interface PreprocessedBrief {
   sections: { id: string; label: string; text: string }[];
   /** Approximate character count (for cost estimation) */
   characterCount: number;
+  /** Script-gate warnings (gutted retries, faithful-voicing fallbacks, stripped leads, …).
+   *  Surfaced so generation results can carry them — a gate whose only output is a console
+   *  line in an unattended scheduled run is a gate nobody sees. (Review fix 2026-07-24.) */
+  warnings: string[];
 }
 
 export interface PreprocessOptions {
@@ -1720,17 +1736,20 @@ export async function preprocessBriefForTTS(
   }
 
   let fullText: string;
+  let gateWarnings: string[] = [];
 
   // Step 2: Rewrite as conversational podcast script via GPT-4o (per-section)
   if (!options.skipLlmCleanup && options.openaiApiKey) {
     try {
       console.log('[audio] Rewriting as conversational podcast script (GPT-4o, per-section)...');
-      const script = await rewriteAsScript(parsed, options.openaiApiKey, epigraph, brief.date, options.isWeekly ?? false);
+      const rewritten = await rewriteAsScript(parsed, options.openaiApiKey, epigraph, brief.date, options.isWeekly ?? false);
+      gateWarnings = rewritten.warnings;
       // Step 3: Regex normalize the output to catch anything the LLM missed
-      fullText = regexNormalize(script);
+      fullText = regexNormalize(rewritten.text);
       console.log(`[audio] Script: ${fullText.length} characters`);
     } catch (err) {
       console.warn('[audio] Scriptwriter failed, falling back to regex-only:', err);
+      gateWarnings = [`scriptwriter failed (${err}) — regex-only fallback for the WHOLE brief`];
       fullText = regexNormalize(rawContent);
     }
   } else {
@@ -1749,6 +1768,7 @@ export async function preprocessBriefForTTS(
     fullText,
     sections,
     characterCount: fullText.length,
+    warnings: gateWarnings,
   };
 }
 
@@ -1930,6 +1950,7 @@ export async function preprocessBriefLightForTTS(
     : '';
 
   let fullText: string;
+  let gateWarnings: string[] = [];
 
   if (!options.skipLlmCleanup && options.openaiApiKey) {
     try {
@@ -1947,7 +1968,8 @@ export async function preprocessBriefLightForTTS(
             || '')
         : (ordered[0]?.content?.split('\n')[0] || '');
       const introContent = `DAILY TITLE: ${brief.dailyTitle || ''}\nHEADLINE: ${ideaHeadline}`;
-      const { script: introHook } = await rewriteSectionChecked(client, 'light-intro', introContent, {}, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
+      const { script: introHook, warnings: introWarnings } = await rewriteSectionChecked(client, 'light-intro', introContent, {}, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
+      gateWarnings.push(...introWarnings);
 
       // Rewrite each section individually with section-specific instructions
       const sectionScripts: string[] = [];
@@ -1984,7 +2006,8 @@ export async function preprocessBriefLightForTTS(
           : section.content;
 
         console.log(`[audio:light] Section: ${rewriteLabel}${section.title ? ` — ${section.title}` : ''}...`);
-        const { script } = await rewriteSectionChecked(client, rewriteLabel, rewriteContent, context, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
+        const { script, warnings: sectionWarnings } = await rewriteSectionChecked(client, rewriteLabel, rewriteContent, context, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
+        gateWarnings.push(...sectionWarnings);
         console.log(`[audio:light]   → ${script.length} chars`);
 
         // Feed this section's figures forward so later sections (esp. MARKETS MINUTE) know
@@ -2022,6 +2045,7 @@ export async function preprocessBriefLightForTTS(
       console.log(`[audio:light] Script: ${fullText.length} characters`);
     } catch (err) {
       console.warn('[audio:light] Scriptwriter failed, falling back to regex-only:', err);
+      gateWarnings = [`light scriptwriter failed (${err}) — regex-only fallback for the WHOLE brief`];
       const rawContent = ordered.map(s => `${s.label}:\n${s.content}`).join('\n\n');
       fullText = regexNormalize(applyLightPronunciations(rawContent));
     }
@@ -2040,6 +2064,7 @@ export async function preprocessBriefLightForTTS(
     fullText,
     sections,
     characterCount: fullText.length,
+    warnings: gateWarnings,
   };
 }
 
