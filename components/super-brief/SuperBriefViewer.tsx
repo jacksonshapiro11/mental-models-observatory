@@ -320,7 +320,7 @@ export default function SuperBriefViewer({
             {brief.displayDate}
           </div>
           <div className="font-mono text-[11px] font-medium text-[#555] uppercase tracking-[0.08em] mb-3">
-            Markets, Meditations &amp; Mental Models — Super Brief
+            Markets, Meditations &amp; Mental Models — {isWeekly ? 'Weekly Light' : 'Super Brief'}
           </div>
           {brief.dailyTitle && (
             <h1 className="text-[22px] font-medium text-ct-dark leading-[1.2] mb-2 font-serif">
@@ -571,7 +571,7 @@ export default function SuperBriefViewer({
 
       {/* ── Share ───────────────────────────────────────────────────────── */}
       <ShareBar
-        title={brief.dailyTitle || 'Super Brief'}
+        title={brief.dailyTitle || (isWeekly ? 'Weekly Light' : 'Super Brief')}
         path={`${selfBasePath}/${brief.date}`}
         displayDate={brief.displayDate}
       />
@@ -589,10 +589,12 @@ export default function SuperBriefViewer({
       {/* ── 8. PINK SUBSCRIBE CTA ───────────────────────────────────────── */}
       <section className="bg-ct-pink px-4 py-4 text-center">
         <div className="max-w-lg mx-auto">
-          <div className="text-[14px] font-medium text-white mb-1">Get this every morning</div>
+          <div className="text-[14px] font-medium text-white mb-1">
+            {isWeekly ? 'Get the Weekly every Sunday' : 'Get this every morning'}
+          </div>
           <div className="text-[11px] text-white/70 mb-3">Markets, meditations, mental models. Free.</div>
           <SubscribeForm
-            source="super-brief"
+            source={isWeekly ? 'weekly-light' : 'super-brief'}
             inputClassName="px-3 py-2 border-[1.5px] border-white bg-transparent text-white text-[12px] w-[200px] placeholder-white/50"
             buttonClassName="px-4 py-2 bg-white text-ct-pink text-[12px] font-medium border-[1.5px] border-white"
             showNote={false}

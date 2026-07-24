@@ -14,6 +14,10 @@ const MONTHS = [
 const DISPLAY_DATE_RE =
   /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s+(\d{4})$/;
 
+/** Weekly header line, e.g. "Week of July 12 to 18, 2026" (en-dash / hyphen variants OK). */
+const WEEK_OF_DATE_RE =
+  /^Week of\s+.+\d{4}$/i;
+
 const ONES = [
   'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
   'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
@@ -34,7 +38,7 @@ export function isDisplayDateLine(line: string): boolean {
     return false;
   }
   if (inner.includes('▸')) return false;
-  return DISPLAY_DATE_RE.test(inner);
+  return DISPLAY_DATE_RE.test(inner) || WEEK_OF_DATE_RE.test(inner);
 }
 
 /** Extract the display date string from a bold or ## date line. */

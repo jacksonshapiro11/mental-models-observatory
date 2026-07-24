@@ -214,6 +214,14 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
       content = content.slice(0, -3).trim();
     }
 
+    // Strip HTML comments left by editorial gates (FIGURE-FIRST, MODEL-LOCKED,
+    // DEPTH-TREATMENT, take-move, etc.). Format Brief is supposed to remove these
+    // before publish, but when the publish path skips it — or re-injects a
+    // gate-required declaration so validate-brief can see FIGURE-FIRST — the
+    // comment ships in content/daily-updates and renders as visible body text
+    // (worked failure: 2026-07-21 Inner Game). Light parser already skips them.
+    content = content.replace(/<!--[\s\S]*?-->/g, '').replace(/\n{3,}/g, '\n\n').trim();
+
     sections.push({
       id: def.id,
       type: def.type,

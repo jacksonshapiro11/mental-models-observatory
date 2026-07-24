@@ -66,6 +66,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 
 type Tier = 'critical' | 'standard';
 type Status = 'PASS' | 'FAIL' | 'UNVERIFIED';
@@ -75,7 +76,7 @@ interface Claim {
   key: string;
   asset: string;
   tier: Tier;
-  claimType?: 'market' | 'superlative';
+  claimType?: 'market' | 'superlative' | 'event' | 'aggregate' | 'entity-count' | 'effective-date' | 'ai-product' | 'yoy';
   direction: 'up' | 'down' | 'flat' | 'unknown';
   magnitudePct: number | null;
   level: string | null;
@@ -144,6 +145,18 @@ const SUPERLATIVE_RE = new RegExp([
   'never\\s+(?:been|seen)\\b',
 ].join('|'), 'gi');
 
+// Terms of art that CONTAIN a superlative word but assert nothing empirical, so no archive
+// or primary source can adjudicate them. Every entry requires a RECEIPT — a real false
+// positive on a real brief — because a suppression list is how a truth gate goes blind.
+//   2026-07-13 (IMP-045): "the highest-and-best use of that land has shifted to AI
+//   infrastructure" (Prologis/Segro bullet) was extracted as a market superlative and sent
+//   to the Morning Truth Gate as a claim to verify. It is a real-estate term of art. A gate
+//   that hands the operator a worklist of non-claims is training them to skim the worklist —
+//   which is the same failure as the 133%-overlap validator (IMP-042), one day earlier.
+const SUPERLATIVE_TERM_OF_ART: RegExp[] = [
+  /highest[-\s]?and[-\s]?best\s+use/i,
+];
+
 function stripComments(src: string): string {
   return src.replace(/<!--[\s\S]*?-->/g, '');
 }
@@ -174,8 +187,24 @@ function detectDirection(window: string): { dir: 'up' | 'down' | 'unknown'; mag:
   let dir: 'up' | 'down' | 'unknown' = 'unknown';
   if (signed) dir = signed[1] === '+' ? 'up' : 'down';
   if (dir === 'unknown') {
-    const firstUp = UP_WORDS.map((w) => lower.indexOf(w)).filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? Infinity;
-    const firstDown = DOWN_WORDS.map((w) => lower.indexOf(w)).filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? Infinity;
+    // WORD-BOUNDARY MATCH (fixed 2026-07-17 — brief-morning).
+    // Was `lower.indexOf(w)`, a raw substring scan: UP_WORDS contains 'up', so
+    // "Iran supply risk" matched 'up' at index 1 and scored WTI as UP while the
+    // brief said "held ~$80, steadied". Same trap for output/upside/support/group
+    // and for 'down' inside downside/downturn. A direction read from the middle of
+    // an unrelated word is not a direction read. Multi-word entries ('sold off')
+    // are escaped and bounded on the outer edges only.
+    const firstIdx = (words: string[]): number => {
+      let best = Infinity;
+      for (const w of words) {
+        const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+        const m = re.exec(lower);
+        if (m && m.index < best) best = m.index;
+      }
+      return best;
+    };
+    const firstUp = firstIdx(UP_WORDS);
+    const firstDown = firstIdx(DOWN_WORDS);
     if (firstUp < firstDown) dir = 'up';
     else if (firstDown < firstUp) dir = 'down';
   }
@@ -254,6 +283,9 @@ function extractSuperlatives(body: string): Claim[] {
   while ((m = SUPERLATIVE_RE.exec(body)) !== null) {
     const phrase = m[0].replace(/\s+/g, ' ').trim();
     const idx = m.index;
+    // Term-of-art guard (IMP-045): "highest-and-best use" is not a claim of extreme.
+    const toaCtx = body.slice(Math.max(0, idx - 5), Math.min(body.length, idx + 40));
+    if (SUPERLATIVE_TERM_OF_ART.some((re) => re.test(toaCtx))) continue;
     const sentence = sentenceAround(body, idx);
     // Which asset is this extreme about? The asset mention CLOSEST to the phrase
     // by character distance — a Dashboard line packs several assets into one
@@ -316,6 +348,31 @@ function findArchiveDir(briefPath: string): string | null {
 // Per-archive-file: first IN-BAND value for each $-price asset. Scanning all
 // mentions + band-filtering rejects garbage (a "gold" mention near a $60,000 BTC
 // figure, a "BTC" mention near a 124.9 dominance %).
+// A number belongs to the NEAREST asset named before it. If another asset is named between
+// this asset's mention and the number, the number is that asset's — not ours.
+//
+// IMP-045 (2026-07-13). THE GATE COMMITTED THE TRANSPOSITION CLASS IT EXISTS TO CATCH.
+// `wti`'s lexicon aliases the generic nouns `crude` and `oil`. The 07-13 intro reads:
+//   "The oil market has already returned the first verdict this morning: Brent is bid
+//    about 4% to $79 while 34 ships transit a strait that normally carries 88…"
+// `oil` matched, `valueNear` scanned forward 90 chars, found Brent's $79, and assigned it
+// to WTI — then `break` ensured the brief's ACTUAL WTI print ("WTI bid to roughly $74.41",
+// two sections later) was never read. The gate FLAGged "WTI stated near 79 deviates…" — a
+// false alarm, on a morning whose whole job was separating true numbers from false ones.
+// Right number, wrong asset, produced BY the check built for right-number-wrong-asset.
+function valueNearAttributed(text: string, fromIdx: number, span: number, selfKey: string): number | null {
+  const after = text.slice(fromIdx, Math.min(text.length, fromIdx + span));
+  let cut = after.length;
+  for (const a of ASSETS) {
+    if (a.key === selfKey) continue;
+    a.re.lastIndex = 0;
+    const mm = a.re.exec(after);
+    if (mm && mm.index < cut) cut = mm.index;
+  }
+  const window = after.slice(0, cut);
+  return valueNear(window, 0, window.length);
+}
+
 function assetValuesIn(text: string): Record<string, number> {
   const stripped = stripComments(text);
   const out: Record<string, number> = {};
@@ -325,7 +382,9 @@ function assetValuesIn(text: string): Record<string, number> {
     a.re.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = a.re.exec(stripped)) !== null) {
-      const v = valueNear(stripped, m.index + m[0].length, 90);
+      const v = valueNearAttributed(stripped, m.index + m[0].length, 90, a.key);
+      // A rejected candidate does not end the search — keep scanning for a mention of THIS
+      // asset that actually owns a number ("oil market … Brent $79" rejected, "WTI … $74.41" kept).
       if (v != null && v >= band[0] && v <= band[1]) { out[a.key] = v; break; }
     }
   }
@@ -580,6 +639,682 @@ function storyFingerprintReuse(body: string, briefPath: string, briefDate: strin
   return findings;
 }
 
+// ---------------------------------------------------------------------------
+// SCHEDULED-EVENT DATE CHECK (IMP-044, 2026-07-13 — closes IMP-043's stated residual).
+//
+// WORKED FAILURE. The 07-13 evening chain built its Markets & Macro LEAD, its Dashboard
+// Commodities line and the Light on one sentence: "CPI and the first post-Hormuz tape land
+// in the same session." June CPI lands TUESDAY 2026-07-14 (BLS Schedule of Releases —
+// primary source, one fetch away). Architect, Writer, Quality Gate, Editor and Critic all
+// passed it, and factcheck.json never even EXTRACTED it: fact-gate knew about prices and
+// superlatives and had no notion of a RELEASE DATE. "X prints today" is load-bearing (it was
+// the bullet's entire premise), trivially checkable, and was ungated. The morning pass caught
+// it and REBUILT the section — a human backstop where a gate belongs.
+//
+// TWO LEGS, and the second is why coverage does not depend on the calendar being complete:
+//   (a) CALENDAR CONTRADICTION → FAIL. The brief says the print lands on day D; the
+//       primary-sourced system/event-calendar.json says otherwise. Loud, early, at draft time.
+//   (b) UNRESOLVED SAME-SESSION ASSERTION → a CRITICAL claim on the existing rails. With no
+//       calendar entry, "lands today" still becomes an unverified critical claim, so
+//       --require-resolved hard-fails it at the Morning Truth Gate exactly like an unverified
+//       price. An empty calendar degrades the check from EARLY to BLOCKING — never to silent.
+// ---------------------------------------------------------------------------
+type CalEvent = { id: string; event: string; referenceMonth?: string; releaseDate: string; timeET?: string; source: string };
+
+const SCHEDULED_EVENTS: { id: string; label: string; re: RegExp }[] = [
+  { id: 'cpi', label: 'CPI', re: /\bCPI\b|consumer price index|inflation (?:print|report|release|number)/i },
+  { id: 'ppi', label: 'PPI', re: /\bPPI\b|producer price index/i },
+  { id: 'pce', label: 'PCE', re: /\bPCE\b|personal consumption expenditures/i },
+  { id: 'payrolls', label: 'the payrolls report', re: /\bNFP\b|nonfarm payrolls|non-farm payrolls|jobs report|employment report/i },
+  { id: 'fomc', label: 'the FOMC decision', re: /\bFOMC\b|Fed(?:eral Reserve)?\s+(?:rate\s+)?(?:decision|meeting|minutes)|rate decision/i },
+  { id: 'gdp', label: 'the GDP print', re: /\bGDP\s+(?:print|report|release|data)\b|gross domestic product/i },
+  { id: 'retail_sales', label: 'retail sales', re: /retail sales (?:print|report|release|data)/i },
+  { id: 'jobless_claims', label: 'jobless claims', re: /jobless claims|initial claims/i },
+];
+
+// The load-bearing, falsifiable-today class: the print lands in THIS session.
+const SAME_SESSION_RE = /\b(?:lands?|arrives?|prints?|drops?|hits? the tape|is out|comes? out)\s+(?:today|this (?:morning|session))\b|\b(?:today|this session)(?:['’]s)?\s+(?:\w+\s+){0,2}(?:print|release|report)\b|\bin the same session\b|\barriv\w*\s+simultaneously\b|\bland\s+in\s+the\s+same\s+session\b|\bsame session\b/i;
+const RELEASE_VERB_RE = /\b(?:lands?|arrives?|prints?|drops?|is (?:released|out)|comes? out|hits? the tape)\b/i;
+const TOMORROW_RE = /\btomorrow\b/i;
+const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+function loadEventCalendar(briefPath: string): CalEvent[] {
+  for (const p of [
+    path.join(process.cwd(), 'system', 'event-calendar.json'),
+    path.join(path.dirname(briefPath), '..', 'system', 'event-calendar.json'),
+  ]) {
+    try {
+      if (fs.existsSync(p)) return (JSON.parse(fs.readFileSync(p, 'utf8')).events ?? []) as CalEvent[];
+    } catch { /* a malformed calendar must not take the brief down; the (b) leg still blocks */ }
+  }
+  return [];
+}
+
+const addDays = (iso: string, n: number): string => {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+
+function scheduledEventClaims(body: string, calendar: CalEvent[], briefDate: string | null): { claims: Claim[]; findings: Finding[] } {
+  const claims: Claim[] = [];
+  const findings: Finding[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+
+  for (const s of stripped.matchAll(/[^.!?\n]+[.!?]?/g)) {
+    const text = s[0];
+    const idx = s.index ?? 0;
+    if (!RELEASE_VERB_RE.test(text) && !SAME_SESSION_RE.test(text)) continue;
+
+    for (const ev of SCHEDULED_EVENTS) {
+      if (!ev.re.test(text)) continue;
+      const sameSession = SAME_SESSION_RE.test(text);
+      const cal = calendar
+        .filter((c) => c.id === ev.id && (!briefDate || c.releaseDate >= briefDate))
+        .sort((a, b) => a.releaseDate.localeCompare(b.releaseDate))[0];
+
+      // What date does the SENTENCE assert? Only three forms are unambiguous enough to
+      // adjudicate mechanically; anything else is left to the (b) leg.
+      let assertedDate: string | null = null;
+      if (sameSession && briefDate) assertedDate = briefDate;
+      else if (TOMORROW_RE.test(text) && briefDate) assertedDate = addDays(briefDate, 1);
+
+      const key = `${ev.id}:${assertedDate ?? 'undated'}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      // (a) CALENDAR CONTRADICTION — a date we hold on primary-source authority.
+      if (cal && assertedDate && cal.releaseDate !== assertedDate) {
+        findings.push({
+          check: 'scheduled-event-date',
+          severity: 'FAIL',
+          message: `RELEASE-DATE FALSEHOOD — the brief asserts ${ev.label} lands ${assertedDate === briefDate ? 'in THIS session' : `on ${assertedDate}`}; the calendar has the next ${ev.label} release on ${cal.releaseDate}${cal.timeET ? ` at ${cal.timeET} ET` : ''}${cal.referenceMonth ? ` (reference month ${cal.referenceMonth})` : ''} — primary source: ${cal.source}. A release date is a checkable fact. If this claim is the SECTION'S PREMISE, a number-swap is not a fix: rebuild the section on the true date (Morning_Updater premise rule). Section: ${sectionOf(stripped, idx)}. "${text.trim().slice(0, 160)}"`,
+        });
+      } else if (cal && !assertedDate) {
+        // A named weekday is checkable too, and it is how the corrected 07-13 brief phrases it.
+        const wd = WEEKDAYS.findIndex((d) => new RegExp(`\\b${d}\\b`, 'i').test(text));
+        if (wd >= 0) {
+          const calWd = new Date(`${cal.releaseDate}T12:00:00Z`).getUTCDay();
+          if (calWd !== wd) {
+            findings.push({
+              check: 'scheduled-event-date',
+              severity: 'FAIL',
+              message: `RELEASE-DATE FALSEHOOD — the brief puts ${ev.label} on a ${WEEKDAYS[wd]}; the calendar has it on ${cal.releaseDate}, a ${WEEKDAYS[calWd]} — primary source: ${cal.source}. Section: ${sectionOf(stripped, idx)}. "${text.trim().slice(0, 160)}"`,
+            });
+          }
+        }
+      }
+
+      // (b) THE CLAIM ITSELF — critical when it asserts THIS session (the class that shipped
+      // on 07-13); standard otherwise. Rides the existing unverified-critical /
+      // unresolved-before-publish rails, so a missing calendar entry blocks rather than passes.
+      claims.push({
+        key: `event:${ev.id}`,
+        asset: ev.label,
+        tier: sameSession ? 'critical' : 'standard',
+        claimType: 'event',
+        direction: 'unknown',
+        magnitudePct: null,
+        level: assertedDate ?? null,
+        section: sectionOf(stripped, idx),
+        sentence: text.trim(),
+        status: 'UNVERIFIED',
+      });
+    }
+  }
+  return { claims, findings };
+}
+
+// ---------------------------------------------------------------------------
+// AGGREGATE-CLAIM CHECK (IMP-056, 2026-07-15 — the 07-15 Critic's mandate #1).
+//
+// WORKED FAILURE. The 07-15 C&C-1 LEDE said: "Combined Q2 net income across JPMorgan,
+// Bank of America, Goldman, Wells, and Citi cleared roughly $49 billion, up 39% year over
+// year." The number was TRUE (Quartz/Yahoo attest the combined $49B/+39%), but it rode to
+// publish INSIDE a superlative claim's prose value — the Critic could not resolve it and
+// emitted UNRESOLVED-FACT, because fact-gate knew market prices, superlatives and event
+// dates and had NO notion of an AGGREGATE. The Critic's specific fear — the aggregate's
+// +39% being a single constituent's growth copied up — was real even though today's was a
+// coincidence (Goldman's REVENUE also grew 39%). A combined figure built from named
+// constituents, with an optional YoY %, is load-bearing and independently checkable.
+//
+// FIX (mirrors the scheduled-event leg (b), IMP-044): extract it as a CRITICAL claim on the
+// existing unverified-critical / unresolved-before-publish rails, so --require-resolved
+// requires a dedicated truth entry `aggregate:<magnitude>` resolved against an INDEPENDENT
+// AGGREGATE source (not a side-mention inside a constituent's prose). Coverage does not
+// depend on any registry being complete — an unresolved aggregate BLOCKS at the Morning
+// Truth Gate exactly like an unverified price.
+//
+// NON-FIRE DISCIPLINE. Bare "total"/"in total" is EXCLUDED from the connective list on
+// purpose: the 07-13 brief's "$1.045 trillion in total FY2026 Pentagon resources" is a
+// single entity's own total, not a sum across named constituents, and must stay silent
+// (IMP-045's check runs --require-resolved on the 07-13 brief). The trigger requires a
+// COMBINING connective AND a money magnitude AND aggregation context (a financial metric
+// noun or an "the N largest <plural>" group) in the same sentence.
+// ---------------------------------------------------------------------------
+const AGGREGATE_CONNECTIVE_RE = /\b(?:combined|in aggregate|collectively|between them|all told|taken together)\b/i;
+const AGG_MONEY_RE = /(?:\$|USD\s*)\s?\d[\d,.]*\s*(?:trillion|billion|million|tn\b|bn\b|mn\b)/i;
+const AGG_METRIC_RE = /\b(?:net income|profits?|earnings|revenues?|premiums?|deposits|assets under management|sales|income|payouts?|buybacks?|dividends?)\b/i;
+const AGG_GROUP_RE = /\bthe\s+(?:two|three|four|five|six|seven|eight|nine|ten|top\s+\w+|largest|biggest)\s+(?:[\w.-]+\s+){0,3}(?:banks?|lenders?|firms?|hyperscalers?|labs?|companies|carriers?|insurers?|automakers?|majors?|players?|producers?|retailers?|airlines?|utilities|miners?|telecoms?)\b/i;
+const AGG_YOY_RE = /\bup\s+(\d+(?:\.\d+)?)\s*(?:%|percent)/i;
+
+function aggregateClaims(body: string, _briefDate: string | null): Claim[] {
+  const claims: Claim[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  for (const s of stripped.matchAll(/[^.!?\n]+[.!?]?/g)) {
+    const text = s[0];
+    const idx = s.index ?? 0;
+    if (!AGGREGATE_CONNECTIVE_RE.test(text)) continue;
+    const money = text.match(AGG_MONEY_RE);
+    if (!money) continue;
+    // A SUM ACROSS CONSTITUENTS, not one entity's own total: require a financial-metric noun
+    // or a "the N largest <plural>" group in the same sentence.
+    if (!AGG_METRIC_RE.test(text) && !AGG_GROUP_RE.test(text)) continue;
+
+    const moneyDisplay = money[0].replace(/\s+/g, ' ').trim();
+    const slug = moneyDisplay.toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const key = `aggregate:${slug}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const yoy = text.match(AGG_YOY_RE);
+    claims.push({
+      key,
+      asset: `aggregate ${moneyDisplay}`,
+      tier: 'critical',
+      claimType: 'aggregate',
+      direction: 'unknown',
+      magnitudePct: yoy ? parseFloat(yoy[1]) : null,
+      level: moneyDisplay,
+      section: sectionOf(stripped, idx),
+      sentence: text.trim(),
+      status: 'UNVERIFIED',
+    });
+  }
+  return claims;
+}
+
+// ---------------------------------------------------------------------------
+// ENTITY-COUNT CHECK (IMP-069, 2026-07-18 — the 07-18 Critic's mandate #1, the FLOOR half).
+//
+// WORKED FAILURE. The 07-18 C&C-1 LEDE priced the Kroger/Giant Eagle deal "at roughly 0.18 times
+// revenue for a 470-store regional grocer." Kroger's OWN IR release says 197 supermarkets + 11
+// pharmacies (208 locations); 470 folds GetGo convenience/gas stations into a grocery count,
+// overstating the footprint >2x. The number is load-bearing — it frames the SCALE of the deal —
+// and checkable in one Kroger-IR fetch. Architect, Writer, QG, Editor and Critic all passed it;
+// fact-gate knew prices, superlatives, event-dates and aggregates but had NO notion of an ENTITY
+// COUNT, so nothing extracted it. The morning pass corrected it to "197-supermarket" only because
+// the Critic emitted UNRESOLVED-FACT — a human backstop where a gate belongs. 3rd consecutive brief
+// (07-16/07-17/07-18) to ship a confirmed factual error to v2; §0 makes truth disqualifying, so the
+// class is mechanized the SAME DAY (a floor item, exempt from the ceiling observation window).
+//
+// FIX (mirrors aggregate / scheduled-event leg b). A physical-footprint count attached to a company
+// or a deal — "470-store", "197-supermarket", "1,200 locations" — is extracted as a CRITICAL claim
+// on the existing unresolved-before-publish rails, so --require-resolved forces a dedicated truth
+// entry (entity-count:<n>-<noun>) resolved against the company's OWN filing, not a memory number.
+//
+// NON-FIRE DISCIPLINE. A footprint NOUN is required, so "$9 billion in annual sales", "97 billion
+// hours" and "170-plus projects" (no footprint noun) stay SILENT. Scoped to physical-footprint
+// nouns (store/supermarket/location/branch/outlet/restaurant/dealership/warehouse/plant/site/
+// factory/hotel/clinic/hospital) — the scale-framing class that broke — not every count.
+// ---------------------------------------------------------------------------
+const FOOTPRINT_NOUN = 'stores?|supermarkets?|locations?|branches|outlets?|restaurants?|dealerships?|warehouses?|plants?|sites?|factories|hotels?|clinics?|hospitals?|dealers?';
+const ENTITY_COUNT_RE = new RegExp(`\\b(\\d{1,3}(?:,\\d{3})+|\\d{2,})[-\\s]?(${FOOTPRINT_NOUN})\\b`, 'i');
+
+function entityCountClaims(body: string, _briefDate: string | null): Claim[] {
+  const claims: Claim[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  for (const s of stripped.matchAll(/[^.!?\n]+[.!?]?/g)) {
+    const text = s[0];
+    const idx = s.index ?? 0;
+    const m = text.match(ENTITY_COUNT_RE);
+    if (!m) continue;
+    const count = m[1]!.replace(/,/g, '');
+    const noun = m[2]!.toLowerCase();
+    const key = `entity-count:${count}-${noun}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    claims.push({
+      key,
+      asset: `${m[1]} ${noun}`,
+      tier: 'critical',
+      claimType: 'entity-count',
+      direction: 'unknown',
+      magnitudePct: null,
+      level: count,
+      section: sectionOf(stripped, idx),
+      sentence: text.trim(),
+      status: 'UNVERIFIED',
+    });
+  }
+  return claims;
+}
+
+// ---------------------------------------------------------------------------
+// REGULATORY EFFECTIVE-DATE CHECK (IMP-069, 2026-07-18 — the 07-18 Critic's mandate #1).
+//
+// WORKED FAILURE. The 07-18 C&C-4 LEAD said "The GENIUS Act's stablecoin framework takes effect
+// today." July 18 2026 is the one-year STATUTORY DEADLINE for the six agencies to publish
+// implementing regulations; the framework's EFFECTIVE date is the earlier of 18 months after
+// enactment (2027-01-18) or 120 days after final rules (OCC Bulletin 2026-3, FDIC/Treasury). "Takes
+// effect today" conflates the rulemaking deadline with the compliance date — a material distinction
+// for issuers, and the section's void thesis is actually ABOUT the deadline. Checkable in one OCC
+// fetch. Nothing extracted it; the morning pass reframed it only because the Critic flagged it.
+//
+// FIX. An assertion that a named law/rule/framework/tariff/ban BECOMES OPERATIVE on a date ("takes
+// effect", "goes into effect", "comes into force", "becomes effective", "effective date/today") is
+// extracted as a CRITICAL claim on the unresolved-before-publish rails, so --require-resolved forces
+// a truth entry sourced to the statute/agency, not memory.
+//
+// NON-FIRE DISCIPLINE. A regulatory NOUN (act/law/rule/regulation/framework/statute/directive/
+// mandate/ordinance/ban/tariff/provision/requirement) must sit in the same sentence, so bare
+// "highly effective"/"cost-effective" stays SILENT — and so does "the deadline … falls today" (a
+// DEADLINE, not an effective date: the corrected 07-18 phrasing), because "falls" is not an
+// effective-verb. That distinction is the whole point of the fix.
+// ---------------------------------------------------------------------------
+const EFFECTIVE_VERB_RE = /\b(?:takes?\s+effect|took\s+effect|go(?:es)?\s+into\s+effect|went\s+into\s+effect|com(?:es|ing)?\s+into\s+force|came\s+into\s+force|becomes?\s+effective|became\s+effective|is\s+now\s+in\s+force|effective\s+(?:date|today|immediately|as\s+of))\b/i;
+const REG_NOUN_RE = /\b(?:act|law|rule|regulations?|directive|mandate|framework|statute|ordinance|ban|tariffs?|provision|requirement|standard|amendment|bill)\b/i;
+
+function effectiveDateClaims(body: string, _briefDate: string | null): Claim[] {
+  const claims: Claim[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  for (const s of stripped.matchAll(/[^.!?\n]+[.!?]?/g)) {
+    const text = s[0];
+    const idx = s.index ?? 0;
+    if (!EFFECTIVE_VERB_RE.test(text)) continue;
+    if (!REG_NOUN_RE.test(text)) continue;
+    const slug = text.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 44);
+    const key = `effective-date:${slug}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    claims.push({
+      key,
+      asset: 'regulatory effective date',
+      tier: 'critical',
+      claimType: 'effective-date',
+      direction: 'unknown',
+      magnitudePct: null,
+      level: null,
+      section: sectionOf(stripped, idx),
+      sentence: text.trim(),
+      status: 'UNVERIFIED',
+    });
+  }
+  return claims;
+}
+
+// ---------------------------------------------------------------------------
+// AI&T DEFINITE-PRODUCT-CLAIM CHECK (IMP-074, 2026-07-19 — the 07-19 Critic's mandate #1).
+//
+// WORKED FAILURE. Two AI&T bullets shipped to v2 on fluent, sophisticated, FALSE premises:
+//   AI&T-2: "Microsoft announced Project Perception" — Microsoft was only "reportedly" developing it,
+//           and the described consensus architecture ("three models, flag when two agree") was
+//           fabricated; the real product is a cost-routing system. The section's whole insight was
+//           built on the invented architecture.
+//   AI&T-1: "the deployment of Boston Dynamics Atlas humanoid robots on the assembly line" — NO Atlas
+//           units are deployed at any Korean plant; the strike was PRE-EMPTIVE, over a future PLAN.
+// This is the 07-10 "fluent/false" pattern, and §0 makes truth disqualifying. The AI&T sections ship
+// v1-original (no pre-draft, un-gated), so fact-gate knew prices, superlatives, event-dates, aggregates,
+// entity-counts and effective-dates but had NO notion of a PRODUCT/DEPLOYMENT assertion. 4th consecutive
+// brief (07-16/17/18/19) with a confirmed factual error to v2 — a FLOOR class, mechanized the SAME day.
+//
+// FIX (mirrors entity-count / effective-date). A DEFINITE, UNHEDGED corporate product or deployment
+// assertion in the AI & Tech section — an action verb (announced / unveiled / launched / released /
+// shipped / deployed / introduced / debuted / rolled out, or "the deployment/rollout/launch of") on a
+// product noun (tool / model / chip / robot / platform / system / app / agent / processor / feature /
+// API / humanoid / …) — becomes a CRITICAL claim `ai-product:<slug>` on the unresolved-before-publish
+// rails, so --require-resolved forces a truth entry sourced to the VENDOR'S OWN announcement/filing.
+// It does not need to KNOW the claim is false; it forces the claim to be CHECKED, which is exactly the
+// step the un-gated AI&T section skipped.
+//
+// NON-FIRE DISCIPLINE (this IS the calibration — the fabrication and its correction differ by exactly
+// this word). A HEDGE in the sentence ("reportedly", "is/are developing", "plans to", "planning to",
+// "expected to", "set to", "said to", "rumored", "in talks", "considering", "exploring", "working on")
+// stays SILENT: an honest hedge is not the false-certainty class that shipped. The CORRECTED 07-19
+// sentences ("Microsoft is reportedly developing Project Perception…" and "the company's plan to put
+// Atlas robots on the line") must PASS. Analysis prose with no product-action verb stays SILENT. Scoped
+// to the AI & Tech section so product mentions in the Take/Six do not flood the morning worklist.
+// ---------------------------------------------------------------------------
+const AI_ACTION_RE = /\b(?:announced|unveiled|launched|released|shipped|deployed|introduced|debuted|rolled\s+out|(?:the\s+)?(?:deployment|rollout|roll-out|launch|release)\s+of)\b/i;
+const AI_PRODUCT_NOUN_RE = /\b(?:tools?|models?|chips?|robots?|humanoids?|platforms?|systems?|apps?|assistants?|agents?|processors?|accelerators?|features?|updates?|apis?|software|hardware|devices?|drones?|silicon|frameworks?)\b/i;
+const AI_HEDGE_RE = /\b(?:reportedly|rumored|is\s+(?:still\s+)?developing|are\s+(?:still\s+)?developing|is\s+building|are\s+building|plans?\s+to|planning\s+to|expected\s+to|set\s+to|said\s+to|in\s+talks|considering|exploring|working\s+on|is\s+expected|are\s+expected|would\s+(?:launch|release|deploy|ship|build|introduce))\b/i;
+
+function aiProductClaims(body: string, _briefDate: string | null): Claim[] {
+  const claims: Claim[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  for (const s of stripped.matchAll(/[^.!?\n]+[.!?]?/g)) {
+    const text = s[0];
+    const idx = s.index ?? 0;
+    const section = sectionOf(stripped, idx);
+    if (!/AI\s*&\s*Tech|AI\s+and\s+Tech|AI&T/i.test(section)) continue; // AI & Tech section only
+    if (!AI_ACTION_RE.test(text)) continue;       // a definite product/deployment action verb
+    if (!AI_PRODUCT_NOUN_RE.test(text)) continue; // on a product/deployment noun (not earnings/hiring)
+    if (AI_HEDGE_RE.test(text)) continue;         // an honest hedge is not the false-certainty class
+    const slug = text.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
+    const key = `ai-product:${slug}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    claims.push({
+      key,
+      asset: 'AI&T product/deployment claim',
+      tier: 'critical',
+      claimType: 'ai-product',
+      direction: 'unknown',
+      magnitudePct: null,
+      level: null,
+      section,
+      sentence: text.trim(),
+      status: 'UNVERIFIED',
+    });
+  }
+  return claims;
+}
+
+// ---------------------------------------------------------------------------
+// RELATIVE-DATE REFERENT CHECK (IMP-058, 2026-07-16 — the 07-16 Critic's mandate #1).
+//
+// WORKED FAILURE. The 07-16 Take LEAD said: "Yesterday New York became the first state to
+// ban new hyperscale data centers outright." Governor Hochul's EO 62 was signed 2026-07-14;
+// the brief is WRITTEN the evening of 07-15 and READ the morning of 07-16, so "yesterday"
+// resolves to 07-15 for the reader — the event was TWO days earlier. The Morning Updater
+// caught it (→ "This week") ONLY because the Critic happened to emit an UNRESOLVED-FACT line;
+// nothing mechanical surfaced it, and the FLI "seven labs" (→ "nine") rode the same luck.
+// A past-relative word ("yesterday", "last night", "this morning", "overnight", "earlier
+// today") is the one class whose referent SHIFTS between the write date and the read date —
+// a structural hazard of an evening-written, morning-read brief. It must be SURFACED every
+// run, not left to whether the Critic happens to notice.
+//
+// FIX (advisory FLAG, never a publish-block — the brief always ships). Surface every past-
+// relative date word that sits in a sentence asserting a discrete EVENT (a named actor did
+// something: became / signed / banned / struck / launched / approved / …), so the Morning
+// Truth Gate must confirm the ABSOLUTE date and rewrite to a stable form (a weekday, "this
+// week", or the ISO date) if the referent moved. RC2 (verification gap) mechanized at the
+// truth layer, independent of the Critic. FLOOR item (a date) — exempt from the ceiling
+// observation window; mechanized the same day per proxy discipline.
+//
+// NON-FIRE DISCIPLINE. (a) Possessive "yesterday's close" is the Dashboard's stable idiom for
+// the prior session and is EXCLUDED. (b) A pure market-move recap ("Yesterday the bond market
+// rallied") carries no discrete-event verb and stays SILENT — the rhetorical two-print pairing
+// is the Writer's device, not a dated news event, and the Dashboard's job IS the prior session.
+// (c) STABLE references ("this week", "Monday", "July 14") do not shift and are not flagged.
+// (d) Forward "today/tomorrow" release assertions are already owned by scheduledEventClaims.
+// ---------------------------------------------------------------------------
+const RELATIVE_SHIFT_RE = /\b(?:yesterday(?!['’]s)|last night|this morning|overnight|earlier today)\b/i;
+const EVENT_ACTION_RE = /\b(?:became|becomes|sign(?:ed|s)?|ban(?:ned|s)?|announce(?:d|s)?|launch(?:ed|es)?|struck|strikes?|attack(?:ed|s)?|approve(?:d|s)?|file(?:d|s)?|reject(?:ed|s)?|pass(?:ed|es)?|rule(?:d|s)?|vote(?:d|s)?|acquire(?:d|s)?|unveil(?:ed|s)?|impose(?:d|s)?|seize(?:d|s)?|halt(?:ed|s)?|resign(?:ed|s)?|order(?:ed|s)?)\b/i;
+
+function relativeDateFindings(body: string, _briefDate: string | null): Finding[] {
+  const findings: Finding[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  for (const s of stripped.matchAll(/[^.!?\n]+[.!?]?/g)) {
+    const text = s[0];
+    const idx = s.index ?? 0;
+    const rel = text.match(RELATIVE_SHIFT_RE);
+    if (!rel) continue;
+    if (!EVENT_ACTION_RE.test(text)) continue; // a discrete dated event, not a market-move recap
+    const word = rel[0].toLowerCase();
+    const key = `${word}:${sectionOf(stripped, idx)}:${text.trim().slice(0, 24).toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    findings.push({
+      check: 'relative-date-referent',
+      severity: 'FLAG',
+      message: `RELATIVE-DATE REFERENT — "${rel[0]}" modifies a dated event in ${sectionOf(stripped, idx)}: "${text.trim().slice(0, 140)}". This brief is written the evening before it is read, so "${word}" shifts by a day at the reader. MORNING GATE: confirm the event's ABSOLUTE date and, if the referent moved, rewrite to a stable form (a weekday, "this week", or the ISO date). Receipt: the 07-16 "Yesterday New York became the first state to ban…" was an EO signed two days before the read date, corrected to "This week".`,
+    });
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// YoY-COMPARISON CHECK (IMP-081, 2026-07-21 — the 07-21 Critic's mandate #1, the FABRICATION
+// that SHIPPED TO THE READER).
+//
+// WORKED FAILURE. The 07-21 M&M-2 LEDE said GM carries "a consensus estimate of $3.13 per share
+// and $45.96 billion in revenue, roughly 22% above last year." GM's Q2 2025 revenue was $47.1B
+// (GM IR / CNBC / GM Authority) — so $45.96B is DOWN ~2.4%, not up 22%. The "22% above last year"
+// is a FABRICATED year-over-year delta. It rode through Writer, QG, Editor and Critic, and — unlike
+// STLD and AMD, which the morning pass caught — the GM YoY was NOT in the morning reconcile list, so
+// the fabrication PUBLISHED. fact-gate knew market prices, superlatives, event-dates, aggregates,
+// entity-counts, effective-dates and AI products, but had NO notion of a YoY COMPARISON: the stated
+// $45.96B consensus is roughly right, and the fabrication lived entirely in the RELATIONAL claim
+// ("22% above last year") that no leg extracted. §0 makes truth disqualifying; a fabricated stat
+// that reached the reader is the worst outcome the gate exists to prevent. FLOOR class, mechanized
+// the SAME DAY.
+//
+// FIX (mirrors aggregate / entity-count leg). A financial magnitude paired with an explicit
+// prior-year referent AND a percentage — "$X in revenue, N% above last year", "up N% year over
+// year", "N% jump … from $Y a year earlier" — is extracted as a CRITICAL claim `yoy:<slug>` on the
+// unresolved-before-publish rails, so --require-resolved forces the Morning Truth Gate to resolve
+// BOTH the prior-year actual AND the delta against a primary source, not a number from memory. It
+// also catches the STLD class the same run ("roughly 85% jump … to about $3.69 from $2.01 a year
+// earlier" — a restored pre-draft carrying guidance, corrected by the morning only by luck).
+//
+// NON-FIRE DISCIPLINE. An explicit YoY REFERENT is required, so a bare percentage — "up half a
+// percent on the day", "roughly 8% of NVIDIA's run rate", "an mNAV of 0.6", "4.8% of all ether" —
+// stays SILENT. A financial-metric noun OR a $ figure must sit in the sentence, so a non-financial
+// "20% more than last year" trivia stays silent. The referent is the whole calibration: it is the
+// difference between a comparative claim (checkable, load-bearing) and a spot ratio.
+// ---------------------------------------------------------------------------
+const YOY_REFERENT_RE = /\b(?:year[-\s]?over[-\s]?year|year[-\s]?on[-\s]?year|yoy|(?:a|one)\s+year\s+(?:earlier|ago)|(?:last|prior|previous)\s+year|year[-\s]ago|same\s+(?:quarter|period)\s+(?:a\s+year\s+ago|last\s+year))\b/i;
+const YOY_PCT_RE = /\d+(?:\.\d+)?\s*(?:%|percent)/i; // no trailing \b: "%" is non-word, so "22% " has no boundary after it
+const YOY_MONEY_RE = /(?:\$|USD\s*)\s?\d[\d,.]*/i;
+const YOY_METRIC_RE = /\b(?:revenues?|earnings|per[-\s]share|EPS|net income|profits?|sales|income|backlog|orders?|bookings?|deliveries|shipments?|volumes?|deposits|premiums?|guidance)\b/i;
+// Scoped to the analytical bullets + Take, where a fabricated COMPANY earnings/revenue YoY is the
+// class (GM=M&M, STLD=C&C). A Signal/Discovery citing a legitimate industry YoY stat ("machine orders
+// 29% ahead of last year") is a different risk and stays off the critical rails (mirrors ai-product's
+// AI&T scoping — and it keeps the 07-13 Signal's real USMTO figures from blocking --require-resolved).
+const YOY_SECTION_RE = /Markets\s*&\s*Macro|Companies\s*&\s*Crypto|AI\s*&\s*Tech|AI&T|Geopolitics|THE TAKE|The Take/i;
+
+function yoyComparisonClaims(body: string, _briefDate: string | null): Claim[] {
+  const claims: Claim[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  let offset = 0;
+  for (const text of stripped.split('\n')) {           // per-line: a YoY claim spans decimals ("$3.69 from $2.01"), which a split on "." fragments
+    const idx = offset; offset += text.length + 1;
+    if (!YOY_REFERENT_RE.test(text)) continue;          // an explicit prior-year referent
+    const pct = text.match(YOY_PCT_RE);
+    if (!pct) continue;                                  // and a percentage delta
+    if (!YOY_MONEY_RE.test(text) && !YOY_METRIC_RE.test(text)) continue; // a financial claim, not trivia
+    if (!YOY_SECTION_RE.test(sectionOf(stripped, idx))) continue;        // the analytical-bullet + Take fabrication class only
+    const slug = text.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
+    const key = `yoy:${slug}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    claims.push({
+      key,
+      asset: 'year-over-year comparison',
+      tier: 'critical',
+      claimType: 'yoy',
+      direction: 'unknown',
+      magnitudePct: parseFloat(pct[0]),
+      level: null,
+      section: sectionOf(stripped, idx),
+      sentence: text.trim().slice(0, 200),
+      status: 'UNVERIFIED',
+    });
+  }
+  return claims;
+}
+
+// ---------------------------------------------------------------------------
+// EARNINGS-RESULT vs CONSENSUS CHECK (IMP-086, 2026-07-22 — the 07-22 Critic's mandate #1: the
+// FABRICATION that reached v2 and was caught only by the morning read; and the reader-facing
+// enforcement for mandate #2, the stale-pre-draft class).
+//
+// WORKED FAILURE. The 07-22 C&C-1 said EQT posted Q2 "revenue of $2.56 billion against a $1.84
+// billion consensus" (a "39% beat") with "adjusted EPS of $0.45 versus $0.41 expected" and "$240
+// million" FCF. EVERY number was fabricated: actual revenue $1.81B (inline on a LOWERED consensus),
+// non-GAAP EPS $0.39 (MISSED ~$0.42), FCF $330M (GuruFocus / MarketScreener / StockTitan). The
+// company MISSED; the brief invented a BEAT — a SIGN REVERSAL — and it contaminated the intro
+// ("EQT beat"). The cc-predraft was CONSUMED but written before the release, so the pre-release
+// estimates rode through Writer, QG, Editor and Critic; the morning pass caught it by READING.
+// fact-gate knew prices, superlatives, event-dates, aggregates, entity-counts, effective-dates,
+// ai-products, YoY and corporate-event weekdays — but had NO notion of an EARNINGS RESULT stated
+// against CONSENSUS/EXPECTED, the single most common quarterly-print claim shape, and the one whose
+// failure mode (beat↔miss) reverses the sign of the event. §0 makes truth disqualifying.
+//
+// FIX (mirrors the yoy / aggregate legs). An earnings-result metric (revenue / EPS / net income /
+// profit / FCF / sales / operating income) + a $ figure + EITHER an analyst-expectation referent
+// (consensus / estimate / expected / forecast / the Street / analysts) OR an explicit BEAT/MISS
+// verb (beat / missed / topped / edged past / came in above|below | fell short | surpassed | lagged)
+// is a CRITICAL claim `earnings:<slug>` on the unresolved-before-publish rails, so --require-resolved
+// forces the Morning Truth Gate to resolve the ACTUAL result AND the beat/miss verdict against the
+// company's own release before publish. This is ALSO the reader-facing enforcement for the stale-
+// pre-draft class (E-PREDRAFT-STALE-DATA-01): a pre-release estimate consumed as an actual cannot
+// reach the reader while its earnings claim is unresolved.
+//
+// NON-FIRE DISCIPLINE. The expectation referent OR a beat/miss verb MUST co-occur with the metric
+// and a $ figure — so a bare YoY ("revenue $48.03B, up 1.9% year over year", owned by
+// yoyComparisonClaims) and a plain guidance line ("raised full-year output guidance by 90 Bcfe")
+// stay SILENT, and a stock-price move with no earnings metric ("Micron surged 12% after a BofA
+// upgrade") stays SILENT. Scoped to the analytical earnings bullets (M&M/C&C/AI&T); a Signal/Take
+// citing a macro "consensus" (the 07-13 Take's "$29B war cost … consensus reads a war") is out of
+// scope and stays off the critical rails — mirrors yoy's Signal exclusion.
+// ---------------------------------------------------------------------------
+const EARN_METRIC_RE = /\b(?:revenues?|sales|earnings|EPS|per[-\s]share|net income|profits?|free cash flow|FCF|operating income)\b/i;
+const EARN_EXPECT_RE = /\b(?:consensus|estimates?|expected|expectations?|forecasts?|the\s+street|analysts?)\b|(?:vs\.?|versus)\s+\$?\d/i;
+const EARN_BEATMISS_RE = /\b(?:beats?|missed?|topped|edged\s+(?:past|out)|came\s+in\s+(?:above|below|ahead|light)|fell\s+short|surpass(?:ed|es)|exceeded|trailed|lagged|outpaced)\b/i;
+const EARN_MONEY_RE = /(?:\$|USD\s*)\s?\d[\d,.]*/i;
+const EARN_SECTION_RE = /Markets\s*&\s*Macro|Companies\s*&\s*Crypto|AI\s*&\s*Tech|AI&T/i;
+// EFFECTIVE-DATE SCOPE (IMP-086). This claim class is NEW as of 2026-07-22. The --require-resolved
+// regression fixtures (07-13, 07-17, the W28 weekly) predate it and were morning-verified under the
+// legs that existed then; retroactively extracting earnings claims from them would fail their truth
+// gate for a class that did not exist at publish and give zero reader benefit (they cannot be
+// re-published). Enforce from the introduction date FORWARD, on DAILY briefs only — a fresh
+// quarterly print is a daily phenomenon; the weekly recaps beats narratively (W28's "NVIDIA's April
+// 2024 beat" is not a fresh print). A YYYY-MM-DD date >= this; weekly "2026-Wnn" and null are out.
+const EARNINGS_LEG_EFFECTIVE = '2026-07-22';
+
+function earningsResultClaims(body: string, briefDate: string | null): Claim[] {
+  const claims: Claim[] = [];
+  if (!briefDate || !/^\d{4}-\d{2}-\d{2}$/.test(briefDate) || briefDate < EARNINGS_LEG_EFFECTIVE) return claims;
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  let offset = 0;
+  for (const text of stripped.split('\n')) {           // per-line: "revenue $2.56B vs $1.84B consensus" spans decimals a "." split would fragment
+    const idx = offset; offset += text.length + 1;
+    if (!EARN_METRIC_RE.test(text)) continue;            // an earnings-result metric
+    if (!EARN_MONEY_RE.test(text)) continue;             // carrying a $ figure
+    if (!EARN_EXPECT_RE.test(text) && !EARN_BEATMISS_RE.test(text)) continue; // vs an expectation OR a beat/miss verdict
+    if (!EARN_SECTION_RE.test(sectionOf(stripped, idx))) continue;           // the analytical earnings bullets only
+    const slug = text.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
+    const key = `earnings:${slug}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    claims.push({
+      key,
+      asset: 'earnings result vs consensus',
+      tier: 'critical',
+      claimType: 'earnings',
+      direction: 'unknown',
+      magnitudePct: null,
+      level: null,
+      section: sectionOf(stripped, idx),
+      sentence: text.trim().slice(0, 200),
+      status: 'UNVERIFIED',
+    });
+  }
+  return claims;
+}
+
+// ---------------------------------------------------------------------------
+// CORPORATE SCHEDULED-EVENT WEEKDAY CHECK (IMP-082, 2026-07-21 — the 07-21 Critic's mandate #2).
+//
+// WORKED FAILURE. The 07-21 AI&T-1 said "AMD opens its Advancing AI 2026 conference Tuesday." The
+// conference is July 22-23 (Wednesday-Thursday; AMD's own event page — and the v1.5 staleness
+// ledger itself recorded "event July 22-23"). Tuesday is the READING date. The morning pass caught
+// it (→ Wednesday) only because it happened to look; scheduledEventClaims covers macro releases
+// (CPI/FOMC/…) but has NO notion of a CORPORATE event — an earnings report or a product conference
+// pinned to a weekday. A weekday attached to a company's scheduled event is checkable in one fetch
+// and, like a relative date, its referent can be wrong at the reader.
+//
+// FIX (advisory FLAG, mirrors relative-date; the brief always ships). A scheduled-event verb
+// (reports/opens/hosts/unveils/launches/…) + a weekday (or today/tomorrow) + an event noun
+// (conference/earnings/keynote/Q_/…) surfaces a FLAG so the Morning Truth Gate confirms the
+// ABSOLUTE date against the event's own source and rewrites the weekday if it is wrong. Not a
+// publish-block: a wrong weekday is a timing miss, not an unverified critical price.
+//
+// NON-FIRE DISCIPLINE. A macro release (CPI/FOMC/…) is owned by scheduledEventClaims and excluded.
+// A weekday with no scheduled-event verb ("Monday's close", "by Friday") stays SILENT — an event
+// verb AND a weekday AND an event noun must co-occur.
+// ---------------------------------------------------------------------------
+const CORP_EVENT_VERB_RE = /\b(?:reports?|reporting|opens?|hosts?|holds?|unveils?|launches?|kicks?\s+off|presents?|convenes?|reveals?|announces?)\b/i;
+const CORP_EVENT_NOUN_RE = /\b(?:conference|earnings|results|keynote|summit|investor\s+day|analyst\s+day|product|launch|quarter|Q[1-4])\b/i;
+const CORP_WHEN_RE = /\b(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i; // weekdays only; forward "today/tomorrow" is owned by scheduledEventClaims + relativeDateFindings
+
+function corporateEventDateFindings(body: string, _briefDate: string | null): Finding[] {
+  const findings: Finding[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  let offset = 0;
+  for (const text of stripped.split('\n')) {
+    const idx = offset; offset += text.length + 1;
+    if (!CORP_EVENT_VERB_RE.test(text)) continue;
+    const when = text.match(CORP_WHEN_RE);
+    if (!when) continue;
+    if (!CORP_EVENT_NOUN_RE.test(text)) continue;
+    if (SCHEDULED_EVENTS.some((e) => e.re.test(text))) continue; // macro release owned by scheduledEventClaims
+    const key = `corp-event:${sectionOf(stripped, idx)}:${text.trim().slice(0, 28).toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    findings.push({
+      check: 'corporate-event-date',
+      severity: 'FLAG',
+      message: `CORPORATE-EVENT WEEKDAY — a company's scheduled event is pinned to "${when[0]}" in ${sectionOf(stripped, idx)}: "${text.trim().slice(0, 140)}". This brief is written the evening before it is read, and a weekday for an earnings date or a conference is checkable in one fetch. MORNING GATE: confirm the ABSOLUTE date against the event's own source and rewrite the weekday if it is wrong. Receipt: the 07-21 "AMD opens its Advancing AI 2026 conference Tuesday" was a July 22-23 (Wed-Thu) event, corrected to "Wednesday".`,
+    });
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// SEGMENT-METRIC ATTRIBUTION CHECK (IMP-083, 2026-07-21 — the 07-21 Critic's mandate #3, the
+// UNVERIFIABLE that SHIPPED).
+//
+// WORKED FAILURE. The 07-21 AI&T-1 said "AMD's data-center GPU revenue, $7.7 billion in the
+// trailing year through Q1, is roughly 8% of NVIDIA's annualized run rate." AMD does NOT separately
+// disclose GPU revenue WITHIN its Data Center segment — Data Center is the reported line ($5.8B in
+// Q1'26); a "data-center GPU revenue" figure is a proxy presented as a disclosed metric. It shipped
+// to the reader. The DOUBLE qualifier — a segment word (data-center/cloud/gaming/…) AND a chip-type
+// word (GPU/CPU/accelerator/…) in front of "revenue" — is the tell: the single-qualifier line
+// ("Data Center revenue") is disclosed; the compound is almost never broken out.
+//
+// FIX (advisory FLAG + AI_Tech_Generator rubric; per proxy discipline, n=1 and fuzzy → NOT a
+// blocking detector). Surface a compound segment+chip "revenue, $X" attribution so the Morning
+// Truth Gate confirms the company actually reports that line (or the figure is labeled estimated/
+// implied and sourced). Non-blocking — the brief ships; the gate makes the check unskippable.
+//
+// NON-FIRE DISCIPLINE. A SINGLE qualifier ("Data Center revenue of $12.8 billion") is a disclosed
+// segment and stays SILENT; the compound (segment + chip-type + revenue) and a $ figure are
+// required to fire.
+// ---------------------------------------------------------------------------
+const SEGMENT_METRIC_RE = /\b(?:data[-\s]?cent(?:er|re)|cloud|gaming|client|enterprise|embedded|networking|automotive)\s+(?:gpu|cpu|accelerator|silicon|chips?|processors?|npu|asics?)\s+(?:revenues?|sales|billings?)\b/i;
+
+function segmentMetricFindings(body: string, _briefDate: string | null): Finding[] {
+  const findings: Finding[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  let offset = 0;
+  for (const text of stripped.split('\n')) {
+    const idx = offset; offset += text.length + 1;
+    if (!SEGMENT_METRIC_RE.test(text)) continue;
+    if (!YOY_MONEY_RE.test(text)) continue; // a number is being attributed to the sub-segment line
+    const key = `segment-metric:${sectionOf(stripped, idx)}:${text.trim().slice(0, 28).toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    findings.push({
+      check: 'segment-metric-attribution',
+      severity: 'FLAG',
+      message: `SEGMENT-METRIC ATTRIBUTION — a compound segment+chip revenue line is attributed a figure in ${sectionOf(stripped, idx)}: "${text.trim().slice(0, 140)}". A single-qualifier segment ("Data Center revenue") is disclosed; a compound ("data-center GPU revenue") is almost never broken out. MORNING GATE: confirm the company actually reports this exact line in its filings, or label the figure "estimated"/"implied" and source it. Receipt: the 07-21 AMD "data-center GPU revenue, $7.7 billion" is not a disclosed AMD metric (Data Center = $5.8B in Q1'26).`,
+    });
+  }
+  return findings;
+}
+
 // Superlative contradictions (FAIL) + price-vs-archive deviations (FLAG).
 function archiveBackstop(superlatives: Claim[], briefPrices: Record<string, number>, archive: Record<string, ArchivePoint[]>): Finding[] {
   const findings: Finding[] = [];
@@ -701,6 +1436,223 @@ function checkOfficeHolders(body: string, registry: any): { findings: Finding[];
 }
 
 // ---------------------------------------------------------------------------
+// ENTITY-ATTRIBUTION (added 2026-07-11 — IMP-032). THE TRANSPOSITION CLASS.
+//
+// Two consecutive days, one shape: the number was RIGHT and the named entity was
+// WRONG. 07-10: the 10-year JGB's "highest since Sept 1996" record was written as
+// the 30-year (and the Critic called it the best M&M bullet). 07-11: "BlackRock's
+// BCRED" — BCRED is BLACKSTONE's fund — inside a depth bullet on private-credit
+// gating. Every existing check is number-shaped, so both walked through: the digits
+// were correct. This check binds a distinguishing KEY (fund ticker, reactor
+// designation, a record) to the entity that actually owns it, and FAILs when the key
+// appears in a sentence next to a known-confusable entity WITHOUT its true owner.
+//
+// Registry: system/entity-bindings.json. The compounding rule (Morning_Updater,
+// Brief_Editor): every entity error the truth chain corrects gets appended there in
+// the same session, so a caught error becomes a permanent guard.
+// ---------------------------------------------------------------------------
+interface Binding {
+  id: string; key: string; scope: string | null;
+  correctRe: string; correct: string; wrongRe: string; note?: string;
+}
+
+// REGISTRY INTEGRITY (IMP-064, 2026-07-17). The load path below used to be:
+//   try { return JSON.parse(...).bindings ?? []; } catch { return []; }
+// — a malformed or missing registry returned ZERO ROWS and the gate carried on and
+// printed "✅ FACT-GATE PASS". PROVEN 2026-07-17 on the real 07-17 v2: with the registry
+// intact the gate FAILs on both the TSMC "strongest quarter in semiconductor history"
+// misattribution and the "Brazil holds the rotating BRICS presidency" office-holder
+// error; with ONE stray character in entity-bindings.json those two falsehoods produce
+// "✅ FACT-GATE PASS", exit 0. The premise layer is the ONLY thing in the chain that
+// reads SUBJECTS rather than digits — the 07-17 post-mortem: "three of the four
+// falsehoods were premises, not figures" — and it could be switched off by a typo,
+// silently, failing OPEN toward publish.
+//
+// Same shape as the Geo-Lead Theater Log found dead 20 days on 07-17 while the QG's
+// ENTITY-PERSISTENCE CAP gate read it: NOTHING CHECKS THE CHECKER. A gate that cannot
+// prove it loaded its own ammunition is decorative, and a decorative truth gate is
+// worse than none — it produces a green check that the whole chain trusts.
+//
+// The load now reports HEALTH, and a registry that cannot be read is itself a FAIL.
+type RegistryHealth = {
+  name: string; path: string | null;
+  state: 'ok' | 'missing' | 'malformed' | 'empty';
+  rows: number; badRows: string[]; detail?: string;
+};
+
+/** Pure read of ONE registry file → rows + health. Exported shape so the selftest can
+ *  exercise it against a scratch file directly rather than fighting cwd resolution. */
+function readRegistryFile<T>(
+  name: string, p: string | null, key: string,
+): { rows: T[]; health: RegistryHealth } {
+  if (!p || !fs.existsSync(p)) {
+    return { rows: [], health: { name, path: null, state: 'missing', rows: 0, badRows: [] } };
+  }
+  let parsed: any;
+  try {
+    parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (e) {
+    return {
+      rows: [], health: {
+        name, path: p, state: 'malformed', rows: 0, badRows: [],
+        detail: (e as Error).message.split('\n')[0],
+      },
+    };
+  }
+  const rows = (parsed?.[key] ?? []) as T[];
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { rows: [], health: { name, path: p, state: 'empty', rows: 0, badRows: [] } };
+  }
+  return { rows, health: { name, path: p, state: 'ok', rows: rows.length, badRows: [] } };
+}
+
+function loadRegistry<T>(
+  name: string, file: string, key: string, briefPath: string,
+): { rows: T[]; health: RegistryHealth } {
+  const candidates = [
+    path.join(process.cwd(), 'system', file),
+    path.join(path.dirname(briefPath), '..', '..', 'system', file),
+  ];
+  const found = candidates.find((p) => fs.existsSync(p)) ?? null;
+  return readRegistryFile<T>(name, found, key);
+}
+
+/** A registry that cannot be read is a FAIL, not an empty list. Fails LOUD, never open. */
+function registryFindings(healths: RegistryHealth[]): Finding[] {
+  const out: Finding[] = [];
+  for (const h of healths) {
+    if (h.state === 'ok' && h.badRows.length === 0) continue;
+    const why =
+      h.state === 'missing' ? `not found (looked in system/)`
+      : h.state === 'malformed' ? `failed to parse: ${h.detail ?? 'invalid JSON'}`
+      : h.state === 'empty' ? `parsed but contains ZERO rows`
+      : `has ${h.badRows.length} unusable row(s): ${h.badRows.join(', ')}`;
+    out.push({
+      check: 'registry-integrity',
+      severity: 'FAIL',
+      message: `PREMISE REGISTRY BLIND — ${h.name} ${why}. This registry is the only layer that checks the SUBJECT of a claim rather than its digits (entity misattribution, stale office-holders). While it is unreadable those checks silently do not run and this gate will report PASS on premises nobody verified. 2026-07-17 receipt: one stray character in entity-bindings.json turned two live falsehoods (TSMC "strongest quarter in semiconductor history"; "Brazil holds the rotating BRICS presidency") into "✅ FACT-GATE PASS", exit 0. Repair the file — do NOT bypass this to publish.`,
+    });
+  }
+  return out;
+}
+
+function loadBindings(briefPath: string): Binding[] {
+  return loadRegistry<Binding>('entity-bindings.json', 'entity-bindings.json', 'bindings', briefPath).rows;
+}
+
+function entityAttribution(body: string, bindings: Binding[], health?: RegistryHealth): Finding[] {
+  const findings: Finding[] = [];
+  const seen = new Set<string>();
+  for (const b of bindings) {
+    let keyRe: RegExp, wrongRe: RegExp, correctRe: RegExp, scopeRe: RegExp | null;
+    try {
+      keyRe = new RegExp(b.key, 'gi');
+      wrongRe = new RegExp(b.wrongRe, 'i');
+      correctRe = new RegExp(b.correctRe, 'i');
+      scopeRe = b.scope ? new RegExp(b.scope, 'i') : null;
+    } catch {
+      // A malformed row must never CRASH the truth gate — but it must never be SILENT
+      // either (IMP-064). Before this, a bad regex here removed one guard from the
+      // registry with no output at all: the row existed, looked maintained, and
+      // enforced nothing. Report it; the caller turns it into a registry-integrity FAIL.
+      if (health) health.badRows.push(b.id ?? '(unnamed row)');
+      continue;
+    }
+    let m: RegExpExecArray | null;
+    while ((m = keyRe.exec(body)) !== null) {
+      const sentence = sentenceAround(body, m.index);
+      if (scopeRe && !scopeRe.test(sentence)) continue;   // binding doesn't apply here
+      if (!wrongRe.test(sentence)) continue;              // no confusable entity present
+      if (correctRe.test(sentence)) continue;             // true owner is named -> fine
+      const wrong = sentence.match(wrongRe)?.[0] ?? 'a confusable entity';
+      const dedupe = `${b.id}:${wrong}`;
+      if (seen.has(dedupe)) continue;
+      seen.add(dedupe);
+      findings.push({
+        check: 'entity-attribution',
+        severity: 'FAIL',
+        message: `ENTITY MISATTRIBUTION — "${m[0]}" belongs to ${b.correct}, but this sentence attributes it to "${wrong}" and never names ${b.correct}. Section: ${sectionOf(body, m.index)}.${loadBearingNote(sectionOf(body, m.index))} ${b.note ?? ''} Sentence: "${sentence.slice(0, 180)}" — verify against a primary source and correct the ENTITY; the number being right does not make the claim true.`,
+      });
+    }
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// TRUTH-HARMONIZATION GUARD (added 2026-07-11 — IMP-033). E-QG-TRUTH-HARMONIZATION-01.
+//
+// The worst receipt of the 07-11 cycle: the Writer got SK Hynix RIGHT ($26.5B) and the
+// Quality Gate rewrote it to the WRONG published figure ($28B) to remove a cross-day
+// contradiction with the 07-10 brief — a gate that MANUFACTURED a falsehood out of a
+// true sentence. A published number is a CLAIM, not a citation. When today's draft
+// contradicts our own archive, the only legal resolutions are: verify against a primary
+// source, or cut/restate the contested figure — never "align to what we already printed."
+//
+// Reads the QG log (it is the artifact where the harmonization decision is recorded) and
+// FAILs when a harmonization to the published record carries no primary-source evidence.
+// ---------------------------------------------------------------------------
+const HARMONIZE_RE = /harmoni[sz]\w*|align(?:ed|ing)?\s+(?:to|with)\s+the\s+published|defer(?:red|ring)?\s+to\s+the\s+published|match(?:ed|ing)?\s+the\s+published/i;
+const PUBLISHED_REF_RE = /published\s+(?:record|brief|figure|number)|the\s+published\s+\d{2}-\d{2}|prior\s+brief|yesterday'?s?\s+brief|our\s+archive/i;
+const PRIMARY_SOURCE_RE = /https?:\/\/|primary source|verified against|per (?:Reuters|Bloomberg|the FT|the WSJ|CNBC|AP|Al Jazeera)|company filing|press release|8-K|prospectus/i;
+
+function findQgLog(briefPath: string, briefDate: string | null): string | null {
+  if (!briefDate) return null;
+  const name = `${briefDate}-quality-gate-log.md`;
+  for (const p of [
+    path.join(path.dirname(briefPath), name),
+    path.join(path.dirname(briefPath), '..', 'daily-briefs', name),
+    path.join(process.cwd(), 'daily-briefs', name),
+  ]) {
+    if (fs.existsSync(p)) return fs.readFileSync(p, 'utf8');
+  }
+  return null;
+}
+
+/**
+ * THE CURE IS THE CORRECTION ROW. A harmonization-to-published is an OPEN DEBT, not a
+ * permanent stain: it FAILs until the session resolves it against a primary source and
+ * logs the archive fix in system/Corrections_Ledger.md (a row `found` on this brief's
+ * date). Then it downgrades to an advisory FLAG — the historical record of what the QG
+ * did, with the receipt of how it was closed. Without this escape the gate would block
+ * every re-run of a day it already fixed, which teaches sessions to route around it.
+ */
+function correctionsLoggedOn(briefDate: string | null): string[] {
+  if (!briefDate) return [];
+  const p = path.join(process.cwd(), 'system', 'Corrections_Ledger.md');
+  if (!fs.existsSync(p)) return [];
+  const ids: string[] = [];
+  for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
+    const c = line.trim().split('|').map((s) => s.trim());
+    if (c.length < 8 || !/^COR-\d+/.test(c[1] ?? '')) continue;
+    if (c[2] === briefDate) ids.push(c[1]!);
+  }
+  return ids;
+}
+
+function truthHarmonization(qg: string | null, briefDate: string | null = null): Finding[] {
+  if (!qg) return [];
+  const resolved = correctionsLoggedOn(briefDate);
+  const findings: Finding[] = [];
+  for (const raw of qg.split('\n')) {
+    const line = raw.trim();
+    if (!line || line.length < 40) continue;
+    if (!HARMONIZE_RE.test(line)) continue;
+    if (!PUBLISHED_REF_RE.test(line)) continue;   // harmonizing style/format is fine; the published RECORD is not a source
+    if (PRIMARY_SOURCE_RE.test(line)) continue;   // resolved against a real source -> legal
+    findings.push(resolved.length > 0 ? {
+      check: 'truth-harmonization',
+      severity: 'FLAG',
+      message: `QG harmonized to the published record — RESOLVED this session (${resolved.join(', ')} in system/Corrections_Ledger.md; the archive was corrected, not the truth). Kept as an advisory record of the decision. QG line: "${line.slice(0, 140)}"`,
+    } : {
+      check: 'truth-harmonization',
+      severity: 'FAIL',
+      message: `QG HARMONIZED TO THE PUBLISHED RECORD — a published number is a CLAIM, not a citation. 07-11 receipt: the draft had SK Hynix's raise RIGHT ($26.5B) and the QG rewrote it to the published (false) $28B to remove a cross-day contradiction, manufacturing a falsehood from a true sentence. Resolve the contradiction against a PRIMARY SOURCE, or cut/restate the contested figure — then correct the published brief and log it in system/Corrections_Ledger.md (that row is what clears this gate). QG line: "${line.slice(0, 220)}"`,
+    });
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
 // Truth cross-check.
 // ---------------------------------------------------------------------------
 function crossCheck(claims: Claim[], truth: any): Finding[] {
@@ -771,7 +1723,333 @@ function selftest(): number {
   const okMagWord = magWord.mag === 4.91 && magWord.dir === 'down';
   const okMagSym = magSym.mag === 2.6 && magSym.dir === 'down';
 
+  // --- IMP-032: entity attribution. REAL artifacts, both directions.
+  // FIRE  = the 07-11 pre-morning draft ("BlackRock's BCRED" — survived Writer, QG and Editor).
+  // SILENT= the 07-11 PUBLISHED brief (Morning Truth Gate corrected it to "Blackstone's BCRED").
+  const draft11Path = path.join(root, 'daily-briefs/2026-07-11-v1.5.md');
+  const pub11Path = path.join(root, 'content/daily-updates/2026-07-11.md');
+  const bindings = loadBindings(pub11Path);
+  const okBindingsLoad = bindings.length > 0;
+  const eaFire = fs.existsSync(draft11Path)
+    ? entityAttribution(stripComments(fs.readFileSync(draft11Path, 'utf8')), bindings) : [];
+  const eaSilent = fs.existsSync(pub11Path)
+    ? entityAttribution(stripComments(fs.readFileSync(pub11Path, 'utf8')), bindings) : [];
+  const okEaFire = eaFire.some((f) => f.check === 'entity-attribution' && /BCRED/i.test(f.message) && f.severity === 'FAIL');
+  const okEaSilent = eaSilent.length === 0;
+  // Synthetic twin of the 07-10 JGB transposition (right number, wrong tenor) + its corrected form.
+  const jgbFire = entityAttribution("Japan's long-end JGB yields hit a wall: the 30-year touched 2.88 percent, the highest since September 1996, as the YCC framework strained.", bindings);
+  const jgbSilent = entityAttribution("Japan's 10-year JGB touched 2.88 percent, the highest since September 1996, while the 30-year held near 4.03 percent.", bindings);
+  const okJgbFire = jgbFire.some((f) => f.check === 'entity-attribution');
+  const okJgbSilent = jgbSilent.length === 0;
+
+  // --- IMP-064: REGISTRY INTEGRITY. The premise layer must prove it loaded.
+  // Receipt (2026-07-17): one stray character in entity-bindings.json turned the real
+  // 07-17 v2's TSMC "semiconductor history" misattribution AND the "Brazil holds the
+  // rotating BRICS presidency" office-holder error into "✅ FACT-GATE PASS", exit 0.
+  // Both directions, on a scratch registry so the real one is never touched.
+  const regTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'fg-reg-'));
+  const regFile = path.join(regTmp, 'entity-bindings.json');
+  // readRegistryFile is the pure leg loadRegistry delegates to — testing it directly
+  // means the scratch file is genuinely read, instead of cwd silently resolving the
+  // REAL registry and the assertion passing for the wrong reason (caught on first run).
+  const healthOf = (s: string) => {
+    fs.writeFileSync(regFile, s);
+    return readRegistryFile<Binding>('entity-bindings.json', regFile, 'bindings').health;
+  };
+  // SILENT on a healthy registry.
+  const okRegOk = (() => {
+    const h = healthOf(JSON.stringify({ bindings: [{ id: 'x', key: 'K', scope: null, correctRe: 'A', correct: 'A', wrongRe: 'B' }] }));
+    return h.state === 'ok' && h.rows === 1 && registryFindings([h]).length === 0;
+  })();
+  // FIRES on malformed / empty / missing — the three ways the layer goes blind.
+  const okRegMalformed = (() => {
+    const h = healthOf('{ "bindings": [ BROKEN ] }');
+    return h.state === 'malformed' && registryFindings([h]).some((f) => f.check === 'registry-integrity' && f.severity === 'FAIL');
+  })();
+  const okRegEmpty = (() => {
+    const h = healthOf(JSON.stringify({ bindings: [] }));
+    return h.state === 'empty' && registryFindings([h]).some((f) => f.check === 'registry-integrity');
+  })();
+  const okRegMissing = (() => {
+    fs.rmSync(regFile, { force: true });
+    const h = readRegistryFile<Binding>('entity-bindings.json', regFile, 'bindings').health;
+    return h.state === 'missing' && registryFindings([h]).some((f) => f.check === 'registry-integrity');
+  })();
+  // The REAL registries on disk must be healthy — this is the check running in anger.
+  const okRegRealHealthy = (() => {
+    const b = loadRegistry<Binding>('entity-bindings.json', 'entity-bindings.json', 'bindings', pub11Path);
+    const c = loadRegistry<any>('current-facts.json', 'current-facts.json', 'facts', pub11Path);
+    return registryFindings([b.health, c.health]).length === 0;
+  })();
+  // A row with an unusable regex is reported, never silently skipped.
+  const okRegBadRow = (() => {
+    const bad: Binding[] = [{ id: 'bad-row', key: '([unclosed', scope: null, correctRe: 'A', correct: 'A', wrongRe: 'B' }];
+    const h: RegistryHealth = { name: 'entity-bindings.json', path: null, state: 'ok', rows: 1, badRows: [] };
+    entityAttribution('some body text', bad, h);
+    return h.badRows.includes('bad-row') && registryFindings([h]).some((f) => f.check === 'registry-integrity');
+  })();
+  fs.rmSync(regTmp, { recursive: true, force: true });
+
+  // --- IMP-033: truth-harmonization guard. REAL QG logs, both directions.
+  const qg11 = fs.existsSync(path.join(root, 'daily-briefs/2026-07-11-quality-gate-log.md'))
+    ? fs.readFileSync(path.join(root, 'daily-briefs/2026-07-11-quality-gate-log.md'), 'utf8') : null;
+  const qg10 = fs.existsSync(path.join(root, 'daily-briefs/2026-07-10-quality-gate-log.md'))
+    ? fs.readFileSync(path.join(root, 'daily-briefs/2026-07-10-quality-gate-log.md'), 'utf8') : null;
+  // briefDate=null => no correction row in scope => the OPEN-DEBT state the gate must block.
+  const thFire = truthHarmonization(qg11, null);
+  const thSilent = truthHarmonization(qg10, null);
+  const okThFire = thFire.some((f) => f.check === 'truth-harmonization' && f.severity === 'FAIL');
+  const okThSilent = thSilent.length === 0;
+  // A harmonization RESOLVED against a primary source is legal -> must stay silent.
+  const okThSourced = truthHarmonization(
+    'QG harmonized the SK Hynix figure to the published record after verifying against https://reuters.com/... — $26.5B confirmed.', null
+  ).length === 0;
+  // THE CURE: once the archive correction is logged for that date (COR-001/002 on 2026-07-11),
+  // the FAIL downgrades to an advisory FLAG — otherwise the gate blocks every re-run of a day
+  // it already fixed, and sessions learn to route around it.
+  const thResolved = truthHarmonization(qg11, '2026-07-11');
+  const okThResolved = thResolved.length > 0 && thResolved.every((f) => f.severity === 'FLAG');
+
+  // --- IMP-044: scheduled-event date. Both directions, on the two REAL 07-13 artifacts. ---
+  const jul13Draft = path.join(root, 'daily-briefs/2026-07-13-v2.md');       // the falsehood as drafted
+  const jul13Pub = path.join(root, 'content/daily-updates/2026-07-13.md');   // the morning's rebuild
+  const cal = loadEventCalendar(jul13Pub);
+  const okCalLoad = cal.some((c) => c.id === 'cpi' && c.releaseDate === '2026-07-14');
+  let okEvFire = false, okEvSilent = false, evFireN = 0, evSilentFindings: Finding[] = [];
+  if (fs.existsSync(jul13Draft) && fs.existsSync(jul13Pub)) {
+    // FIRES on the real evening draft: "CPI and the first post-Hormuz tape land in the same session."
+    const evFire = scheduledEventClaims(fs.readFileSync(jul13Draft, 'utf8'), cal, '2026-07-13');
+    evFireN = evFire.findings.length;
+    okEvFire =
+      evFire.findings.some((f) => f.check === 'scheduled-event-date' && f.severity === 'FAIL') &&
+      // and it must ALSO ride the critical rails, so a calendar-less event still blocks at publish
+      evFire.claims.some((c) => c.key === 'event:cpi' && c.tier === 'critical');
+    // SILENT on the published rebuild: "it lands tomorrow morning" + "June CPI lands Tuesday at 8:30".
+    const evSilent = scheduledEventClaims(fs.readFileSync(jul13Pub, 'utf8'), cal, '2026-07-13');
+    evSilentFindings = evSilent.findings;
+    okEvSilent =
+      evSilent.findings.length === 0 &&
+      evSilent.claims.some((c) => c.key === 'event:cpi' && c.tier === 'standard');
+  }
+  // A same-session assertion with NO calendar entry must still become a CRITICAL claim —
+  // this is the leg that makes coverage independent of the calendar's completeness.
+  const evNoCal = scheduledEventClaims('The FOMC decision lands today, and the tape has not priced it.', [], '2026-07-13');
+  const okEvNoCal = evNoCal.findings.length === 0 && evNoCal.claims.some((c) => c.key === 'event:fomc' && c.tier === 'critical' && c.status === 'UNVERIFIED');
+  // A weekday that contradicts the calendar is a falsehood even without "today"/"tomorrow".
+  const evWrongDay = scheduledEventClaims('June CPI lands Monday at 8:30 and the market is not ready.', cal, '2026-07-13');
+  const okEvWrongDay = evWrongDay.findings.some((f) => f.check === 'scheduled-event-date' && f.severity === 'FAIL');
+
+  // --- IMP-045: the gate's own transposition + the term-of-art false positive. ---
+  let okWtiAttrib = false, okToa = false, wtiGot: number | undefined;
+  if (fs.existsSync(jul13Pub)) {
+    const pubBody = fs.readFileSync(jul13Pub, 'utf8');
+    // "The oil market … Brent is bid about 4% to $79" must NOT assign 79 to WTI; the brief's
+    // real WTI print is $74.41 ("WTI bid to roughly $74.41 and Brent to $79.14").
+    const prices = assetValuesIn(pubBody);
+    wtiGot = prices.wti;
+    // Brent legitimately resolves from the intro ("Brent is bid about 4% to $79"); WTI must
+    // resolve from its OWN print ($74.41), never from Brent's number sitting after "oil market".
+    okWtiAttrib = prices.wti === 74.41 && prices.brent >= 79 && prices.brent <= 79.2;
+    // "the highest-and-best use of that land" is a real-estate term of art, not a superlative.
+    okToa = !extractSuperlatives(pubBody).some((s) => /highest[-\s]and[-\s]best/i.test(s.sentence) && /^highest$/i.test(s.superlative ?? ''));
+  }
+  // The suppression must be surgical: a REAL superlative in the same shape still extracts.
+  const okToaNarrow = extractSuperlatives('The 10-year JGB printed its highest yield since Sept 1996 at 2.900%.').length > 0;
+
+  // --- IMP-056: aggregate-claim gate. Both directions on REAL artifacts. ---
+  // FIRE: the 07-15 C&C-1 lede ("Combined Q2 net income across … cleared roughly $49 billion,
+  // up 39% YoY") becomes a CRITICAL claim on the unresolved-before-publish rails.
+  const jul15Pub = path.join(root, 'content/daily-updates/2026-07-15.md');
+  let okAggFire = false, okAggResolves = false, aggKey = '';
+  if (fs.existsSync(jul15Pub)) {
+    const agg15 = aggregateClaims(fs.readFileSync(jul15Pub, 'utf8'), '2026-07-15');
+    const c = agg15.find((x) => /^aggregate:/.test(x.key));
+    aggKey = c?.key ?? '';
+    okAggFire = !!c && c.tier === 'critical' && c.status === 'UNVERIFIED' && /49/.test(c.key) && c.magnitudePct === 39;
+    // RESOLVES: once the Morning Truth Gate records the aggregate under its key (independent
+    // source), the same claim flips to PASS and the gate goes silent.
+    const fakeTruth: any = { claims: { [aggKey]: { value: '5 big banks $49B combined, +39% YoY', source: 'https://finance.yahoo.com/…5-big-banks-earned-49…' } } };
+    for (const a of agg15) if (fakeTruth.claims[a.key]) a.status = 'PASS';
+    okAggResolves = !!aggKey && agg15.filter((x) => /^aggregate:/.test(x.key)).every((x) => x.status === 'PASS');
+  }
+  // SILENT: a single-entity figure is not a sum across constituents.
+  const okAggSingle = aggregateClaims('JPMorgan posted net income of $21.2 billion, up 41% year over year.', '2026-07-15').length === 0;
+  // SILENT: the 07-13 "$1.045 trillion in total FY2026 Pentagon resources" is one entity's own
+  // total — "in total" is deliberately NOT a connective. (Regression IMP-045 --require-resolved.)
+  const jul13PubAgg = path.join(root, 'content/daily-updates/2026-07-13.md');
+  const okAggSilent13 = !fs.existsSync(jul13PubAgg) || aggregateClaims(fs.readFileSync(jul13PubAgg, 'utf8'), '2026-07-13').length === 0;
+
+  // --- IMP-058: relative-date referent. Both directions on the REAL 07-16 artifacts + synthetic edges. ---
+  // FIRE: the 07-16 editor working file still carries the pre-correction Take lead
+  // ("Yesterday New York became the first state to ban…" — EO 62 was signed 07-14).
+  const jul16Work = path.join(root, 'daily-briefs/2026-07-16-v2.working.md');
+  const jul16Pub = path.join(root, 'content/daily-updates/2026-07-16.md');
+  const relWorkFire = fs.existsSync(jul16Work)
+    ? relativeDateFindings(fs.readFileSync(jul16Work, 'utf8'), '2026-07-16') : [];
+  const okRelWorkFire = relWorkFire.some((f) => f.check === 'relative-date-referent' && /New York|became/i.test(f.message));
+  // SILENT on the corrected published Take sentence ("This week New York became…").
+  const okRelPubSilentNY = !fs.existsSync(jul16Pub) ||
+    !relativeDateFindings(fs.readFileSync(jul16Pub, 'utf8'), '2026-07-16').some((f) => /New York/i.test(f.message));
+  // FIRE (synthetic): the exact failure sentence.
+  const okRelSynthFire = relativeDateFindings('Yesterday New York became the first state to ban new hyperscale data centers outright.', '2026-07-16').length > 0;
+  // SILENT (synthetic): the corrected stable form does not shift.
+  const okRelSynthStable = relativeDateFindings('This week New York became the first state to ban new hyperscale data centers outright.', '2026-07-16').length === 0;
+  // SILENT (synthetic): a forward watch carries no past-relative word.
+  const okRelSynthWatch = relativeDateFindings('Watch the August 12 CPI for the first honest print.', '2026-07-16').length === 0;
+  // SILENT (synthetic): possessive "yesterday's" is the Dashboard's stable idiom.
+  const okRelSynthPoss = relativeDateFindings("The S&P closed at 7,572, up from yesterday's open.", '2026-07-16').length === 0;
+  // SILENT (synthetic): a market-move recap is the Writer's device, not a dated event.
+  const okRelSynthMarket = relativeDateFindings('Yesterday the bond market rallied on soft inflation.', '2026-07-16').length === 0;
+
+  // --- IMP-069: entity-count + regulatory effective-date. Both directions on the REAL 07-18 v2
+  //     error sentences (the class that shipped 3 briefs running) + non-fire discipline. ---
+  const jul18v2 = path.join(process.cwd(), 'daily-briefs', '2026-07-18-v2.md');
+  const jul18pub = path.join(process.cwd(), 'content', 'daily-updates', '2026-07-18.md');
+  const ecFire = entityCountClaims('Kroger is acquiring Giant Eagle at roughly 0.18 times revenue for a 470-store regional grocer.', '2026-07-18');
+  const okEcFire = ecFire.some((c) => c.key === 'entity-count:470-store' && c.tier === 'critical' && c.status === 'UNVERIFIED');
+  const okEcSilent = entityCountClaims('Giant Eagle generates about $9 billion in annual sales, 170-plus projects await rules, and the report showed 97 billion hours.', '2026-07-18').length === 0;
+  const okEcReal = !fs.existsSync(jul18v2) || entityCountClaims(fs.readFileSync(jul18v2, 'utf8'), '2026-07-18').some((c) => c.key === 'entity-count:470-store' && c.tier === 'critical');
+  // The CORRECTED published brief still extracts its count (197-supermarket): the gate forces the
+  // corrected number to be RESOLVED too — it is not waved through because it happens to be right.
+  const okEcPubResolvable = !fs.existsSync(jul18pub) || entityCountClaims(fs.readFileSync(jul18pub, 'utf8'), '2026-07-18').some((c) => /^entity-count:197-supermarket/.test(c.key));
+  const edFire = effectiveDateClaims("The GENIUS Act's stablecoin framework takes effect today, and the six agencies have not finished the rules.", '2026-07-18');
+  const okEdFire = edFire.some((c) => c.claimType === 'effective-date' && c.tier === 'critical' && c.status === 'UNVERIFIED');
+  // "The deadline … falls today" is a DEADLINE, not an effective date (the corrected 07-18 phrasing):
+  // "falls" is not an effective-verb, so it stays SILENT. This distinction IS the fix.
+  const okEdSilentDeadline = effectiveDateClaims("The GENIUS Act's deadline for federal regulators to finalize stablecoin rules falls today, one year after it was signed.", '2026-07-18').length === 0;
+  const okEdSilentBare = effectiveDateClaims('The new ad tier was highly effective and cost-effective across the quarter.', '2026-07-18').length === 0;
+  const okEdReal = !fs.existsSync(jul18v2) || effectiveDateClaims(fs.readFileSync(jul18v2, 'utf8'), '2026-07-18').some((c) => c.tier === 'critical' && /takes effect today/i.test(c.sentence));
+
+  // --- IMP-074: AI&T definite-product / deployment claims. FIRE on the 07-19 fabrication SHAPES (the
+  //     Critic's quoted sentences), SILENT on the corrected hedged forms, non-AI&T sections, and analysis. ---
+  const aiFireMsft = aiProductClaims('## AI & Tech\n\nMicrosoft announced Project Perception, an AI security tool built to undercut its rivals.', '2026-07-19');
+  const okAiFireMsft = aiFireMsft.some((c) => c.claimType === 'ai-product' && c.tier === 'critical' && c.status === 'UNVERIFIED');
+  const aiFireAtlas = aiProductClaims('## AI & Tech\n\nThe deployment of Boston Dynamics Atlas humanoid robots on the assembly line marks the first such automotive rollout.', '2026-07-19');
+  const okAiFireAtlas = aiFireAtlas.some((c) => c.claimType === 'ai-product' && c.tier === 'critical');
+  // SILENT: the CORRECTED 07-19 sentences differ from the fabrication by exactly the hedge word.
+  const okAiSilentHedgeMsft = aiProductClaims('## AI & Tech\n\nMicrosoft is reportedly developing Project Perception, an AI security tool that routes each task to the cheapest model.', '2026-07-19').length === 0;
+  const okAiSilentPlanAtlas = aiProductClaims("## AI & Tech\n\nHyundai's union struck over the company's plan to put Boston Dynamics Atlas humanoid robots on the line; no units run yet.", '2026-07-19').length === 0;
+  // SILENT: an action verb, but the hedge wins ("reportedly launched" is not the false-certainty class).
+  const okAiSilentHedgeVerb = aiProductClaims('## AI & Tech\n\nMicrosoft reportedly launched a new security tool for enterprises.', '2026-07-19').length === 0;
+  // SILENT: analysis prose with no product-action verb.
+  const okAiSilentAnalysis = aiProductClaims('## AI & Tech\n\nContinuous security is an economics problem before it is a detection problem.', '2026-07-19').length === 0;
+  // SILENT: scoping — the same definite product claim OUTSIDE AI&T does not fire here.
+  const okAiSilentOther = aiProductClaims('## Companies & Crypto\n\nAcme launched a new payments platform for merchants this week.', '2026-07-19').length === 0;
+  // REAL ARTIFACT: the shipped-corrected 07-19 v2 no longer carries the fabrication shapes.
+  const jul19v2 = path.join(process.cwd(), 'daily-briefs', '2026-07-19-v2.md');
+  const okAiRealCorrected = !fs.existsSync(jul19v2)
+    || !aiProductClaims(fs.readFileSync(jul19v2, 'utf8'), '2026-07-19').some((c) => /announced Project Perception|deployment of Boston Dynamics/i.test(c.sentence));
+
+  // --- IMP-081: YoY-comparison. Both directions on the REAL 07-21 published sentences (GM fabrication
+  //     that SHIPPED + STLD restored-guidance) + non-fire discipline. ---
+  const jul21pub = path.join(process.cwd(), 'content', 'daily-updates', '2026-07-21.md');
+  // IMP-086 (2026-07-22): the REAL-artifact anchor for the GM YoY moved to the immutable v2. The
+  // published 07-21 file was CORRECTED post-publish (archive-corrections gate #18: "roughly 22% above
+  // last year" → "roughly 2% below last year's $47.1 billion", mtime 21:19 07-21), so a test pinned to
+  // the published file silently began FAILING the selftest — and therefore verify-improvements — the
+  // moment the fix it was built to demand actually landed. A real-artifact test must point at an
+  // artifact that PRESERVES the failure; daily-briefs/2026-07-21-v2.md is that immutable evening draft.
+  const jul21v2 = path.join(process.cwd(), 'daily-briefs', '2026-07-21-v2.md');
+  const yoyGm = yoyComparisonClaims('## Markets & Macro\n\nGM carries a consensus of $46 billion in revenue, roughly 22% above last year.', '2026-07-21');
+  const okYoyGmFire = yoyGm.some((c) => c.claimType === 'yoy' && c.tier === 'critical' && c.status === 'UNVERIFIED' && c.magnitudePct === 22);
+  const yoyStld = yoyComparisonClaims('## Companies & Crypto\n\nthe roughly 85% jump in per-share earnings to about $3.69 from $2.01 a year earlier.', '2026-07-21');
+  const okYoyStldFire = yoyStld.some((c) => c.claimType === 'yoy' && c.tier === 'critical');
+  // RESOLVES: once the Morning Truth Gate records the prior-year actual under the key, it flips to PASS.
+  const yoyKey = yoyGm[0]?.key ?? '';
+  const fakeYoyTruth: any = { claims: { [yoyKey]: { value: 'GM Q2 2025 revenue $47.1B → $45.96B is DOWN 2.4%', source: 'https://investor.gm.com' } } };
+  for (const c of yoyGm) if (fakeYoyTruth.claims[c.key]) c.status = 'PASS';
+  const okYoyResolves = !!yoyKey && yoyGm.every((c) => c.status === 'PASS');
+  // SILENT: a spot ratio with no prior-year referent (the AMD run-rate line + an ownership %) — in-section, so it proves the CONTENT guard, not the section scope.
+  const okYoySilentRatio = yoyComparisonClaims("## AI & Tech\n\nAMD's data-center revenue is roughly 8% of NVIDIA's annualized run rate, and BitMine owns 4.8% of all ether.", '2026-07-21').length === 0;
+  // SILENT: a bare intraday move ("up about half a percent", "more than 1%") has no prior-year referent.
+  const okYoySilentMove = yoyComparisonClaims('## Markets & Macro\n\nS&P futures pointed higher, up about half a percent with the Nasdaq up more than 1%.', '2026-07-21').length === 0;
+  // SILENT (scope): a legitimate industry YoY in the Signal stays off the critical rails (the 07-13 USMTO class).
+  const okYoyScopeSignal = yoyComparisonClaims('## The Signal\n\nMachine-tool orders are running nearly 29% ahead of last year.', '2026-07-21').length === 0;
+  // REAL: the shipped 07-21 v2 carries the GM YoY fabrication as an extractable critical claim (decimals
+  // and all). Anchored to v2, NOT the published file, which was corrected post-publish (see note above).
+  const okYoyReal = !fs.existsSync(jul21v2) || yoyComparisonClaims(fs.readFileSync(jul21v2, 'utf8'), '2026-07-21').some((c) => c.tier === 'critical' && /22\s*%/.test(c.sentence) && /above last year/i.test(c.sentence));
+
+  // --- IMP-082: corporate scheduled-event weekday. FIRE on AMD's real conference-day line, SILENT on
+  //     a macro release (owned by scheduledEventClaims) and on a bare weekday with no event. ---
+  const okCorpFire = corporateEventDateFindings('AMD opens its Advancing AI 2026 conference Tuesday, expected to unveil the MI450 accelerator.', '2026-07-21').some((f) => f.check === 'corporate-event-date');
+  const okCorpSilentMacro = corporateEventDateFindings('June CPI lands Tuesday at 8:30, and the tape has not priced it.', '2026-07-21').length === 0;
+  const okCorpSilentBare = corporateEventDateFindings("The S&P closed at 7,443 on Monday's modest decline.", '2026-07-21').length === 0;
+  const okCorpReal = !fs.existsSync(jul21pub) || corporateEventDateFindings(fs.readFileSync(jul21pub, 'utf8'), '2026-07-21').length > 0;
+
+  // --- IMP-083: segment-metric attribution. FIRE on AMD's compound "data-center GPU revenue, $X",
+  //     SILENT on a single-qualifier disclosed segment ("Data Center revenue of $X"). ---
+  const okSegFire = segmentMetricFindings("AMD's data-center GPU revenue, $7.7 billion in the trailing year through Q1, is roughly 8% of NVIDIA's run rate.", '2026-07-21').some((f) => f.check === 'segment-metric-attribution');
+  const okSegSilentDisclosed = segmentMetricFindings('AMD reported Data Center revenue of $12.8 billion, up sharply on AI demand.', '2026-07-21').length === 0;
+
+  // --- IMP-086: earnings-result vs consensus. FIRE on the real 07-22 fabricated EQT shape (the "beat"
+  //     that was a miss) AND the real published 07-22 EQT line; RESOLVE to PASS with truth; SILENT on a
+  //     bare YoY (owned by yoy), a guidance line, and a stock-price move. ---
+  const jul22pub = path.join(process.cwd(), 'content', 'daily-updates', '2026-07-22.md');
+  const earnFab = earningsResultClaims('## Companies & Crypto\n\nEQT posted Q2 revenue of $2.56 billion against a $1.84 billion consensus, a 39% beat, with adjusted EPS of $0.45 versus $0.41 expected.', '2026-07-22');
+  const okEarnFire = earnFab.some((c) => c.claimType === 'earnings' && c.tier === 'critical' && c.status === 'UNVERIFIED');
+  const earnKey = earnFab[0]?.key ?? '';
+  const fakeEarnTruth: any = { claims: { [earnKey]: { value: 'EQT Q2 revenue $1.81B; adj EPS $0.39 MISSED ~$0.42', source: 'https://www.marketscreener.com' } } };
+  for (const c of earnFab) if (fakeEarnTruth.claims[c.key]) c.status = 'PASS';
+  const okEarnResolves = !!earnKey && earnFab.every((c) => c.status === 'PASS');
+  const okEarnSilentYoy = earningsResultClaims('## Markets & Macro\n\nGM reported Q2 revenue of $48.03 billion, up 1.9% year over year, with adjusted EPS of $3.57.', '2026-07-22').length === 0;
+  const okEarnSilentGuidance = earningsResultClaims('## Companies & Crypto\n\nEQT raised full-year output guidance by roughly 90 Bcfe while trimming capital spending.', '2026-07-22').length === 0;
+  const okEarnSilentMove = earningsResultClaims('## Markets & Macro\n\nMicron surged 12% after Bank of America reiterated a buy with a $1,550 target.', '2026-07-22').length === 0;
+  const okEarnReal = !fs.existsSync(jul22pub) || earningsResultClaims(fs.readFileSync(jul22pub, 'utf8'), '2026-07-22').some((c) => c.tier === 'critical' && /EQT|1\.81 billion|0\.39/i.test(c.sentence));
+
   console.log('fact-gate --selftest');
+  console.log(`  [IMP-081] FIRE: GM "$46 billion in revenue, 22% above last year" is a CRITICAL yoy claim: ${okYoyGmFire ? '✓' : '✗'}`);
+  console.log(`  [IMP-081] FIRE: STLD "85% jump … $3.69 from $2.01 a year earlier" (spans decimals): ${okYoyStldFire ? '✓' : '✗'}`);
+  console.log(`  [IMP-081] RESOLVES to PASS once truth carries yoy:<slug>: ${okYoyResolves ? '✓' : '✗'} (key=${yoyKey.slice(0, 32)})`);
+  console.log(`  [IMP-081] SILENT on a spot ratio ("8% of NVIDIA's run rate", "4.8% of all ether"): ${okYoySilentRatio ? '✓' : '✗'}`);
+  console.log(`  [IMP-081] SILENT on a bare intraday move ("up about half a percent"): ${okYoySilentMove ? '✓' : '✗'}`);
+  console.log(`  [IMP-081] SILENT (scope) on a Signal industry YoY ("machine orders 29% ahead of last year"): ${okYoyScopeSignal ? '✓' : '✗'}`);
+  console.log(`  [IMP-081] FIRE on the REAL published 07-21 (the GM YoY that shipped): ${okYoyReal ? '✓' : '✗'}`);
+  console.log(`  [IMP-082] FIRE: "AMD opens its … conference Tuesday" is a corporate-event-date FLAG: ${okCorpFire ? '✓' : '✗'}`);
+  console.log(`  [IMP-082] SILENT on a macro release ("CPI lands Tuesday" — owned by scheduledEventClaims): ${okCorpSilentMacro ? '✓' : '✗'}`);
+  console.log(`  [IMP-082] SILENT on a bare weekday with no event verb ("Monday's decline"): ${okCorpSilentBare ? '✓' : '✗'}`);
+  console.log(`  [IMP-082] FIRE on the REAL published 07-21 (AMD/GM weekday event): ${okCorpReal ? '✓' : '✗'}`);
+  console.log(`  [IMP-083] FIRE: "data-center GPU revenue, $7.7 billion" is a segment-metric FLAG: ${okSegFire ? '✓' : '✗'}`);
+  console.log(`  [IMP-083] SILENT on a disclosed single-qualifier segment ("Data Center revenue of $12.8B"): ${okSegSilentDisclosed ? '✓' : '✗'}`);
+  console.log(`  [IMP-086] FIRE: EQT "$2.56B against a $1.84B consensus … $0.45 versus $0.41 expected" is a CRITICAL earnings claim: ${okEarnFire ? '✓' : '✗'}`);
+  console.log(`  [IMP-086] RESOLVES to PASS once truth carries earnings:<slug>: ${okEarnResolves ? '✓' : '✗'} (key=${earnKey.slice(0, 32)})`);
+  console.log(`  [IMP-086] SILENT on a bare YoY ("revenue $48.03B, up 1.9% YoY" — owned by yoy): ${okEarnSilentYoy ? '✓' : '✗'}`);
+  console.log(`  [IMP-086] SILENT on a guidance line and a stock-price move: ${okEarnSilentGuidance && okEarnSilentMove ? '✓' : '✗'}`);
+  console.log(`  [IMP-086] FIRE on the REAL published 07-22 (the EQT earnings line): ${okEarnReal ? '✓' : '✗'}`);
+  console.log(`  FIRE: 07-16 working file "Yesterday New York became…" is a relative-date FLAG: ${okRelWorkFire ? '✓' : '✗'} (${relWorkFire.length} finding(s))`);
+  console.log(`  SILENT on the corrected published Take ("This week New York became…"): ${okRelPubSilentNY ? '✓' : '✗'}`);
+  console.log(`  FIRE on synthetic "Yesterday New York became…": ${okRelSynthFire ? '✓' : '✗'}`);
+  console.log(`  SILENT on the stable form "This week New York became…": ${okRelSynthStable ? '✓' : '✗'}`);
+  console.log(`  SILENT on a forward watch ("Watch the August 12 CPI"): ${okRelSynthWatch ? '✓' : '✗'}`);
+  console.log(`  SILENT on possessive "yesterday's open": ${okRelSynthPoss ? '✓' : '✗'}`);
+  console.log(`  SILENT on a market-move recap ("Yesterday the bond market rallied"): ${okRelSynthMarket ? '✓' : '✗'}`);
+  console.log(`  [IMP-069] FIRE: "470-store regional grocer" is a CRITICAL entity-count claim: ${okEcFire ? '✓' : '✗'}`);
+  console.log(`  [IMP-069] SILENT on "$9B sales / 170-plus projects / 97 billion hours" (no footprint noun): ${okEcSilent ? '✓' : '✗'}`);
+  console.log(`  [IMP-069] FIRE on the REAL 07-18 v2 (470-store): ${okEcReal ? '✓' : '✗'}`);
+  console.log(`  [IMP-069] the corrected published brief still extracts 197-supermarket (must resolve): ${okEcPubResolvable ? '✓' : '✗'}`);
+  console.log(`  [IMP-069] FIRE: "the framework takes effect today" is a CRITICAL effective-date claim: ${okEdFire ? '✓' : '✗'}`);
+  console.log(`  [IMP-069] SILENT on "the deadline … falls today" (a deadline ≠ an effective date): ${okEdSilentDeadline ? '✓' : '✗'}`);
+  console.log(`  [IMP-069] SILENT on bare "highly effective / cost-effective": ${okEdSilentBare ? '✓' : '✗'}`);
+  console.log(`  [IMP-069] FIRE on the REAL 07-18 v2 ("takes effect today"): ${okEdReal ? '✓' : '✗'}`);
+  console.log(`  [IMP-074] FIRE: "Microsoft announced Project Perception" is a CRITICAL ai-product claim: ${okAiFireMsft ? '✓' : '✗'}`);
+  console.log(`  [IMP-074] FIRE: "the deployment of ... Atlas ... robots" is a CRITICAL ai-product claim: ${okAiFireAtlas ? '✓' : '✗'}`);
+  console.log(`  [IMP-074] SILENT on the corrected "is reportedly developing Project Perception" (hedge): ${okAiSilentHedgeMsft ? '✓' : '✗'}`);
+  console.log(`  [IMP-074] SILENT on the corrected "plan to put ... Atlas ... robots" (future plan): ${okAiSilentPlanAtlas ? '✓' : '✗'}`);
+  console.log(`  [IMP-074] SILENT on "reportedly launched" (hedge beats the action verb): ${okAiSilentHedgeVerb ? '✓' : '✗'}`);
+  console.log(`  [IMP-074] SILENT on AI&T analysis prose (no product-action verb): ${okAiSilentAnalysis ? '✓' : '✗'}`);
+  console.log(`  [IMP-074] SILENT on a definite product claim OUTSIDE AI&T (scoping): ${okAiSilentOther ? '✓' : '✗'}`);
+  console.log(`  [IMP-074] SILENT on the shipped-corrected REAL 07-19 v2 (no fabrication shape): ${okAiRealCorrected ? '✓' : '✗'}`);
+  console.log(`  FIRE: 07-15 C&C-1 "combined … $49 billion, up 39%" is a CRITICAL aggregate claim: ${okAggFire ? '✓' : '✗'} (key=${aggKey})`);
+  console.log(`  RESOLVES to PASS once truth carries aggregate:<magnitude>: ${okAggResolves ? '✓' : '✗'}`);
+  console.log(`  SILENT on a single-entity figure ("JPMorgan … $21.2 billion"): ${okAggSingle ? '✓' : '✗'}`);
+  console.log(`  SILENT on 07-13 "$1.045 trillion in total" (not a constituent sum): ${okAggSilent13 ? '✓' : '✗'}`);
+  console.log(`  event-calendar loads (CPI 2026-07-14, BLS): ${okCalLoad ? '✓' : '✗'} (${cal.length} event(s))`);
+  console.log(`  FAIL on real 07-13 DRAFT "CPI … land in the same session": ${okEvFire ? '✓' : '✗'} (${evFireN} finding(s))`);
+  console.log(`  SILENT on real 07-13 PUBLISHED ("lands tomorrow" / "Tuesday"): ${okEvSilent ? '✓' : '✗'} (${evSilentFindings.length} finding(s))`);
+  console.log(`  same-session claim with NO calendar entry still rides critical rails: ${okEvNoCal ? '✓' : '✗'}`);
+  console.log(`  FAIL on a weekday that contradicts the calendar: ${okEvWrongDay ? '✓' : '✗'}`);
+  console.log(`  price attributed to the NEAREST asset (WTI=74.41, not Brent's 79): ${okWtiAttrib ? '✓' : '✗'} (wti=${wtiGot})`);
+  console.log(`  "highest-and-best use" is not a superlative: ${okToa ? '✓' : '✗'}`);
+  console.log(`  a real "highest since 1996" still extracts: ${okToaNarrow ? '✓' : '✗'}`);
   console.log(`  FAIL on real 07-10 KOSPI Overnight reuse: ${okFire ? '✓' : '✗'} (${fire.length} finding(s))`);
   console.log(`  SILENT on real 07-09 ("on Tuesday" dated): ${okSilentDated ? '✓' : '✗'} (${silentDated.length} finding(s))`);
   console.log(`  SILENT on real 07-07 (first occurrence): ${okSilentFirst ? '✓' : '✗'} (${silentFirst.length} finding(s))`);
@@ -781,19 +2059,53 @@ function selftest(): number {
   console.log(`  SILENT story-fp on first-occurrence 07-07: ${okFpSilentFirst ? '✓' : '✗'} (${fpSilentFirst.length} finding(s))`);
   console.log(`  magnitude parses "4.91 percent": ${okMagWord ? '✓' : '✗'} (got ${magWord.mag}/${magWord.dir})`);
   console.log(`  magnitude parses "2.6%": ${okMagSym ? '✓' : '✗'} (got ${magSym.mag}/${magSym.dir})`);
+  console.log(`  entity-bindings registry loads: ${okBindingsLoad ? '✓' : '✗'} (${bindings.length} binding(s))`);
+  console.log(`  FAIL on real 07-11 draft "BlackRock's BCRED": ${okEaFire ? '✓' : '✗'} (${eaFire.length} finding(s))`);
+  console.log(`  SILENT on real 07-11 PUBLISHED (corrected to Blackstone): ${okEaSilent ? '✓' : '✗'} (${eaSilent.length} finding(s))`);
+  console.log(`  FAIL on the 07-10 JGB transposition (30Y given the 10Y's record): ${okJgbFire ? '✓' : '✗'}`);
+  console.log(`  SILENT on the correctly-attributed JGB sentence: ${okJgbSilent ? '✓' : '✗'}`);
+  console.log(`  FAIL on real 07-11 QG harmonize-to-published-record: ${okThFire ? '✓' : '✗'} (${thFire.length} finding(s))`);
+  console.log(`  SILENT on real 07-10 QG log (no harmonization): ${okThSilent ? '✓' : '✗'} (${thSilent.length} finding(s))`);
+  console.log(`  SILENT when harmonization cites a primary source: ${okThSourced ? '✓' : '✗'}`);
+  console.log(`  DOWNGRADES to FLAG once the archive correction is logged (COR row): ${okThResolved ? '✓' : '✗'}`);
+  console.log(`  [IMP-064] registry-integrity SILENT on a healthy registry: ${okRegOk ? '✓' : '✗'}`);
+  console.log(`  [IMP-064] FAIL when the premise registry is MALFORMED (the 07-17 blind-gate case): ${okRegMalformed ? '✓' : '✗'}`);
+  console.log(`  [IMP-064] FAIL when the premise registry is EMPTY: ${okRegEmpty ? '✓' : '✗'}`);
+  console.log(`  [IMP-064] FAIL when the premise registry is MISSING: ${okRegMissing ? '✓' : '✗'}`);
+  console.log(`  [IMP-064] an unusable binding row is REPORTED, not silently skipped: ${okRegBadRow ? '✓' : '✗'}`);
+  console.log(`  [IMP-064] the REAL registries on disk are healthy right now: ${okRegRealHealthy ? '✓' : '✗'}`);
 
   const ok =
     okFire && okSilentDated && okSilentFirst &&
     okFpFire && okFpNikkei && okFpSilentDated && okFpSilentFirst &&
-    okMagWord && okMagSym;
+    okMagWord && okMagSym &&
+    okBindingsLoad && okEaFire && okEaSilent && okJgbFire && okJgbSilent &&
+    okThFire && okThSilent && okThSourced && okThResolved &&
+    okCalLoad && okEvFire && okEvSilent && okEvNoCal && okEvWrongDay &&
+    okWtiAttrib && okToa && okToaNarrow &&
+    okAggFire && okAggResolves && okAggSingle && okAggSilent13 &&
+    okRelWorkFire && okRelPubSilentNY && okRelSynthFire && okRelSynthStable &&
+    okRelSynthWatch && okRelSynthPoss && okRelSynthMarket &&
+    okRegOk && okRegMalformed && okRegEmpty && okRegMissing && okRegBadRow && okRegRealHealthy &&
+    okEcFire && okEcSilent && okEcReal && okEcPubResolvable &&
+    okEdFire && okEdSilentDeadline && okEdSilentBare && okEdReal &&
+    okAiFireMsft && okAiFireAtlas && okAiSilentHedgeMsft && okAiSilentPlanAtlas &&
+    okAiSilentHedgeVerb && okAiSilentAnalysis && okAiSilentOther && okAiRealCorrected &&
+    okYoyGmFire && okYoyStldFire && okYoyResolves && okYoySilentRatio && okYoySilentMove && okYoyScopeSignal && okYoyReal &&
+    okCorpFire && okCorpSilentMacro && okCorpSilentBare && okCorpReal &&
+    okSegFire && okSegSilentDisclosed &&
+    okEarnFire && okEarnResolves && okEarnSilentYoy && okEarnSilentGuidance && okEarnSilentMove && okEarnReal;
   if (ok) {
-    console.log('\n✅ SELFTEST PASS — gate bites the 07-10 failure and stays silent on dated/first-occurrence healthy cases.');
+    console.log('\n✅ SELFTEST PASS — gate bites the 07-10/07-11/07-13 failures (reuse, transposition, entity misattribution, harmonize-to-published, release-date falsehood) and stays silent on the corrected/healthy cases — including its own two false positives.');
     return 0;
   }
   console.error('\n❌ SELFTEST FAIL');
+  if (!okEvSilent) for (const f of evSilentFindings) console.error(`  unexpected event finding on the PUBLISHED 07-13 brief: ${f.message.slice(0, 200)}`);
   if (!okFpSilentDated) {
     for (const f of fpSilentDated) console.error(`  unexpected: ${f.message.slice(0, 160)}`);
   }
+  if (!okEaSilent) for (const f of eaSilent) console.error(`  unexpected entity finding on the PUBLISHED brief: ${f.message.slice(0, 200)}`);
+  if (!okThSilent) for (const f of thSilent) console.error(`  unexpected harmonization finding on 07-10 QG: ${f.message.slice(0, 160)}`);
   return 1;
 }
 
@@ -829,12 +2141,11 @@ function main() {
   const body = stripComments(fs.readFileSync(briefPath, 'utf8'));
 
   // Registry (zero-network). Resolve relative to repo root (script lives in scripts/).
-  const registryPath = path.join(path.dirname(briefPath), '..', '..', 'system', 'current-facts.json');
-  const altRegistry = path.join(process.cwd(), 'system', 'current-facts.json');
-  let registry: any = { facts: [] };
-  for (const p of [registryPath, altRegistry]) {
-    if (fs.existsSync(p)) { registry = JSON.parse(fs.readFileSync(p, 'utf8')); break; }
-  }
+  // IMP-064: loaded through loadRegistry so that missing/malformed/empty is a reported
+  // STATE, not a silent `{ facts: [] }` that switches the office-holder layer off while
+  // the gate keeps printing PASS.
+  const factsReg = loadRegistry<any>('current-facts.json', 'current-facts.json', 'facts', briefPath);
+  const registry: any = { facts: factsReg.rows };
 
   // Optional truth file. Default convention: daily-briefs/{date}-truth.json next to brief.
   // Weekly files ("2026-W27-jun-28-jul-04.md" / "2026-W27-light.md") carry a week id
@@ -845,10 +2156,24 @@ function main() {
     path.basename(briefPath).match(/(\d{4}-\d{2}-\d{2})/) ??
     path.basename(briefPath).match(/(\d{4}-W\d{1,2})/i);
   const briefDate = dateMatch ? dateMatch[1] : null;
-  const defaultTruth = briefDate ? path.join(path.dirname(briefPath), `${briefDate}-truth.json`) : null;
+  // Truth-file search path. The PUBLISHED file lives in content/daily-updates/(weekly/), but the
+  // truth ledger is written into daily-briefs/(weekly/) — so a published weekly resolved to NO truth
+  // file and rode unverified. Receipt (IMP-037, 2026-07-12): W28 reached Sunday morning with
+  // truthFile:null and 13 unverified claims; "fact-gate PASS" meant "no contradictions vs nothing" —
+  // the exact 07-10 receipt, reproduced in the weekly lane one day after it was closed in the daily
+  // lane. The weekly now gets the daily's truth floor: --require-resolved hard-fails a Weekly whose
+  // {week-id}-truth.json does not exist. (IMP-040)
+  const truthCandidates = briefDate
+    ? [
+        path.join(path.dirname(briefPath), `${briefDate}-truth.json`),
+        path.join(process.cwd(), 'daily-briefs', 'weekly', `${briefDate}-truth.json`),
+        path.join(process.cwd(), 'daily-briefs', `${briefDate}-truth.json`),
+      ]
+    : [];
+  const defaultTruth = truthCandidates.find((p) => fs.existsSync(p)) ?? null;
   const truthPath = truthArg
     ? (path.isAbsolute(truthArg) ? truthArg : path.join(process.cwd(), truthArg))
-    : defaultTruth && fs.existsSync(defaultTruth) ? defaultTruth : null;
+    : defaultTruth;
   if (truthPath && fs.existsSync(truthPath)) truth = JSON.parse(fs.readFileSync(truthPath, 'utf8'));
 
   const findings: Finding[] = [];
@@ -863,6 +2188,53 @@ function main() {
   // 3. Extract superlatives (claims of extreme)
   const superlatives = extractSuperlatives(body);
 
+  // 3b. Scheduled-event dates (IMP-044). "CPI lands in this session" is a fact with a
+  // primary source; until 07-13 nothing in the chain extracted it, let alone checked it.
+  const calendar = loadEventCalendar(briefPath);
+  const eventScan = scheduledEventClaims(body, calendar, briefDate);
+  const eventClaims = eventScan.claims;
+  findings.push(...eventScan.findings);
+  // The Morning Truth Gate records a verified release date under `event:<id>`.
+  for (const e of eventClaims) if (truth?.claims?.[e.key]) e.status = 'PASS';
+
+  // 3c. Aggregate claims (IMP-056). "Combined $X across A, B, C, up Y%" is load-bearing and
+  // rode to publish unextracted on 07-15. Extract it as a CRITICAL claim on the same rails,
+  // resolved under `aggregate:<magnitude>` against an INDEPENDENT aggregate source.
+  const aggClaims = aggregateClaims(body, briefDate);
+  for (const a of aggClaims) if (truth?.claims?.[a.key]) a.status = 'PASS';
+
+  // 3d. Entity-count + regulatory effective-date (IMP-069, the 07-18 Critic's mandate #1). "470-store
+  // regional grocer" and "the framework takes effect today" were load-bearing, checkable in one fetch,
+  // and UNGATED — three consecutive briefs shipped a confirmed factual error to v2. Both extract as
+  // CRITICAL claims on the unresolved-before-publish rails and resolve under their own truth key.
+  const entityCounts = entityCountClaims(body, briefDate);
+  for (const e of entityCounts) if (truth?.claims?.[e.key]) e.status = 'PASS';
+  const effectiveDates = effectiveDateClaims(body, briefDate);
+  for (const e of effectiveDates) if (truth?.claims?.[e.key]) e.status = 'PASS';
+
+  // 3e. AI&T definite-product / deployment claims (IMP-074, the 07-19 Critic's mandate #1). "Microsoft
+  // announced Project Perception" (reportedly-developing) and "the deployment of Atlas robots" (none
+  // deployed) shipped to v2 un-gated — the AI&T section has no pre-draft and no fact rail. A definite,
+  // unhedged product/deployment assertion becomes a CRITICAL claim resolved under `ai-product:<slug>`.
+  const aiProducts = aiProductClaims(body, briefDate);
+  for (const e of aiProducts) if (truth?.claims?.[e.key]) e.status = 'PASS';
+
+  // 3f. YoY-comparison claims (IMP-081, the 07-21 Critic's mandate #1). GM's "$45.96 billion in
+  // revenue, roughly 22% above last year" was a FABRICATED delta (Q2'25 was $47.1B → DOWN ~2.4%)
+  // that the morning reconcile missed and PUBLISHED. A financial magnitude + a prior-year referent
+  // + a percentage is a CRITICAL claim resolved under `yoy:<slug>` against the prior-year actual.
+  const yoyClaims = yoyComparisonClaims(body, briefDate);
+  for (const e of yoyClaims) if (truth?.claims?.[e.key]) e.status = 'PASS';
+
+  // 3g. Earnings-result vs consensus (IMP-086, the 07-22 Critic's mandate #1). EQT's "$2.56B against
+  // a $1.84B consensus, a 39% beat … EPS $0.45 versus $0.41 expected" was FABRICATED (actual: revenue
+  // $1.81B, EPS $0.39 MISSED) — a beat↔miss sign reversal that reached v2 and was caught only by the
+  // morning read. A metric + $ + (an expectation referent OR a beat/miss verb) in M&M/C&C/AI&T is a
+  // CRITICAL claim resolved under `earnings:<slug>` against the company's own release. Also the
+  // reader-facing gate for a stale pre-draft consumed as an actual (E-PREDRAFT-STALE-DATA-01).
+  const earningsClaims = earningsResultClaims(body, briefDate);
+  for (const e of earningsClaims) if (truth?.claims?.[e.key]) e.status = 'PASS';
+
   // 4. Archive backstop (zero-network): disprove false superlatives + flag price fabrications.
   const archive = loadArchive(briefPath, briefDate, archiveDays);
   const archiveAssetsKnown = Object.keys(archive).length;
@@ -875,11 +2247,46 @@ function main() {
   // 4c. Story-fingerprint reuse (zero-network): 3-day-old % moves restated as fresh.
   findings.push(...storyFingerprintReuse(body, briefPath, briefDate));
 
+  // 4d. Entity attribution (zero-network): right number, WRONG entity — the 07-10 JGB
+  // transposition and the 07-11 BlackRock/BCRED class. No number-shaped check can see these.
+  const bindReg = loadRegistry<Binding>('entity-bindings.json', 'entity-bindings.json', 'bindings', briefPath);
+  findings.push(...entityAttribution(body, bindReg.rows, bindReg.health));
+
+  // 4d-i. REGISTRY INTEGRITY (IMP-064) — the premise layer must prove it loaded. A
+  // registry that is missing, malformed, empty, or carrying unusable rows silently
+  // disables the only checks that read the SUBJECT of a claim, and the gate would
+  // otherwise report PASS on premises nobody verified. Nothing checks the checker;
+  // now something does. Evaluated AFTER entityAttribution so bad rows are counted.
+  findings.push(...registryFindings([bindReg.health, factsReg.health]));
+
+  // 4e. Truth-harmonization guard (QG log): the gate that manufactured a falsehood by
+  // "aligning" a true draft figure to a false published one. A published number is a claim.
+  findings.push(...truthHarmonization(findQgLog(briefPath, briefDate), briefDate));
+
+  // 4f. Relative-date referent (IMP-058): a past-relative word ("yesterday", "overnight", …)
+  // on a dated EVENT shifts its referent between the evening write and the morning read. The
+  // 07-16 "Yesterday New York became the first state to ban…" was an EO signed two days earlier.
+  // Advisory — the Morning Truth Gate resolves it; the brief always ships.
+  findings.push(...relativeDateFindings(body, briefDate));
+
+  // 4g. Corporate scheduled-event weekday (IMP-082): "AMD opens its conference Tuesday" (a Wed-Thu
+  // event) — a company earnings/conference date pinned to a weekday, checkable in one fetch. Advisory;
+  // the Morning Truth Gate confirms the absolute date and rewrites the weekday if wrong.
+  findings.push(...corporateEventDateFindings(body, briefDate));
+
+  // 4h. Segment-metric attribution (IMP-083): "AMD's data-center GPU revenue, $7.7 billion" — a
+  // compound segment+chip line AMD does not disclose, shipped as if it were a reported metric.
+  // Advisory; the Morning Truth Gate confirms the line is reported or the figure is labeled/sourced.
+  findings.push(...segmentMetricFindings(body, briefDate));
+
   // 5. Truth cross-check (if truth present)
   if (truth) findings.push(...crossCheck(claims, truth));
 
-  // 6. Unverified-critical gate (market claims only; superlatives are flagged for verification, not blocked here)
-  const unverifiedCritical = claims.filter((c) => c.tier === 'critical' && c.status === 'UNVERIFIED');
+  // 6. Unverified-critical gate (market + scheduled-event claims; superlatives are flagged for
+  // verification, not blocked here). Event claims join the critical rails deliberately: a
+  // same-session release-date assertion is exactly as load-bearing as a price, and on 07-13 it
+  // was more so — it was a section's entire premise.
+  const unverifiedCritical = [...claims, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims].filter((c) => c.tier === 'critical' && c.status === 'UNVERIFIED');
   if (!allowUnverified) {
     for (const c of unverifiedCritical) {
       findings.push({
@@ -896,7 +2303,7 @@ function main() {
   // infrastructure failure, not a clean pass. (07-10 receipt: 6 market claims + 7 superlatives,
   // 0 pass / 0 fail / 13 unverified, truthFile null → published. Among them: the 30Y-JGB
   // superlative that was actually the 10Y's record — right number, wrong asset.)
-  const truthBypass = !truth && (claims.length > 0 || superlatives.length > 0);
+  const truthBypass = !truth && (claims.length > 0 || superlatives.length > 0 || eventClaims.length > 0 || aggClaims.length > 0 || entityCounts.length > 0 || effectiveDates.length > 0 || aiProducts.length > 0 || yoyClaims.length > 0 || earningsClaims.length > 0);
   if (truthBypass) {
     findings.push({
       check: 'truth-bypass',
@@ -914,7 +2321,7 @@ function main() {
     }
   }
 
-  const allClaims = [...claims, ...superlatives];
+  const allClaims = [...claims, ...superlatives, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims];
 
   // Ledger output (the worklist the editorial agents clear by verify-and-correct).
   const ledger = {
@@ -924,6 +2331,12 @@ function main() {
     summary: {
       claims: claims.length,
       superlatives: superlatives.length,
+      scheduledEvents: eventClaims.length,
+      aggregates: aggClaims.length,
+      entityCounts: entityCounts.length,
+      effectiveDates: effectiveDates.length,
+      aiProducts: aiProducts.length,
+      earnings: earningsClaims.length,
       pass: allClaims.filter((c) => c.status === 'PASS').length,
       fail: allClaims.filter((c) => c.status === 'FAIL').length,
       unverified: allClaims.filter((c) => c.status === 'UNVERIFIED').length,
@@ -931,6 +2344,13 @@ function main() {
       archiveAssetsKnown,
       truthBypass,
       unresolvedCritical: unverifiedCritical.length,
+      // IMP-064: the premise layer's proof of life, on the record in every ledger.
+      registries: [bindReg.health, factsReg.health].map((h) => ({
+        name: h.name, state: h.state, rows: h.rows, badRows: h.badRows,
+      })),
+      registryBlind: [bindReg.health, factsReg.health].some(
+        (h) => h.state !== 'ok' || h.badRows.length > 0,
+      ),
     },
     findings,
     claims: allClaims,
@@ -944,9 +2364,14 @@ function main() {
   const flags = findings.filter((f) => f.severity === 'FLAG');
 
   console.log(`fact-gate — ${path.basename(briefPath)}`);
-  console.log(`  market claims: ${claims.length} · superlatives: ${superlatives.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`);
+  console.log(`  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`);
   console.log(`  archive: ${archiveAssetsKnown} assets known from our last ${archiveDays} briefs`);
   console.log(`  truth file: ${truthPath ? path.basename(truthPath) : 'NONE (critical claims will block unless --allow-unverified)'}`);
+  // IMP-064: the premise layer states its own health on every run. A silent registry
+  // is how a truth gate goes blind while reporting PASS.
+  console.log(`  premise registries: ${[bindReg.health, factsReg.health].map((h) =>
+    `${h.name} ${h.state === 'ok' && !h.badRows.length ? `${h.rows} rows ✓` : `${h.state.toUpperCase()}${h.badRows.length ? ` +${h.badRows.length} bad row(s)` : ''} ✗`}`,
+  ).join(' · ')}`);
   console.log(`  ledger: ${ledgerPath}`);
   if (flags.length) {
     console.log(`\n  ${flags.length} FLAG (verify):`);

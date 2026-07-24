@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import type { DailyBrief, BriefSection } from '@/lib/daily-update-parser';
+import { isIsoWeekSlug } from '@/lib/brief-date';
 import LiveDashboard from '@/components/dashboard/LiveDashboard';
 import { MobileKPICards } from '@/components/dashboard/MobileKPICards';
 import AudioPlayer from '@/components/daily-update/AudioPlayer';
@@ -159,6 +160,15 @@ function parseBlocks(content: string): { type: string; content: string }[] {
     const line = ln(lines, i).trim();
     if (!line) { i++; continue; }
 
+    // Defense-in-depth: drop HTML comments that leaked past Format Brief
+    // (gate declarations like INNER-GAME-FIGURE-FIRST). Without this, React
+    // renders them as visible paragraph text — not as real HTML comments.
+    if (line.startsWith('<!--')) {
+      while (i < lines.length && !ln(lines, i).includes('-->')) i++;
+      i++;
+      continue;
+    }
+
     if (line.startsWith('|')) {
       let tableContent = '';
       while (i < lines.length && ln(lines, i).trim().startsWith('|')) {
@@ -174,6 +184,7 @@ function parseBlocks(content: string): { type: string; content: string }[] {
       while (i < lines.length && ln(lines, i).trim().startsWith('- ')) {
         listContent += ln(lines, i).trim() + '\n'; i++;
       }
+      listContent = listContent.replace(/<!--[\s\S]*?-->/g, '');
       blocks.push({ type: 'list', content: listContent.trim() }); continue;
     }
 
@@ -197,10 +208,12 @@ function parseBlocks(content: string): { type: string; content: string }[] {
     }
 
     let para = line; i++;
-    while (i < lines.length && ln(lines, i).trim() && !ln(lines, i).trim().startsWith('|') && !ln(lines, i).trim().startsWith('#') && !ln(lines, i).trim().startsWith('- ') && !/^\d+\.\s/.test(ln(lines, i).trim()) && ln(lines, i).trim() !== '---') {
+    while (i < lines.length && ln(lines, i).trim() && !ln(lines, i).trim().startsWith('|') && !ln(lines, i).trim().startsWith('#') && !ln(lines, i).trim().startsWith('- ') && !/^\d+\.\s/.test(ln(lines, i).trim()) && ln(lines, i).trim() !== '---' && !ln(lines, i).trim().startsWith('<!--')) {
       para += '\n' + ln(lines, i).trim(); i++;
     }
-    blocks.push({ type: 'paragraph', content: para });
+    // Inline gate markers (e.g. <!-- DEPTH-TREATMENT --> mid-bullet) must not render.
+    para = para.replace(/<!--[\s\S]*?-->/g, '').trim();
+    if (para) blocks.push({ type: 'paragraph', content: para });
   }
   return blocks;
 }
@@ -1275,6 +1288,9 @@ const SECTION_TITLES: Record<string, string> = {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function BriefViewer({ brief }: { brief: DailyBrief }) {
+  const isWeekly = isIsoWeekSlug(brief.date);
+  const productLabel = isWeekly ? 'The Weekly' : 'Daily Brief';
+  const briefPath = isWeekly ? `/weekly/${brief.date}` : `/daily-update/${brief.date}`;
   const [activeSection, setActiveSection] = useState<string>(brief.sections[0]?.id || '');
   const [readProgress, setReadProgress] = useState(0);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -1364,7 +1380,7 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
             {brief.displayDate}
           </div>
           <div className="font-mono text-[11px] font-medium text-[#555] uppercase tracking-[0.08em] mb-3">
-            Markets, Meditations &amp; Mental Models — Daily Brief
+            Markets, Meditations &amp; Mental Models — {productLabel}
           </div>
 
           {brief.dailyTitle && (
@@ -1494,8 +1510,8 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
         })()}
 
         <ShareBar
-          title={brief.dailyTitle || 'Daily Brief'}
-          path={`/daily-update/${brief.date}`}
+          title={brief.dailyTitle || productLabel}
+          path={briefPath}
           displayDate={brief.displayDate}
           variant="dark"
         />
@@ -1503,10 +1519,12 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
         {/* Subscribe CTA */}
         <section className="bg-ct-pink px-4 py-6 text-center border-t-[3px] border-ct-dark">
           <div className="max-w-lg mx-auto">
-            <div className="text-[14px] font-medium text-white mb-1">Get this every morning</div>
+            <div className="text-[14px] font-medium text-white mb-1">
+              {isWeekly ? 'Get the Weekly every Sunday' : 'Get this every morning'}
+            </div>
             <div className="text-[11px] text-white/70 mb-3">Markets, meditations, mental models. Free.</div>
             <SubscribeForm
-              source="daily-brief"
+              source={isWeekly ? 'weekly-brief' : 'daily-brief'}
               inputClassName="px-3 py-2 border-[1.5px] border-white bg-transparent text-white text-[12px] w-[200px] placeholder-white/50"
               buttonClassName="px-4 py-2 bg-white text-ct-pink text-[12px] font-medium border-[1.5px] border-white"
               showNote={false}
@@ -1521,7 +1539,9 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
             Edition {brief.date} · <Link href="/archive" className="text-ct-pink hover:text-ct-yellow">Archive</Link>
           </p>
           <div className="flex gap-4 justify-center text-[10px] font-medium font-mono">
-            <Link className="text-ct-yellow" href="/archive">Yesterday →</Link>
+            {!isWeekly && (
+              <Link className="text-ct-yellow" href="/archive">Yesterday →</Link>
+            )}
             <Link className="text-ct-pink" href="/archive">Archive →</Link>
             <Link className="text-ct-green-data" href="/models">Models →</Link>
           </div>

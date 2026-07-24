@@ -1,29 +1,64 @@
 {
   "brief": "2026-W27-jun-28-jul-04.md",
-  "generated": "2026-07-06T00:38:36.362Z",
+  "generated": "2026-07-24T15:07:47.030Z",
   "truthFile": null,
   "summary": {
-    "claims": 4,
+    "claims": 5,
     "superlatives": 7,
+    "scheduledEvents": 0,
+    "aggregates": 0,
+    "entityCounts": 0,
+    "effectiveDates": 0,
+    "aiProducts": 1,
+    "earnings": 0,
     "pass": 0,
     "fail": 0,
-    "unverified": 11,
-    "officeHolderFacts": 4,
-    "archiveAssetsKnown": 6
+    "unverified": 13,
+    "officeHolderFacts": 5,
+    "archiveAssetsKnown": 5,
+    "truthBypass": true,
+    "unresolvedCritical": 3,
+    "registries": [
+      {
+        "name": "entity-bindings.json",
+        "state": "ok",
+        "rows": 13,
+        "badRows": []
+      },
+      {
+        "name": "current-facts.json",
+        "state": "ok",
+        "rows": 5,
+        "badRows": []
+      }
+    ],
+    "registryBlind": false
   },
   "findings": [
     {
       "check": "price-vs-archive",
       "severity": "FLAG",
-      "message": "Brent crude stated near 105 deviates 36% from our last-3 archive median 77 (2026-06-27:73, 2026-06-23:77, 2026-06-22:80.26). Possible fabrication/stale — verify vs PRIMARY source."
+      "message": "Brent crude stated near 105 deviates 12% from our last-3 archive median 94.13 (2026-07-24:100, 2026-07-23:94.13, 2026-07-21:87). Possible fabrication/stale — verify vs PRIMARY source."
     },
     {
-      "check": "price-vs-archive",
+      "check": "truth-bypass",
       "severity": "FLAG",
-      "message": "WTI stated near 105 deviates 52% from our last-3 archive median 69 (2026-07-04:68, 2026-07-02:69, 2026-07-01:71). Possible fabrication/stale — verify vs PRIMARY source."
+      "message": "TRUTH BYPASS — no truth file loaded; 5 market claim(s) + 7 superlative(s) ride entirely unverified. The gate has verified NOTHING about this brief. Before publish, the Morning Updater must write {BRIEF_DATE}-truth.json from refreshed market data and re-run with --require-resolved. Verify the ASSET as well as the number — the 07-10 failure was a transposition (the 10Y JGB's record attributed to the 30Y), which a number-only re-check cannot catch."
     }
   ],
   "claims": [
+    {
+      "key": "nasdaq",
+      "asset": "Nasdaq",
+      "tier": "critical",
+      "claimType": "market",
+      "direction": "up",
+      "magnitudePct": 4,
+      "level": null,
+      "section": "Equities",
+      "sentence": "The tape closed on its most important tell: Thursday the Dow set another record above 52,900 in the same session the Nasdaq closed red, Meta off nearly 4 percent and Tesla more than 6, and the other 493 stocks stood up anyway.",
+      "status": "UNVERIFIED"
+    },
     {
       "key": "ust10",
       "asset": "10-year yield",
@@ -56,8 +91,8 @@
       "direction": "down",
       "magnitudePct": null,
       "level": null,
-      "section": "Commodities & Rates",
-      "sentence": "Gold ran the sharpest round trip of the week, sliding under 4,000 by midweek on a fourth straight weekly decline as the haven bid evaporated, then ripping to roughly 4,180 on Friday once the jobs print flipped the front end.",
+      "section": "Markets & Macro",
+      "sentence": "The bond market read it dovish and faded the new hawk, hike odds sliding toward 50 percent, gold ripping, the ten-year falling.",
       "status": "UNVERIFIED"
     },
     {
@@ -169,6 +204,18 @@
       "status": "UNVERIFIED",
       "superlative": "weakest since",
       "superlativeKind": "other"
+    },
+    {
+      "key": "ai-product:openai-s-newest-model-shipped-priced-as-three-pr",
+      "asset": "AI&T product/deployment claim",
+      "tier": "critical",
+      "claimType": "ai-product",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": null,
+      "section": "AI & Tech",
+      "sentence": "OpenAI's newest model shipped priced as three products, its cheapest tier a dollar per million tokens, undercutting the economics of self-hosting; open-weight inference crossed the same order of magnitude as the frontier labs; a services firm watched the AI tools it sold cannibalize its own revenue and fall 24 percent; and Anthropic disclosed that more than 80 percent of its own production code is now written by its model.",
+      "status": "UNVERIFIED"
     }
   ]
 }

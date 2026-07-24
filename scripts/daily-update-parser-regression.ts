@@ -49,6 +49,7 @@ const OLD_FORMAT_HEADER = `# MARKETS, MEDITATIONS & MENTAL MODELS
 console.log('── isDisplayDateLine ──');
 check('bold date line', isDisplayDateLine('**Tuesday, July 7, 2026**'));
 check('## date line', isDisplayDateLine('## Monday, June 1, 2026'));
+check('week-of line', isDisplayDateLine('## Week of July 12 to 18, 2026'));
 check('headline ## rejected', !isDisplayDateLine('## 4,800 Out, 6,000 In'));
 check('section marker rejected', !isDisplayDateLine('## ▸ OVERNIGHT'));
 
@@ -93,6 +94,55 @@ check(
   badParsed.displayDate === 'Tuesday, July 7, 2026',
   `got "${badParsed.displayDate}"`,
 );
+
+const WEEKLY_FORMAT_HEADER = `# MARKETS, MEDITATIONS & MENTAL MODELS: THE WEEKLY
+
+*You can spend a good stretch bracing for the end of it, or you can be in it.*
+
+## Week of July 12 to 18, 2026
+
+### The Duration Discount
+
+*This was the week the market stopped asking whether.*
+
+---
+
+# ▸ THE DASHBOARD
+`;
+
+console.log('── parseDailyBrief: weekly format ──');
+const weeklyParsed = parseDailyBrief(WEEKLY_FORMAT_HEADER, '2026-W29');
+check(
+  'weekly displayDate keeps Week of…',
+  weeklyParsed.displayDate === 'Week of July 12 to 18, 2026',
+  `got "${weeklyParsed.displayDate}"`,
+);
+check(
+  'weekly dailyTitle',
+  weeklyParsed.dailyTitle === 'The Duration Discount',
+  `got "${weeklyParsed.dailyTitle}"`,
+);
+
+console.log('── live weekly on disk (2026-W28) ──');
+const weeklyLivePath = path.join(
+  process.cwd(),
+  'content/daily-updates/weekly/2026-W28-jul-05-11.md',
+);
+if (fs.existsSync(weeklyLivePath)) {
+  const weeklyLive = parseDailyBrief(fs.readFileSync(weeklyLivePath, 'utf8'), '2026-W28');
+  check(
+    'live weekly displayDate',
+    weeklyLive.displayDate === 'Week of July 5 to 11, 2026',
+    `got "${weeklyLive.displayDate}"`,
+  );
+  check(
+    'live weekly dailyTitle',
+    weeklyLive.dailyTitle === 'The Rent Moved Downstairs',
+    `got "${weeklyLive.dailyTitle}"`,
+  );
+} else {
+  console.log('SKIP  live 2026-W28 weekly md not found');
+}
 
 console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);
 process.exit(failures === 0 ? 0 : 1);

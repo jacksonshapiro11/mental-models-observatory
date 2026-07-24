@@ -189,6 +189,9 @@ signal-drafts.md
 
 # Local QA artifacts from fact-gate (regenerated per brief)
 content/daily-updates/*-factcheck.json
+# Morning Truth Gate ground-truth (internal verification notes; fact-gate's default
+# lookup path is content/daily-updates/{date}-truth.json, so it must be ignored here too)
+content/daily-updates/*-truth.json
 
 # FUSE/VM hidden debris
 **/.fuse_hidden*

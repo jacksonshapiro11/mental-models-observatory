@@ -91,15 +91,46 @@ function hasNonDateNumeral(text: string): boolean {
     .replace(/\b\d{1,2}:\d{2}\b/g, ' ');
   return /\d/.test(stripped);
 }
+/**
+ * A COUNT IS NOT A PRICE. (2026-07-14 — IMP-050, the 07-14 Critic's mandate #2.)
+ *
+ * WORKED FAILURE: the 07-14 Critic mandated a pricing anchor for AI&T-3 (a compliance cost, the
+ * revenue at stake, an enforcement penalty). The Editor satisfied `number-presence` by writing
+ * **"4 cloud providers"** and **"the 4 hyperscalers"** — the bullet's only non-date numerals — and
+ * ceiling-lint printed **0 FLAGs** on the shipped brief while the Critic graded that same bullet
+ * `missing: pricing`. The check was not missing; **the check was gamed**, because it counted
+ * numerals instead of testing magnitude. That is constraint erosion by literal compliance (RC4),
+ * and it is the second Goodhart receipt in two days (07-13 editor log: "ceiling-lint numerals
+ * added — M&M-3, AI&T-1, Geo-3", while the Critic graded 5 of those bullets `missing: pricing`).
+ *
+ * A PRICED MAGNITUDE carries a unit of money, a percentage, basis points, or an explicit multiple —
+ * the number that MOVES and WHO PAYS IT. A tally of the nouns the sentence is already about is not
+ * a price. Scoped to the four analytical sections + the Take, where the pricing rung is the
+ * standard; the science/discovery bullets keep the any-numeral floor, because a bumble-bee
+ * cognition finding does not owe the reader a dollar sign.
+ *
+ * This is a FLOOR, not a rubric: it tests that a price is PRESENT, never that it is the RIGHT one.
+ * The rubric leg — what a pricing rung IS — is ESC-008, due at the payoff-window close (07-18).
+ */
+const PRICED_RE = /(?:[$€£¥]\s?\d[\d,.]*|\b\d[\d,.]*\s?(?:%|percent\b|percentage points?|bps?\b|basis points?|cents?\b|dollars?\b|euros?\b)|\b\d+(?:\.\d+)?x\b|\b\d+(?:\.\d+)?-fold\b)/i;
+const PRICED_SECTION_RE = /markets|macro|companies|crypto|\bai\b|tech|geopol/i;
+function hasPricedMagnitude(text: string): boolean { return PRICED_RE.test(text); }
+
 function checkNumberPresence(bullets: Bullet[], take: string): Flag[] {
   const flags: Flag[] = [];
   bullets.forEach((b, i) => {
     if (!hasNonDateNumeral(b.text)) {
       flags.push({ check: 'number-presence', where: `${b.section} bullet ${i + 1}`, message: `Six bullet carries zero non-date numerals ("${b.text.slice(2, 60)}…") — every Take/Six bullet needs ≥1 number that isn't a date (the pricing/magnitude rung's floor).` });
+    } else if (PRICED_SECTION_RE.test(b.section) && !hasPricedMagnitude(b.text)) {
+      flags.push({ check: 'pricing-magnitude', where: `${b.section} bullet ${i + 1}`, message: `Bullet has numerals but NO PRICED MAGNITUDE ("${b.text.slice(2, 60)}…") — no money, no %, no bps, no multiple. A COUNT IS NOT A PRICE: "4 cloud providers" is a tally of the nouns the sentence is already about (07-14 AI&T-3, which cleared number-presence and was still graded \`missing: pricing\`). Give the reader the number that MOVES and WHO PAYS IT — the compliance cost, the revenue at stake, the spread, the penalty. If no price exists, say what the number would have to be for the claim to bind. Do NOT satisfy this by adding a tally.` });
     }
   });
-  if (take.trim() && !hasNonDateNumeral(take)) {
-    flags.push({ check: 'number-presence', where: 'The Take', message: 'The Take carries zero non-date numerals — the mechanism needs at least one magnitude.' });
+  if (take.trim()) {
+    if (!hasNonDateNumeral(take)) {
+      flags.push({ check: 'number-presence', where: 'The Take', message: 'The Take carries zero non-date numerals — the mechanism needs at least one magnitude.' });
+    } else if (!hasPricedMagnitude(take)) {
+      flags.push({ check: 'pricing-magnitude', where: 'The Take', message: 'The Take has numerals but no priced magnitude (money / % / bps / multiple) — a mechanism the reader cannot price is a mechanism they cannot trade. A count is not a price.' });
+    }
   }
   return flags;
 }
@@ -183,6 +214,8 @@ const BAD_FIXTURE = `# MARKETS, MEDITATIONS & MENTAL MODELS
 
 - **Tensions rose by 40 percent on the escalation index because strikes resumed.** The index move implies repricing risk within 60 days.
 
+- **Regulators designated AI infrastructure as systemically important, treating cloud providers the way they treat clearinghouses.** The logic is concentration: 4 cloud providers host the compute layer for most global financial services, and the 4 hyperscalers just crossed that line without asking to. [THE REAL 07-14 AI&T-3 GAMING CASE — its only numerals are a date and a TALLY; it cleared number-presence and shipped graded as missing-pricing.]
+
 ---
 
 ## The Wild Card
@@ -218,11 +251,11 @@ const CLEAN_FIXTURE = `# MARKETS, MEDITATIONS & MENTAL MODELS
 
 ## AI & Tech
 
-- **OpenAI moved GPT-5.6 Sol to general availability at 750 tokens per second alongside two cheaper tiers.** The three-tier menu forces customers to self-sort downward, which means volume revenue detaches from the frontier.
+- **OpenAI moved GPT-5.6 Sol to general availability at 750 tokens per second and cut the mid tier to $1.25 per million tokens, 40 percent below the frontier price.** The three-tier menu forces customers to self-sort downward, which means volume revenue detaches from the frontier.
 
 ## Geopolitics
 
-- **CENTCOM struck roughly 90 targets and Iran answered with 10 ballistic missiles at Al-Azraq.** Jordan's obligation to respond drives a third-party variable neither capital calibrated for.
+- **CENTCOM struck roughly 90 targets, Iran answered with 10 ballistic missiles at Al-Azraq, and war-risk premia on Gulf hulls jumped to 1.2 percent of cargo value, about $850,000 per VLCC transit.** Jordan's obligation to respond drives a third-party variable neither capital calibrated for, and the premium is who pays for it.
 
 ---
 
@@ -235,22 +268,69 @@ const CLEAN_FIXTURE = `# MARKETS, MEDITATIONS & MENTAL MODELS
 **Yield-Contingent Demand.** Securitize fell roughly 35 percent from its debut because core tokenization revenue was flat at about $11 million while the acquired lines drove the headline, which means the category's demand curve tracks the front-end yield, not adoption.
 `;
 
+// IMP-071 (ESC-008 escalation, 2026-07-18). The 07-16 AI&T pricing rubric (IMP-059) bent the AI&T
+// missing:pricing trend 2→1 but PLATEAUED at 1 for two consecutive days (07-17, 07-18) — a rubric
+// took it as far as a rubric can. Per ESC-008's pre-authorized read-out (DUE 07-18), the residual
+// gets ENFORCEMENT: an unpriced AI&T bullet is now a HARD Editor REJECT (Brief_Editor Gate 14), not
+// an advisory FLAG. --strict-ait exits 1 iff an AI&T pricing-magnitude flag fires; DEFAULT mode stays
+// exit-0 advisory, so the brief ALWAYS ships and only the Editor pass is gated. Anti-Goodhart: it
+// reuses pricing-magnitude (money / % of a named quantity / bps / multiple), which a TALLY does not
+// satisfy (the whole 07-14 lesson) — the escalation cannot be gamed by adding a count.
+const AIT_WHERE_RE = /\bai\b|a\.?i\.?\s*&|\btech\b/i;
+export function strictAitViolations(flags: Flag[]): Flag[] {
+  return flags.filter(f => f.check === 'pricing-magnitude' && AIT_WHERE_RE.test(f.where));
+}
+
+// Selftest fixtures for --strict-ait: an unpriced AI&T bullet (a tally, the 07-16 shape) must FIRE;
+// a priced AI&T bullet ($ / multiple) must stay SILENT.
+const AIT_STRICT_BAD = `# ▸ THE SIX
+
+## AI & Tech
+
+- **A frontier lab shipped a model and three rivals followed within eight days.** Pre-market testing becomes a capital barrier, and 4 hyperscalers now gate the field.
+
+## The Wild Card
+- **A curiosity.**
+`;
+const AIT_STRICT_GOOD = `# ▸ THE SIX
+
+## AI & Tech
+
+- **A frontier lab trained a model at an estimated $30 million against the $400 million US labs spend.** The 13x cost gap compresses the capex envelope.
+
+## The Wild Card
+- **A curiosity.**
+`;
+
 function selftest(): number {
   const badFlags = lint(BAD_FIXTURE);
   const cleanFlags = lint(CLEAN_FIXTURE);
-  const expectBad = ['intro-preview-padding', 'intro-watch-missing', 'intro-throughline-label', 'number-presence', 'hollow-significance', 'thematic-echo'];
+  const expectBad = ['intro-preview-padding', 'intro-watch-missing', 'intro-throughline-label', 'number-presence', 'pricing-magnitude', 'hollow-significance', 'thematic-echo'];
   let fails = 0;
   for (const check of expectBad) {
     const fired = badFlags.some(f => f.check === check);
     console.log(`  ${fired ? 'PASS' : 'FAIL'} — ${check} fires on the rigged bad brief`);
     if (!fired) fails++;
   }
+  // The 07-14 gaming case specifically: a bullet whose only numerals are a date and a TALLY must be
+  // caught by pricing-magnitude, NOT waved through by number-presence. (IMP-050.)
+  const tallyCase = badFlags.some(f => f.check === 'pricing-magnitude' && /Regulators designated/.test(f.message));
+  console.log(`  ${tallyCase ? 'PASS' : 'FAIL'} — "4 cloud providers / the 4 hyperscalers" (real 07-14 AI&T-3) FLAGS as unpriced: a count is not a price`);
+  if (!tallyCase) fails++;
   const cleanOk = cleanFlags.length === 0;
-  console.log(`  ${cleanOk ? 'PASS' : 'FAIL'} — zero flags on the payoff-grade clean brief${cleanOk ? '' : ` (got: ${cleanFlags.map(f => f.check).join(', ')})`}`);
+  console.log(`  ${cleanOk ? 'PASS' : 'FAIL'} — zero flags on the payoff-grade clean brief${cleanOk ? '' : ` (got: ${cleanFlags.map(f => `${f.check}@${f.where}`).join(', ')})`}`);
   if (!cleanOk) fails++;
-  console.log(`\nceiling-lint selftest — ${expectBad.length + 1 - fails}/${expectBad.length + 1} assertions passed`);
+  // IMP-071 (ESC-008 escalation): --strict-ait turns an AI&T pricing-magnitude FLAG into a REJECT.
+  const aitStrictFires = strictAitViolations(lint(AIT_STRICT_BAD)).length > 0;
+  console.log(`  ${aitStrictFires ? 'PASS' : 'FAIL'} — --strict-ait FIRES on an unpriced AI&T bullet (a tally, the 07-16 shape)`);
+  if (!aitStrictFires) fails++;
+  const aitStrictClean = strictAitViolations(lint(AIT_STRICT_GOOD)).length === 0;
+  console.log(`  ${aitStrictClean ? 'PASS' : 'FAIL'} — --strict-ait SILENT on a priced AI&T bullet ($30M / 13x)`);
+  if (!aitStrictClean) fails++;
+  const total = expectBad.length + 4;
+  console.log(`\nceiling-lint selftest — ${total - fails}/${total} assertions passed`);
   if (fails) { console.error('✗ SELFTEST FAILED — a lint check no longer bites both directions.'); return 1; }
-  console.log('✓ All 6 lint checks verified in both directions.');
+  console.log('✓ All 7 lint checks verified in both directions.');
   return 0;
 }
 
@@ -264,6 +344,18 @@ function main() {
   console.log(`ceiling-lint — ${path.basename(p)} — ${flags.length} FLAG${flags.length === 1 ? '' : 's'}`);
   for (const f of flags) console.log(`  ⚠ [${f.check}] ${f.where}: ${f.message}`);
   console.log(`\n✅ CEILING-LINT PASS${flags.length ? ' (flags advisory — QG/Editor act on them; the brief always ships)' : ' (clean)'}`);
+
+  // IMP-071 (ESC-008 escalation, 07-18): AI&T pricing is a HARD Editor REJECT. Default stays advisory
+  // (exit 0) — the brief ALWAYS ships; --strict-ait is what Brief_Editor Gate 14 runs to gate the pass.
+  if (process.argv.slice(2).includes('--strict-ait')) {
+    const v = strictAitViolations(flags);
+    if (v.length) {
+      console.error(`\n✗ CEILING-LINT --strict-ait: ${v.length} AI&T bullet(s) UNPRICED — Editor must REJECT-and-rebuild with a priced magnitude (money / % of a named quantity / bps / multiple / the binding threshold). A tally does not satisfy it.`);
+      for (const f of v) console.error(`   ✗ ${f.where}: ${f.message.slice(0, 90)}…`);
+      process.exit(1);
+    }
+    console.log('   ✅ --strict-ait: every AI&T bullet carries a priced magnitude.');
+  }
   process.exit(0);
 }
 
