@@ -334,7 +334,12 @@ function checkDashboardNoTables(body: string): Failure[] {
   return out;
 }
 
-function checkInnerGameStructure(body: string): Failure[] {
+// `raw` is passed UNSTRIPPED on purpose. The 07-13 Editor DID declare its deviation —
+// `<!-- INNER-GAME-FIGURE-FIRST: DELIBERATE DEVIATION. No verifiable English translation… -->`
+// was sitting in v2 the whole time — but `body` is stripComments(raw), so the validator could not
+// see the declaration it was punishing the Editor for making. The gate was blind to its own escape
+// hatch. (IMP-047)
+function checkInnerGameStructure(body: string, raw: string = body): Failure[] {
   const out: Failure[] = [];
   const start = body.indexOf('# ▸ INNER GAME');
   const end = body.indexOf('# ▸ THE MODEL');
@@ -362,6 +367,31 @@ function checkInnerGameStructure(body: string): Failure[] {
   const line1 = content[0] ?? '';
   const line2 = content[1] ?? '';
 
+  // FIGURE-FIRST FALLBACK (IMP-047, 2026-07-13). QUOTE-FIRST (IMP-006) is the fixed form — but on
+  // 07-13 it collided with the truth chain and the truth chain lost. No verified English translation
+  // of the Al-Ghazali passage could be confirmed in-session, so the Editor had exactly two moves:
+  // break a mandatory structural rule, or put quotation marks around words it could not source. It
+  // did both in sequence — shipped a "(paraphrased)" quote to v2.working, refused to promote it,
+  // and its final v2 quietly dropped to unquoted prose, which this validator then FAILED twice.
+  // A rule that leaves fabrication as the only compliant path is a broken rule. FIGURE-FIRST is now
+  // the sanctioned escape: name the thinker, state the argument in our own voice, no quotation
+  // marks — DECLARED, never silent, so the rotation stays honest and the drift is visible.
+  const figureFirst = /<!--\s*(?:INNER-GAME-)?FIGURE-FIRST:[\s\S]{15,}?-->/i.test(raw);
+  if (figureFirst) {
+    // The declaration must be true: an unquoted section may not smuggle a quotation back in.
+    const smuggled = section.match(/^\*["“][^"”]{40,}["”]\*$/m);
+    if (smuggled) {
+      out.push({
+        check: 'inner-game-quote-unverifiable',
+        message: `Inner Game declares FIGURE-FIRST (no verified quotation) but still opens on a quoted line: ${JSON.stringify(smuggled[0].slice(0, 120))}. Pick one — a verified quote, or our own voice.`,
+      });
+    }
+    if (!hasAction) {
+      out.push({ check: 'inner-game', message: `Inner Game must carry a **Today's practice** line.` });
+    }
+    return out;
+  }
+
   if (!quoteLineRe.test(line1)) {
     out.push({
       check: 'inner-game',
@@ -373,6 +403,25 @@ function checkInnerGameStructure(body: string): Failure[] {
     out.push({
       check: 'inner-game',
       message: `Inner Game Line 2 must be the quote's attribution (— Author). Got: ${JSON.stringify(line2.slice(0, 120))}`,
+    });
+  }
+
+  // QUOTATION MARKS ARE A TRUTH CLAIM (IMP-047, 2026-07-13 — Critic mandate #3).
+  // The 07-13 brief shipped: *"The student who attacks his own nature with a heroic regimen does
+  // not transform…"* — Al-Ghazali, Ihya' Ulum al-Din (PARAPHRASED, Disciplining the Soul).
+  // The Editor wrote the hedge for intellectual honesty, having failed to confirm any published
+  // English translation in-session, and then REFUSED TO PROMOTE v2 over it. The Critic's self-heal
+  // shipped it anyway (IMP-046). But the hedge is not a fix: a parenthetical cannot undo quotation
+  // marks. Inside them, we are asserting the thinker WROTE these words. "(paraphrased)" is a
+  // confession that we cannot source them — a fabricated quotation with a footnote.
+  // THE FALLBACK IS FIGURE-FIRST, not a hedged quote: name the thinker, state the argument in our
+  // own voice, no quotation marks. We lose the quote, not the truth. (Four-part test: TRUE is
+  // disqualifying — it outranks the form.)
+  const HEDGED_ATTRIBUTION_RE = /\b(paraphras\w*|attributed to|adapted from|as rendered|characteriz\w*|loosely|in substance|after the manner)\b/i;
+  if (quoteLineRe.test(line1) && HEDGED_ATTRIBUTION_RE.test(line2)) {
+    out.push({
+      check: 'inner-game-quote-unverifiable',
+      message: `Inner Game ships QUOTATION MARKS around words it admits are not the source's: attribution reads ${JSON.stringify(line2.slice(0, 140))}. A hedge in the attribution does not license a quote — inside quotation marks we assert the thinker wrote these words, and "(paraphrased)" says we could not verify that. Either quote a VERIFIED published translation (record the source in {date}-truth.json), or drop to FIGURE-FIRST: name the thinker and state the argument in our own voice, unquoted. Losing the quote is cheap; a fabricated quotation is not.`,
     });
   }
 
@@ -516,7 +565,27 @@ function checkEmDashes(body: string): Failure[] {
   const lines = stripped.split('\n');
   const hits: { line: number; text: string }[] = [];
   lines.forEach((l, i) => {
-    if (/[\u2014]/.test(l) || /(?<!-)--(?!-)/.test(l)) {
+    // ANCHOR TARGETS ARE NOT PROSE (IMP-065, 2026-07-17 — applying IMP-063(a), which the
+    // morning pass prescribed at 05:28 and correctly refused to apply on the publish path).
+    // THE DEADLOCK: checkAnchorLinks sanctions `markets--macro`, `companies--crypto` and
+    // `ai--tech` — the real GitHub slugs for the "Markets & Macro" headings, mirrored by the
+    // site renderer, and therefore the ONLY strings that actually resolve. This check then
+    // banned literal `--` with zero tolerance, so 3 of the 12 sanctioned anchors HARD-FAILED
+    // the validator if used — while Morning_Updater instructs the Overnight to "anchor-link
+    // any Big-Story touch". The three most-linked sections were unlinkable. Every prior brief
+    // silently routed around it (07-13 used only `#geopolitics`, a single-word slug); on 07-17
+    // the Overnight tripped it on `[Markets & Macro](#markets--macro)` and was rewritten to a
+    // prose pointer to get past the gate.
+    // WHY THIS IS AN EXEMPTION AND NOT A LOOPHOLE: the em-dash rule is a VOICE rule ("they are
+    // an AI tell"). A URL fragment is not voice — nobody reads it, the audio pipeline never
+    // speaks it, and its spelling is dictated by the heading, which is frozen. The rule was
+    // matching characters in the one place it has no meaning, and a gate that forces the
+    // operator to rewrite correct output is how a gate teaches people to route around it
+    // (the IMP-042 lesson; IMP-045 one lane over).
+    // Blank the anchor TARGET only: `](#markets--macro)` → `]()`. Link TEXT and surrounding
+    // prose are still scanned, so `[Markets -- Macro](#markets--macro)` still FAILs.
+    const scan = l.replace(/\]\(#[a-z0-9-]+\)/gi, ']()');
+    if (/[\u2014]/.test(scan) || /(?<!-)--(?!-)/.test(scan)) {
       // Skip lines that are pure attribution for the Inner Game (start with `— `)
       if (/^—\s+[A-Z]/.test(l.trim())) return;
       // Skip horizontal rule lines
@@ -1395,9 +1464,26 @@ function checkAdjacentSentenceDedup(body: string): Failure[] {
             message: `Adjacent duplicate in ${sectionName}: "${sentences[i].trim().substring(0, 60)}..." is contained within the next sentence. Likely merge artifact.`
           });
         }
-        // Check 80% word overlap
-        const wordsA = a.split(/\s+/);
-        const wordsB = b.split(/\s+/);
+        // Check 80% word overlap.
+        // FIXED 2026-07-13 (brief-morning): this counted DUPLICATE stopwords in the longer
+        // sentence against the shorter sentence's length, so a long sentence containing "the"
+        // four times scored 4 shared words against a 5-word follower. Overlap could exceed
+        // 100% (the 07-13 run reported "133%"), which is arithmetically impossible for a real
+        // overlap ratio and is the tell that the metric was broken. Three false FAILs on clean
+        // prose ("The spend is not disappearing." / "The distinction is felt, not calculated.")
+        // would have forced a morning rewrite of good sentences to satisfy a broken check.
+        // Fix: compare UNIQUE CONTENT words only. The substring check above still catches the
+        // real merge artifacts this gate exists for.
+        const STOPWORDS = new Set([
+          'the', 'a', 'an', 'is', 'it', 'of', 'to', 'and', 'in', 'that', 'not', 'on', 'for',
+          'as', 'at', 'by', 'be', 'are', 'was', 'were', 'this', 'its', 'with', 'or', 'but',
+          'from', 'so', 'than', 'then', 'only', 'one', 'you', 'your', 'they', 'their', 'has',
+          'have', 'had', 'what', 'which', 'when', 'where', 'who', 'will', 'would', 'can',
+        ]);
+        const contentWords = (s: string) =>
+          [...new Set(s.split(/\s+/).filter((w) => w && !STOPWORDS.has(w)))];
+        const wordsA = contentWords(a);
+        const wordsB = contentWords(b);
         const shorter = Math.min(wordsA.length, wordsB.length);
         if (shorter >= 5) {
           const shared = wordsA.filter(w => wordsB.includes(w)).length;
@@ -1587,6 +1673,66 @@ function checkQGInnerGameAudit(briefDir: string, absPath: string): Failure[] {
 //      MUST rewrite a label/inventory intro toward MECHANISM/TENSION or parallel-tracks).
 //   3. Identified-not-executed: a MECHANISM/TENSION payoff class with no PAYOFF EXECUTION
 //      line = the gate was skipped (same failure shape the old execution checkpoint caught).
+// --- Pre-draft bypass DISCLOSURE (added 2026-07-12 — IMP-038, E-WRITER-COMPONENT-BYPASS-01).
+// The bypass gate lives at brief-draft and Editor Gate 0. This is the leg that does not depend on
+// an agent reading prose: the validator is a HARD STOP at 7:00 PM, and it will not pass a brief
+// whose v1 ignored a gate-passed pre-draft SILENTLY.
+//
+// It does not require the pre-draft to win — the QG may legitimately restore it, and the Architect
+// may legitimately override it. It requires the bypass to be DISCLOSED (PREDRAFT-BYPASS /
+// PREDRAFT-OVERRIDE / a restored-from-pre-draft log line). On 07-12 the QG rewrote ~85% of the
+// brief back to the pre-drafts, logged none of it, and the brief scored MUST-READ: the worst
+// generation failure in tracking history was invisible in every artifact except a side-by-side
+// human read. On 07-09 the bypass was not repaired at all — it PUBLISHED. Silence is the bug.
+function checkPredraftBypassDisclosure(briefDir: string, absPath: string): Failure[] {
+  const out: Failure[] = [];
+  const bd = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/)?.[1];
+  if (!bd) return out;
+
+  const v1 = ['-v1.md', '-v1-pre-quality-gate.md']
+    .map((s) => path.join(briefDir, `${bd}${s}`))
+    .find((p) => fs.existsSync(p));
+  if (!v1) return out; // no v1 on disk (published-file validation) → nothing to compare
+
+  const gate = path.join(process.cwd(), 'scripts', 'predraft-consumption-gate.ts');
+  if (!fs.existsSync(gate)) return out;
+  const res = spawnSync('node', ['--experimental-strip-types', gate, bd, '--advisory'],
+    { encoding: 'utf8', timeout: 60000 });
+  const stdout = res.stdout ?? '';
+  const bypassed = [...stdout.matchAll(/\[A\] (\w[\w&]*): PRE-DRAFT BYPASSED/g)].map((m) => m[1]);
+  if (bypassed.length === 0) return out;
+
+  // Disclosure may live in any artifact the humans and downstream gates actually read.
+  const disclosureFiles = [
+    path.join(briefDir, `${bd}-quality-gate-log.md`),
+    path.join(briefDir, `${bd}-editor-log.md`),
+    path.join(briefDir, `${bd}-pipeline-status.md`),
+    v1,
+  ];
+  const disclosed = disclosureFiles
+    .filter((f) => fs.existsSync(f))
+    .map((f) => fs.readFileSync(f, 'utf8'))
+    .join('\n');
+
+  const undisclosed = bypassed.filter(
+    (c) => !new RegExp(`PREDRAFT-(BYPASS|OVERRIDE)[^\\n]*${c!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(disclosed)
+      && !new RegExp(`PREDRAFT-(BYPASS|OVERRIDE)`, 'i').test(disclosed),
+  );
+  if (undisclosed.length) {
+    out.push({
+      check: 'predraft-bypass-undisclosed',
+      message:
+        `🔴 FAIL: v1 authored substitutes for gate-passed pre-draft(s) [${undisclosed.join(', ')}] and NOTHING in the ` +
+        `pipeline said so. The pre-drafts carry the rotation checks, the ban lists, and the primary verification; ` +
+        `the substitutes carry none of them (07-12: five fabricated claims). Either restore the section from ` +
+        `daily-briefs/${bd}-{component}-draft.md and log \`PREDRAFT-BYPASS REPAIRED: {component}\`, or declare ` +
+        `\`PREDRAFT-OVERRIDE: {component} :: {reason}\`. A silent bypass is not publishable — not because the prose ` +
+        `is bad, but because nobody knows it happened.`,
+    });
+  }
+  return out;
+}
+
 function checkConvergenceClass(briefDir: string, absPath: string): Failure[] {
   const out: Failure[] = [];
   const briefDateMatch = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
@@ -1769,7 +1915,7 @@ function main() {
   }
   failures.push(...checkCandCBalance(body));
   failures.push(...checkDashboardNoTables(body));
-  failures.push(...checkInnerGameStructure(body));
+  failures.push(...checkInnerGameStructure(body, raw));
   failures.push(...checkInnerGameWordBudget(body));
   failures.push(...checkInnerGameConceptReuse(body, absPath));
   failures.push(...checkEmDashes(body));
@@ -1812,6 +1958,7 @@ function main() {
   failures.push(...checkModelPoolFloor());
   // --- Convergence class check (July 3, 2026 — E-CONVERGENCE-ASSEMBLY-01) ---
   failures.push(...checkConvergenceClass(briefDir, absPath));
+  failures.push(...checkPredraftBypassDisclosure(briefDir, absPath));
   // --- Model standalone check (July 4, 2026 — E-MODEL-STANDALONE-VIOLATION-01) ---
   failures.push(...checkModelStandalone(body));
   // --- AI&T differentiation check (July 5, 2026 — E-AI-SECTION-CONSENSUS-01) ---
