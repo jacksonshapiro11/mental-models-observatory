@@ -21,14 +21,14 @@ Usage:
   python3 scripts/publish-substack.py --file=path/to.md     # explicit source file (testing)
 
 Env (GitHub secrets in CI; .env.local is read as a fallback for local runs):
-  SUBSTACK_EMAIL / SUBSTACK_PASSWORD   login auth (set a password on the account
-                                       first — new Substack accounts are magic-link only)
-  SUBSTACK_COOKIES_STRING              alternative auth: cookie header string from a
-                                       logged-in browser session, e.g.
+  SUBSTACK_COOKIES_STRING              **required for GitHub Actions** — Cloudflare
+                                       blocks password login from runners. Cookie
+                                       header from a logged-in browser session, e.g.
                                        "substack.sid=...; substack.lli=..."
-                                       (use if password login hits a captcha in CI)
+  SUBSTACK_EMAIL / SUBSTACK_PASSWORD   local-only fallback (set a password first —
+                                       magic-link-only accounts can't login via API)
   SUBSTACK_PUBLICATION_URL             e.g. https://cosmictrex.substack.com
-  SUBSTACK_MODE                        draft | publish     (default: draft)
+  SUBSTACK_MODE                        draft | publish     (default: publish)
   SUBSTACK_SEND_EMAIL                  true | false        (default: true; publish mode only)
 
 Exit codes: 0 = published / drafted / cleanly skipped (already posted, no brief
@@ -36,8 +36,9 @@ today, or not configured). 1 = real failure — CI goes red, fix and re-run via
 workflow_dispatch.
 
 Failure runbook:
-  - Login/captcha error → switch to SUBSTACK_COOKIES_STRING (browser DevTools →
-    Application → Cookies → substack.com → copy substack.sid + substack.lli).
+  - Cloudflare / "Just a moment..." / 403 on login → set SUBSTACK_COOKIES_STRING
+    (browser DevTools → Application → Cookies → substack.com → copy
+    substack.sid + substack.lli as "substack.sid=…; substack.lli=…").
   - Cookie expired (401s after months of working) → refresh the cookie secret.
   - Node-schema / API errors after a Substack change → bump python-substack pin
     in publish-substack.yml; the post can always be published by hand meanwhile.
@@ -245,6 +246,16 @@ def write_preview(post: dict, date_slug: str, out_dir: Path) -> tuple[Path, Path
 
 # ─── Substack client ─────────────────────────────────────────────────────────
 
+def _looks_like_cloudflare(err: BaseException) -> bool:
+    s = str(err)
+    return (
+        "Just a moment" in s
+        or "challenges.cloudflare.com" in s
+        or "cf-chl" in s
+        or ("<!DOCTYPE html>" in s and "cloudflare" in s.lower())
+    )
+
+
 def make_api(publication_url: str):
     from substack import Api
 
@@ -256,11 +267,22 @@ def make_api(publication_url: str):
         log("🔑 Auth: cookies string")
         return Api(cookies_string=cookies, publication_url=publication_url)
     if email and password:
-        log(f"🔑 Auth: password login ({email})")
-        return Api(email=email, password=password, publication_url=publication_url)
+        # Password login works locally; GitHub runners hit Cloudflare and fail.
+        log(f"🔑 Auth: password login ({email}) — prefer SUBSTACK_COOKIES_STRING in CI")
+        try:
+            return Api(email=email, password=password, publication_url=publication_url)
+        except Exception as e:  # noqa: BLE001
+            if _looks_like_cloudflare(e):
+                raise RuntimeError(
+                    "Substack password login blocked by Cloudflare (expected on "
+                    "GitHub Actions). Set secret SUBSTACK_COOKIES_STRING from a "
+                    "logged-in browser: DevTools → Application → Cookies → "
+                    "substack.com → copy as 'substack.sid=…; substack.lli=…'."
+                ) from e
+            raise
     raise RuntimeError(
-        "No Substack credentials: set SUBSTACK_EMAIL + SUBSTACK_PASSWORD "
-        "or SUBSTACK_COOKIES_STRING"
+        "No Substack credentials: set SUBSTACK_COOKIES_STRING "
+        "(required for CI) or SUBSTACK_EMAIL + SUBSTACK_PASSWORD (local)"
     )
 
 
@@ -275,21 +297,35 @@ def extract_posts(resp) -> list:
     return []
 
 
-def already_exists(api, post: dict, date_slug: str) -> str | None:
-    """Return a human description if a post/draft for this date already exists."""
+def find_existing(api, post: dict) -> dict | None:
+    """Find a published post or draft matching this slug/title.
+
+    Returns {"kind": "published"|"draft", "id": ..., "slug": ..., "desc": ...}
+    or None if nothing matches.
+    """
     slug = post["slug"]
     try:
         published = extract_posts(api.get_published_posts(offset=0, limit=25))
         for p in published:
             if p.get("slug") == slug or (p.get("title") or "").strip() == post["title"]:
-                return f"published post id={p.get('id')} slug={p.get('slug')}"
+                return {
+                    "kind": "published",
+                    "id": p.get("id"),
+                    "slug": p.get("slug") or slug,
+                    "desc": f"published post id={p.get('id')} slug={p.get('slug')}",
+                }
     except Exception as e:  # noqa: BLE001 — idempotency check is best-effort
         log(f"⚠️  Could not check published posts ({e}) — continuing")
     try:
         drafts = extract_posts(api.get_drafts(filter="draft", offset=0, limit=25))
         for d in drafts:
             if d.get("slug") == slug or (d.get("draft_title") or "").strip() == post["title"]:
-                return f"existing draft id={d.get('id')}"
+                return {
+                    "kind": "draft",
+                    "id": d.get("id"),
+                    "slug": d.get("slug") or slug,
+                    "desc": f"existing draft id={d.get('id')}",
+                }
     except Exception as e:  # noqa: BLE001
         log(f"⚠️  Could not check drafts ({e}) — continuing")
     return None
@@ -347,7 +383,7 @@ def main() -> None:
         log("PUBLISH_RESULT=SKIPPED reason=not-configured")
         return
 
-    mode = args.mode or os.environ.get("SUBSTACK_MODE", "draft").strip().lower()
+    mode = args.mode or os.environ.get("SUBSTACK_MODE", "publish").strip().lower()
     if mode not in ("draft", "publish"):
         fail(f"Bad mode: {mode}")
     send_email = os.environ.get("SUBSTACK_SEND_EMAIL", "true").strip().lower() != "false"
@@ -357,10 +393,31 @@ def main() -> None:
     except Exception as e:  # noqa: BLE001
         fail(f"Substack auth failed: {e}\n   (See failure runbook at top of this script.)")
 
-    existing = already_exists(api, post, date_slug)
-    if existing:
-        log(f"⏭️  Already on Substack: {existing}. Skipping (idempotent).")
+    existing = find_existing(api, post)
+    if existing and existing["kind"] == "published":
+        log(f"⏭️  Already on Substack: {existing['desc']}. Skipping (idempotent).")
         log("PUBLISH_RESULT=SKIPPED reason=already-exists")
+        return
+
+    # Publish an existing draft in place (e.g. draft-first rollout → flip to publish).
+    if existing and existing["kind"] == "draft":
+        if mode != "publish":
+            log(f"⏭️  Already on Substack: {existing['desc']}. Skipping (idempotent).")
+            log("PUBLISH_RESULT=SKIPPED reason=already-exists")
+            return
+        draft_id = existing["id"]
+        if not draft_id:
+            fail(f"Found matching draft but no id: {existing['desc']}")
+        log(f"🚀 Publishing existing draft id={draft_id} "
+            f"(send_email={send_email})…")
+        try:
+            api.prepublish_draft(draft_id)
+            pub = api.publish_draft(draft_id, send=send_email, share_automatically=False)
+        except Exception as e:  # noqa: BLE001
+            fail(f"Substack publish-draft failed: {e}\n   (See failure runbook at top of this script.)")
+        post_slug = (pub or {}).get("slug") or existing.get("slug") or post["slug"]
+        log(f"✅ Published: {publication_url}/p/{post_slug} (email={'sent' if send_email else 'off'})")
+        log(f"PUBLISH_RESULT=SUCCESS mode=publish id={(pub or {}).get('id') or draft_id}")
         return
 
     log(f"🚀 Creating {'and publishing' if mode == 'publish' else 'draft'} "
@@ -388,8 +445,7 @@ def main() -> None:
         log(f"✅ Published: {publication_url}/p/{post_slug} (email={'sent' if send_email else 'off'})")
         log(f"PUBLISH_RESULT=SUCCESS mode=publish id={pub.get('id') or draft_id}")
     else:
-        log(f"✅ Draft created: {publication_url.replace('.substack.com', '.substack.com')}"
-            f"/publish/post/{draft_id}")
+        log(f"✅ Draft created: {publication_url}/publish/post/{draft_id}")
         log("   Review it in the Substack editor, then publish — or flip SUBSTACK_MODE to 'publish'.")
         log(f"PUBLISH_RESULT=SUCCESS mode=draft id={draft_id}")
 

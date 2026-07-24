@@ -9,6 +9,15 @@ The **light brief** (`content/daily-updates/{date}-light.md`), verbatim, with a
 link block prepended (Spotify show + full brief on cosmictrex). Title = thesis
 headline (same convention as the email subject).
 
+## Triggers (hands-off once cookie auth is set)
+
+1. **Push** of `content/daily-updates/*-light.md` to `main` (primary — fires when the brief lands)
+2. **Weekday cron** `45 14 * * 1-5` UTC (~10:45 ET) as backup if the push event is missed
+3. **workflow_dispatch** for manual backfill / test
+
+Default mode is **publish** (web + Substack subscriber email). Set repo Variable
+`SUBSTACK_MODE=draft` only if you need a temporary draft-only rollback.
+
 ## One-time setup (Jackson)
 
 ### 1. Secrets — GitHub → Settings → Secrets and variables → Actions
@@ -16,34 +25,35 @@ headline (same convention as the email subject).
 | Secret | Required? | Notes |
 |--------|-----------|-------|
 | `SUBSTACK_PUBLICATION_URL` | **Yes** (master switch) | e.g. `https://cosmictrex.substack.com`. Absent → workflow no-ops. |
-| `SUBSTACK_EMAIL` + `SUBSTACK_PASSWORD` | One auth path | Set a password on the Substack account first (magic-link-only accounts can't login from CI). |
-| `SUBSTACK_COOKIES_STRING` | Alt auth | Prefer if password login hits captcha from GitHub runners. DevTools → Application → Cookies → `substack.com` → copy as `substack.sid=…; substack.lli=…`. |
+| `SUBSTACK_COOKIES_STRING` | **Yes for CI** | Cloudflare blocks password login from GitHub runners. Browser DevTools → Application → Cookies → `substack.com` → copy as `substack.sid=…; substack.lli=…`. |
+| `SUBSTACK_EMAIL` + `SUBSTACK_PASSWORD` | Local only | Optional local fallback; **will fail in Actions** with Cloudflare challenge. |
 
-### 2. Variables (optional)
+### 2. Variables (optional overrides)
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `SUBSTACK_MODE` | `draft` | Flip to `publish` after 1–3 clean draft eyeballs. |
-| `SUBSTACK_SEND_EMAIL` | `true` (script) | Publish mode only. Consider `false` while Resend still mails the list. |
+| `SUBSTACK_MODE` | `publish` | Workflow + script default to publish even if unset. Set `draft` to pause live posts. |
+| `SUBSTACK_SEND_EMAIL` | `true` | Publish mode only. Matches Substack UI “Publish” (emails Substack list). Set `false` for web-only. **Dual-send:** Resend may still email the Cosmic Trex list separately — Subscribers on both lists get two emails. |
 
-### 3. Land the workflow file
+Recommended (optional, documents intent): repo Variable `SUBSTACK_MODE=publish`.
 
-If `git push` of `.github/workflows/publish-substack.yml` fails with a Workflows
-permission error: github.com → Settings → Developer settings → Fine-grained
-tokens → your repo token → Repository permissions → **Workflows: Read and write**.
+### 3. Landing the workflow file
 
-Or paste the file via the GitHub UI: Add file → Create new file → path
-`.github/workflows/publish-substack.yml` → commit to `main`.
+Needs a token/credential with **Workflows: Read and write** (classic PAT scope `workflow`).
+Push with keychain/SSH — not a remote URL that embeds a PAT missing `workflow`.
 
-## Test for 2026-07-24
+## Test
 
-1. Secrets set (at least `SUBSTACK_PUBLICATION_URL` + auth).
-2. Actions → **Publish to Substack** → Run workflow → date `2026-07-24`.
-3. Open Substack editor — expect a **draft** titled from today's thesis.
-4. Local dry-run (no secrets needed):  
-   `python3 scripts/publish-substack.py --date=2026-07-24 --dry-run`  
-   Writes `daily-briefs/2026-07-24-substack-post.md` (gitignored via daily-briefs/).
+1. `SUBSTACK_PUBLICATION_URL` + `SUBSTACK_COOKIES_STRING` set.
+2. Actions → **Publish to Substack** → Run workflow → date `YYYY-MM-DD` → expect a **live** post.
+3. Local publish (uses `.env.local` cookies):
+   `python3 scripts/publish-substack.py --date=YYYY-MM-DD --mode=publish`
+4. Local dry-run (no secrets needed):
+   `python3 scripts/publish-substack.py --date=YYYY-MM-DD --dry-run`
+   Writes `daily-briefs/{date}-substack-post.md` (gitignored via daily-briefs/).
 
 ## Idempotency
 
-Slug `brief-{date}` — re-runs skip if that draft/post already exists.
+Slug `brief-{date}` — re-runs skip if that **published** post already exists.
+If a **draft** already exists and mode is `publish`, the script publishes that draft
+in place (does not create a duplicate).
