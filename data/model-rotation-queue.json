@@ -1,0 +1,601 @@
+{
+  "epoch": "2026-07-25",
+  "parked": 6,
+  "models": [
+    {
+      "name": "Competitive Advantage & Sustainable Moats",
+      "slug": "competitive-advantage-sustainable-moats",
+      "domain": "Business Strategy & Competition"
+    },
+    {
+      "name": "Adaptation & Continuous Evolution",
+      "slug": "adaptation-continuous-evolution",
+      "domain": "Complex Adaptive Systems"
+    },
+    {
+      "name": "Bottlenecks & System Constraint Identification",
+      "slug": "bottlenecks-system-constraint-identification",
+      "domain": "Constraint Theory & Optimization"
+    },
+    {
+      "name": "Aesthetic Innovation & Mathematical Beauty",
+      "slug": "aesthetic-innovation-mathematical-beauty",
+      "domain": "Creativity & Innovation"
+    },
+    {
+      "name": "Cultural Evolution & Memetic Theory",
+      "slug": "cultural-transmission-memetic-evolution",
+      "domain": "Cultural Anthropology & Social Identity"
+    },
+    {
+      "name": "Decision Fatigue & Cognitive Resource Management",
+      "slug": "decision-fatigue-cognitive-resource-management",
+      "domain": "Decision-Making Under Uncertainty"
+    },
+    {
+      "name": "Behavioral Economics & Market Psychology",
+      "slug": "behavioral-economics-psychological-market-forces",
+      "domain": "Economics & Market Dynamics"
+    },
+    {
+      "name": "Levels of Emergence & Scale Transitions",
+      "slug": "levels-of-emergence-scale-transitions",
+      "domain": "Emergence & Levels of Abstraction"
+    },
+    {
+      "name": "Energy as Core Resource & Ultimate Constraint",
+      "slug": "energy-as-core-resource-ultimate-constraint",
+      "domain": "Energy & Resource Flows"
+    },
+    {
+      "name": "Design Principles & User Mental Models",
+      "slug": "design-principles-user-mental-models",
+      "domain": "Engineering & Design"
+    },
+    {
+      "name": "Co-evolution & Arms Races",
+      "slug": "co-evolution-arms-races",
+      "domain": "Evolution & Biology"
+    },
+    {
+      "name": "Exponential vs. Linear Thinking",
+      "slug": "exponential-vs-linear-thinking",
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "name": "Cooperation Strategies & Reciprocity",
+      "slug": "cooperation-strategies-reciprocity",
+      "domain": "Game Theory & Strategic Interaction"
+    },
+    {
+      "name": "Identity-Based Habits & Self-Concept",
+      "slug": "identity-based-habits-self-concept",
+      "domain": "Habit Formation & Behavior Change"
+    },
+    {
+      "name": "Mind-Body Integration & Physiological Intelligence",
+      "slug": "physical-foundations-as-life-infrastructure",
+      "domain": "Health & Human Optimization"
+    },
+    {
+      "name": "Historical Cycles & Pendulum Swings",
+      "slug": "historical-cycles-pendulum-swings",
+      "domain": "History & Institutional Evolution"
+    },
+    {
+      "name": "Game Theory & Strategic Interaction",
+      "slug": "game-theory-strategic-interaction",
+      "domain": "Incentives & Mechanism Design"
+    },
+    {
+      "name": "Information Cascades & Availability Bias",
+      "slug": "information-cascades-availability-bias",
+      "domain": "Information Theory & Media Ecology"
+    },
+    {
+      "name": "Power Laws & Concentration vs. Diversification",
+      "slug": "power-laws-concentration-vs-diversification",
+      "domain": "Investment & Capital Allocation"
+    },
+    {
+      "name": "Language as Thought Constraint",
+      "slug": "language-as-mental-model-reverse-compression",
+      "domain": "Language & Communication Systems"
+    },
+    {
+      "name": "Deliberate Practice & Expertise Development",
+      "slug": "deliberate-practice-expertise-development",
+      "domain": "Learning & Skill Development"
+    },
+    {
+      "name": "Logic & Optimization Under Constraints",
+      "slug": "logic-optimization-under-constraints",
+      "domain": "Mathematics & Logic"
+    },
+    {
+      "name": "Deconstructing Mental Patterns & Pain Body",
+      "slug": "deconstructing-mental-patterns-pain-body",
+      "domain": "Mindfulness & Inner Work"
+    },
+    {
+      "name": "Affirmations & Identity Reinforcement",
+      "slug": "identity-affirmation-conscious-self-creation",
+      "domain": "Narrative & Identity"
+    },
+    {
+      "name": "Neuroplasticity & Brain Architecture",
+      "slug": "neural-networks-executive-function",
+      "domain": "Neuroscience & Consciousness"
+    },
+    {
+      "name": "Bureaucracy vs. Agility Trade-offs",
+      "slug": "bureaucracy-vs-agility-trade-offs",
+      "domain": "Organizational Design & Institutions"
+    },
+    {
+      "name": "Consciousness & the Hard Problem",
+      "slug": "consciousness-the-hard-problem",
+      "domain": "Philosophy & Truth-Seeking"
+    },
+    {
+      "name": "Information Theory & Physical Reality",
+      "slug": "information-theory-physical-reality",
+      "domain": "Physics & Fundamental Constraints"
+    },
+    {
+      "name": "Power Concentration & Natural Centralization",
+      "slug": "power-concentration-natural-centralization",
+      "domain": "Power Dynamics & Political Systems"
+    },
+    {
+      "name": "Bricolage & Making Do",
+      "slug": "execution-implementation-mastery",
+      "domain": "Practical Wisdom & Resourcefulness"
+    },
+    {
+      "name": "Cognitive Biases & Systematic Errors",
+      "slug": "cognitive-biases-systematic-errors",
+      "domain": "Psychology & Human Behavior"
+    },
+    {
+      "name": "Compounding Human Connections",
+      "slug": "compounding-human-connections",
+      "domain": "Relationships & Human Connection"
+    },
+    {
+      "name": "Purpose & Transcendent Meaning",
+      "slug": "purpose-transcendent-meaning",
+      "domain": "Ritual & Meaning-Making"
+    },
+    {
+      "name": "Boundaries & System Definition",
+      "slug": "boundaries-system-definition",
+      "domain": "Spatial-Geometric Thinking & Constraints"
+    },
+    {
+      "name": "Emergence & Complex Adaptive Systems",
+      "slug": "emergence-complex-adaptive-systems",
+      "domain": "Systems Thinking & Complexity"
+    },
+    {
+      "name": "Human-Computer Symbiosis & Cognitive Augmentation",
+      "slug": "human-computer-symbiosis-cognitive-augmentation",
+      "domain": "Technology & Human-Computer Interaction"
+    },
+    {
+      "name": "Flow States & Optimal Experience",
+      "slug": "flow-states-optimal-experience",
+      "domain": "Temporal Dynamics & Flow States"
+    },
+    {
+      "name": "Finite Life Recognition & Atelic Activities",
+      "slug": "finite-life-recognition-atelic-activities",
+      "domain": "Time & Mortality Awareness"
+    },
+    {
+      "name": "Innovation & Unique Differentiation",
+      "slug": "innovation-unique-differentiation",
+      "domain": "Business Strategy & Competition"
+    },
+    {
+      "name": "Network Effects & Emergent Behavior",
+      "slug": "network-effects-emergent-behavior",
+      "domain": "Complex Adaptive Systems"
+    },
+    {
+      "name": "Creative Constraint Navigation & Inversion",
+      "slug": "creative-constraint-navigation-inversion",
+      "domain": "Constraint Theory & Optimization"
+    },
+    {
+      "name": "Social Reality Construction & Collective Belief",
+      "slug": "social-reality-construction-collective-belief",
+      "domain": "Cultural Anthropology & Social Identity"
+    },
+    {
+      "name": "Decision Quality vs. Outcome Separation",
+      "slug": "decision-quality-vs-outcome-separation",
+      "domain": "Decision-Making Under Uncertainty"
+    },
+    {
+      "name": "Supply, Demand & Emergent Market Behavior",
+      "slug": "supply-demand-emergent-market-behavior",
+      "domain": "Economics & Market Dynamics"
+    },
+    {
+      "name": "Reductionism vs. Holism Integration",
+      "slug": "reductionism-vs-holism-integration",
+      "domain": "Emergence & Levels of Abstraction"
+    },
+    {
+      "name": "Reliability & Safety Margins",
+      "slug": "reliability-safety-margins",
+      "domain": "Engineering & Design"
+    },
+    {
+      "name": "Jump to Universality",
+      "slug": "jump-to-universality",
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "name": "Strategic Thinking & Equilibrium Concepts",
+      "slug": "strategic-thinking-equilibrium-concepts",
+      "domain": "Game Theory & Strategic Interaction"
+    },
+    {
+      "name": "Systems vs. Goals & Compound Habits",
+      "slug": "systems-vs-goals-compound-habits",
+      "domain": "Habit Formation & Behavior Change"
+    },
+    {
+      "name": "Physiological States & Decision Quality",
+      "slug": "physiological-states-decision-quality",
+      "domain": "Health & Human Optimization"
+    },
+    {
+      "name": "Institutional Path Dependence & Lock-in Effects",
+      "slug": "institutional-path-dependence-lock-in-effects",
+      "domain": "History & Institutional Evolution"
+    },
+    {
+      "name": "Incentive Alignment & System Design",
+      "slug": "incentive-alignment-system-design",
+      "domain": "Incentives & Mechanism Design"
+    },
+    {
+      "name": "Predictive Processing & Constructed Experience",
+      "slug": "predictive-processing-constructed-experience",
+      "domain": "Information Theory & Media Ecology"
+    },
+    {
+      "name": "Risk Management & Asymmetric Payoffs",
+      "slug": "risk-management-asymmetric-payoffs",
+      "domain": "Investment & Capital Allocation"
+    },
+    {
+      "name": "Semantics vs. Meaning & Deep Understanding",
+      "slug": "semantics-vs-meaning-deep-understanding",
+      "domain": "Language & Communication Systems"
+    },
+    {
+      "name": "Knowledge Compounding & Synthesis",
+      "slug": "knowledge-compounding-synthesis",
+      "domain": "Learning & Skill Development"
+    },
+    {
+      "name": "Pattern Recognition & Universal Constants",
+      "slug": "pattern-recognition-universal-constants",
+      "domain": "Mathematics & Logic"
+    },
+    {
+      "name": "Cross-Disciplinary Synthesis & The Best Answer Problem",
+      "slug": "cross-disciplinary-synthesis-the-best-answer-problem",
+      "domain": "Mental Models & Cross-Disciplinary Thinking"
+    },
+    {
+      "name": "Mind-Body Integration & Embodied Presence",
+      "slug": "mind-body-integration-embodied-presence",
+      "domain": "Mindfulness & Inner Work"
+    },
+    {
+      "name": "Identity Formation Through Narrative Construction",
+      "slug": "identity-formation-through-narrative-construction",
+      "domain": "Narrative & Identity"
+    },
+    {
+      "name": "Consciousness & Neural Correlates",
+      "slug": "the-hard-problem-consciousness-integration",
+      "domain": "Neuroscience & Consciousness"
+    },
+    {
+      "name": "Coordination Mechanisms & Human Cooperation",
+      "slug": "coordination-mechanisms-human-cooperation",
+      "domain": "Organizational Design & Institutions"
+    },
+    {
+      "name": "Critical Approach & Fallibilism",
+      "slug": "critical-approach-fallibilism",
+      "domain": "Philosophy & Truth-Seeking"
+    },
+    {
+      "name": "Non-Linear Dynamics & Initial Conditions",
+      "slug": "non-linear-dynamics-initial-conditions",
+      "domain": "Physics & Fundamental Constraints"
+    },
+    {
+      "name": "Power Games vs. Authentic Strength",
+      "slug": "power-games-vs-authentic-strength",
+      "domain": "Power Dynamics & Political Systems"
+    },
+    {
+      "name": "Metis & Local Knowledge",
+      "slug": "resourcefulness-constraint-navigation",
+      "domain": "Practical Wisdom & Resourcefulness"
+    },
+    {
+      "name": "Kahneman's 8 Decision-Making Questions",
+      "slug": "kahneman-s-8-decision-making-questions",
+      "domain": "Psychology & Human Behavior"
+    },
+    {
+      "name": "Empathy & Perspective-Taking",
+      "slug": "empathy-perspective-taking",
+      "domain": "Relationships & Human Connection"
+    },
+    {
+      "name": "Ritual Design & Sacred Experience Creation",
+      "slug": "ritual-design-sacred-experience-creation",
+      "domain": "Ritual & Meaning-Making"
+    },
+    {
+      "name": "Fractals & Self-Similarity Across Scales",
+      "slug": "fractals-self-similarity-across-scales",
+      "domain": "Spatial-Geometric Thinking & Constraints"
+    },
+    {
+      "name": "Statistical Inference & Sample Size Awareness",
+      "slug": "statistical-inference-sample-size-awareness",
+      "domain": "Statistics & Data Science"
+    },
+    {
+      "name": "Feedback Loops & System Dynamics",
+      "slug": "feedback-loops-system-dynamics",
+      "domain": "Systems Thinking & Complexity"
+    },
+    {
+      "name": "Technology as Capability Amplifier",
+      "slug": "technology-as-capability-amplifier",
+      "domain": "Technology & Human-Computer Interaction"
+    },
+    {
+      "name": "Temporal Coordination & System Rhythm",
+      "slug": "temporal-coordination-system-rhythm",
+      "domain": "Temporal Dynamics & Flow States"
+    },
+    {
+      "name": "Memento Mori & Death as Teacher",
+      "slug": "memento-mori-death-as-teacher",
+      "domain": "Time & Mortality Awareness"
+    },
+    {
+      "name": "Secrets & Non-Consensus Insights",
+      "slug": "secrets-non-consensus-insights",
+      "domain": "Business Strategy & Competition"
+    },
+    {
+      "name": "Optimization Within Limits & Resource Allocation",
+      "slug": "optimization-within-limits-resource-allocation",
+      "domain": "Constraint Theory & Optimization"
+    },
+    {
+      "name": "Expected Value & Asymmetric Payoffs",
+      "slug": "expected-value-asymmetric-payoffs",
+      "domain": "Decision-Making Under Uncertainty"
+    },
+    {
+      "name": "Simple Rules Generating Complex Behaviors",
+      "slug": "simple-rules-generating-complex-behaviors",
+      "domain": "Emergence & Levels of Abstraction"
+    },
+    {
+      "name": "Superlinear Returns & Power Laws",
+      "slug": "superlinear-returns-power-laws",
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "name": "Proactive vs. Reactive Health Strategy",
+      "slug": "proactive-vs-reactive-health-strategy",
+      "domain": "Health & Human Optimization"
+    },
+    {
+      "name": "Rules & System Leverage",
+      "slug": "rules-system-leverage",
+      "domain": "Incentives & Mechanism Design"
+    },
+    {
+      "name": "Value Investing & Systems Thinking",
+      "slug": "value-investing-systems-thinking",
+      "domain": "Investment & Capital Allocation"
+    },
+    {
+      "name": "Learning by Doing & Experience Curves",
+      "slug": "learning-by-doing-experience-curves",
+      "domain": "Learning & Skill Development"
+    },
+    {
+      "name": "First Principles Reasoning & Ground-Up Construction",
+      "slug": "first-principles-reasoning-ground-up-construction",
+      "domain": "Mental Models & Cross-Disciplinary Thinking"
+    },
+    {
+      "name": "Present-Moment Awareness & Non-Identification",
+      "slug": "present-moment-awareness-non-identification",
+      "domain": "Mindfulness & Inner Work"
+    },
+    {
+      "name": "Multifaceted Identity & Adaptive Self-Concept",
+      "slug": "multifaceted-identity-adaptive-self-concept",
+      "domain": "Narrative & Identity"
+    },
+    {
+      "name": "High-Trust Culture & Autonomous Teams",
+      "slug": "high-trust-culture-autonomous-teams",
+      "domain": "Organizational Design & Institutions"
+    },
+    {
+      "name": "Good Explanations vs. Prophecy",
+      "slug": "good-explanations-vs-prophecy",
+      "domain": "Philosophy & Truth-Seeking"
+    },
+    {
+      "name": "Quantum Mechanics & Measurement",
+      "slug": "quantum-mechanics-measurement",
+      "domain": "Physics & Fundamental Constraints"
+    },
+    {
+      "name": "Regulatory Capture & Institutional Decay",
+      "slug": "regulatory-capture-institutional-decay",
+      "domain": "Power Dynamics & Political Systems"
+    },
+    {
+      "name": "Mental Accounting & Reference Point Dependence",
+      "slug": "mental-accounting-reference-point-dependence",
+      "domain": "Psychology & Human Behavior"
+    },
+    {
+      "name": "Horizontal vs. Vertical Relationships",
+      "slug": "horizontal-vs-vertical-relationships",
+      "domain": "Relationships & Human Connection"
+    },
+    {
+      "name": "Scaling Laws & Dimensional Analysis",
+      "slug": "scaling-laws-dimensional-analysis",
+      "domain": "Spatial-Geometric Thinking & Constraints"
+    },
+    {
+      "name": "Leverage Points & High-Impact Interventions",
+      "slug": "leverage-points-high-impact-interventions",
+      "domain": "Systems Thinking & Complexity"
+    },
+    {
+      "name": "Present-Moment Elasticity & Time Perception",
+      "slug": "present-moment-elasticity-time-perception",
+      "domain": "Time & Mortality Awareness"
+    },
+    {
+      "name": "Probabilistic Thinking & Base Rate Neglect",
+      "slug": "probabilistic-thinking-base-rate-neglect",
+      "domain": "Decision-Making Under Uncertainty"
+    },
+    {
+      "name": "Universality & Infinite Reach From Finite Means",
+      "slug": "universality-infinite-reach-from-finite-means",
+      "domain": "Emergence & Levels of Abstraction"
+    },
+    {
+      "name": "The Power of Daily Compounding",
+      "slug": "the-power-of-daily-compounding",
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "name": "Model Testing & Refinement Through Criticism",
+      "slug": "model-testing-refinement-through-criticism",
+      "domain": "Mental Models & Cross-Disciplinary Thinking"
+    },
+    {
+      "name": "Transcending Ego & Two-Selves Integration",
+      "slug": "transcending-ego-two-selves-integration",
+      "domain": "Mindfulness & Inner Work"
+    },
+    {
+      "name": "Story as Sense-Making & Mental Model Construction",
+      "slug": "story-as-sense-making-mental-model-construction",
+      "domain": "Narrative & Identity"
+    },
+    {
+      "name": "Paradigm Shifts & Transcendence",
+      "slug": "paradigm-shifts-transcendence",
+      "domain": "Philosophy & Truth-Seeking"
+    },
+    {
+      "name": "Relativity & Space-Time",
+      "slug": "relativity-space-time",
+      "domain": "Physics & Fundamental Constraints"
+    },
+    {
+      "name": "Social Psychology & Environmental Influence",
+      "slug": "social-psychology-environmental-influence",
+      "domain": "Psychology & Human Behavior"
+    },
+    {
+      "name": "Love as Nuclear Fuel & Life Foundation",
+      "slug": "love-as-nuclear-fuel-life-foundation",
+      "domain": "Relationships & Human Connection"
+    },
+    {
+      "name": "Stocks, Flows & System Structure",
+      "slug": "stocks-flows-system-structure",
+      "domain": "Systems Thinking & Complexity"
+    },
+    {
+      "name": "Regret vs. Mistakes Framework",
+      "slug": "regret-vs-mistakes-framework",
+      "domain": "Time & Mortality Awareness"
+    },
+    {
+      "name": "Work That Compounds & Knowledge Compounding",
+      "slug": "work-that-compounds-knowledge-compounding",
+      "domain": "Exponential Thinking & Compounding"
+    },
+    {
+      "name": "Models as Mental Procedures & Operating Systems",
+      "slug": "models-as-mental-procedures-operating-systems",
+      "domain": "Mental Models & Cross-Disciplinary Thinking"
+    },
+    {
+      "name": "The Ladder vs. The Spectrum (Thinking About Thinking)",
+      "slug": "the-ladder-vs-the-spectrum-thinking-about-thinking",
+      "domain": "Philosophy & Truth-Seeking"
+    },
+    {
+      "name": "Thermodynamics & Energy Conservation",
+      "slug": "thermodynamics-energy-conservation",
+      "domain": "Physics & Fundamental Constraints"
+    },
+    {
+      "name": "System 1 vs System 2 Thinking",
+      "slug": "system-1-vs-system-2-thinking",
+      "domain": "Psychology & Human Behavior"
+    },
+    {
+      "name": "Variation, Selection, and Heredity",
+      "slug": "variation-selection-and-heredity",
+      "domain": "Evolution & Biology"
+    },
+    {
+      "name": "Bias Inherent in Models & Hidden Assumptions",
+      "slug": "bias-inherent-in-models-hidden-assumptions",
+      "domain": "Mental Models & Cross-Disciplinary Thinking"
+    },
+    {
+      "name": "Signal vs. Noise & Information Filtering",
+      "slug": "signal-vs-noise-information-quality",
+      "domain": "Information Theory & Media Ecology"
+    },
+    {
+      "name": "Combinatorial Creativity & Recombination",
+      "slug": "combinatorial-creativity-recombination",
+      "domain": "Creativity & Innovation"
+    },
+    {
+      "name": "Metabolic Constraints & Biological Scaling",
+      "slug": "metabolic-constraints-biological-scaling",
+      "domain": "Energy & Resource Flows"
+    },
+    {
+      "name": "Data Interpretation & Aesthetic vs. Functional Truth",
+      "slug": "data-interpretation-aesthetic-vs-functional-truth",
+      "domain": "Statistics & Data Science"
+    }
+  ]
+}
