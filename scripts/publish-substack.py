@@ -196,9 +196,7 @@ def build_post(markdown: str, date_slug: str) -> dict:
 
 # ─── Dry-run preview ─────────────────────────────────────────────────────────
 
-def write_preview(post: dict, date_slug: str, out_dir: Path) -> tuple[Path, Path]:
-    from markdown_it import MarkdownIt
-
+def write_preview(post: dict, date_slug: str, out_dir: Path) -> tuple[Path, Path | None]:
     out_dir.mkdir(parents=True, exist_ok=True)
     md_path = out_dir / f"{date_slug}-substack-post.md"
     md_path.write_text(
@@ -206,6 +204,12 @@ def write_preview(post: dict, date_slug: str, out_dir: Path) -> tuple[Path, Path
         f"<!-- subtitle: {post['subtitle']} -->\n"
         f"<!-- slug: {post['slug']} -->\n\n" + post["markdown"]
     )
+
+    try:
+        from markdown_it import MarkdownIt
+    except ImportError:
+        log("⚠️  markdown-it-py not installed — wrote .md preview only (pip install markdown-it-py for HTML)")
+        return md_path, None
 
     body_html = MarkdownIt("commonmark").render(post["markdown"])
     html = f"""<!DOCTYPE html>
@@ -332,7 +336,8 @@ def main() -> None:
 
     if args.dry_run:
         md_path, html_path = write_preview(post, date_slug, OUT_DIR)
-        log(f"🏃 Dry run — wrote {md_path.name} + {html_path.name} (no network)")
+        extras = f" + {html_path.name}" if html_path else ""
+        log(f"🏃 Dry run — wrote {md_path.name}{extras} (no network)")
         log("PUBLISH_RESULT=DRY_RUN")
         return
 
