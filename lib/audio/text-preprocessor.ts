@@ -747,6 +747,35 @@ interface ScriptCheckResult {
   needsRetry: boolean;
 }
 
+/** Generic capitalized words that are NOT named entities (days, months, ubiquitous
+ *  acronyms). Lowercased. Kept small on purpose — excluding a real entity only makes the
+ *  survival check more conservative (fewer false gutted-flags), which is the safe direction. */
+const GENERIC_CAPS = new Set([
+  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+  'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
+  'september', 'october', 'november', 'december',
+  'fed', 'street', 'treasury', 'gaap', 'ceo', 'cfo', 'fomc', 'etf', 'brent',
+]);
+
+/** Proper-noun beats in a section. A dropped story takes its named entities with it, so
+ *  entity survival catches the "kept the length, lost a whole story" gutting a word-count
+ *  floor cannot see. Conservative by design to avoid false positives on healthy sections:
+ *  counts single Capitalized words (length >= 4) that appear MID-sentence — the lookbehind
+ *  requires the previous token to have ended lowercase, a digit, or a comma, which skips the
+ *  sentence-initial caps ("The", "Value", "Own") that are the noise source. Returns distinct
+ *  entities, lowercased, minus the GENERIC_CAPS stoplist. */
+export function extractNamedEntities(text: string): string[] {
+  if (!text) return [];
+  const found = new Set<string>();
+  const re = /(?<=[a-z0-9,]\s)([A-Z][A-Za-z.&'’-]{3,})\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const w = m[1].toLowerCase();
+    if (!GENERIC_CAPS.has(w)) found.add(w);
+  }
+  return [...found];
+}
+
 /** Curly→straight apostrophes + lowercase, so banned-phrase matching can't be dodged
  *  by typography. GPT-4o writes "Let’s dive into" (curly); the list holds "let's dive
  *  into" (straight) — caught by scripts/audio-gate-regression.ts before it shipped. */
@@ -806,18 +835,38 @@ export function enforceScriptRules(sectionName: string, script: string, sourceCo
     }
   }
 
-  // 4) Substance floor. Teaching sections must keep >=55% of source length; others >=35%.
-  //    Below the floor = gutted → regenerate once with explicit feedback.
+  // 4) Substance floor + beat survival. A section arrives gutted two ways: (a) too short
+  //    overall (word floor), or (b) a whole story/beat dropped while the rest is padded to a
+  //    passing length — invisible to a word count, but the dropped story takes its proper
+  //    nouns with it (named-entity survival). Either one flags for regeneration; if it still
+  //    fails, rewriteSectionChecked falls back to a faithful voicing rather than ship gutted.
+  //    Floors raised 0.55/0.35 -> 0.60/0.40 (2026-07-24): cut the needless, not a beat.
   const srcWords = sourceContent.split(/\s+/).filter(Boolean).length;
   const outWords = out.split(/\s+/).filter(Boolean).length;
   const canonical = canonicalSectionKey(sectionName);
   const isProtected = SUBSTANCE_PROTECTED_SECTIONS.some(s => canonical.includes(s));
-  const floor = isProtected ? 0.55 : 0.35;
+  const floor = isProtected ? 0.60 : 0.40;
   const ratio = srcWords > 0 ? outWords / srcWords : 1;
-  const needsRetry = srcWords > 120 && ratio < floor;
+  const belowFloor = srcWords > 120 && ratio < floor;
+
+  // Named-entity survival: proper nouns are sacred (a company/person/place named in the brief
+  // must appear in speech). A dropped story erases its entities, so a low survival rate is a
+  // gutted-beat signal a length ratio cannot see. Conservative: only applies when the source
+  // leans on >=5 distinct entities, and tolerates a 30% incidental drop.
+  const srcEntities = extractNamedEntities(sourceContent);
+  const hay = out.toLowerCase();
+  const droppedEntities = srcEntities.filter(e => !hay.includes(e));
+  const entitySurvival = srcEntities.length ? 1 - droppedEntities.length / srcEntities.length : 1;
+  const entitiesGutted = srcEntities.length >= 5 && entitySurvival < 0.70;
+
+  const needsRetry = belowFloor || entitiesGutted;
   if (needsRetry) {
     warnings.push(
-      `${sectionName}: GUTTED — script is ${Math.round(ratio * 100)}% of source (floor ${Math.round(floor * 100)}%), regenerating once`
+      `${sectionName}: GUTTED — ${Math.round(ratio * 100)}% of source length (floor ${Math.round(floor * 100)}%)` +
+        (entitiesGutted
+          ? `, ${droppedEntities.length}/${srcEntities.length} named entities dropped [${droppedEntities.slice(0, 6).join(', ')}]`
+          : '') +
+        `; regenerating`
     );
   }
 
@@ -831,7 +880,11 @@ export function enforceScriptRules(sectionName: string, script: string, sourceCo
 
 const SECTION_SYSTEM_PROMPT = `You are a podcast scriptwriter for "Markets, Meditations, and Mental Models", a daily financial market intelligence podcast.
 
-YOUR JOB: Convert written market analysis into natural, conversational spoken form. THE BALANCE, which is the entire job: keep the episode to a reasonable length AND lose no substance. Aim to land the full brief UNDER 30 minutes, but you hit that target by compressing DELIVERY, never by dropping substance. Compress delivery aggressively: paraphrase (it does NOT have to be word-for-word), cut setup, redundancy, throat-clearing, and connective filler. But EVERY substantive point survives: every thesis, every "so what," every number that drives an argument, every "where this might be wrong," every distinct story. NEVER drop a point, a step in the argument, or a piece of evidence to save time. Test: could the listener reconstruct every argument and conclusion from your script? If yes, you compressed right. If a point is gone, that is the lossy compression we are killing. Tiebreaker: if keeping all the substance runs you slightly over, run slightly over. Substance beats the clock by a small margin. Do not pad, do not gut. It should sound like a smart friend thinking it through out loud, not reading aloud.
+YOUR JOB: Voice the written brief for the ear. The hard editorial cut already happened on the page. The brief you are handed is ALREADY the keep-or-cut decision, so your job is NOT to compress it again. Your one job is to remove what is needless for speech and NOTHING MORE, so it sounds like a smart friend thinking out loud instead of a document read aloud. Length is an OUTPUT, not a target. You get the right length by removing exactly the needless and then stopping. There is no time budget and no minute target. If faithful voicing runs a few minutes long, that is correct. Never drop a beat to hit a clock.
+
+NEEDLESS (cut all of it, aggressively): throat-clearing and scene-setting, setup that just restates what the next sentence says, a point already made earlier, connective filler and transitions written for their own sake, hedge-padding, over-explaining the obvious, and decorative adjectives that carry no information. If the listener can lose it without losing an idea, cut it.
+
+SACRED (cut NONE of it, ever): every distinct story, every thesis and structural read, every number that drives an argument, every "so what," every "where this might be wrong," and every proper noun, quote, and attribution. If removing something would delete a fact, a step in the argument, or a distinct story, it is sacred. Keep it. THE TEST: could the listener reconstruct every argument, every distinct story, and every conclusion from your script? If yes, you edited right. If one beat is gone, that is the lossy compression we are killing. Tighten wording, never drop an idea. Do not pad, do not gut. It should sound like a smart friend thinking it through out loud, not reading aloud.
 
 VOICE & FEEL (THIS IS CRITICAL):
 You're writing how a smart friend actually talks when explaining something they find fascinating. This is a MORNING show. The listener is waking up. Your script should wake them up. Not a podcast host performing. Not NPR. Not a finance bro hyping. A person who reads a lot, thinks clearly, and is genuinely excited to share what they know. The listener should feel like they're in a conversation, not an audience. They should feel ENERGIZED, AWAKE, and SMARTER after listening, not weighed down by doom or lulled to sleep. Even when the news is heavy, the energy should be "isn't it fascinating that we get to think about this?" not "everything is terrible." Bring LIFE to the writing. If you write it flat, the voice reads it flat.
@@ -1126,11 +1179,70 @@ async function rewriteSection(client: OpenAI, sectionName: string, content: stri
   }
 }
 
+const QUOTE_MARKER = '[[VERBATIM_QUOTE]]';
+const QUOTE_MARKER_INSTRUCTION =
+  ` A placeholder token ${QUOTE_MARKER} marks where a verbatim quotation belongs. Reproduce the token ${QUOTE_MARKER} EXACTLY as written, on its own line, at the same point in the flow. Do NOT replace it with a quote, translate it, rephrase it, or drop it. Voice the setup before it and the reflection after it.`;
+
+/** Pull the verbatim quote + attribution out of a meditation / Inner Game section so it can be
+ *  hard-injected instead of trusted to GPT (GPT paraphrases and drops quotes — the same reason
+ *  the lede epigraph bypasses GPT). Returns the section content with the quote replaced by a
+ *  marker, plus the spoken form to restore afterward. null when the section is not a meditation
+ *  or carries no quote. */
+export function extractVerbatimQuote(
+  sectionName: string,
+  content: string,
+): { masked: string; spoken: string } | null {
+  const canon = canonicalSectionKey(sectionName);
+  if (!(canon.includes('meditation') || canon.includes('inner game'))) return null;
+  const lines = content.split('\n');
+  // The quote line: a substantial double-quoted span (markdown italics/blockquote optional).
+  let qi = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].trim().match(/^[*_>\s]*["“](.+?)["”][*_\s]*$/);
+    if (m && m[1].length >= 15) { qi = i; break; }
+  }
+  if (qi === -1) return null;
+  const quoteRaw = lines[qi].trim().replace(/^[*_>\s]+/, '').replace(/[*_\s]+$/, '');
+  // Attribution: the next non-empty line, only if it begins with a dash.
+  let ai = -1;
+  for (let j = qi + 1; j < lines.length; j++) {
+    if (!lines[j].trim()) continue;
+    if (/^[\s>]*[–—-]\s*\S/.test(lines[j])) ai = j;
+    break;
+  }
+  const attribution =
+    ai !== -1
+      ? lines[ai].trim().replace(/^[\s>]*[–—-]\s*/, '').replace(/[*_`]/g, '').replace(/\s+/g, ' ').trim()
+      : '';
+  const spoken = attribution ? `${quoteRaw} ${attribution}.` : quoteRaw;
+  const endIdx = ai !== -1 ? ai : qi;
+  const masked = [...lines.slice(0, qi), QUOTE_MARKER, ...lines.slice(endIdx + 1)].join('\n');
+  return { masked, spoken };
+}
+
+/** Restore the verbatim quote for its marker. If the scriptwriter dropped or mangled the marker,
+ *  inject the quote after the first sentence so it is never missing, and scrub any bare marker
+ *  words so "verbatim quote" is never spoken. */
+export function restoreVerbatimQuote(script: string, spoken: string): string {
+  let injected = false;
+  let out = script.replace(/\[\[?\s*VERBATIM[_\s]*QUOTE\s*\]?\]/gi, () => {
+    if (injected) return '';
+    injected = true;
+    return spoken;
+  });
+  if (!injected) {
+    const m = out.match(/^[\s\S]{0,240}?[.!?]\s/);
+    out = m ? out.slice(0, m[0].length) + spoken + ' ' + out.slice(m[0].length) : `${spoken}\n\n${out}`;
+  }
+  return out.replace(/\[?\[?\s*VERBATIM[_\s]*QUOTE\s*\]?\]?/gi, '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 /**
  * rewriteSection + mechanical script gate + one-shot regeneration on gutted output.
  * Used by BOTH the full-brief and super-brief paths — this is the audio counterpart
  * of the written pipeline's Validator: deterministic repair where safe, one retry
  * with explicit feedback when a section arrives gutted, warnings for the rest.
+ * Meditation/Inner Game sections additionally get their quote hard-injected (never GPT-owned).
  */
 async function rewriteSectionChecked(
   client: OpenAI,
@@ -1139,23 +1251,47 @@ async function rewriteSectionChecked(
   context?: SectionContext,
   opts?: RewriteOpts,
 ): Promise<{ script: string; warnings: string[] }> {
-  const first = await rewriteSection(client, sectionName, content, context, opts);
+  // Meditation / Inner Game quote: hard-inject it verbatim. GPT never owns the quote — it is
+  // masked with a marker the scriptwriter must keep, and the exact quote is restored after.
+  const q = extractVerbatimQuote(sectionName, content);
+  const gptContent = q ? q.masked : content;
+  const gptOpts: RewriteOpts | undefined = q
+    ? { ...opts, instructionAddendum: (opts?.instructionAddendum ?? '') + QUOTE_MARKER_INSTRUCTION }
+    : opts;
+  const restore = (s: string) => (q ? restoreVerbatimQuote(s, q.spoken) : s);
+
+  const first = restore(await rewriteSection(client, sectionName, gptContent, context, gptOpts));
   // Intros are intentionally short — gate the repairs but skip the substance floor.
   const isIntro = /intro/i.test(sectionName);
   let checked = enforceScriptRules(sectionName, first, isIntro ? '' : content);
 
   if (checked.needsRetry && !isIntro) {
     const retryOpts: RewriteOpts = {
-      ...opts,
+      ...gptOpts,
       instructionAddendum:
-        (opts?.instructionAddendum ?? '') +
+        (gptOpts?.instructionAddendum ?? '') +
         ' RETRY FEEDBACK: your previous attempt cut too much substance from this section. Rewrite it keeping EVERY substantive point, number, example, and step of the argument. Compress delivery only, never content.',
     };
-    const second = await rewriteSection(client, sectionName, content, context, retryOpts);
+    const second = restore(await rewriteSection(client, sectionName, gptContent, context, retryOpts));
     const secondChecked = enforceScriptRules(sectionName, second, content);
     // Keep whichever attempt preserved more substance.
-    if (secondChecked.script.length > checked.script.length) {
-      checked = { ...secondChecked, warnings: [...checked.warnings, ...secondChecked.warnings] };
+    checked =
+      secondChecked.script.length > checked.script.length
+        ? { ...secondChecked, warnings: [...checked.warnings, ...secondChecked.warnings] }
+        : { ...checked, warnings: [...checked.warnings, ...secondChecked.warnings] };
+
+    // Still gutted after a targeted regeneration? Do NOT ship the gutted script. Fall back to a
+    // faithful voicing of the written section: plainer delivery, but every beat, number, and
+    // name intact. A complete section always beats a gutted one. (2026-07-24)
+    if (checked.needsRetry) {
+      checked = {
+        script: regexNormalize(content),
+        needsRetry: false,
+        warnings: [
+          ...checked.warnings,
+          `${sectionName}: still gutted after regeneration — fell back to faithful voicing of the source (complete, plainer delivery)`,
+        ],
+      };
     }
   }
 
@@ -1273,7 +1409,7 @@ const WEEKLY_SYSTEM_PROMPT_ADDENDUM = `
 
 WEEKLY EDITION (this episode is THE WEEKLY, the Sunday zoom-out over the whole week):
 - Say "this week" / "the week", never "today" — the listener is hearing a week in review.
-- LENGTH: the written Weekly is roughly a 35-minute read. Land the spoken version UNDER 40 minutes, NOT under 30. Do not compress it to a daily's length. The substance-beats-the-clock tiebreaker is even stronger here: if keeping everything runs long, run long.
+- LENGTH: the Weekly is the long-form edition and naturally runs longer than a daily. There is no minute target. Same rule as always: remove what is needless for speech and nothing more, keep every beat, and let the length be whatever faithful voicing produces. Never compress it toward a daily's length, and never drop a beat to hit a clock.
 - The listener is on a slower Sunday clock. Let the teachings and the endings breathe.`;
 
 // ─── Deterministic transition phrases ────────────────────────────────────────
