@@ -102,6 +102,33 @@ export class SubstackClient {
     }
   }
 
+  /**
+   * Upload an image (by public URL) to Substack's CDN; returns the CDN URL.
+   * Substack fetches the source server-side and re-hosts it.
+   */
+  async uploadImage(sourceUrl: string): Promise<string> {
+    const res = await fetch(`${this.pubApi}/image`, {
+      method: 'POST',
+      headers: {
+        Cookie: this.cookies,
+        'User-Agent': UA,
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Origin: this.pubUrl,
+        Referer: `${this.pubUrl}/publish/home`,
+      },
+      body: new URLSearchParams({ image: sourceUrl }),
+      redirect: 'manual',
+    });
+    const text = await res.text();
+    if (res.status < 200 || res.status >= 300) {
+      throw new SubstackError(res.status, text);
+    }
+    const parsed = JSON.parse(text) as { url?: string };
+    if (!parsed.url) throw new Error('Substack image upload returned no url');
+    return parsed.url;
+  }
+
   /** Logged-in user id (needed for draft bylines). Also validates the cookie. */
   async getUserId(): Promise<number> {
     const profile = (await this.request(

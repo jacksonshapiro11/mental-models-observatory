@@ -32,15 +32,16 @@ import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { isCronAuthorized } from '@/lib/cron-auth';
 import { todayET } from '@/lib/publish-date';
-import { markdownToDoc } from '@/lib/substack/prosemirror';
 import { SubstackClient, SubstackError } from '@/lib/substack/client';
 import {
   buildSubstackPost,
+  composeSubstackDoc,
   SubstackPostKind,
 } from '@/lib/substack/post-builder';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates');
 const WEEKLY_DIR = path.join(CONTENT_DIR, 'weekly');
+const SITE_URL = 'https://www.cosmictrex.com';
 
 interface ResolvedSource {
   kind: SubstackPostKind;
@@ -168,6 +169,19 @@ async function handle(req: NextRequest): Promise<NextResponse> {
 
   const post = buildSubstackPost(markdown, source.sourceSlug, source.kind);
 
+  // Test hook: publish/draft under a different slug (bypasses idempotency
+  // against the real daily slug — used to preview styling changes safely).
+  const slugOverride = params.get('slug');
+  if (slugOverride) {
+    if (!/^[a-z0-9][a-z0-9-]{2,79}$/.test(slugOverride)) {
+      return NextResponse.json(
+        { error: `Bad slug: ${slugOverride}` },
+        { status: 400 }
+      );
+    }
+    post.slug = slugOverride;
+  }
+
   if (dry) {
     return NextResponse.json({
       status: 'dry-run',
@@ -175,8 +189,9 @@ async function handle(req: NextRequest): Promise<NextResponse> {
       title: post.title,
       subtitle: post.subtitle,
       slug: post.slug,
+      epigraphPullquote: Boolean(post.epigraph),
       bodyChars: post.bodyMarkdown.length,
-      blocks: markdownToDoc(post.bodyMarkdown).content?.length ?? 0,
+      blocks: composeSubstackDoc(post, null).content?.length ?? 0,
     });
   }
 
@@ -223,7 +238,16 @@ async function handle(req: NextRequest): Promise<NextResponse> {
     if (existingDraft && typeof existingDraft.id === 'number') {
       draftId = existingDraft.id;
     } else {
-      const doc = markdownToDoc(post.bodyMarkdown);
+      // Branded masthead at the top of the post; tolerate upload failure.
+      let mastheadSrc: string | null = null;
+      try {
+        mastheadSrc = await client.uploadImage(
+          `${SITE_URL}/substack-masthead.png`
+        );
+      } catch (e) {
+        console.warn('[substack] masthead upload failed, posting without:', e);
+      }
+      const doc = composeSubstackDoc(post, mastheadSrc);
       const created = await client.createDraft({
         draft_title: post.title,
         draft_subtitle: post.subtitle,
@@ -236,6 +260,19 @@ async function handle(req: NextRequest): Promise<NextResponse> {
       });
       draftId = created.id;
       await client.updateDraft(draftId, { slug: post.slug });
+
+      // Cover image for inbox/social cards: the site's dynamic OG card for
+      // dailies (matches cosmictrex.com), static brand card for weeklies.
+      try {
+        const coverSource =
+          post.kind === 'daily'
+            ? `${SITE_URL}/api/og/super-brief/${post.sourceSlug}`
+            : `${SITE_URL}/substack-cover.png`;
+        const cover = await client.uploadImage(coverSource);
+        await client.updateDraft(draftId, { cover_image: cover });
+      } catch (e) {
+        console.warn('[substack] cover upload failed, continuing:', e);
+      }
     }
 
     if (mode === 'draft') {

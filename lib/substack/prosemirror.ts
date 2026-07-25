@@ -175,3 +175,47 @@ export function markdownToBlocks(markdown: string): PMNode[] {
 export function markdownToDoc(markdown: string): PMNode {
   return { type: 'doc', content: markdownToBlocks(markdown) };
 }
+
+/** Substack captioned-image block (attrs shape per python-substack nodes.py). */
+export function captionedImage(
+  src: string,
+  opts: { href?: string; alt?: string; width?: number; height?: number } = {}
+): PMNode {
+  return {
+    type: 'captionedImage',
+    content: [
+      {
+        type: 'image2',
+        attrs: {
+          src,
+          srcNoWatermark: null,
+          fullscreen: false,
+          imageSize: 'normal',
+          height: opts.height ?? 819,
+          width: opts.width ?? 1456,
+          resizeWidth: 728,
+          bytes: null,
+          alt: opts.alt ?? null,
+          title: null,
+          type: null,
+          href: opts.href ?? null,
+          belowTheFold: false,
+          topImage: false,
+          internalRedirect: null,
+          isProcessing: false,
+          align: null,
+          offset: false,
+        },
+      },
+    ],
+  };
+}
+
+/** Substack pullquote block — renders large and styled in the reader. */
+export function pullquote(text: string): PMNode {
+  return {
+    type: 'pullquote',
+    attrs: { align: null, color: null },
+    content: [{ type: 'paragraph', content: parseInline(text) }],
+  };
+}
