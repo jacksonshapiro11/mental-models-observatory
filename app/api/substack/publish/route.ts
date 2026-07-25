@@ -36,8 +36,12 @@ import { SubstackClient, SubstackError } from '@/lib/substack/client';
 import {
   buildSubstackPost,
   composeSubstackDoc,
+  sectionLabelsIn,
+  SECTION_STRIPS,
+  BuiltSubstackPost,
   SubstackPostKind,
 } from '@/lib/substack/post-builder';
+import type { PMNode } from '@/lib/substack/prosemirror';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates');
 const WEEKLY_DIR = path.join(CONTENT_DIR, 'weekly');
@@ -63,6 +67,36 @@ function weeklySource(slug: string): ResolvedSource {
     sourceSlug: slug,
     filePath: path.join(WEEKLY_DIR, `${slug}-light.md`),
   };
+}
+
+/**
+ * Upload the masthead + section-header strips to Substack's CDN and compose
+ * the styled doc. Every upload is fault-tolerant: a miss degrades that
+ * element to plain text/absence rather than failing the post.
+ */
+async function buildStyledDoc(
+  client: SubstackClient,
+  post: BuiltSubstackPost
+): Promise<PMNode> {
+  let mastheadSrc: string | null = null;
+  try {
+    mastheadSrc = await client.uploadImage(`${SITE_URL}/substack-masthead.png`);
+  } catch (e) {
+    console.warn('[substack] masthead upload failed, posting without:', e);
+  }
+  const sectionImages: Record<string, string> = {};
+  await Promise.all(
+    sectionLabelsIn(post.contentMarkdown).map(async key => {
+      try {
+        sectionImages[key] = await client.uploadImage(
+          `${SITE_URL}/${SECTION_STRIPS[key]}`
+        );
+      } catch (e) {
+        console.warn(`[substack] strip upload failed (${key}):`, e);
+      }
+    })
+  );
+  return composeSubstackDoc(post, mastheadSrc, sectionImages);
 }
 
 /** Latest weekly light on the deployed filesystem, by (year, week) numeric. */
@@ -228,15 +262,7 @@ async function handle(req: NextRequest): Promise<NextResponse> {
           { status: 404 }
         );
       }
-      let mastheadSrc: string | null = null;
-      try {
-        mastheadSrc = await client.uploadImage(
-          `${SITE_URL}/substack-masthead.png`
-        );
-      } catch (e) {
-        console.warn('[substack] masthead upload failed during restyle:', e);
-      }
-      const doc = composeSubstackDoc(post, mastheadSrc);
+      const doc = await buildStyledDoc(client, post);
       await client.updateDraft(target.id, {
         draft_title: post.title,
         draft_subtitle: post.subtitle,
@@ -284,16 +310,7 @@ async function handle(req: NextRequest): Promise<NextResponse> {
     if (existingDraft && typeof existingDraft.id === 'number') {
       draftId = existingDraft.id;
     } else {
-      // Branded masthead at the top of the post; tolerate upload failure.
-      let mastheadSrc: string | null = null;
-      try {
-        mastheadSrc = await client.uploadImage(
-          `${SITE_URL}/substack-masthead.png`
-        );
-      } catch (e) {
-        console.warn('[substack] masthead upload failed, posting without:', e);
-      }
-      const doc = composeSubstackDoc(post, mastheadSrc);
+      const doc = await buildStyledDoc(client, post);
       const created = await client.createDraft({
         draft_title: post.title,
         draft_subtitle: post.subtitle,

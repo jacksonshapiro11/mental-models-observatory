@@ -134,12 +134,52 @@ export function buildSubstackPost(
 }
 
 /**
+ * Section labels that have a branded dark header strip in public/.
+ * Key = normalized label; value = asset filename on cosmictrex.com.
+ */
+export const SECTION_STRIPS: Record<string, string> = {
+  'THE UPDATE': 'substack-section-the-update.png',
+  'MARKETS MINUTE': 'substack-section-markets-minute.png',
+  'INTERESTING THINGS': 'substack-section-interesting-things.png',
+  'OUR CALLS': 'substack-section-our-calls.png',
+  'THE MEDITATION': 'substack-section-the-meditation.png',
+  'THE MODEL': 'substack-section-the-model.png',
+  'THE CLOSE': 'substack-section-the-close.png',
+  'THE IDEA': 'substack-section-the-idea.png',
+  'ALSO MOVING': 'substack-section-also-moving.png',
+  'TWO THINGS WORTH KNOWING': 'substack-section-two-things-worth-knowing.png',
+};
+
+/** Normalize a `## ▸ …` header to its strip key (drops any `: title` part). */
+export function sectionStripKey(headerText: string): string | null {
+  const label = headerText
+    .replace(/^▸\s*/, '')
+    .split(':')[0]!
+    .trim()
+    .toUpperCase();
+  return label in SECTION_STRIPS ? label : null;
+}
+
+/** Section labels present in the post content, in order of appearance. */
+export function sectionLabelsIn(contentMarkdown: string): string[] {
+  const labels: string[] = [];
+  for (const m of contentMarkdown.matchAll(/^##\s*▸\s*(.+?)\s*$/gm)) {
+    const key = sectionStripKey(`▸ ${m[1]}`);
+    if (key && !labels.includes(key)) labels.push(key);
+  }
+  return labels;
+}
+
+/**
  * Assemble the full ProseMirror doc: masthead image (when its Substack CDN
- * URL is available), the link line, the epigraph pullquote, then the body.
+ * URL is available), the link line, the epigraph pullquote, then the body —
+ * with `## ▸ SECTION` headings swapped for branded dark strips when their
+ * Substack CDN URLs are provided in `sectionImages`.
  */
 export function composeSubstackDoc(
   post: BuiltSubstackPost,
-  mastheadSrc?: string | null
+  mastheadSrc?: string | null,
+  sectionImages?: Record<string, string>
 ): PMNode {
   const blocks: PMNode[] = [];
   if (mastheadSrc) {
@@ -156,6 +196,34 @@ export function composeSubstackDoc(
   if (post.epigraph) {
     blocks.push(pullquote(post.epigraph));
   }
-  blocks.push(...markdownToBlocks(post.contentMarkdown));
+
+  for (const block of markdownToBlocks(post.contentMarkdown)) {
+    const headingText =
+      block.type === 'heading' &&
+      (block.attrs as { level?: number } | undefined)?.level === 2
+        ? (block.content ?? []).map(t => t.text ?? '').join('')
+        : '';
+    const key = headingText.includes('▸') ? sectionStripKey(headingText) : null;
+    const src = key && sectionImages ? sectionImages[key] : undefined;
+    if (key && src) {
+      blocks.push(captionedImage(src, { alt: key, width: 1456, height: 108 }));
+      // Keep any `: title` remainder as a visible subheading.
+      const rest = headingText
+        .replace(/^▸\s*/, '')
+        .split(':')
+        .slice(1)
+        .join(':')
+        .trim();
+      if (rest) {
+        blocks.push({
+          type: 'heading',
+          attrs: { level: 3 },
+          content: parseInline(rest),
+        });
+      }
+    } else {
+      blocks.push(block);
+    }
+  }
   return { type: 'doc', content: blocks };
 }
