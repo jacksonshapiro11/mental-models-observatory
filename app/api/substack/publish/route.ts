@@ -211,10 +211,56 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   }
 
   const client = new SubstackClient(cookies, pubUrl);
+  const restyle = params.get('restyle') === 'true';
 
   try {
     // Auth check + user id in one call.
     const userId = await client.getUserId();
+
+    // ── Restyle: rebuild an ALREADY-PUBLISHED post with the current template
+    // (masthead, pullquote, cover) and save it live WITHOUT re-emailing. ──────
+    if (restyle) {
+      const published = await client.listPublished(25);
+      const target = published.find(p => p.slug === post.slug);
+      if (!target || typeof target.id !== 'number') {
+        return NextResponse.json(
+          { error: `No published post with slug ${post.slug} to restyle` },
+          { status: 404 }
+        );
+      }
+      let mastheadSrc: string | null = null;
+      try {
+        mastheadSrc = await client.uploadImage(
+          `${SITE_URL}/substack-masthead.png`
+        );
+      } catch (e) {
+        console.warn('[substack] masthead upload failed during restyle:', e);
+      }
+      const doc = composeSubstackDoc(post, mastheadSrc);
+      await client.updateDraft(target.id, {
+        draft_title: post.title,
+        draft_subtitle: post.subtitle,
+        draft_body: JSON.stringify(doc),
+      });
+      try {
+        const coverSource =
+          post.kind === 'daily'
+            ? `${SITE_URL}/api/og/super-brief/${post.sourceSlug}`
+            : `${SITE_URL}/substack-cover.png`;
+        const cover = await client.uploadImage(coverSource);
+        await client.updateDraft(target.id, { cover_image: cover });
+      } catch (e) {
+        console.warn('[substack] cover upload failed during restyle:', e);
+      }
+      // publish with send:false = "save" on a live post; no email goes out.
+      await client.publishDraft(target.id, false);
+      return NextResponse.json({
+        status: 'restyled',
+        slug: post.slug,
+        url: `${client.publicationUrl()}/p/${post.slug}`,
+        emailSent: false,
+      });
+    }
 
     // ── Idempotency: never double-post a slug ──────────────────────────────
     const published = await client.listPublished(25);
