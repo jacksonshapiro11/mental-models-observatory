@@ -770,7 +770,9 @@ export function extractNamedEntities(text: string): string[] {
   const re = /(?<=[a-z0-9,]\s)([A-Z][A-Za-z.&'’-]{3,})\b/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
-    const w = m[1].toLowerCase();
+    const capt = m[1];
+    if (!capt) continue;
+    const w = capt.toLowerCase();
     if (!GENERIC_CAPS.has(w)) found.add(w);
   }
   return [...found];
@@ -1202,22 +1204,29 @@ export function extractVerbatimQuote(
   // The quote line: a substantial double-quoted span (markdown italics/blockquote optional).
   let qi = -1;
   for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].trim().match(/^[*_>\s]*["“](.+?)["”][*_\s]*$/);
-    if (m && m[1].length >= 15) { qi = i; break; }
+    const line = lines[i];
+    if (line === undefined) continue;
+    const m = line.trim().match(/^[*_>\s]*["“](.+?)["”][*_\s]*$/);
+    const capt = m?.[1];
+    if (capt && capt.length >= 15) { qi = i; break; }
   }
   if (qi === -1) return null;
-  const quoteRaw = lines[qi].trim().replace(/^[*_>\s]+/, '').replace(/[*_\s]+$/, '');
+  const quoteLine = lines[qi];
+  if (quoteLine === undefined) return null;
+  const quoteRaw = quoteLine.trim().replace(/^[*_>\s]+/, '').replace(/[*_\s]+$/, '');
   // Attribution: the next non-empty line, only if it begins with a dash.
   let ai = -1;
   for (let j = qi + 1; j < lines.length; j++) {
-    if (!lines[j].trim()) continue;
-    if (/^[\s>]*[–—-]\s*\S/.test(lines[j])) ai = j;
+    const line = lines[j];
+    if (line === undefined) continue;
+    if (!line.trim()) continue;
+    if (/^[\s>]*[–—-]\s*\S/.test(line)) ai = j;
     break;
   }
-  const attribution =
-    ai !== -1
-      ? lines[ai].trim().replace(/^[\s>]*[–—-]\s*/, '').replace(/[*_`]/g, '').replace(/\s+/g, ' ').trim()
-      : '';
+  const attrLine = ai !== -1 ? lines[ai] : undefined;
+  const attribution = attrLine
+    ? attrLine.trim().replace(/^[\s>]*[–—-]\s*/, '').replace(/[*_`]/g, '').replace(/\s+/g, ' ').trim()
+    : '';
   const spoken = attribution ? `${quoteRaw} ${attribution}.` : quoteRaw;
   const endIdx = ai !== -1 ? ai : qi;
   const masked = [...lines.slice(0, qi), QUOTE_MARKER, ...lines.slice(endIdx + 1)].join('\n');
