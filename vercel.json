@@ -31,6 +31,14 @@
     {
       "path": "/api/publish/complete-weekly",
       "schedule": "0 1 * * 1"
+    },
+    {
+      "path": "/api/substack/publish",
+      "schedule": "30 12 * * *"
+    },
+    {
+      "path": "/api/substack/publish",
+      "schedule": "0 14 * * *"
     }
   ]
 }
