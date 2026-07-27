@@ -19,7 +19,7 @@ export interface DashboardSnapshot {
   crypto: Record<string, AssetSnapshot>;
   commodities: Record<string, AssetSnapshot>;
   rates: Record<string, AssetSnapshot>;
-  dxy: { value: number; rates: Record<string, number> } | null;
+  dxy: { value: number; rates: Record<string, number>; yoyChange?: number | null } | null;
   fearGreed: { value: number; label: string; timestamp: number } | null;
   errors: Array<{ index: number; error: string }>;
 }

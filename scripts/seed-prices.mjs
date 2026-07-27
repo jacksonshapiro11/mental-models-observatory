@@ -112,7 +112,13 @@ async function fetchYahooHistory(symbol, days) {
   if (!result) throw new Error(`Yahoo ${symbol}: no result`);
 
   const timestamps = result.timestamp || [];
-  const closes = result.indicators?.quote?.[0]?.close || [];
+  // ADJUSTED closes (split + dividend adjusted) — the convention every quoted % uses.
+  // 2026-07-27: raw closes put IWF's 4:1 split (Apr 29) into history unadjusted, which
+  // served 1Y = −73% against a real +6% and silently corrupted the 50D/200D/200W MAs.
+  // Raw close is only the per-bar fallback when adjclose is missing.
+  const rawCloses = result.indicators?.quote?.[0]?.close || [];
+  const adjCloses = result.indicators?.adjclose?.[0]?.adjclose;
+  const closes = timestamps.map((_, i) => adjCloses?.[i] ?? rawCloses[i]);
   // Detect category from exchangeTimezoneName or symbol pattern
   const tzName = result.meta?.exchangeTimezoneName || '';
   const isCrypto = tzName === 'UTC' || symbol.includes('-USD');

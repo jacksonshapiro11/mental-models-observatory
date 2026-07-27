@@ -12,7 +12,7 @@
  * Protected by SNAPSHOT_SECRET header or query param.
  */
 
-import { fetchDXY, fetchDXYFromYahoo } from '@/lib/dxy';
+import { fetchDXY, fetchDXYFromYahoo, type DXYResult } from '@/lib/dxy';
 import { isCronAuthorized } from '@/lib/cron-auth';
 import {
   writeManualFields,
@@ -32,18 +32,20 @@ const FINNHUB_KEY = process.env.FINNHUB_API_KEY!;
 
 const TIMEOUT = 8000;
 
-// Change period definitions:
-//   tradingDays = count back N entries in the asset's own date array (skips weekends/holidays)
-//   months/years = calendar offset (March 27 → Feb 27, March 27 → March 27 last year)
-// This matches Yahoo Finance: 1D and 5D are trading days, 1M and 1Y are calendar.
-const CHANGE_PERIODS: Record<string, { tradingDays?: number; days?: number; months?: number; years?: number }> = {
-  '1D': { tradingDays: 1 },
-  '5D': { days: 7 },
-  '1M': { months: 1 },
-  '1Y': { years: 1 },
-};
-// MA periods remain in trading days (industry standard)
-const MA_PERIODS: Record<string, number> = { '50D': 50, '200D': 200, '200W': 1000 };
+// Change/MA math lives in lib/dashboard-math.ts (pure, gated by scripts/dashboard-math-gate.ts).
+// 2026-07-27: % changes are now computed from Yahoo's own ADJUSTED 1y series per asset —
+// split-proof (IWF 4:1 served 1Y=−73% vs real +6%), gap-proof (SMH's baseline landed weeks
+// early, +95% vs real ~+88%), dividend-consistent. Redis history remains the source for MAs
+// only, with a scale-break tripwire so a corrupted window is withheld instead of shipped.
+import {
+  MA_PERIODS,
+  calculateChangesChecked,
+  calculateMAs,
+  detectScaleBreaks,
+  seriesFromYahooChart,
+  mergeLatestIntoSeries,
+  type PriceSeries,
+} from '@/lib/dashboard-math';
 
 // All assets we track — matches seed-prices.mjs exactly
 // Primary: actual index/futures symbols (direct prices, no multiplier math)
@@ -223,9 +225,60 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
     if (arr.prices.length === 0) continue;
 
     const latest = arr.prices[arr.prices.length - 1]!;
-    const changes = calculateChanges(arr.dates, arr.prices);
-    const mas = calculateMAs(arr.prices);
     const multiplier = todayPrices[name]?.multiplier ?? ASSETS[name]?.fallbackMultiplier ?? 1;
+    const jumpRatio = arr.category === 'crypto' ? 1.6 : 1.5;
+
+    // % changes: PRIMARY source is the freshly-fetched ADJUSTED 1y series (split/dividend/
+    // gap-proof); Redis history is only the fallback when the fetch failed. Either path runs
+    // the tripwires — a series with an unexplained cliff or a stale baseline publishes
+    // NOTHING for the affected horizon rather than a wrong number. (2026-07-27: IWF −73%.)
+    let changes: Record<string, number> = {};
+    const fetched = todayPrices[name];
+    let usedSeries = false;
+    if (fetched?.series) {
+      const merged = mergeLatestIntoSeries(fetched.series, fetched.adjustedPrice, fetched.tradingDate);
+      const breaks = detectScaleBreaks(merged, jumpRatio);
+      if (breaks.length > 0) {
+        warn(`${name}: ${breaks.length} scale break(s) in fetched series [${breaks.map(b => `${b.date}×${b.ratio}`).join(', ')}] — changes withheld`);
+        usedSeries = true; // do NOT fall back to raw history, it is wronger
+      } else {
+        const r = calculateChangesChecked(merged.dates, merged.prices);
+        if (r.staleBaselines.length > 0) {
+          warn(`${name}: stale baseline for ${r.staleBaselines.join(', ')} — those horizons withheld`);
+        }
+        changes = r.changes;
+        usedSeries = true;
+      }
+    }
+    if (!usedSeries) {
+      const histSeries = { dates: arr.dates, prices: arr.prices };
+      const breaks = detectScaleBreaks(histSeries, jumpRatio);
+      if (breaks.length > 0) {
+        warn(`${name}: history-fallback series has ${breaks.length} scale break(s) — changes withheld (re-seed: node scripts/seed-prices.mjs)`);
+      } else {
+        const r = calculateChangesChecked(arr.dates, arr.prices);
+        if (r.staleBaselines.length > 0) {
+          warn(`${name}: history-fallback stale baseline for ${r.staleBaselines.join(', ')} — withheld`);
+        }
+        changes = r.changes;
+      }
+    }
+
+    // MAs: Redis history is the only source deep enough (200W = 1000 trading days) — but a
+    // window that crosses a scale break (raw pre-split closes) produces a blended-scale MA,
+    // so each window is checked and a corrupted MA is withheld, never shipped.
+    const allMas = calculateMAs(arr.prices);
+    const mas: Record<string, number> = {};
+    for (const [label, period] of Object.entries(MA_PERIODS)) {
+      if (allMas[label] == null) continue;
+      const window = { dates: arr.dates.slice(-period), prices: arr.prices.slice(-period) };
+      const wBreaks = detectScaleBreaks(window, jumpRatio);
+      if (wBreaks.length > 0) {
+        warn(`${name}: ${label} MA window crosses a scale break [${wBreaks.map(b => `${b.date}×${b.ratio}`).join(', ')}] — withheld (re-seed: node scripts/seed-prices.mjs)`);
+        continue;
+      }
+      mas[label] = allMas[label]!;
+    }
 
     const cat = categoryMap[arr.category];
     if (cat) {
@@ -250,6 +303,29 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
     }
   }
 
+  // DXY real 1Y change from its own adjusted series. (2026-07-27: the live route was
+  // computing "yoyChange" against YESTERDAY's snapshot value — a 1-day move labeled YoY
+  // on the dashboard. The honest number comes from the index's 1y series.)
+  let dxySnapshot: (DXYResult & { yoyChange?: number | null }) | null = dxyData;
+  if (dxyData) {
+    let yoyChange: number | null = null;
+    try {
+      const dxySeries = await fetchYahooSeriesWithMeta('DX-Y.NYB', false);
+      if (dxySeries?.series) {
+        const merged = mergeLatestIntoSeries(dxySeries.series, dxyData.value, dxySeries.tradingDate);
+        const breaks = detectScaleBreaks(merged, 1.5);
+        if (breaks.length === 0) {
+          yoyChange = calculateChangesChecked(merged.dates, merged.prices).changes['1Y'] ?? null;
+        } else {
+          warn(`DXY: scale break in series — yoyChange withheld`);
+        }
+      }
+    } catch (err) {
+      warn(`DXY 1Y series fetch failed: ${err instanceof Error ? err.message : err}`);
+    }
+    dxySnapshot = { ...dxyData, yoyChange };
+  }
+
   return {
     generatedAt: now,
     date: today,
@@ -257,7 +333,7 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
     crypto,
     commodities,
     rates,
-    dxy: dxyData,
+    dxy: dxySnapshot,
     fearGreed: fgResult.status === 'fulfilled' ? fgResult.value : null,
     errors: [],
     _warnings: [..._warnings],
@@ -271,21 +347,26 @@ interface YahooPriceResult {
   adjustedPrice: number;
   multiplier: number;
   tradingDate: string | null; // actual trading date from Yahoo response
+  /** Full 1y ADJUSTED daily series (fallback-symbol series is pre-multiplied) — the
+   *  source of truth for % changes since 2026-07-27. */
+  series: PriceSeries | null;
 }
 
 async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> {
   const results: Record<string, YahooPriceResult> = {};
 
   for (const [name, asset] of Object.entries(ASSETS)) {
+    const isCrypto = asset.category === 'crypto';
     try {
       // Try primary symbol first (actual index/futures — direct price, no multiplier)
-      const primary = await fetchYahooCurrentPriceWithMeta(asset.yahoo);
+      const primary = await fetchYahooSeriesWithMeta(asset.yahoo, isCrypto);
       if (primary && primary.price > 0) {
-        console.log(`[snapshot] ${name}: ${asset.yahoo} = ${primary.price} (direct, date: ${primary.tradingDate})`);
+        console.log(`[snapshot] ${name}: ${asset.yahoo} = ${primary.price} (direct, date: ${primary.tradingDate}, series: ${primary.series?.prices.length ?? 0} bars)`);
         results[name] = {
           adjustedPrice: round(primary.price, 2),
           multiplier: 1,
           tradingDate: primary.tradingDate,
+          series: primary.series,
         };
         await sleep(200);
         continue;
@@ -296,10 +377,10 @@ async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> 
 
     await sleep(200);
 
-    // Fallback: use ETF proxy × multiplier
+    // Fallback: use ETF proxy × multiplier (series pre-multiplied so all math stays consistent)
     if (asset.fallback) {
       try {
-        const fallback = await fetchYahooCurrentPriceWithMeta(asset.fallback);
+        const fallback = await fetchYahooSeriesWithMeta(asset.fallback, isCrypto);
         if (fallback && fallback.price > 0) {
           const adjusted = round(fallback.price * asset.fallbackMultiplier, 2);
           warn(`[snapshot] ${name}: using fallback ${asset.fallback}=${fallback.price} × ${asset.fallbackMultiplier} = ${adjusted}`);
@@ -307,6 +388,9 @@ async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> 
             adjustedPrice: adjusted,
             multiplier: asset.fallbackMultiplier,
             tradingDate: fallback.tradingDate,
+            series: fallback.series
+              ? { dates: fallback.series.dates, prices: fallback.series.prices.map(p => round(p * asset.fallbackMultiplier, 4)) }
+              : null,
           };
         }
       } catch (err) {
@@ -319,11 +403,14 @@ async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> 
   return results;
 }
 
-async function fetchYahooCurrentPriceWithMeta(symbol: string): Promise<{ price: number; tradingDate: string | null } | null> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+async function fetchYahooSeriesWithMeta(symbol: string, isCrypto: boolean): Promise<{ price: number; tradingDate: string | null; series: PriceSeries | null } | null> {
+  // 1y of ADJUSTED daily closes + the live quote in ONE request — the % changes come from
+  // this self-consistent series (split/dividend/gap-proof), not from stored raw history.
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y&events=div%7Csplit`;
   const res = await fetchWithTimeout(url, TIMEOUT, { 'User-Agent': 'Mozilla/5.0' });
   const data = await res.json();
-  const meta = data?.chart?.result?.[0]?.meta;
+  const result = data?.chart?.result?.[0];
+  const meta = result?.meta;
   const price = meta?.regularMarketPrice;
   if (typeof price !== 'number' || price <= 0) return null;
 
@@ -335,7 +422,15 @@ async function fetchYahooCurrentPriceWithMeta(symbol: string): Promise<{ price: 
     tradingDate = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date(meta.regularMarketTime * 1000));
   }
 
-  return { price, tradingDate };
+  let series: PriceSeries | null = null;
+  try {
+    series = seriesFromYahooChart(result, { crypto: isCrypto });
+    if (series.prices.length < 30) series = null; // too thin to trust for calendar changes
+  } catch {
+    series = null;
+  }
+
+  return { price, tradingDate, series };
 }
 
 // ─── READ HISTORICAL DATA FROM REDIS ─────────────────────────────────────────
@@ -446,79 +541,8 @@ function buildAssetPriceArrays(history: HistoryEntry[]): Record<string, AssetPri
 }
 
 // ─── CALCULATION HELPERS ─────────────────────────────────────────────────────
-
-// Calculate % changes matching Yahoo Finance conventions:
-//   tradingDays: count back N entries in the date array (1D, 5D)
-//   months/years: calendar offset with closest-trading-day lookup (1M, 1Y)
-function calculateChanges(dates: string[], prices: number[]): Record<string, number> {
-  if (!dates || !prices || prices.length < 2) return {};
-
-  const latestIdx = prices.length - 1;
-  const latest = prices[latestIdx]!;
-  const changes: Record<string, number> = {};
-
-  for (const [label, period] of Object.entries(CHANGE_PERIODS)) {
-    let bestIdx = -1;
-
-    if (period.tradingDays) {
-      // Simple array index lookback — each entry IS a trading day
-      bestIdx = latestIdx - period.tradingDays;
-    } else {
-      // Calendar date lookback with binary search for closest trading day
-      // Parse date components directly to avoid timezone issues
-      const dateStr = dates[latestIdx]!;
-      const parts = dateStr.split('-').map(Number);
-      let ty = parts[0]!, tm = parts[1]!, td = parts[2]!;
-      if (period.years) ty -= period.years;
-      if (period.months) {
-        tm -= period.months;
-        if (tm < 1) { ty -= 1; tm += 12; }
-      }
-      if (period.days) td -= period.days;
-      // Clamp day to valid range for target month (handles e.g. March 31 → Feb 28)
-      const maxDay = new Date(ty, tm, 0).getDate();
-      if (td > maxDay) td = maxDay;
-      const targetStr = `${ty}-${String(tm).padStart(2, '0')}-${String(td).padStart(2, '0')}`;
-
-      let lo = 0, hi = latestIdx - 1;
-      while (lo <= hi) {
-        const mid = (lo + hi) >> 1;
-        if (dates[mid]! <= targetStr) {
-          bestIdx = mid;
-          lo = mid + 1;
-        } else {
-          hi = mid - 1;
-        }
-      }
-    }
-
-    if (bestIdx >= 0 && prices[bestIdx] != null && prices[bestIdx]! > 0) {
-      changes[label] = round(((latest - prices[bestIdx]!) / prices[bestIdx]!) * 100, 2);
-    }
-  }
-
-  return changes;
-}
-
-function calculateMAs(prices: number[]): Record<string, number> {
-  if (!prices || prices.length < 50) return {};
-
-  const mas: Record<string, number> = {};
-
-  for (const [label, period] of Object.entries(MA_PERIODS)) {
-    if (prices.length >= period) {
-      const slice = prices.slice(-period);
-      const avg = slice.reduce((sum, v) => sum + v, 0) / slice.length;
-      mas[label] = round(avg, 2);
-    } else if (prices.length >= Math.floor(period * 0.8)) {
-      // Allow partial MA if we have at least 80% of the data
-      const avg = prices.reduce((sum, v) => sum + v, 0) / prices.length;
-      mas[label] = round(avg, 2);
-    }
-  }
-
-  return mas;
-}
+// calculateChangesChecked / calculateMAs / detectScaleBreaks live in @/lib/dashboard-math
+// (pure + gated by scripts/dashboard-math-gate.ts).
 
 // ─── FEAR & GREED ────────────────────────────────────────────────────────────
 

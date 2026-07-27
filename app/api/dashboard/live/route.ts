@@ -268,15 +268,16 @@ function buildResponse({
     cryptoMeta: Object.keys(cryptoMeta).length > 0 ? cryptoMeta : null,
   };
 
+  // DXY YoY: pass through the snapshot's REAL 1Y change (computed from the index's own
+  // adjusted 1y series). Pre-2026-07-27 this recomputed vs YESTERDAY's snapshot value —
+  // a 1-day move rendered as "YoY" on the dashboard.
   if (dxy) {
     meta.dxy = {
       value: dxy.value,
-      yoyChange: snapshot?.dxy?.value
-        ? round(((dxy.value - snapshot.dxy.value) / snapshot.dxy.value) * 100, 2)
-        : null,
+      yoyChange: snapshot?.dxy?.yoyChange ?? null,
     };
   } else if (snapshot?.dxy) {
-    meta.dxy = { value: snapshot.dxy.value, yoyChange: null };
+    meta.dxy = { value: snapshot.dxy.value, yoyChange: snapshot.dxy.yoyChange ?? null };
   }
 
   if (manual.fedWatch) meta.fedWatch = manual.fedWatch;
