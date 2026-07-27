@@ -57,6 +57,38 @@ export function auditAudioIntroOrThrow(
   }
 }
 
+// ─── Outro audit ─────────────────────────────────────────────────────────────
+
+/** Normalize for tail comparison: lowercase, alphanumeric words only — tolerant of the
+ *  regex-normalize/pronunciation passes that run after stitching. */
+function normalizeTail(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/** Blocking outro audit: the finished script must END with the deterministic sign-off.
+ *  (2026-07-27: the W30 weekly light shipped ending on a GPT-invented goodbye — the written
+ *  close was discarded upstream and nothing checked the tail, so the episode "just cut off".
+ *  An episode that does not end with the house sign-off does not ship.) */
+export function auditAudioOutro(fullScript: string, expectedSignOff: string): AudioIntroAuditResult {
+  const script = normalizeTail(fullScript);
+  const expected = normalizeTail(expectedSignOff);
+  const tail = expected.length > 80 ? expected.slice(-80) : expected;
+  if (script.endsWith(tail)) return { ok: true, errors: [] };
+  return {
+    ok: false,
+    errors: [
+      `outro: script does not end with the expected sign-off ("…${tail.slice(-50)}") — actual ending: "…${script.slice(-70)}"`,
+    ],
+  };
+}
+
+export function auditAudioOutroOrThrow(fullScript: string, expectedSignOff: string, label = 'audio'): void {
+  const result = auditAudioOutro(fullScript, expectedSignOff);
+  if (!result.ok) {
+    throw new Error(`[${label}] Audio outro audit failed: ${result.errors.join(' | ')}`);
+  }
+}
+
 export function formatAuditFailure(result: AudioIntroAuditResult): string {
   return result.errors.join(' | ');
 }

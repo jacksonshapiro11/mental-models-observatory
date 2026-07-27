@@ -8,8 +8,8 @@ import { put } from '@vercel/blob';
 import OpenAI from 'openai';
 import { getBriefByDate, getWeeklyBySlug } from '@/lib/daily-update-parser';
 import { isStaleForAutoPublish, todayET } from '@/lib/publish-date';
-import { preprocessBriefForTTS, checkScriptFidelity } from '@/lib/audio/text-preprocessor';
-import { auditAudioIntroOrThrow } from '@/lib/audio/audio-intro-gate';
+import { preprocessBriefForTTS, checkScriptFidelity, DAILY_SIGN_OFF, WEEKLY_SIGN_OFF } from '@/lib/audio/text-preprocessor';
+import { auditAudioIntroOrThrow, auditAudioOutroOrThrow } from '@/lib/audio/audio-intro-gate';
 import { resolveDisplayDate } from '@/lib/brief-date';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
 import { writeEpisodeMetadata, readEpisodeMetadata } from '@/lib/audio/podcast-feed';
@@ -183,6 +183,11 @@ export async function generateFullBriefAudio(
     const resolvedDisplayDate = resolveDisplayDate(brief.displayDate, brief.date);
     auditAudioIntroOrThrow(preprocessed.fullText, brief.date, resolvedDisplayDate);
     console.log(`[audio:full] Intro date audit PASS for ${brief.date}`);
+
+    // Outro audit (2026-07-27): the episode must end with the deterministic sign-off —
+    // a script whose tail was dropped or rewritten does not ship.
+    auditAudioOutroOrThrow(preprocessed.fullText, isWeekly ? WEEKLY_SIGN_OFF : DAILY_SIGN_OFF, 'audio:full');
+    console.log(`[audio:full] Outro sign-off audit PASS`);
 
     const fidelity = checkScriptFidelity(rawMarkdown || '', preprocessed.fullText, { minRatio: 0.45 });
     for (const w of fidelity.warnings) console.warn(`[audio:full] ⚠ FIDELITY — ${w}`);

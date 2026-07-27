@@ -166,6 +166,21 @@ function concatenateMP3Buffers(buffers: Buffer[]): Buffer {
   return Buffer.concat(buffers);
 }
 
+/** Floor on plausible audio bytes per input character. Real output runs ~800 B/char at
+ *  128 kbps; 100 B/char only trips on an empty or partial response body — the failure mode
+ *  where a terminated stream resolves with a fraction of the audio and the concatenated
+ *  episode ships silently truncated. Exported for the regression suite. (2026-07-27) */
+export const MIN_AUDIO_BYTES_PER_CHAR = 100;
+
+export function assertPlausibleChunkAudio(chunkChars: number, bytes: number, label = 'TTS chunk'): void {
+  if (bytes < chunkChars * MIN_AUDIO_BYTES_PER_CHAR) {
+    throw new Error(
+      `${label}: got ${bytes} bytes of audio for a ${chunkChars}-char chunk ` +
+        `(< ${MIN_AUDIO_BYTES_PER_CHAR} B/char) — empty or truncated TTS response; refusing to ship a cut episode.`,
+    );
+  }
+}
+
 export interface GenerateFullAudioOptions extends TTSOptions {
   /** Callback for progress updates */
   onProgress?: (completed: number, total: number) => void;
@@ -213,6 +228,8 @@ export async function generateFullAudio(
         () => provider.generateAudio(chunk, options),
         { label: `TTS chunk ${i + 1}/${chunks.length}` }
       );
+      // A silently-partial buffer must fail the RUN, never ship as a cut episode.
+      assertPlausibleChunkAudio(chunk.length, buffer.length, `TTS chunk ${i + 1}/${chunks.length}`);
       completed++;
       options?.onProgress?.(completed, chunks.length);
       return buffer;

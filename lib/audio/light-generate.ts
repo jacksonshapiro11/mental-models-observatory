@@ -6,8 +6,8 @@ import { put } from '@vercel/blob';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
 import { getWeeklyLightBySlug } from '@/lib/weekly-light-parser';
 import { isStaleForAutoPublish, todayET } from '@/lib/publish-date';
-import { preprocessBriefLightForTTS, checkScriptFidelity } from '@/lib/audio/text-preprocessor';
-import { auditAudioIntroOrThrow } from '@/lib/audio/audio-intro-gate';
+import { preprocessBriefLightForTTS, checkScriptFidelity, DAILY_LIGHT_SIGN_OFF, WEEKLY_LIGHT_SIGN_OFF } from '@/lib/audio/text-preprocessor';
+import { auditAudioIntroOrThrow, auditAudioOutroOrThrow } from '@/lib/audio/audio-intro-gate';
 import { resolveDisplayDate } from '@/lib/brief-date';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
 import { writeLightEpisodeMetadata, readLightEpisodeMetadata } from '@/lib/audio/podcast-feed';
@@ -127,6 +127,11 @@ export async function generateLightAudio(
     const resolvedDisplayDate = resolveDisplayDate(brief.displayDate, brief.date);
     auditAudioIntroOrThrow(preprocessed.fullText, brief.date, resolvedDisplayDate);
     console.log(`[audio:light] Intro date audit PASS for ${brief.date}`);
+
+    // Outro audit (2026-07-27, the W30 cut-off): the episode must end with the written close's
+    // deterministic sign-off — a tail that was dropped or GPT-rewritten does not ship.
+    auditAudioOutroOrThrow(preprocessed.fullText, isWeekly ? WEEKLY_LIGHT_SIGN_OFF : DAILY_LIGHT_SIGN_OFF, 'audio:light');
+    console.log(`[audio:light] Outro sign-off audit PASS`);
 
     const fidelity = checkScriptFidelity(
       brief.sections.map((s) => s.content).join('\n'),

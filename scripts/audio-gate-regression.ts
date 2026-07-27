@@ -32,7 +32,12 @@ import {
   WEEKLY_TRANSITION_OVERRIDES,
   DAILY_SIGN_OFF,
   WEEKLY_SIGN_OFF,
+  buildLightEnding,
+  DAILY_LIGHT_SIGN_OFF,
+  WEEKLY_LIGHT_SIGN_OFF,
 } from '../lib/audio/text-preprocessor';
+import { auditAudioOutro } from '../lib/audio/audio-intro-gate';
+import { assertPlausibleChunkAudio } from '../lib/audio/tts-client';
 import {
   buildDeterministicIntroPrefix,
   buildDeterministicLightIntroPrefix,
@@ -422,6 +427,55 @@ check(
   'negative control: a plain year 2027 is left alone (not turned into dollars)',
   regexNormalize('a deficit widening toward 42 billion by 2027'),
   a => (a as string).includes('2027') && !/dollars\s+2027/.test(a as string),
+);
+
+console.log('── 9. Light ending + outro gate + chunk plausibility (the W30 cut-off class) ──');
+
+const w30CloseText =
+  'That is the week: a higher-for-longer regime that priced itself in from three directions while its loudest driver was already fading.';
+
+check(
+  'light ending speaks the WRITTEN close verbatim, then the weekly sign-off',
+  buildLightEnding(w30CloseText, true),
+  a => (a as string).startsWith(w30CloseText) && (a as string).endsWith(WEEKLY_LIGHT_SIGN_OFF),
+);
+check(
+  'light ending daily flavor',
+  buildLightEnding('Some landing thought.', false),
+  a => (a as string).startsWith('Some landing thought.') && (a as string).endsWith(DAILY_LIGHT_SIGN_OFF),
+);
+check(
+  'no close in the file → sign-off alone (an episode can never end mid-air)',
+  buildLightEnding(undefined, true),
+  a => a === WEEKLY_LIGHT_SIGN_OFF,
+);
+check(
+  'outro audit PASS on a script ending with the sign-off (survives regex normalization)',
+  auditAudioOutro('Episode body here.\n\n...\n\n' + regexNormalize(WEEKLY_LIGHT_SIGN_OFF), WEEKLY_LIGHT_SIGN_OFF).ok,
+  a => a === true,
+);
+check(
+  'outro audit FAIL on the exact W30 shipped ending (GPT-invented goodbye, close discarded)',
+  auditAudioOutro(
+    'it\'s time to rethink the structure rather than just adding more resources.\n\n...\n\nThanks for spending your time with us today. Take care and we\'ll catch up again soon.',
+    WEEKLY_LIGHT_SIGN_OFF,
+  ).ok,
+  a => a === false,
+);
+check(
+  'outro audit PASS for the full weekly (WEEKLY_SIGN_OFF tail)',
+  auditAudioOutro('Body.\n\n...\n\n' + WEEKLY_SIGN_OFF, WEEKLY_SIGN_OFF).ok,
+  a => a === true,
+);
+check(
+  'chunk plausibility SILENT on real-rate audio (~800 B/char)',
+  (() => { try { assertPlausibleChunkAudio(4500, 4500 * 800); return true; } catch { return false; } })(),
+  a => a === true,
+);
+check(
+  'chunk plausibility THROWS on a near-empty chunk buffer (silent-truncation class)',
+  (() => { try { assertPlausibleChunkAudio(4500, 12_000); return false; } catch { return true; } })(),
+  a => a === true,
 );
 
 console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);

@@ -1017,7 +1017,7 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   'The Take': 'Do NOT introduce or announce this section by name. A separate transition handles that. Start with the topic: "We\'re looking at [topic/headline from the content]." Give the listener a one-sentence setup of what question or argument you\'re about to unpack. THEN build the argument naturally, like you\'re thinking through it in real time. This is the heart of the Markets section. Give it full treatment, don\'t compress. Explain any frameworks in plain language. If the listener has never heard of the concept, they should still follow the logic. This should feel like the most intellectually satisfying part of the episode. Keep ALL the nuance. The "where this might be wrong" is just as important as the thesis.',
   // Weekly-only top-level sections (THE SIGNAL and THE PREDICTIONS appear only in the Weekly)
   'The Signal': 'Do NOT introduce or announce this section. A separate transition handles that. Just start with the first signal. Forward-looking tone: these are slow, structural things forming that most people are missing, each carried at week-view. Each signal ends with a clear if/then condition to watch. Make the if/then land in plain language. Give each signal what it needs. If signals connect, say so. Stay close to the written text. Do not over-simplify.',
-  'The Predictions': 'Do NOT introduce or announce this section. A separate transition handles that. Start with the framing sentence, then deliver the standing calls. There is one call per horizon: next week, next month, next year. For EACH call, say the call clearly AND its single kill-switch condition (the one thing that would prove it wrong). The kill switch is as important as the call, never drop it. Keep it tight and concrete. Stay close to the written text; do not invent or re-direct a call.',
+  'The Predictions': 'Do NOT introduce or announce this section. A separate transition handles that. The section has a FIXED architecture — a framing line, THE SCOREBOARD (graded calls), THE BOOK (three standing calls), then a short registered-and-watching note — and your delivery must keep those blocks audibly distinct. Scoreboard: one graded call at a time, verdict FIRST ("hit" / "miss"), then the receipt number, with a clean beat before the next call — never blur two graded calls into one stream. Then downshift for the book: each of the three calls is its own moment. Say the horizon plainly ("For next week"), state the call in one clear breath, give its why, then deliver the kill switch DELIBERATELY — slower, the single condition that proves it wrong; the kill switch is as important as the call, never drop it and never rush it. Brief pause before each new horizon. Finish the registered-and-watching note briskly. Stay close to the written text; do not invent or re-direct a call.',
   'The Model': 'Do NOT introduce or announce this section. A separate transition handles that. Teach this mental model as a standalone concept using the timeless examples from the written text — do NOT connect it to today\'s news, markets, or any companies mentioned in earlier sections. Name the model, explain it with genuine intellectual energy, and land on the decision tool. This is an intellectual gift the listener keeps forever. The listener should feel like they just gained a new thinking tool.',
   'Inner Game': 'Do NOT introduce or announce this section. A separate transition handles that. Just start reading warmly and with genuine presence. Include the quote, the teaching, and the practical action. This is the personal, human moment of the episode. Let it breathe. Don\'t rush it. No market references here at all. This should feel like a gift. The listener should feel lighter and more grounded after hearing it. The energy shifts from analytical to reflective, but it should still feel uplifting, not heavy.',
   'Discovery': 'Do NOT introduce or announce this section. A separate transition handles that. Just start telling the story. This is an original essay. NOT a reading recommendation, NOT a list of cool facts (that was Wild Card). Discovery is ONE deep narrative with a single through-line argument. The energy here is slower, more reflective, more intellectually weighty than Wild Card. Tell the story with fascination but let it build. Explain the concept, the surprising finding, and why it reframes something the listener thought they understood. Do NOT say "this is a great read" or refer to it as something to read. You\'re delivering it right now. Stay very close to the written text. The essay was carefully constructed. End the episode on intellectual wonder. You are the FINAL content section: your last line must land like an ending, not a cliffhanger or an open loop — the sign-off follows immediately, so close the thought completely before you stop.',
@@ -1759,11 +1759,11 @@ export async function preprocessBriefForTTS(
     } catch (err) {
       console.warn('[audio] Scriptwriter failed, falling back to regex-only:', err);
       gateWarnings = [`scriptwriter failed (${err}) — regex-only fallback for the WHOLE brief`];
-      fullText = regexNormalize(rawContent);
+      fullText = regexNormalize(`${rawContent}\n\n${options.isWeekly ? WEEKLY_SIGN_OFF : DAILY_SIGN_OFF}`);
     }
   } else {
-    // Regex-only fallback
-    fullText = regexNormalize(rawContent);
+    // Regex-only fallback (sign-off appended so the outro audit holds on every path)
+    fullText = regexNormalize(`${rawContent}\n\n${options.isWeekly ? WEEKLY_SIGN_OFF : DAILY_SIGN_OFF}`);
   }
 
   // Build section metadata (for logging — the script is one continuous piece now)
@@ -1847,6 +1847,28 @@ const LIGHT_SECTION_TRANSITIONS: Record<string, string> = {
   'the-close': '',  // No transition — the close IS the sign-off
 };
 
+// ─── Light endings (deterministic — never GPT-owned) ─────────────────────────
+// 2026-07-27 (W30 weekly light): THE CLOSE went through GPT, whose instruction demands a
+// market-free goodbye; the written close was market-laden, so GPT obeyed the instruction and
+// DISCARDED the content, ending the episode on one generic invented line — heard as "it just
+// cut off, no sign-off". Same failure class as the meditation quote: sacred text trusted to a
+// prompt. The close now bypasses GPT entirely (spoken verbatim), and a deterministic sign-off
+// ALWAYS follows — mirroring how the full brief's endings have always worked.
+
+export const DAILY_LIGHT_SIGN_OFF =
+  'That\'s today\'s Super Brief. Quick, sharp, and hopefully you\'re walking away with something useful. We\'ll be back tomorrow. Until then, stay curious.';
+
+export const WEEKLY_LIGHT_SIGN_OFF =
+  'That\'s the week. Thanks for spending part of your Sunday with us. The daily brief is back tomorrow morning. Until then, stay curious.';
+
+/** The light episode's ending: the WRITTEN close verbatim (markdown is cleaned by the final
+ *  normalize pass), then the deterministic sign-off. Pure — exercised by audio-gate-regression. */
+export function buildLightEnding(closeContent: string | undefined, isWeekly: boolean): string {
+  const signOff = isWeekly ? WEEKLY_LIGHT_SIGN_OFF : DAILY_LIGHT_SIGN_OFF;
+  const close = (closeContent ?? '').trim();
+  return close ? `${close}\n\n${signOff}` : signOff;
+}
+
 /** Weekly-light overrides — the Sunday product must not say "today" (W27 shipped
  *  "driving the conversation today" on a week-in-review). Resolved before the
  *  daily map when PreprocessOptions.isWeekly is set. */
@@ -1892,9 +1914,12 @@ const LIGHT_SECTION_INSTRUCTIONS: Record<string, string> = {
   'The Update': 'Do NOT introduce or announce this section — the transition handles it. Cover every story. Each one gets its headline, the key numbers, why it matters, and the "so what." STORY BOUNDARIES (critical): each story is its own beat. Open every new story with a brief, VARIED turn signal in a few words (Meanwhile / One more / The quieter one / On a different front) so the listener always knows a new story just started. Never let two stories blur into one sentence stream, and never bridge them with a fabricated connection. Do NOT skip any story. Stay close to the source text. The specificity is the value. Get to the insight fast. No throat-clearing.',
   'Markets Minute': 'Do NOT introduce or announce this section — the transition handles it. Quick, punchy market read. What\'s the character of the session or the week? Connect the dots between equities, crypto, commodities, and rates. If divergences tell a story, say so. Round prices naturally for speech. This should feel brisk but insightful.',
   'Interesting Things': 'Do NOT introduce or announce this section — the transition handles it; start directly with the first item. Lighter energy, genuine curiosity. These are fascinating things OUTSIDE the main stories. Science, health, breakthroughs, oddities. Each item is its own clear beat: open each new item on its own turn, never run two items together into one stream. Give each one what it needs to land. If items genuinely connect, say so. No invented wrap-up moral at the end — land the last item and stop. Stay close to the written text.',
-  'Our Calls': 'Brisk and concrete. These are our three standing calls going forward: next week, next month, next year. Say each call in one clear line AND its single kill-switch condition (the one thing that would prove it wrong). If a call came due, give its one-line grade first. Keep it tight, this is the accountability nod, not a deep dive. Stay close to the written text; do not invent or re-direct a call.',
+  'Our Calls': 'Concrete and unhurried. These are our three standing calls going forward: next week, next month, next year. If calls came due, give the grades first, one at a time, verdict then number. Then ONE call at a time with a clean beat between them: say the horizon, state the call in one clear line, then its kill-switch condition DELIBERATELY (the one thing that would prove it wrong) — never run two calls together into one stream. This is the accountability nod, not a deep dive. Stay close to the written text; do not invent or re-direct a call.',
   'The Meditation': 'Warm, present, reflective. This is the FULL Inner Game and a centerpiece of the brief: read it complete, do NOT shorten or summarize. Deliver the opening setup, the full quote and attribution, the entire reflection, and the closing practice. Let it breathe. No rushing. This is the human moment. The listener should feel grounded after hearing it.',
   'The Model': 'This is the brief\'s deep keeper: the one reusable idea the listener takes away. Teach it, do not just name it. Give the vivid example, explain the mechanism (why it is true), then land on the bolded "Use it" decision tool they can apply today. Use the timeless examples from the written text and do NOT tie it to today\'s news, markets, or companies. Keep it clear and unhurried; the listener should finish with something genuinely useful they will reuse.',
+  // UNUSED as of 2026-07-27: THE CLOSE bypasses the scriptwriter entirely (see buildLightEnding —
+  // W30 proved this instruction and a market-laden written close conflict, and GPT resolved it by
+  // discarding the close). Kept so a stray lookup never falls to the generic default instruction.
   'The Close': 'Warm, brief sign-off. This is the last thing the listener hears. Land it cleanly — don\'t trail off. One or two sentences that feel like a human saying goodbye. No market references, no previews of tomorrow.',
 };
 
@@ -1996,12 +2021,17 @@ export async function preprocessBriefLightForTTS(
       // carry a running fact list forward: each section is told what earlier ones already
       // covered, so MARKETS MINUTE stops recapping figures THE UPDATE already delivered (the
       // 2026-07-01 yen/flows repeat). Previously the light passed NO dedup context at all.
+      // THE CLOSE bypasses the scriptwriter — it is spoken verbatim via buildLightEnding
+      // below, so it is excluded from the GPT loop. (2026-07-27, W30 close-discard.)
+      const speakable = ordered.filter(s => s.id !== 'the-close');
+      const closeSection = ordered.find(s => s.id === 'the-close');
+
       const usedTransitions = new Set<string>();
       const runningFacts: string[] = [];
-      for (let i = 0; i < ordered.length; i++) {
-        const section = ordered[i]!;
-        const prevSection = i > 0 ? ordered[i - 1]?.label : 'intro';
-        const nextSection = i < ordered.length - 1 ? ordered[i + 1]?.label : undefined;
+      for (let i = 0; i < speakable.length; i++) {
+        const section = speakable[i]!;
+        const prevSection = i > 0 ? speakable[i - 1]?.label : 'intro';
+        const nextSection = i < speakable.length - 1 ? speakable[i + 1]?.label : undefined;
 
         const context: SectionContext = { prevSection, nextSection };
         if (runningFacts.length > 0) context.alreadyCovered = [...runningFacts];
@@ -2040,13 +2070,10 @@ export async function preprocessBriefLightForTTS(
         }
       }
 
-      // Sign-off: if the brief has its own THE CLOSE section it was already spoken above;
-      // otherwise append a default so the episode never ends mid-air.
-      const hasClose = ordered.some(s => s.id === 'the-close');
-      if (!hasClose) {
-        const signOff = 'That\'s today\'s Super Brief. Quick, sharp, and hopefully you\'re walking away with something useful. We\'ll be back tomorrow. Until then, stay curious.';
-        sectionScripts.push(signOff);
-      }
+      // Ending: the WRITTEN close spoken verbatim (never GPT-owned), then the deterministic
+      // sign-off — ALWAYS, so the episode can never end mid-air or on an invented goodbye.
+      // light-generate's outro audit refuses to ship a script that does not end this way.
+      sectionScripts.push(buildLightEnding(closeSection?.content, options.isWeekly ?? false));
 
       // Stitch with pause markers
       const SECTION_PAUSE = '\n\n...\n\n';
@@ -2055,12 +2082,14 @@ export async function preprocessBriefLightForTTS(
     } catch (err) {
       console.warn('[audio:light] Scriptwriter failed, falling back to regex-only:', err);
       gateWarnings = [`light scriptwriter failed (${err}) — regex-only fallback for the WHOLE brief`];
-      const rawContent = ordered.map(s => `${s.label}:\n${s.content}`).join('\n\n');
-      fullText = regexNormalize(applyLightPronunciations(rawContent));
+      const rawContent = ordered.filter(s => s.id !== 'the-close').map(s => `${s.label}:\n${s.content}`).join('\n\n');
+      const ending = buildLightEnding(ordered.find(s => s.id === 'the-close')?.content, options.isWeekly ?? false);
+      fullText = regexNormalize(applyLightPronunciations(`${rawContent}\n\n${ending}`));
     }
   } else {
-    const rawContent = ordered.map(s => `${s.label}:\n${s.content}`).join('\n\n');
-    fullText = regexNormalize(applyLightPronunciations(rawContent));
+    const rawContent = ordered.filter(s => s.id !== 'the-close').map(s => `${s.label}:\n${s.content}`).join('\n\n');
+    const ending = buildLightEnding(ordered.find(s => s.id === 'the-close')?.content, options.isWeekly ?? false);
+    fullText = regexNormalize(applyLightPronunciations(`${rawContent}\n\n${ending}`));
   }
 
   const sections = ordered.map(s => ({
