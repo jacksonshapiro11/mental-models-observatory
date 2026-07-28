@@ -36,7 +36,9 @@ const ASSETS: Record<string, { yahoo: string; crypto?: boolean }> = {
 };
 
 async function fetchSeries(symbol: string, crypto: boolean) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y&events=div%7Csplit`;
+  // range=2y — same window as the snapshot route (a 1y window's first bar can land AFTER
+  // the pre-close 1Y target and the horizon vanishes; 2026-07-28).
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2y&events=div%7Csplit`;
   const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();

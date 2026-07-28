@@ -418,9 +418,12 @@ async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> 
 }
 
 async function fetchYahooSeriesWithMeta(symbol: string, isCrypto: boolean): Promise<{ price: number; tradingDate: string | null; series: PriceSeries | null } | null> {
-  // 1y of ADJUSTED daily closes + the live quote in ONE request — the % changes come from
+  // 2y of ADJUSTED daily closes + the live quote in ONE request — the % changes come from
   // this self-consistent series (split/dividend/gap-proof), not from stored raw history.
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y&events=div%7Csplit`;
+  // range=2y (2026-07-28): range=1y is anchored to NOW, but the 1Y lookback is anchored to
+  // the LAST CLOSE — pre-close the calendar target can precede the window's first bar and
+  // the 1Y vanished. A 2y window puts every 1Y/1M target deep inside the data.
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2y&events=div%7Csplit`;
   const res = await fetchWithTimeout(url, TIMEOUT, { 'User-Agent': 'Mozilla/5.0' });
   const data = await res.json();
   const result = data?.chart?.result?.[0];

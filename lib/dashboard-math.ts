@@ -119,7 +119,22 @@ export function calculateChangesChecked(dates: string[], prices: number[]): Chan
   const latest = prices[latestIdx]!;
 
   for (const [label, period] of Object.entries(CHANGE_PERIODS)) {
-    const bestIdx = findBaselineIndex(dates, latestIdx, period);
+    let bestIdx = findBaselineIndex(dates, latestIdx, period);
+
+    // WINDOW-EDGE RULE (2026-07-28, found live by Cursor): when the fetch window starts at
+    // "now − range" but the latest EQUITY bar is the prior close, the calendar target can
+    // fall 1-3 days BEFORE the first bar (Tue 6 AM: latest = Mon 07-27, 1Y target = Sun
+    // 2025-07-27, first bar = Mon 2025-07-28) → no bar ≤ target → 1Y silently vanished.
+    // The honest baseline is the EARLIEST bar when it sits within the same tolerance we
+    // apply on the other side — Yahoo's own 1y % uses exactly that bar. Beyond the
+    // tolerance the horizon is omitted, never fabricated.
+    if (!period.tradingDays && bestIdx < 0 && dates.length > 0) {
+      const target = targetDateFor(dates[latestIdx]!, period);
+      if (dates[0]! > target && daysBetween(dates[0]!, target) <= MAX_BASELINE_GAP_DAYS) {
+        bestIdx = 0;
+      }
+    }
+
     if (bestIdx < 0 || prices[bestIdx] == null || prices[bestIdx]! <= 0) continue;
 
     // Gap tripwire for calendar periods: a baseline weeks before its target is a hole in

@@ -103,6 +103,22 @@ console.log('── 5. Latest-quote merge ──');
   check('older quote never rewrites history', stale.prices.length === 2 && stale.prices[1] === 101);
 }
 
+console.log('── 7. The 2026-07-28 window-edge class: first bar lands AFTER the 1Y target ──');
+{
+  // Exactly the live failure: series fetched Tue morning starts Mon 2025-07-28; the latest
+  // equity bar is Mon 2026-07-27; the 1Y target (Sun 2025-07-27) precedes the first bar.
+  const dates = weekdays('2025-07-28', '2026-07-27');
+  const prices = dates.map((_, i) => 100 * (1 + (0.20 * i) / (dates.length - 1)));
+  const r = calculateChangesChecked(dates, prices);
+  check('1Y PRESENT via the earliest-bar rule (was: silently missing)', r.changes['1Y'] != null && Math.abs(r.changes['1Y']! - 20) < 1.0, `got ${r.changes['1Y']}`);
+  check('window-edge baseline is not flagged stale', !r.staleBaselines.includes('1Y'), r.staleBaselines.join(','));
+  // Both directions: a window starting WEEKS after the target must still omit, never fabricate.
+  const lateDates = weekdays('2025-08-21', '2026-07-27');
+  const latePrices = lateDates.map((_, i) => 100 + i * 0.05);
+  const late = calculateChangesChecked(lateDates, latePrices);
+  check('first bar 25 days after target → 1Y omitted, not fabricated', late.changes['1Y'] == null, `got ${late.changes['1Y']}`);
+}
+
 console.log('── 6. MAs unchanged on healthy data ──');
 {
   const prices = Array.from({ length: 210 }, (_, i) => 100 + i * 0.1);
