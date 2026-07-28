@@ -32,6 +32,12 @@ const FINNHUB_KEY = process.env.FINNHUB_API_KEY!;
 
 const TIMEOUT = 8000;
 
+// 2026-07-28: the 1y-series fetches made this route exceed Vercel's ~10s default function
+// limit (every other long route here already exports maxDuration; this one never did because
+// the old range=1d fetches squeaked under). The timeout was silent from the dashboard's side —
+// the cron 504'd and the stale snapshot just stayed. 120s is ~6× the batched worst case.
+export const maxDuration = 120;
+
 // Change/MA math lives in lib/dashboard-math.ts (pure, gated by scripts/dashboard-math-gate.ts).
 // 2026-07-27: % changes are now computed from Yahoo's own ADJUSTED 1y series per asset —
 // split-proof (IWF 4:1 served 1Y=−73% vs real +6%), gap-proof (SMH's baseline landed weeks
@@ -355,7 +361,12 @@ interface YahooPriceResult {
 async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> {
   const results: Record<string, YahooPriceResult> = {};
 
-  for (const [name, asset] of Object.entries(ASSETS)) {
+  // Batched with limited concurrency (2026-07-28): serial fetch + 200ms sleeps × 22 assets
+  // × 1y payloads blew past the function limit. Four at a time keeps Yahoo happy and the
+  // whole sweep under ~8s; each asset's primary→fallback ladder stays serial within its task.
+  const CONCURRENCY = 4;
+
+  async function fetchOne(name: string, asset: (typeof ASSETS)[string]): Promise<void> {
     const isCrypto = asset.category === 'crypto';
     try {
       // Try primary symbol first (actual index/futures — direct price, no multiplier)
@@ -368,14 +379,11 @@ async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> 
           tradingDate: primary.tradingDate,
           series: primary.series,
         };
-        await sleep(200);
-        continue;
+        return;
       }
     } catch (err) {
       warn(`Yahoo ${name} primary (${asset.yahoo}) failed: ${err instanceof Error ? err.message : err}`);
     }
-
-    await sleep(200);
 
     // Fallback: use ETF proxy × multiplier (series pre-multiplied so all math stays consistent)
     if (asset.fallback) {
@@ -396,8 +404,14 @@ async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> 
       } catch (err) {
         warn(`Yahoo ${name} fallback (${asset.fallback}) failed: ${err instanceof Error ? err.message : err}`);
       }
-      await sleep(200);
     }
+  }
+
+  const entries = Object.entries(ASSETS);
+  for (let i = 0; i < entries.length; i += CONCURRENCY) {
+    const chunk = entries.slice(i, i + CONCURRENCY);
+    await Promise.allSettled(chunk.map(([name, asset]) => fetchOne(name, asset)));
+    if (i + CONCURRENCY < entries.length) await sleep(150);
   }
 
   return results;
