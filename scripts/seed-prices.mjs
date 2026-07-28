@@ -440,6 +440,33 @@ if (!DRY_RUN) {
 
   await redisSet('dashboard:snapshot:latest', JSON.stringify(latestSnapshot));
   console.log('Written latest snapshot to dashboard:snapshot:latest');
+
+  // ── REBUILD THE HISTORY BUNDLE (2026-07-28) ──────────────────────────────────
+  // The snapshot cron reads history through dashboard:history:bundle (a fast-path cache
+  // added AFTER this seeder was written) and only falls back to the per-day keys when the
+  // bundle is near-empty. Without rewriting the bundle here, a re-seed silently changed
+  // NOTHING the cron reads: the old raw-close bundle kept feeding the MAs, and IWF's
+  // post-split 50D/200D/200W stayed corrupt/blank forever. The bundle holds slim rows
+  // ({date, category: {name: {latestClose}}}) capped at 1200 days — same shape as
+  // lib/upstash.ts snapshotToHistoryEntry.
+  const BUNDLE_MAX_DAYS = 1200;
+  const bundleEntries = [];
+  for (const date of sortedDates) {
+    const entry = { date, equities: {}, crypto: {}, commodities: {}, rates: {} };
+    let count = 0;
+    for (const [name, data] of Object.entries(allHistories)) {
+      const price = data.history[date];
+      if (price == null || price <= 0) continue;
+      const slim = { latestClose: round(price, 2) };
+      if (data.multiplier != null && data.multiplier !== 1) slim.multiplier = data.multiplier;
+      entry[data.category][name] = slim;
+      count++;
+    }
+    if (count > 0) bundleEntries.push(entry);
+  }
+  const bundle = bundleEntries.slice(-BUNDLE_MAX_DAYS);
+  await redisSet('dashboard:history:bundle', JSON.stringify(bundle));
+  console.log(`Rebuilt dashboard:history:bundle with ${bundle.length} days (${bundle[0]?.date} → ${bundle[bundle.length - 1]?.date})`);
 } else {
   console.log(`\nDRY RUN complete — would write ${sortedDates.length} snapshots to Redis`);
 }
