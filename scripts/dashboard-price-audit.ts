@@ -21,9 +21,9 @@ import {
   mergeLatestIntoSeries,
 } from '../lib/dashboard-math';
 
-// Mirrors ASSETS in app/api/dashboard/snapshot/route.ts (primary symbols only — the audit
-// checks the primary path; fallbacks are exercised by the route itself).
-const ASSETS: Record<string, { yahoo: string; crypto?: boolean }> = {
+// Mirrors ASSETS in app/api/dashboard/snapshot/route.ts.
+// changeYahoo: continuous proxy for % changes only (NATGAS spot stays NG=F; horizons use UNG).
+const ASSETS: Record<string, { yahoo: string; crypto?: boolean; changeYahoo?: string }> = {
   SPX: { yahoo: '%5EGSPC' }, NDX: { yahoo: '%5ENDX' }, DJI: { yahoo: '%5EDJI' }, RUT: { yahoo: '%5ERUT' },
   IGV: { yahoo: 'IGV' }, SMH: { yahoo: 'SMH' }, IWF: { yahoo: 'IWF' }, IWD: { yahoo: 'IWD' },
   XLE: { yahoo: 'XLE' }, ARKK: { yahoo: 'ARKK' },
@@ -31,7 +31,7 @@ const ASSETS: Record<string, { yahoo: string; crypto?: boolean }> = {
   SOL: { yahoo: 'SOL-USD', crypto: true }, AAVE: { yahoo: 'AAVE-USD', crypto: true },
   UNI: { yahoo: 'UNI7083-USD', crypto: true }, LINK: { yahoo: 'LINK-USD', crypto: true },
   GOLD: { yahoo: 'GC%3DF' }, SILVER: { yahoo: 'SI%3DF' }, BRENT: { yahoo: 'BZ%3DF' },
-  COPPER: { yahoo: 'HG%3DF' }, NATGAS: { yahoo: 'NG%3DF' },
+  COPPER: { yahoo: 'HG%3DF' }, NATGAS: { yahoo: 'NG%3DF', changeYahoo: 'UNG' },
   US10Y: { yahoo: '%5ETNX' }, DXY: { yahoo: 'DX-Y.NYB' },
 };
 
@@ -62,16 +62,24 @@ async function fetchSeries(symbol: string, crypto: boolean) {
   for (const name of names) {
     const a = ASSETS[name]!;
     try {
-      const { series, price, tradingDate } = await fetchSeries(a.yahoo, !!a.crypto);
-      const merged = mergeLatestIntoSeries(series, price, tradingDate);
+      const spot = await fetchSeries(a.yahoo, !!a.crypto);
+      // NATGAS-class: spot price from primary; % changes from continuous changeYahoo (UNG).
+      // Never merge NG=F dollars into the UNG series — that invents a scale break.
+      let changeSrc = spot;
+      if (a.changeYahoo) {
+        changeSrc = await fetchSeries(a.changeYahoo, !!a.crypto);
+        await new Promise(res => setTimeout(res, 350));
+      }
+      const merged = mergeLatestIntoSeries(changeSrc.series, changeSrc.price, changeSrc.tradingDate);
       const breaks = detectScaleBreaks(merged, a.crypto ? 1.6 : 1.5);
       const r = calculateChangesChecked(merged.dates, merged.prices);
       const flags: string[] = [];
       if (breaks.length) { flags.push(`SCALE-BREAK[${breaks.map(b => `${b.date}×${b.ratio}`).join(',')}]`); fails++; }
       if (r.staleBaselines.length) { flags.push(`STALE[${r.staleBaselines.join(',')}]`); fails++; }
+      if (a.changeYahoo) flags.push(`chg=${a.changeYahoo}`);
       const f = (v?: number) => (v == null ? '     —' : String(v).padStart(6));
       console.log(
-        `${name.padEnd(7)} ${String(price).padStart(9)}  ${f(r.changes['1D'])}%  ${f(r.changes['5D'])}%  ${f(r.changes['1M'])}%  ${f(r.changes['1Y'])}%   ${String(merged.prices.length).padStart(4)}  ${flags.join(' ') || 'ok'}`,
+        `${name.padEnd(7)} ${String(spot.price).padStart(9)}  ${f(r.changes['1D'])}%  ${f(r.changes['5D'])}%  ${f(r.changes['1M'])}%  ${f(r.changes['1Y'])}%   ${String(merged.prices.length).padStart(4)}  ${flags.join(' ') || 'ok'}`,
       );
     } catch (err) {
       console.log(`${name.padEnd(7)} FETCH FAILED: ${err instanceof Error ? err.message : err}`);

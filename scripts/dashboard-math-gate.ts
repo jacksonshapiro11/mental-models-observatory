@@ -127,5 +127,25 @@ console.log('── 6. MAs unchanged on healthy data ──');
   check('50D of a rising series sits below the latest', mas['50D']! < prices[prices.length - 1]!);
 }
 
+console.log('── 8. The NATGAS class: futures roll cliff — continuous proxy publishes horizons ──');
+{
+  // NG=F continuous front-month cliff (live: 2026-01-29 ×1.904). Tripwire must still fire
+  // on the raw futures series; the fix is UNG for % changes, NOT raising maxJumpRatio.
+  const dates = weekdays('2025-07-24', '2026-07-24');
+  const cliffIdx = dates.findIndex(d => d >= '2026-01-29');
+  const ngPrices = dates.map((_, i) => (i < cliffIdx ? 4.8 : 2.5 + (0.2 * (i - cliffIdx)) / Math.max(1, dates.length - cliffIdx)));
+  const ngBreaks = detectScaleBreaks({ dates, prices: ngPrices });
+  check('NG=F-like roll cliff is DETECTED (threshold stays 1.5)', ngBreaks.length === 1 && ngBreaks[0]!.ratio > 1.5, JSON.stringify(ngBreaks));
+  // Continuous proxy (UNG-class): no cliff → 5D/1M/1Y all present.
+  const ungPrices = dates.map((_, i) => 14 * (1 + (0.10 * i) / (dates.length - 1)));
+  const ungBreaks = detectScaleBreaks({ dates, prices: ungPrices });
+  const ung = calculateChangesChecked(dates, ungPrices);
+  check('UNG-like continuous series: no scale breaks', ungBreaks.length === 0);
+  check('UNG-like continuous series: 5D/1M/1Y all publish', ung.changes['5D'] != null && ung.changes['1M'] != null && ung.changes['1Y'] != null, JSON.stringify(ung.changes));
+  // Both directions: never merge futures dollars into the ETF series (instant invented cliff).
+  const mixed = mergeLatestIntoSeries({ dates: dates.slice(0, -1), prices: ungPrices.slice(0, -1) }, ngPrices[ngPrices.length - 1]!, dates[dates.length - 1]!);
+  check('mixing NG=F spot into UNG series creates a DETECTABLE break (caller must merge proxy quote)', detectScaleBreaks(mixed).length >= 1);
+}
+
 console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);
 process.exit(failures === 0 ? 0 : 1);

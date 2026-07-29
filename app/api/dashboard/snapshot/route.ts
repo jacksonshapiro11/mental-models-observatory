@@ -56,7 +56,17 @@ import {
 // All assets we track — matches seed-prices.mjs exactly
 // Primary: actual index/futures symbols (direct prices, no multiplier math)
 // Fallback: ETF proxy × multiplier if actual symbol fails
-const ASSETS: Record<string, { yahoo: string; fallback: string | null; fallbackMultiplier: number; category: string }> = {
+// changeYahoo (optional): continuous series used ONLY for % changes — spot stays on `yahoo`.
+//   NATGAS: NG=F continuous front-month rolls cliff (~×1.9 on 2026-01-29); UNG is the
+//   continuous Henry Hub proxy so 5D/1M/1Y can publish without raising maxJumpRatio.
+type AssetConfig = {
+  yahoo: string;
+  fallback: string | null;
+  fallbackMultiplier: number;
+  category: string;
+  changeYahoo?: string;
+};
+const ASSETS: Record<string, AssetConfig> = {
   // Equities — actual index symbols (direct prices)
   SPX:    { yahoo: '%5EGSPC',  fallback: 'SPY',  fallbackMultiplier: 10,    category: 'equities' },
   NDX:    { yahoo: '%5ENDX',   fallback: 'QQQ',  fallbackMultiplier: 40.95, category: 'equities' },
@@ -82,7 +92,7 @@ const ASSETS: Record<string, { yahoo: string; fallback: string | null; fallbackM
   SILVER: { yahoo: 'SI%3DF',   fallback: 'SLV',  fallbackMultiplier: 1,   category: 'commodities' },
   BRENT:  { yahoo: 'BZ%3DF',   fallback: 'BNO',  fallbackMultiplier: 1,   category: 'commodities' },
   COPPER: { yahoo: 'HG%3DF',   fallback: 'CPER', fallbackMultiplier: 1,   category: 'commodities' },
-  NATGAS: { yahoo: 'NG%3DF',   fallback: 'UNG',  fallbackMultiplier: 1,   category: 'commodities' },
+  NATGAS: { yahoo: 'NG%3DF',   fallback: 'UNG',  fallbackMultiplier: 1,   category: 'commodities', changeYahoo: 'UNG' },
 
   // Rates (Treasury yields — direct, multiplier always 1)
   US10Y:  { yahoo: '%5ETNX',   fallback: null,   fallbackMultiplier: 1, category: 'rates' },
@@ -242,7 +252,10 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
     const fetched = todayPrices[name];
     let usedSeries = false;
     if (fetched?.series) {
-      const merged = mergeLatestIntoSeries(fetched.series, fetched.adjustedPrice, fetched.tradingDate);
+      // changeSeriesPrice: when % changes use a continuous proxy (NATGAS→UNG), merge that
+      // proxy's own quote — never NG=F dollars into an UNG series (instant scale break).
+      const mergePrice = fetched.changeSeriesPrice ?? fetched.adjustedPrice;
+      const merged = mergeLatestIntoSeries(fetched.series, mergePrice, fetched.tradingDate);
       const breaks = detectScaleBreaks(merged, jumpRatio);
       if (breaks.length > 0) {
         warn(`${name}: ${breaks.length} scale break(s) in fetched series [${breaks.map(b => `${b.date}×${b.ratio}`).join(', ')}] — changes withheld`);
@@ -353,9 +366,12 @@ interface YahooPriceResult {
   adjustedPrice: number;
   multiplier: number;
   tradingDate: string | null; // actual trading date from Yahoo response
-  /** Full 1y ADJUSTED daily series (fallback-symbol series is pre-multiplied) — the
-   *  source of truth for % changes since 2026-07-27. */
+  /** Full ADJUSTED daily series used for % changes (fallback-symbol series is
+   *  pre-multiplied) — source of truth for horizons since 2026-07-27. May be a
+   *  continuous proxy (changeYahoo) while adjustedPrice stays on the spot symbol. */
   series: PriceSeries | null;
+  /** Latest quote for `series` when it comes from changeYahoo (not adjustedPrice). */
+  changeSeriesPrice?: number;
 }
 
 async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> {
@@ -366,18 +382,41 @@ async function fetchAllYahooPrices(): Promise<Record<string, YahooPriceResult>> 
   // whole sweep under ~8s; each asset's primary→fallback ladder stays serial within its task.
   const CONCURRENCY = 4;
 
-  async function fetchOne(name: string, asset: (typeof ASSETS)[string]): Promise<void> {
+  async function fetchOne(name: string, asset: AssetConfig): Promise<void> {
     const isCrypto = asset.category === 'crypto';
     try {
       // Try primary symbol first (actual index/futures — direct price, no multiplier)
       const primary = await fetchYahooSeriesWithMeta(asset.yahoo, isCrypto);
       if (primary && primary.price > 0) {
-        console.log(`[snapshot] ${name}: ${asset.yahoo} = ${primary.price} (direct, date: ${primary.tradingDate}, series: ${primary.series?.prices.length ?? 0} bars)`);
+        let series = primary.series;
+        let changeSeriesPrice: number | undefined;
+        // NATGAS-class: spot stays on front-month futures; % changes use continuous proxy.
+        if (asset.changeYahoo) {
+          try {
+            const proxy = await fetchYahooSeriesWithMeta(asset.changeYahoo, isCrypto);
+            if (proxy?.series && proxy.series.prices.length >= 30 && proxy.price > 0) {
+              series = proxy.series;
+              changeSeriesPrice = proxy.price;
+              console.log(
+                `[snapshot] ${name}: spot ${asset.yahoo}=${primary.price}; % changes from ${asset.changeYahoo} (${proxy.series.prices.length} bars, date: ${primary.tradingDate})`,
+              );
+            } else {
+              warn(`${name}: changeYahoo ${asset.changeYahoo} thin/missing — using primary series (may hit scale-break)`);
+              console.log(`[snapshot] ${name}: ${asset.yahoo} = ${primary.price} (direct, date: ${primary.tradingDate}, series: ${primary.series?.prices.length ?? 0} bars)`);
+            }
+          } catch (err) {
+            warn(`${name}: changeYahoo ${asset.changeYahoo} failed (${err instanceof Error ? err.message : err}) — using primary series`);
+            console.log(`[snapshot] ${name}: ${asset.yahoo} = ${primary.price} (direct, date: ${primary.tradingDate}, series: ${primary.series?.prices.length ?? 0} bars)`);
+          }
+        } else {
+          console.log(`[snapshot] ${name}: ${asset.yahoo} = ${primary.price} (direct, date: ${primary.tradingDate}, series: ${primary.series?.prices.length ?? 0} bars)`);
+        }
         results[name] = {
           adjustedPrice: round(primary.price, 2),
           multiplier: 1,
           tradingDate: primary.tradingDate,
-          series: primary.series,
+          series,
+          ...(changeSeriesPrice != null ? { changeSeriesPrice } : {}),
         };
         return;
       }

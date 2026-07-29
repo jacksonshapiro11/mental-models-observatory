@@ -76,6 +76,9 @@ const ASSETS = {
   BRENT:  { yahoo: 'BZ=F',   fallback: 'BNO',  fallbackMultiplier: 1,   category: 'commodities' },
   COPPER: { yahoo: 'HG=F',   fallback: 'CPER', fallbackMultiplier: 1,   category: 'commodities' },
   NATGAS: { yahoo: 'NG=F',   fallback: 'UNG',  fallbackMultiplier: 1,   category: 'commodities' },
+  // NATGAS history: NG=F front-month continuous series has roll cliffs (e.g. 2026-01-29 ×1.9).
+  // Snapshot % changes use UNG via changeYahoo; Redis NG=F history still feeds MAs with
+  // per-window scale-break withholding (50D may publish; 200D/200W stay blank across the cliff).
 
   // Rates (Treasury yields — direct, multiplier always 1)
   US10Y:  { yahoo: '^TNX',   fallback: null,   fallbackMultiplier: 1,   category: 'rates' },
