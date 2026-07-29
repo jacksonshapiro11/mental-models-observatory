@@ -195,6 +195,29 @@ export function detectScaleBreaks(series: PriceSeries, maxJumpRatio = 1.5): Scal
   return breaks;
 }
 
+/**
+ * Panama back-adjustment for *explained* cliffs (futures front-month rolls).
+ * Walk newest→oldest; at each jump, multiply all older bars by (curr/prev) so the
+ * series is continuous in *current* contract units. Used only for MA windows on
+ * changeYahoo assets (NATGAS→UNG class) — never for unexplained split/rebase cliffs
+ * (those stay withheld until history is re-seeded from adjclose).
+ */
+export function backAdjustScaleBreaks(series: PriceSeries, maxJumpRatio = 1.5): PriceSeries {
+  const prices = [...series.prices];
+  for (let i = prices.length - 1; i >= 1; i--) {
+    const prev = prices[i - 1];
+    const curr = prices[i];
+    if (prev == null || curr == null || prev <= 0 || curr <= 0) continue;
+    const jump = curr > prev ? curr / prev : prev / curr;
+    if (jump <= maxJumpRatio) continue;
+    const factor = curr / prev;
+    for (let j = 0; j < i; j++) {
+      prices[j] = round(prices[j]! * factor, 4);
+    }
+  }
+  return { dates: [...series.dates], prices };
+}
+
 /** Build a {dates, prices} series from a Yahoo v8 chart result, preferring the ADJUSTED
  *  close (split + dividend adjusted — the convention every quoted % uses) and falling back
  *  to the raw close per bar. Dates are exchange-timezone trading dates. */

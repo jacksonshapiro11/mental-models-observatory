@@ -14,6 +14,7 @@
 import {
   calculateChangesChecked,
   detectScaleBreaks,
+  backAdjustScaleBreaks,
   seriesFromYahooChart,
   mergeLatestIntoSeries,
   calculateMAs,
@@ -145,6 +146,17 @@ console.log('── 8. The NATGAS class: futures roll cliff — continuous proxy
   // Both directions: never merge futures dollars into the ETF series (instant invented cliff).
   const mixed = mergeLatestIntoSeries({ dates: dates.slice(0, -1), prices: ungPrices.slice(0, -1) }, ngPrices[ngPrices.length - 1]!, dates[dates.length - 1]!);
   check('mixing NG=F spot into UNG series creates a DETECTABLE break (caller must merge proxy quote)', detectScaleBreaks(mixed).length >= 1);
+
+  // MAs: raw NG=F 200D window crosses the roll → withheld; Panama back-adjust clears it
+  // so 200D/200W publish in current-contract units (spot stays NG=F; % stays UNG).
+  const ngSeries = { dates, prices: ngPrices };
+  const raw200 = { dates: dates.slice(-200), prices: ngPrices.slice(-200) };
+  check('raw NG=F 200D MA window still trips', detectScaleBreaks(raw200).length === 1);
+  const adj = backAdjustScaleBreaks(ngSeries);
+  check('back-adjust clears NG=F roll cliffs', detectScaleBreaks(adj).length === 0);
+  const adjMas = calculateMAs(adj.prices);
+  check('back-adjusted NG=F publishes 50D and 200D MAs', adjMas['50D'] != null && adjMas['200D'] != null, JSON.stringify(adjMas));
+  check('back-adjust preserves latest (current contract) price', adj.prices[adj.prices.length - 1] === ngPrices[ngPrices.length - 1]);
 }
 
 console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);

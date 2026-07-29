@@ -48,6 +48,7 @@ import {
   calculateChangesChecked,
   calculateMAs,
   detectScaleBreaks,
+  backAdjustScaleBreaks,
   seriesFromYahooChart,
   mergeLatestIntoSeries,
   type PriceSeries,
@@ -286,11 +287,16 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
     // MAs: Redis history is the only source deep enough (200W = 1000 trading days) — but a
     // window that crosses a scale break (raw pre-split closes) produces a blended-scale MA,
     // so each window is checked and a corrupted MA is withheld, never shipped.
-    const allMas = calculateMAs(arr.prices);
+    // changeYahoo assets (NATGAS): front-month roll cliffs are *explained* — Panama
+    // back-adjust into current-contract units so 200D/200W can publish (UNG stays for %).
+    const maSource = ASSETS[name]?.changeYahoo
+      ? backAdjustScaleBreaks({ dates: arr.dates, prices: arr.prices }, jumpRatio)
+      : { dates: arr.dates, prices: arr.prices };
+    const allMas = calculateMAs(maSource.prices);
     const mas: Record<string, number> = {};
     for (const [label, period] of Object.entries(MA_PERIODS)) {
       if (allMas[label] == null) continue;
-      const window = { dates: arr.dates.slice(-period), prices: arr.prices.slice(-period) };
+      const window = { dates: maSource.dates.slice(-period), prices: maSource.prices.slice(-period) };
       const wBreaks = detectScaleBreaks(window, jumpRatio);
       if (wBreaks.length > 0) {
         warn(`${name}: ${label} MA window crosses a scale break [${wBreaks.map(b => `${b.date}×${b.ratio}`).join(', ')}] — withheld (re-seed: node scripts/seed-prices.mjs)`);
