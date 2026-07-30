@@ -7,7 +7,8 @@
  * Architecture:
  *   - Real-time prices: Binance (crypto) + Finnhub (equities + forex → DXY)
  * Cached slow data: CoinGecko /global (4-hour TTL in Upstash)
- *   - Daily reference data: Snapshot from Upstash (MAs, % changes, commodities, rates)
+ *   - Daily reference data: Snapshot from Upstash (MAs, absolute baselines, commodities, rates)
+ *   - Live recomputes EVERY % horizon from live price + stored baselines (except changeProxy)
  *   - Manual fields: FedWatch, ETF flows from Upstash
  */
 
@@ -18,6 +19,7 @@ import {
   writeCoinGeckoGlobal,
   readManualFields,
   type DashboardSnapshot,
+  type AssetSnapshot,
   type ManualFields,
   type CoinGeckoGlobal,
 } from '@/lib/upstash';
@@ -27,6 +29,7 @@ import {
   getLiveDashboardCacheSeconds,
   getMarketStatus,
 } from '@/lib/market-hours';
+import { recomputeChangesFromLive } from '@/lib/dashboard-math';
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 
@@ -292,25 +295,38 @@ function buildResponse({
 }
 
 // ─── MERGE LIVE PRICE WITH SNAPSHOT REFERENCE DATA ───────────────────────────
+// Contract (2026-07-29): every displayed % must match the price on screen.
+// Snapshot stores absolute adjclose baselines; live recomputes (live−b)/b for
+// 1D/5D/1M/1Y. changeProxy assets (NATGAS→UNG) keep snapshot multi-day % —
+// spot and % series differ, so mixing would invent a wrong number.
 
-interface AssetRef {
-  latestClose: number;
-  changes: Record<string, number>;
-  mas: Record<string, number>;
-}
+function mergeChanges(
+  livePrice: number | null,
+  snapshotRef: AssetSnapshot | null,
+  prevClose?: number | null,
+): Record<string, number> {
+  if (!snapshotRef) return {};
 
-function mergeChanges(livePrice: number | null, snapshotRef: AssetRef | null, prevClose?: number | null): Record<string, number> {
-  if (!snapshotRef || !snapshotRef.changes) return {};
+  // NATGAS-class: spot (NG=F) ≠ % series (UNG). Keep snapshot multi-day; refresh 1D only.
+  if (snapshotRef.changeProxy) {
+    const changes = { ...(snapshotRef.changes || {}) };
+    if (livePrice && prevClose && prevClose > 0) {
+      changes['1D'] = round(((livePrice - prevClose) / prevClose) * 100, 2);
+    }
+    return changes;
+  }
 
-  const changes = { ...snapshotRef.changes };
+  const baselines = snapshotRef.baselines;
+  if (livePrice && livePrice > 0 && baselines && Object.keys(baselines).length > 0) {
+    return recomputeChangesFromLive(livePrice, baselines, { prevClose });
+  }
 
-  // For 1D change: use prevClose from the live data source (yesterday's actual close)
-  // rather than snapshot.latestClose (which may be stale or from a different time).
+  // Legacy snapshots (no baselines yet): 1D only — multi-day stay frozen until next snapshot.
+  const changes = { ...(snapshotRef.changes || {}) };
   const baseline = prevClose ?? snapshotRef.latestClose;
   if (livePrice && baseline && baseline > 0) {
     changes['1D'] = round(((livePrice - baseline) / baseline) * 100, 2);
   }
-
   return changes;
 }
 

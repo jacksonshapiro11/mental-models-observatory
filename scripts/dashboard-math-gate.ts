@@ -18,6 +18,7 @@ import {
   seriesFromYahooChart,
   mergeLatestIntoSeries,
   calculateMAs,
+  recomputeChangesFromLive,
   type PriceSeries,
 } from '../lib/dashboard-math';
 
@@ -157,6 +158,34 @@ console.log('── 8. The NATGAS class: futures roll cliff — continuous proxy
   const adjMas = calculateMAs(adj.prices);
   check('back-adjusted NG=F publishes 50D and 200D MAs', adjMas['50D'] != null && adjMas['200D'] != null, JSON.stringify(adjMas));
   check('back-adjust preserves latest (current contract) price', adj.prices[adj.prices.length - 1] === ngPrices[ngPrices.length - 1]);
+}
+
+console.log('── 9. Live merge: multi-day % must move with live price (2026-07-29) ──');
+{
+  // The shipped failure: SMH live ~$504 with frozen morning 1Y +82.3% (Jul 28 snapshot)
+  // while (504.22 − adj₁ᵧ) / adj₁ᵧ ≈ +72.68%. Frozen snapshot % next to a new price MUST fail.
+  const baselines = { '1D': 500, '5D': 490, '1M': 450, '1Y': 291.4 }; // 504.22 vs 291.4 ≈ +72.99%
+  const frozen1Y = 82.3; // what the old mergeChanges left on screen
+  const live = 504.22;
+  const recomputed = recomputeChangesFromLive(live, baselines, { prevClose: 500 });
+  check('1Y recomputed from live + baseline ≈ +73 (not frozen +82)', Math.abs((recomputed['1Y'] ?? 0) - 72.99) < 0.5, `got ${recomputed['1Y']}`);
+  check('frozen snapshot 1Y next to moved live price is the FAIL class', Math.abs(frozen1Y - (recomputed['1Y'] ?? 0)) > 5);
+  check('5D and 1M also move with live price', recomputed['5D'] != null && recomputed['1M'] != null);
+  check('1D prefers live prevClose over stored 1D baseline', recomputed['1D'] === roundPct(live, 500), `got ${recomputed['1D']}`);
+  // Both directions: missing baseline → omit, never invent.
+  const partial = recomputeChangesFromLive(live, { '1D': 500, '1Y': 291.4 });
+  check('missing 5D/1M baselines are omitted, not fabricated', partial['5D'] == null && partial['1M'] == null && partial['1Y'] != null);
+  // calculateChangesChecked must expose baselines for the snapshot to store.
+  const dates = weekdays('2025-07-24', '2026-07-24');
+  const prices = dates.map((_, i) => 100 * (1 + (0.20 * i) / (dates.length - 1)));
+  const r = calculateChangesChecked(dates, prices);
+  check('calculateChangesChecked returns baselines for every published horizon', Object.keys(r.changes).every(k => r.baselines[k] != null && r.baselines[k]! > 0));
+  const fromBaselines = recomputeChangesFromLive(prices[prices.length - 1]!, r.baselines);
+  check('recompute from stored baselines matches snapshot changes', Object.keys(r.changes).every(k => Math.abs((fromBaselines[k] ?? 0) - r.changes[k]!) < 0.02), JSON.stringify({ snap: r.changes, live: fromBaselines }));
+}
+
+function roundPct(live: number, baseline: number): number {
+  return Math.round(((live - baseline) / baseline) * 10000) / 100;
 }
 
 console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);

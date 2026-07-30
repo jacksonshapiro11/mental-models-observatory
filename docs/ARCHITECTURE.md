@@ -37,10 +37,10 @@ Displays real-time and historical price data for equities, crypto, commodities, 
 │     Writes to Redis: snapshot:latest + history:YYYY-MM-DD   │
 ├─────────────────────────────────────────────────────────────┤
 │  2. LIVE (polled every 60s by frontend)                     │
-│     Reads snapshot from Redis (reference data)              │
+│     Reads snapshot from Redis (baselines, MAs, metadata)    │
 │     Fetches real-time prices: Binance (crypto), Finnhub     │
-│     Merges live prices with snapshot's changes/MAs          │
-│     Recalculates 1D change from live price vs latestClose   │
+│     Merges live prices; recomputes ALL % from baselines     │
+│     (1D/5D/1M/1Y = (live − baseline) / baseline)            │
 ├─────────────────────────────────────────────────────────────┤
 │  3. FRONTEND (LiveDashboard.jsx)                            │
 │     Client component, polls /api/dashboard/live every 60s   │
@@ -51,17 +51,17 @@ Displays real-time and historical price data for equities, crypto, commodities, 
 
 ### Why Three Layers?
 
-The snapshot runs once daily and does the computation (change calculations, MAs). Historical data lives in Redis, populated once by `seed-prices.mjs`. The live endpoint is lightweight — it reads the pre-computed reference data from Redis and only fetches current prices. This keeps the 60-second polling fast and cheap.
+The snapshot runs once daily and computes moving averages plus **absolute adjclose baselines** for each change horizon. Historical data lives in Redis, populated once by `seed-prices.mjs`. The live endpoint is lightweight — it reads those baselines from Redis, fetches current prices, and recomputes every displayed % as `(livePrice − baseline) / baseline` so the % always matches the price on screen. MAs stay snapshot-only (they do not move with the last tick).
 
 ### Data Sources
 
 | Asset Class | Seed / Snapshot Source | Live Source | Notes |
 |-------------|----------------------|-------------|-------|
-| Equities | Yahoo Finance (ETF proxies: SPY, QQQ, DIA, etc.) | Finnhub `/quote` | ETF price × calibrated multiplier = index value |
-| Crypto | Yahoo Finance (BTC-USD, ETH-USD, etc.) | Binance (no key) `/ticker/price` | Direct prices, multiplier = 1 |
-| Commodities | Yahoo Finance (ETF proxies: GLD, SLV, BNO, etc.) | From snapshot (daily data) | ETF price × calibrated multiplier vs actual futures |
-| Rates | Yahoo Finance (^TNX) | From snapshot (daily data) | Treasury yields direct |
-| Forex (DXY) | — | Finnhub `/quote` (6 forex pairs) | Calculated from formula |
+| Equities | Yahoo Finance (indices + ETFs, adjclose) | Yahoo (indices) + Finnhub (ETFs) | Live % from stored baselines |
+| Crypto | Yahoo Finance (BTC-USD, ETH-USD, etc.) | Binance `/ticker/24hr` | Direct prices; 1D prefers Binance prevClose |
+| Commodities | Yahoo Finance futures (GC=F, etc.) | Yahoo Finance futures | NATGAS: spot NG=F, % from UNG (changeProxy — multi-day stays snapshot) |
+| Rates | Yahoo Finance (^TNX) | From snapshot (daily data) | US10Y has no live quote path — snapshot-only |
+| Forex (DXY) | — | Finnhub `/quote` (6 forex pairs) | Value live; YoY from snapshot series |
 | Fear & Greed | alternative.me `/fng` | From snapshot | No key needed |
 | Crypto meta | — | CoinGecko `/global`, `/defi`, `/trending`, `/derivatives` | Cached 1hr in Redis |
 
@@ -107,7 +107,7 @@ We can't get real-time index values (S&P 500, Nasdaq 100, Dow Jones) from free A
 1. Fetches today's prices from Yahoo Finance for all assets (same source as seed script), with ETF→index/futures calibration
 2. Reads historical data from Redis (`dashboard:history:*` keys, populated by seed-prices.mjs)
 3. Builds per-asset price arrays from the historical data + today's price
-4. Calculates percentage changes using **per-asset trading day lookback** (1D=1, 5D=5, 1M=21, 1Y=252 trading days — not calendar days, which matters because equities don't trade weekends but crypto does)
+4. Calculates percentage changes via `lib/dashboard-math.ts` (`CHANGE_PERIODS`): **1D** = 1 trading day back; **5D** = 7 calendar days; **1M** / **1Y** = calendar month/year offset (matches Yahoo). Stores the resulting % **and** the absolute adjclose **baselines** used as denominators. Stale/gap baselines are withheld, never fabricated.
 5. Calculates moving averages (50D=50, 200D=200, 200W=1000 trading days)
 6. Fetches metadata: DXY (Finnhub forex), Fear & Greed (alternative.me)
 7. Writes to Redis: `dashboard:snapshot:latest` + `dashboard:history:YYYY-MM-DD`
@@ -122,19 +122,22 @@ We can't get real-time index values (S&P 500, Nasdaq 100, Dow Jones) from free A
 
 **What it does:**
 
-1. Reads the snapshot from Redis (for reference data: changes, MAs, multipliers)
+1. Reads the snapshot from Redis (for baselines, MAs, metadata)
 2. Reads manual fields from Redis (FedWatch, ETF flows)
 3. Fetches live data in parallel:
    - Crypto prices from Binance (`api.binance.com`) — 6 pairs
-   - Equity prices from Finnhub — 10 ETFs, applies calibrated multipliers
-   - DXY from Finnhub forex quotes
-   - CoinGecko global/defi/trending/derivatives — cached 1 hour in Redis
+   - Index prices from Yahoo; ETF prices from Finnhub
+   - Commodity futures from Yahoo
+   - DXY from Finnhub forex quotes (Yahoo fallback)
+   - CoinGecko global/defi/trending/derivatives — cached in Redis
 4. Merges live prices with snapshot reference data:
-   - Equities and crypto: live price replaces `latestClose`, 1D change is recalculated from live price vs snapshot's `latestClose`, 5D/1M/1Y and MAs come from snapshot unchanged
-   - Commodities and rates: come straight from snapshot (daily data, no live API)
+   - **Equities / crypto / most commodities:** live price replaces spot; **every** horizon (1D/5D/1M/1Y) is recomputed as `(livePrice − baseline) / baseline` from snapshot baselines (1D prefers the live source’s `prevClose` when present). Missing baseline → that horizon is omitted.
+   - **NATGAS (`changeProxy`):** spot is NG=F; % series is UNG — multi-day % stay from snapshot; only 1D refreshes from NG=F prevClose.
+   - **Rates (US10Y):** snapshot-only (no live quote path).
+   - **MAs:** always from snapshot (unchanged by the last tick).
 5. Returns JSON with: `{ equities, crypto, commodities, rates, meta }`
 
-**Response caching:** `s-maxage=60, stale-while-revalidate=120` — Vercel CDN caches for 60s, so all concurrent readers share one invocation.
+**Response caching:** `s-maxage` follows market hours via `getLiveDashboardCacheSeconds` — Vercel CDN caches so concurrent readers share one invocation.
 
 ### CoinGecko Enriched Data
 

@@ -3,10 +3,12 @@
  *
  * GET: Cron twice on weekdays — morning 09:00 UTC (~5 AM ET) and after-close
  *   21:00 UTC (~5 PM ET). After-close refreshes snapshotDate + 5D/1M/1Y/MAs/US10Y
- *   so horizons match the day's close (live only refreshes spot + 1D).
+ *   so horizons match the day's close. Live refreshes spot + ALL % horizons from
+ *   stored absolute baselines (except changeProxy assets like NATGAS→UNG).
  *   - Fetches today's prices from Yahoo Finance (same source as seed-prices.mjs)
  *   - Reads historical data from Redis (populated by seed-prices.mjs)
- *   - Calculates % changes and MAs using per-asset trading day lookback
+ *   - Calculates % changes (1D trading-day; 5D=7 calendar days; 1M/1Y calendar)
+ *     and stores absolute baselines so live can recompute every horizon
  *   - Writes to Upstash: dashboard:snapshot:latest + dashboard:history:YYYY-MM-DD
  *
  * PATCH: Manual field updates (FedWatch, ETF flows) during evening session.
@@ -233,10 +235,18 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
   }
 
   // Step 5: Calculate changes and MAs for each asset
-  const equities: Record<string, { latestClose: number; changes: Record<string, number>; mas: Record<string, number>; multiplier: number }> = {};
-  const crypto: Record<string, { latestClose: number; changes: Record<string, number>; mas: Record<string, number>; multiplier: number }> = {};
-  const commodities: Record<string, { latestClose: number; changes: Record<string, number>; mas: Record<string, number>; multiplier: number }> = {};
-  const rates: Record<string, { latestClose: number; changes: Record<string, number>; mas: Record<string, number>; multiplier: number }> = {};
+  type AssetOut = {
+    latestClose: number;
+    changes: Record<string, number>;
+    baselines: Record<string, number>;
+    mas: Record<string, number>;
+    multiplier: number;
+    changeProxy?: boolean;
+  };
+  const equities: Record<string, AssetOut> = {};
+  const crypto: Record<string, AssetOut> = {};
+  const commodities: Record<string, AssetOut> = {};
+  const rates: Record<string, AssetOut> = {};
 
   const categoryMap: Record<string, typeof equities> = { equities, crypto, commodities, rates };
 
@@ -246,12 +256,16 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
     const latest = arr.prices[arr.prices.length - 1]!;
     const multiplier = todayPrices[name]?.multiplier ?? ASSETS[name]?.fallbackMultiplier ?? 1;
     const jumpRatio = arr.category === 'crypto' ? 1.6 : 1.5;
+    const changeProxy = Boolean(ASSETS[name]?.changeYahoo);
 
     // % changes: PRIMARY source is the freshly-fetched ADJUSTED 1y series (split/dividend/
     // gap-proof); Redis history is only the fallback when the fetch failed. Either path runs
     // the tripwires — a series with an unexplained cliff or a stale baseline publishes
     // NOTHING for the affected horizon rather than a wrong number. (2026-07-27: IWF −73%.)
+    // Absolute baselines ship with the snapshot so live can recompute every horizon from
+    // the price on screen (2026-07-29: frozen 5D/1M/1Y next to moved live price).
     let changes: Record<string, number> = {};
+    let baselines: Record<string, number> = {};
     const fetched = todayPrices[name];
     let usedSeries = false;
     if (fetched?.series) {
@@ -269,6 +283,7 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
           warn(`${name}: stale baseline for ${r.staleBaselines.join(', ')} — those horizons withheld`);
         }
         changes = r.changes;
+        baselines = r.baselines;
         usedSeries = true;
       }
     }
@@ -283,6 +298,7 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
           warn(`${name}: history-fallback stale baseline for ${r.staleBaselines.join(', ')} — withheld`);
         }
         changes = r.changes;
+        baselines = r.baselines;
       }
     }
 
@@ -309,7 +325,9 @@ async function generateSnapshot(): Promise<DashboardSnapshot & { _warnings?: str
 
     const cat = categoryMap[arr.category];
     if (cat) {
-      cat[name] = { latestClose: round(latest, 2), changes, mas, multiplier };
+      const entry: AssetOut = { latestClose: round(latest, 2), changes, baselines, mas, multiplier };
+      if (changeProxy) entry.changeProxy = true;
+      cat[name] = entry;
     }
   }
 

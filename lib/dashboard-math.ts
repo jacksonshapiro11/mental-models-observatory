@@ -102,6 +102,10 @@ function daysBetween(a: string, b: string): number {
 
 export interface ChangeResult {
   changes: Record<string, number>;
+  /** Absolute prices used as denominators for each horizon (adjclose units). Live
+   *  recomputes (livePrice − baseline) / baseline so every displayed % matches the
+   *  price on screen. Missing key → that horizon was withheld (stale/gap/missing). */
+  baselines: Record<string, number>;
   /** Labels whose baseline landed suspiciously far before the calendar target (a history
    *  gap — the SMH +95-vs-+88 class). The caller should not publish these. */
   staleBaselines: string[];
@@ -112,7 +116,7 @@ export interface ChangeResult {
 export const MAX_BASELINE_GAP_DAYS = 10;
 
 export function calculateChangesChecked(dates: string[], prices: number[]): ChangeResult {
-  const out: ChangeResult = { changes: {}, staleBaselines: [] };
+  const out: ChangeResult = { changes: {}, baselines: {}, staleBaselines: [] };
   if (!dates || !prices || prices.length < 2) return out;
 
   const latestIdx = prices.length - 1;
@@ -148,10 +152,40 @@ export function calculateChangesChecked(dates: string[], prices: number[]): Chan
       }
     }
 
-    out.changes[label] = round(((latest - prices[bestIdx]!) / prices[bestIdx]!) * 100, 2);
+    const baseline = prices[bestIdx]!;
+    out.baselines[label] = round(baseline, 4);
+    out.changes[label] = round(((latest - baseline) / baseline) * 100, 2);
   }
 
   return out;
+}
+
+/**
+ * Recompute every horizon from a live price + stored absolute baselines.
+ * Contract (2026-07-29): % on screen must match the price on screen — frozen snapshot
+ * multi-day % next to a moved live price is a bug.
+ *
+ * - Missing baseline → that horizon is omitted (never invented).
+ * - Optional prevClose overrides the 1D baseline (intraday source of truth).
+ * - Caller must NOT invoke this when spot and % series differ (NATGAS NG=F vs UNG).
+ */
+export function recomputeChangesFromLive(
+  livePrice: number,
+  baselines: Record<string, number>,
+  opts?: { prevClose?: number | null },
+): Record<string, number> {
+  const changes: Record<string, number> = {};
+  if (!livePrice || livePrice <= 0) return changes;
+
+  for (const [label, baseline] of Object.entries(baselines)) {
+    if (baseline == null || baseline <= 0) continue;
+    let denom = baseline;
+    if (label === '1D' && opts?.prevClose != null && opts.prevClose > 0) {
+      denom = opts.prevClose;
+    }
+    changes[label] = round(((livePrice - denom) / denom) * 100, 2);
+  }
+  return changes;
 }
 
 /** Back-compat wrapper (history-array path). */

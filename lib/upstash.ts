@@ -28,6 +28,14 @@ export interface AssetSnapshot {
   latestClose: number;
   changes: Record<string, number>;
   mas: Record<string, number>;
+  /** Absolute adjclose baselines per horizon — live recomputes (live−b)/b for every %. */
+  baselines?: Record<string, number>;
+  /**
+   * When true, baselines/changes use a continuous proxy series (e.g. NATGAS→UNG) while
+   * latestClose is the spot (NG=F). Live must NOT recompute multi-day % from spot.
+   */
+  changeProxy?: boolean;
+  multiplier?: number;
 }
 
 export interface ManualFields {
