@@ -318,7 +318,11 @@ function mergeChanges(
 
   const baselines = snapshotRef.baselines;
   if (livePrice && livePrice > 0 && baselines && Object.keys(baselines).length > 0) {
-    return recomputeChangesFromLive(livePrice, baselines, { prevClose });
+    return recomputeChangesFromLive(
+      livePrice,
+      baselines,
+      prevClose === undefined ? undefined : { prevClose },
+    );
   }
 
   // Legacy snapshots (no baselines yet): 1D only — multi-day stay frozen until next snapshot.
