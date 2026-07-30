@@ -107,7 +107,7 @@ We can't get real-time index values (S&P 500, Nasdaq 100, Dow Jones) from free A
 1. Fetches today's prices from Yahoo Finance for all assets (same source as seed script), with ETF→index/futures calibration
 2. Reads historical data from Redis (`dashboard:history:*` keys, populated by seed-prices.mjs)
 3. Builds per-asset price arrays from the historical data + today's price
-4. Calculates percentage changes via `lib/dashboard-math.ts` (`CHANGE_PERIODS`): **1D** = 1 trading day back; **5D** = 7 calendar days; **1M** / **1Y** = calendar month/year offset (matches Yahoo). Stores the resulting % **and** the absolute adjclose **baselines** used as denominators. Stale/gap baselines are withheld, never fabricated.
+4. Calculates percentage changes via `lib/dashboard-math.ts` (`CHANGE_PERIODS`): **1D** / **5D** = 1 / 5 trading sessions back (crypto daily bars → ~1 / 5 calendar days); **1M** / **1Y** = calendar month/year offset — matches Yahoo Finance `chartPreviousClose` for the same ranges. Stores the resulting % **and** the absolute adjclose **baselines** used as denominators. Stale/gap baselines are withheld, never fabricated.
 5. Calculates moving averages (50D=50, 200D=200, 200W=1000 trading days)
 6. Fetches metadata: DXY (Finnhub forex), Fear & Greed (alternative.me)
 7. Writes to Redis: `dashboard:snapshot:latest` + `dashboard:history:YYYY-MM-DD`

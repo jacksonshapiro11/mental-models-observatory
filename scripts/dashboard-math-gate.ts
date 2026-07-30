@@ -188,5 +188,29 @@ function roundPct(live: number, baseline: number): number {
   return Math.round(((live - baseline) / baseline) * 10000) / 100;
 }
 
+console.log('── 10. 5D = 5 trading sessions (Yahoo), not 7 calendar days ──');
+{
+  // Normal midweek: cal-7 and td-5 often coincide — not a proof. Holiday weeks diverge.
+  // MLK week 2026: latest Fri Jan 23; cal-7 → Jan 16; 5 sessions → Jan 15 (Jan 19 closed).
+  const dates = weekdays('2026-01-02', '2026-01-23').filter(d => d !== '2026-01-19');
+  const prices = dates.map((_, i) => 100 + i); // distinct per bar so baselines differ
+  const r = calculateChangesChecked(dates, prices);
+  const latestIdx = dates.length - 1;
+  const td5Idx = latestIdx - 5;
+  check('5D baseline is exactly 5 sessions back (not calendar-7)', r.baselines['5D'] === prices[td5Idx], `base=${r.baselines['5D']} expected=${prices[td5Idx]} @ ${dates[td5Idx]}`);
+  check('calendar-7 would have picked a DIFFERENT bar this holiday week', dates[td5Idx] !== '2026-01-16', `td5date=${dates[td5Idx]}`);
+  // Crypto-shaped series (every calendar day): 5 tradingDays ≈ 5 calendar days.
+  const cryptoDates: string[] = [];
+  const d0 = new Date('2026-07-01T00:00:00Z');
+  for (let i = 0; i < 40; i++) {
+    const x = new Date(d0); x.setUTCDate(d0.getUTCDate() + i);
+    cryptoDates.push(x.toISOString().slice(0, 10));
+  }
+  const cryptoPrices = cryptoDates.map((_, i) => 1000 + i);
+  const cr = calculateChangesChecked(cryptoDates, cryptoPrices);
+  const cLatest = cryptoDates.length - 1;
+  check('crypto 5D = 5 daily bars back (24/7 series)', cr.baselines['5D'] === cryptoPrices[cLatest - 5], `base=${cr.baselines['5D']} @ expected idx ${cLatest - 5}`);
+}
+
 console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);
 process.exit(failures === 0 ? 0 : 1);

@@ -7,7 +7,7 @@
  *   stored absolute baselines (except changeProxy assets like NATGAS→UNG).
  *   - Fetches today's prices from Yahoo Finance (same source as seed-prices.mjs)
  *   - Reads historical data from Redis (populated by seed-prices.mjs)
- *   - Calculates % changes (1D trading-day; 5D=7 calendar days; 1M/1Y calendar)
+ *   - Calculates % changes (1D/5D trading sessions; 1M/1Y calendar — Yahoo chartPreviousClose)
  *     and stores absolute baselines so live can recompute every horizon
  *   - Writes to Upstash: dashboard:snapshot:latest + dashboard:history:YYYY-MM-DD
  *

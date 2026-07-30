@@ -18,13 +18,16 @@
  * baseline. Every rule here ships with a mechanical check in dashboard-math-gate.ts.
  */
 
-// Change period definitions:
-//   tradingDays = count back N entries in the asset's own date array (skips weekends/holidays)
-//   months/years = calendar offset (March 27 → Feb 27, March 27 → March 27 last year)
-// This matches Yahoo Finance: 1D and 5D are trading days, 1M and 1Y are calendar.
+// Change period definitions (Yahoo Finance chartPreviousClose convention):
+//   tradingDays = count back N entries in the asset's own date array
+//     equities: skips weekends/holidays (true sessions)
+//     crypto: daily UTC bars every calendar day → N tradingDays ≈ N calendar days
+//   months/years = calendar offset (Mar 27 → Feb 27; Mar 27 → Mar 27 last year)
+// Do NOT use { days: 7 } as a 5D proxy — it diverges from 5 sessions around holidays
+// (receipt 2026-07-30: MLK week cal-7 ≠ td-5) and mislabels crypto "5D" as a week.
 export const CHANGE_PERIODS: Record<string, { tradingDays?: number; days?: number; months?: number; years?: number }> = {
   '1D': { tradingDays: 1 },
-  '5D': { days: 7 },
+  '5D': { tradingDays: 5 },
   '1M': { months: 1 },
   '1Y': { years: 1 },
 };
