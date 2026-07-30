@@ -1,7 +1,9 @@
 /**
  * /api/dashboard/snapshot — App Router
  *
- * GET: Runs ONCE per day at 6 AM ET via cron.
+ * GET: Cron twice on weekdays — morning 09:00 UTC (~5 AM ET) and after-close
+ *   21:00 UTC (~5 PM ET). After-close refreshes snapshotDate + 5D/1M/1Y/MAs/US10Y
+ *   so horizons match the day's close (live only refreshes spot + 1D).
  *   - Fetches today's prices from Yahoo Finance (same source as seed-prices.mjs)
  *   - Reads historical data from Redis (populated by seed-prices.mjs)
  *   - Calculates % changes and MAs using per-asset trading day lookback

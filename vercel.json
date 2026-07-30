@@ -5,6 +5,10 @@
       "schedule": "0 9 * * 1-5"
     },
     {
+      "path": "/api/dashboard/snapshot",
+      "schedule": "0 21 * * 1-5"
+    },
+    {
       "path": "/api/publish/backup",
       "schedule": "50 9 * * *"
     },
