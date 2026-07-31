@@ -69,6 +69,29 @@ function runLeg(leg: string, id: string): string | null {
     }
     return null;
   }
+  // gitshow:<path>:<needle> — proves the pattern exists in the COMMITTED tree at HEAD,
+  // not merely in the working tree. Catches the b3512c2 class: a commit that deletes an
+  // enforcement while the working tree still looks fine (or the reverse — a claim that
+  // "exists on disk" after an uncommitted edit that the nightly rebase will wipe).
+  // Added 2026-07-31 — closes the "reverted after commit" / "never committed" blind spot
+  // that let IMP-102's --stamp, ESC-009's pool, and IMP-108's strict gate sit as ledger
+  // theater while the committed tree had none of them.
+  if (leg.startsWith('gitshow:')) {
+    const rest = leg.slice('gitshow:'.length);
+    const colon = rest.indexOf(':');
+    if (colon === -1) return `${id}: malformed gitshow check: ${leg}`;
+    const file = rest.slice(0, colon).trim();
+    const needle = rest.slice(colon + 1).trim();
+    if (!file || !needle) return `${id}: malformed gitshow check: ${leg}`;
+    const res = spawnSync('git', ['show', `HEAD:${file}`], { encoding: 'utf8', timeout: 30000 });
+    if (res.status !== 0) {
+      return `${id}: gitshow target missing from HEAD: ${file}\n      ${(res.stderr || '').trim().split('\n').slice(-2).join('\n      ')}`;
+    }
+    if (!(res.stdout || '').includes(needle)) {
+      return `${id}: enforcement ABSENT from committed tree — "${needle}" not in HEAD:${file} (working tree may still have it; nightly rebase will not)`;
+    }
+    return null;
+  }
   if (leg.startsWith('run:')) {
     const cmd = leg.slice(4).trim();
     const res = spawnSync(cmd, { shell: true, encoding: 'utf8', timeout: 120000 });
@@ -77,7 +100,7 @@ function runLeg(leg: string, id: string): string | null {
     }
     return null;
   }
-  return `${id}: unknown check type: ${leg} (use grep:<file>:<substring> or run:<command> or none)`;
+  return `${id}: unknown check type: ${leg} (use grep:<file>:<substring> or gitshow:<file>:<substring> or run:<command> or none)`;
 }
 
 /**
@@ -177,6 +200,11 @@ function selftest(): number {
     [`run:true && grep:${self}:AGE_FUSE_DAYS`, 'compound PASSES when ALL legs pass', true],
     [`run:true && grep:${self}:${absent}`, 'compound FAILS when the grep-anchor is gone (the green-but-gone catch)', false],
     [`grep:${self}:AGE_FUSE_DAYS && run:false`, 'compound FAILS when the run leg fails', false],
+    // gitshow: proves the pattern is on HEAD (committed tree), not just the working tree.
+    // AGE_FUSE_DAYS has been on HEAD since before this edit; an absent needle must fail.
+    [`gitshow:${self}:AGE_FUSE_DAYS`, 'gitshow leg PASSES when needle is on HEAD', true],
+    [`gitshow:${self}:${absent}`, 'gitshow leg FAILS when needle is absent from HEAD', false],
+    [`gitshow:scripts/does-not-exist-zz.ts:anything`, 'gitshow leg FAILS when path is absent from HEAD', false],
   ];
   let fails = 0;
   for (const [check, label, expectPass] of cases) {
@@ -187,7 +215,7 @@ function selftest(): number {
   }
   console.log(`\nverify-improvements selftest — ${cases.length - fails}/${cases.length} assertions passed`);
   if (fails) { console.error('✗ SELFTEST FAILED — compound-check logic no longer bites both directions.'); return 1; }
-  console.log('✓ compound-check (run:<selftest> && grep:<anchor>) verified — a reverted enforcement now goes RED.');
+  console.log('✓ compound-check (run:<selftest> && grep:<anchor> && gitshow:<anchor>) verified — a reverted enforcement now goes RED.');
   return 0;
 }
 
