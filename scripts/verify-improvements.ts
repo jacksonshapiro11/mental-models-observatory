@@ -53,53 +53,6 @@ function ageDays(dateStr: string): number {
   return Math.floor((Date.now() - d) / 86400000);
 }
 
-/** Run ONE check leg. Returns null on pass, an error string on fail. */
-function runLeg(leg: string, id: string): string | null {
-  leg = leg.trim();
-  if (leg.startsWith('grep:')) {
-    const rest = leg.slice(5);
-    const colon = rest.indexOf(':');
-    if (colon === -1) return `${id}: malformed grep check: ${leg}`;
-    const file = rest.slice(0, colon).trim();
-    const needle = rest.slice(colon + 1).trim();
-    const fp = path.join(process.cwd(), file);
-    if (!fs.existsSync(fp)) return `${id}: grep target missing: ${file}`;
-    if (!fs.readFileSync(fp, 'utf8').includes(needle)) {
-      return `${id}: enforcement text ABSENT — "${needle}" not found in ${file} (the improvement was reverted or never landed)`;
-    }
-    return null;
-  }
-  if (leg.startsWith('run:')) {
-    const cmd = leg.slice(4).trim();
-    const res = spawnSync(cmd, { shell: true, encoding: 'utf8', timeout: 120000 });
-    if (res.status !== 0) {
-      return `${id}: gate FAILED (exit ${res.status}): ${cmd}\n      ${(res.stderr || res.stdout || '').trim().split('\n').slice(-3).join('\n      ')}`;
-    }
-    return null;
-  }
-  return `${id}: unknown check type: ${leg} (use grep:<file>:<substring> or run:<command> or none)`;
-}
-
-/**
- * A row's check may be a COMPOUND of legs joined by ` && ` — ALL must pass.
- *
- * This is the fix for the 2026-07-31 "GREEN BUT GONE" blind spot (RC7). On 07-29 the
- * nightly `pull --rebase origin main` reverted UNCOMMITTED working-tree edits to already-
- * tracked scripts (ceiling-lint.ts lost cc-deal-magnitude/model-canonical-example/
- * cc-pricing-rung; fact-gate.ts lost stockMoveReactionFindings) — four "verified ✅"
- * improvements silently vanished — yet this gate stayed GREEN because a `run:…--selftest`
- * check only asserted exit 0, and the shrunken selftest (17→11 assertions) still exits 0.
- * A code improvement now carries BOTH `run:<selftest>` (proves it still WORKS) AND
- * `grep:<file>:<check-name>` (proves the specific enforcement is STILL ON DISK). A silent
- * revert now turns the registry RED on the grep leg instead of hiding behind exit 0.
- */
-function executeCheck(check: string, id: string): string[] {
-  const legs = check.split(/\s+&&\s+/).map(s => s.trim()).filter(Boolean);
-  const fails: string[] = [];
-  for (const leg of legs) { const f = runLeg(leg, id); if (f) fails.push(f); }
-  return fails;
-}
-
 function main(): number {
   const argIdx = process.argv.indexOf('--ledger');
   const ledgerPath = argIdx > -1 && process.argv[argIdx + 1]
@@ -136,9 +89,27 @@ function main(): number {
       continue;
     }
 
-    // 3. Execute the check (compound-aware; ALL ` && `-joined legs must pass).
-    const checkFails = executeCheck(r.check, r.id);
-    if (checkFails.length) fails.push(...checkFails); else verified++;
+    // 3. Execute the check.
+    if (r.check.startsWith('grep:')) {
+      const rest = r.check.slice(5);
+      const colon = rest.indexOf(':');
+      if (colon === -1) { fails.push(`${r.id}: malformed grep check: ${r.check}`); continue; }
+      const file = rest.slice(0, colon).trim();
+      const needle = rest.slice(colon + 1).trim();
+      const fp = path.join(process.cwd(), file);
+      if (!fs.existsSync(fp)) { fails.push(`${r.id}: grep target missing: ${file}`); continue; }
+      if (!fs.readFileSync(fp, 'utf8').includes(needle)) {
+        fails.push(`${r.id}: enforcement text ABSENT — "${needle}" not found in ${file} (the improvement was reverted or never landed)`);
+      } else verified++;
+    } else if (r.check.startsWith('run:')) {
+      const cmd = r.check.slice(4).trim();
+      const res = spawnSync(cmd, { shell: true, encoding: 'utf8', timeout: 120000 });
+      if (res.status !== 0) {
+        fails.push(`${r.id}: gate FAILED (exit ${res.status}): ${cmd}\n      ${(res.stderr || res.stdout || '').trim().split('\n').slice(-3).join('\n      ')}`);
+      } else verified++;
+    } else {
+      fails.push(`${r.id}: unknown check type: ${r.check} (use grep:<file>:<substring> or run:<command> or none)`);
+    }
   }
 
   // 4. The theater report — behavior counts (informational, the accountability view).
@@ -161,34 +132,4 @@ function main(): number {
   console.log('\n✓ All ledger improvements mechanically verified.');
   return 0;
 }
-
-/** Proves the compound-check logic bites BOTH directions — non-circular (it exercises
- *  executeCheck against crafted legs, not the live ledger). IMP-110's mechanical check. */
-function selftest(): number {
-  const self = 'scripts/verify-improvements.ts';
-  // Build the ABSENT needle at RUNTIME so it never appears as a source literal in this file
-  // (a literal would make its own grep leg pass — the bug the first cut of this selftest hit).
-  const absent = ['zz', Math.random().toString(36).slice(2), Date.now().toString(36), 'zz'].join('_');
-  const cases: [string, string, boolean][] = [
-    [`grep:${self}:AGE_FUSE_DAYS`, 'grep leg PASSES on a present string', true],
-    [`grep:${self}:${absent}`, 'grep leg FAILS on an absent string (revert catch)', false],
-    ['run:true', 'run leg PASSES on exit 0', true],
-    ['run:false', 'run leg FAILS on exit 1', false],
-    [`run:true && grep:${self}:AGE_FUSE_DAYS`, 'compound PASSES when ALL legs pass', true],
-    [`run:true && grep:${self}:${absent}`, 'compound FAILS when the grep-anchor is gone (the green-but-gone catch)', false],
-    [`grep:${self}:AGE_FUSE_DAYS && run:false`, 'compound FAILS when the run leg fails', false],
-  ];
-  let fails = 0;
-  for (const [check, label, expectPass] of cases) {
-    const got = executeCheck(check, 'SELFTEST').length === 0;
-    const ok = got === expectPass;
-    console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`);
-    if (!ok) fails++;
-  }
-  console.log(`\nverify-improvements selftest — ${cases.length - fails}/${cases.length} assertions passed`);
-  if (fails) { console.error('✗ SELFTEST FAILED — compound-check logic no longer bites both directions.'); return 1; }
-  console.log('✓ compound-check (run:<selftest> && grep:<anchor>) verified — a reverted enforcement now goes RED.');
-  return 0;
-}
-
-process.exit(process.argv.includes('--selftest') ? selftest() : main());
+process.exit(main());

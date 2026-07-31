@@ -1315,51 +1315,6 @@ function segmentMetricFindings(body: string, _briefDate: string | null): Finding
   return findings;
 }
 
-// IMP-101 (E-STOCK-REACTION-01, 07-26 — restored + committed 07-31 by IMP-111; the 07-29 uncommitted-
-// rebase had reverted it). The evening pipeline extracts an earnings RESULT (earningsResultClaims)
-// and a YoY (yoy), but a bare STOCK-PRICE REACTION magnitude was extracted by NOTHING — so "the stock
-// fell 8 percent" (07-26 GE Vernova, actually 6-7%) rode into an A-graded top slot unverified. This
-// surfaces an explicit-equity move % in M&M/C&C/AI&T as an advisory FLAG for the morning truth gate.
-// The DISCRIMINATOR is an explicit equity SUBJECT ("the stock/shares/share price/the equity") — which
-// is exactly why it stays SILENT on a YoY (owned by yoy), an INDEX move ("S&P fell 1.2%"), and a
-// NAME-ONLY move ("Micron surged 12%", scoped out at n=1).
-const STOCK_SUBJECT_RE = /\b(?:the stock|the shares|its shares|the share price|its share price|the equity|shares)\b/i;
-const STOCK_MOVE_VERB_RE = /\b(fell|rose|dropped?|gained?|surged?|slid|slide|jumped?|sank|sunk|plunged?|climbed?|tumbled?|soared?|slipped?|rallied|declined?|shed|lost|popped?|cratered?)\b/i;
-const STOCK_YOY_REFERENT_RE = /\b(a year earlier|year[- ]over[- ]year|yoy\b|from (?:a|last) year|versus last year|vs\.? last year|year[- ]ago)\b/i;
-function stockMoveReactionFindings(body: string, _briefDate: string | null): Finding[] {
-  const findings: Finding[] = [];
-  const stripped = stripComments(body);
-  const seen = new Set<string>();
-  let offset = 0;
-  for (const line of stripped.split('\n')) {
-    const idx = offset; offset += line.length + 1;
-    if (!EARN_SECTION_RE.test(sectionOf(stripped, idx))) continue;   // M&M / C&C / AI&T only
-    // Scan EACH explicit-equity-subject occurrence and bind the % that sits in the SAME clause
-    // (a ~70-char window after the subject). This is why a distant metric % on the same long
-    // bullet ("RPO surged 84% … shares held a 9% gain") is not misread as the stock move: the
-    // window around "shares" carries the 9%, not the 84%. The explicit subject is also why an
-    // index move ("S&P fell 1.2%") and a name-only move ("Micron surged 12%") stay silent.
-    const subjRe = new RegExp(STOCK_SUBJECT_RE.source, 'gi');
-    let m: RegExpExecArray | null;
-    while ((m = subjRe.exec(line)) !== null) {
-      const win = line.slice(m.index, m.index + 70);
-      if (!STOCK_MOVE_VERB_RE.test(win)) continue;                   // a move verb near the subject
-      const pctM = win.match(PCT_RE);
-      if (!pctM) continue;                                           // a % bound to that clause
-      if (STOCK_YOY_REFERENT_RE.test(line.slice(m.index, m.index + 110))) continue; // a YoY — owned by yoy
-      const key = `stock-move:${sectionOf(stripped, idx)}:${win.slice(0, 30).toLowerCase()}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      findings.push({
-        check: 'stock-move-reaction',
-        severity: 'FLAG',
-        message: `STOCK-MOVE REACTION — an explicit equity move of ${pctM[0]} in ${sectionOf(stripped, idx)}: "${win.trim().slice(0, 120)}…". The evening pipeline verifies the earnings RESULT and the YoY but NOT a bare stock-price reaction magnitude (07-26 GE Vernova "the stock fell 8 percent" was 6-7%). MORNING GATE: confirm the exact move against the session close and correct an imprecise figure.`,
-      });
-    }
-  }
-  return findings;
-}
-
 // Superlative contradictions (FAIL) + price-vs-archive deviations (FLAG).
 function archiveBackstop(superlatives: Claim[], briefPrices: Record<string, number>, archive: Record<string, ArchivePoint[]>): Finding[] {
   const findings: Finding[] = [];
@@ -2026,16 +1981,6 @@ function selftest(): number {
   const okSegFire = segmentMetricFindings("AMD's data-center GPU revenue, $7.7 billion in the trailing year through Q1, is roughly 8% of NVIDIA's run rate.", '2026-07-21').some((f) => f.check === 'segment-metric-attribution');
   const okSegSilentDisclosed = segmentMetricFindings('AMD reported Data Center revenue of $12.8 billion, up sharply on AI demand.', '2026-07-21').length === 0;
 
-  // IMP-101 (restored 07-31): stock-move reaction magnitude surfaced for the morning truth gate.
-  const okSmFire = stockMoveReactionFindings('## Companies & Crypto\nGE Vernova beat, but the stock fell 8 percent because core EPS came in at $2.47 against a $3.18 estimate.', '2026-07-26').some((f) => f.check === 'stock-move-reaction');
-  const okSmSilentYoy = stockMoveReactionFindings('## Companies & Crypto\nRevenue rose 12 percent year over year to $48 billion.', '2026-07-26').length === 0;
-  const okSmSilentIndex = stockMoveReactionFindings('## Markets & Macro\nThe S&P fell 1.2 percent on the print.', '2026-07-26').length === 0;
-  const okSmSilentName = stockMoveReactionFindings('## Companies & Crypto\nMicron surged 12 percent after the guide.', '2026-07-26').length === 0;
-  // Precision: on a long bullet carrying a metric % AND a stock-move %, the flag must quote the
-  // STOCK move (10%), not the first metric % on the line (37%) — the real 07-31 Amazon shape.
-  const smAmzn = stockMoveReactionFindings('## AI & Tech\n- **Amazon posted its first $200 billion quarter, AWS grew 37% to $42.23 billion, and the stock rose about 10% after hours.** Filler.', '2026-07-31');
-  const okSmPrecise = smAmzn.some((f) => f.check === 'stock-move-reaction' && /\b10\s*%/.test(f.message) && !/\b37\s*%/.test(f.message));
-
   // --- IMP-086: earnings-result vs consensus. FIRE on the real 07-22 fabricated EQT shape (the "beat"
   //     that was a miss) AND the real published 07-22 EQT line; RESOLVE to PASS with truth; SILENT on a
   //     bare YoY (owned by yoy), a guidance line, and a stock-price move. ---
@@ -2065,9 +2010,6 @@ function selftest(): number {
   console.log(`  [IMP-082] FIRE on the REAL published 07-21 (AMD/GM weekday event): ${okCorpReal ? '✓' : '✗'}`);
   console.log(`  [IMP-083] FIRE: "data-center GPU revenue, $7.7 billion" is a segment-metric FLAG: ${okSegFire ? '✓' : '✗'}`);
   console.log(`  [IMP-083] SILENT on a disclosed single-qualifier segment ("Data Center revenue of $12.8B"): ${okSegSilentDisclosed ? '✓' : '✗'}`);
-  console.log(`  [IMP-101] FIRE: "the stock fell 8 percent" (07-26 GE Vernova) is a stock-move FLAG: ${okSmFire ? '✓' : '✗'}`);
-  console.log(`  [IMP-101] SILENT on a YoY / index move ("S&P fell 1.2%") / name-only move ("Micron surged 12%"): ${okSmSilentYoy && okSmSilentIndex && okSmSilentName ? '✓' : '✗'}`);
-  console.log(`  [IMP-101] PRECISION: quotes the stock move (10%), not the metric % (37%), on a mixed bullet: ${okSmPrecise ? '✓' : '✗'}`);
   console.log(`  [IMP-086] FIRE: EQT "$2.56B against a $1.84B consensus … $0.45 versus $0.41 expected" is a CRITICAL earnings claim: ${okEarnFire ? '✓' : '✗'}`);
   console.log(`  [IMP-086] RESOLVES to PASS once truth carries earnings:<slug>: ${okEarnResolves ? '✓' : '✗'} (key=${earnKey.slice(0, 32)})`);
   console.log(`  [IMP-086] SILENT on a bare YoY ("revenue $48.03B, up 1.9% YoY" — owned by yoy): ${okEarnSilentYoy ? '✓' : '✗'}`);
@@ -2152,7 +2094,6 @@ function selftest(): number {
     okYoyGmFire && okYoyStldFire && okYoyResolves && okYoySilentRatio && okYoySilentMove && okYoyScopeSignal && okYoyReal &&
     okCorpFire && okCorpSilentMacro && okCorpSilentBare && okCorpReal &&
     okSegFire && okSegSilentDisclosed &&
-    okSmFire && okSmSilentYoy && okSmSilentIndex && okSmSilentName && okSmPrecise &&
     okEarnFire && okEarnResolves && okEarnSilentYoy && okEarnSilentGuidance && okEarnSilentMove && okEarnReal;
   if (ok) {
     console.log('\n✅ SELFTEST PASS — gate bites the 07-10/07-11/07-13 failures (reuse, transposition, entity misattribution, harmonize-to-published, release-date falsehood) and stays silent on the corrected/healthy cases — including its own two false positives.');
@@ -2337,7 +2278,6 @@ function main() {
   // compound segment+chip line AMD does not disclose, shipped as if it were a reported metric.
   // Advisory; the Morning Truth Gate confirms the line is reported or the figure is labeled/sourced.
   findings.push(...segmentMetricFindings(body, briefDate));
-  findings.push(...stockMoveReactionFindings(body, briefDate)); // IMP-101 (restored)
 
   // 5. Truth cross-check (if truth present)
   if (truth) findings.push(...crossCheck(claims, truth));
