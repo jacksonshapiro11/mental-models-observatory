@@ -25,6 +25,10 @@ if (!dir) { console.error('usage: add-task-telemetry.mjs <ScheduledDir> [--write
 const canary = (task) => `
 ## STEP 0 — CANARY (your very first action, before reading any file)
 
+**BRIEF_DATE** = the brief this run feeds. If this task body already computes a BRIEF_DATE, use that.
+Otherwise: afternoon/evening ET runs use **today + 1**; morning runs that publish the same day's
+brief use **today**. State the value you used.
+
 Append one line to \`daily-briefs/{BRIEF_DATE}-pipeline-status.md\`:
 
 \`\`\`
@@ -55,7 +59,7 @@ Critic and evening super-brief: the task ran, wrote nothing, said nothing, and n
 // 11 bodies, 28 references, incl. all six intel sweeps loading their "canonical standards"
 // from files deleted seven weeks ago. Audited 2026-07-31.
 const REMAP = {
-  'skills/operating-system/SKILL.md':       'system/Operating_System.md',
+  'skills/operating-system/SKILL.md':       'system/Operating_System.md` + `system/Operating_Doctrine.md',
   'skills/source-network/SKILL.md':         'system/SOURCE_NETWORK.md',
   'skills/intelligence-processor/SKILL.md': 'system/Intelligence_Processor.md',
   'skills/morning-updater/SKILL.md':        'system/Morning_Updater.md',
@@ -66,6 +70,8 @@ const REMAP = {
   'skills/brief-critic/SKILL.md':           'system/Brief_Critic.md',
   'skills/accountability-cycle/SKILL.md':   'system/Accountability_Cycle.md',
   'skills/brief-quality-gate/SKILL.md':     'system/Novelty_Audit.md',
+  // Stale doc names that were never in the skills/ mirror (audited 2026-07-31):
+  'system/Worldview.md':                    'system/Current_Worldview_v5.md',
 };
 
 const HAS_CANARY = /canary/i;
