@@ -169,6 +169,71 @@ function checkThematicEcho(bullets: Bullet[]): Flag[] {
   return flags;
 }
 
+// ---------- C&C pricing + Model canonical checks (RESTORED 2026-07-31, IMP-111) ----------
+// These three checks — IMP-099 cc-deal-magnitude/--strict-cc (07-25), IMP-103 model-canonical-
+// example (07-26), IMP-108 cc-pricing-rung (07-29) — were built and "verified ✅" but REVERTED by
+// the nightly `pull --rebase origin main` because the scripts/ edits were never committed (RC7
+// persistence; see IMP-110/IMP-111 in the ledger). Restored here from the ledger specs, and each
+// row's ledger check is now COMPOUND (run:<selftest> && grep:<file>:<name>) so a future revert of
+// the specific check turns verify-improvements RED instead of hiding behind an exit-0 selftest.
+function sectionRegion(brief: string, headerRe: RegExp, nextRe: RegExp): string {
+  const m = brief.match(headerRe);
+  if (!m || m.index == null) return '';
+  const rest = brief.slice(m.index + m[0].length);
+  const n = rest.match(nextRe);
+  return n && n.index != null ? rest.slice(0, n.index) : rest;
+}
+function ccRegion(brief: string): string {
+  return sectionRegion(brief, /^##\s+Companies\s*&\s*Crypto\s*$/m, /^##\s+/m);
+}
+function ccItems(brief: string): string[] {
+  const region = ccRegion(brief);
+  if (!region.trim()) return [];
+  return region.split(/\n(?=-\s+\*\*)/).map(s => s.trim()).filter(s => /^-\s+\*\*/.test(s));
+}
+function modelSection(brief: string): string {
+  return sectionRegion(brief, /^#\s*▸\s*THE MODEL\s*$/m, /^#\s*▸/m);
+}
+
+// IMP-099 (E-CC-SECTION-WEAKNESS-01, 07-25): a C&C bullet describing a DEAL must carry a deal
+// magnitude — a scale money figure ($Xbn/$Xmn) OR a user/subscriber/artist count. "artists keep 100%
+// of revenue" (07-25 Nina) prices the business model, not the transaction, so it does NOT satisfy.
+const CC_DEAL_RE = /\b(acqui\w+|merger|merge[sd]?|takeover|buyout|tender offer|all-(?:stock|cash)|agreed to (?:buy|acquire)|deal to (?:buy|acquire)|to acquire|to buy out)\b/i;
+const CC_MONEY_RE = /[$€£¥]\s?\d[\d,.]*\s*(?:billion|million|trillion|bn\b|mn\b)/i;
+const CC_COUNT_RE = /\b\d[\d,.]*\s*(?:million|billion|thousand|k\b)?\s*(?:users?|subscribers?|artists?|customers?|members?|accounts?|creators?|developers?|merchants?|monthly actives?|MAUs?|daily actives?|listeners?|riders?)\b/i;
+function checkCcDealMagnitude(brief: string): Flag[] {
+  const flags: Flag[] = [];
+  ccItems(brief).forEach((item, i) => {
+    if (!CC_DEAL_RE.test(item)) return;
+    if (CC_MONEY_RE.test(item) || CC_COUNT_RE.test(item)) return;
+    flags.push({ check: 'cc-deal-magnitude', where: `Companies & Crypto bullet ${i + 1}`, message: `A C&C bullet describes a DEAL (acquisition/merger/takeover) but carries NO deal magnitude — no scale money figure and no user/subscriber/artist count ("${item.slice(4, 64).replace(/\n/g, ' ')}…"). A percentage of the target's own revenue ("artists keep 100%") prices the business model, not the transaction. Give the price paid, the user base, or the revenue at stake.` });
+  });
+  return flags;
+}
+
+// IMP-108 (E-CC-ESSENTIAL-DROUGHT-01, 07-29): a SECTION-LEVEL advisory — fires ONCE if the whole C&C
+// section lacks ANY comparative valuation (a multiple vs a referent, a premium/discount to a named
+// comparable, what the market prices/pays/values, or a dated historical precedent). A bare deal price
+// ($3.8B), a TAM, and an EPS-vs-estimate do NOT satisfy it — the only clear is to price what the
+// market already values.
+const CC_COMPARATIVE_RE = /(?:\b\d+(?:\.\d+)?x\b|\b(?:premium|discount)\s+(?:to|over|vs\.?|versus)\b|\bmarket\s+(?:prices?|pays?|values?|is\s+(?:pricing|paying|valuing)|caps?|capitali)|\b(?:priced|valued|trades?|trading)\s+(?:at|around)\b[^.]*\b(?:vs\.?|versus|against|premium|discount|multiple|times)\b|\b(?:19\d\d|20[01]\d|202[0-3])\b)/i;
+function checkCcPricingRung(brief: string): Flag[] {
+  const region = ccRegion(brief);
+  if (!region.trim()) return [];
+  if (CC_COMPARATIVE_RE.test(region)) return [];
+  return [{ check: 'cc-pricing-rung', where: 'Companies & Crypto (section)', message: `The whole C&C section carries NO comparative valuation — no multiple vs a referent, no premium/discount to a named comparable, no "what the market prices/pays", no dated precedent with a sized outcome. Bare deal prices and EPS-vs-estimate are not comparatives. Price what the market already values (a 14x vs the group, a premium to a named peer, the historical precedent and its outcome).` }];
+}
+
+// IMP-103 (E-MODEL-POOL-EXHAUSTION-01, 07-26): the Model's illustration is a cached business-school
+// case (Nokia/Blockbuster/Kodak/BlackBerry/MySpace/Sears/Xerox PARC). Advisory — the angle can still
+// be fresh (Kodak's undeployed CCD patent), so the Editor confirms the angle is non-obvious.
+const CANONICAL_MODEL_CASE_RE = /\b(Nokia|Blockbuster|Kodak|BlackBerry|MySpace|Sears|Xerox PARC)\b/i;
+function checkModelCanonicalExample(brief: string): Flag[] {
+  const m = modelSection(brief).match(CANONICAL_MODEL_CASE_RE);
+  if (!m) return [];
+  return [{ check: 'model-canonical-example', where: 'The Model', message: `The Model illustrates with "${m[0]}" — among the most overused business-school cases in existence. Under pool exhaustion the illustration is where the section earns novelty: prefer a current-brief entity living the same tradeoff, or a less-obvious anchor. If the angle is genuinely fresh (e.g. Kodak's undeployed CCD patent), confirm it is non-obvious before keeping.` }];
+}
+
 function lint(brief: string): Flag[] {
   const intro = introOf(brief);
   const bullets = sixBullets(brief);
@@ -180,6 +245,9 @@ function lint(brief: string): Flag[] {
   flags.push(...checkNumberPresence(bullets, take));
   flags.push(...checkHollowSignificance(brief));
   flags.push(...checkThematicEcho(bullets));
+  flags.push(...checkCcDealMagnitude(brief));   // IMP-099 (restored)
+  flags.push(...checkCcPricingRung(brief));      // IMP-108 (restored)
+  flags.push(...checkModelCanonicalExample(brief)); // IMP-103 (restored)
   return flags;
 }
 
@@ -247,7 +315,7 @@ const CLEAN_FIXTURE = `# MARKETS, MEDITATIONS & MENTAL MODELS
 
 ## Companies & Crypto
 
-- **SK Hynix priced its ADS at $149 with demand at seven times the offering, raising roughly 28 billion dollars.** The oversubscription implies dollar-denominated access to HBM supply commands a premium above the arbitrage cost.
+- **SK Hynix priced its ADS at $149 with demand at seven times the offering, raising roughly 28 billion dollars.** The book cleared at a 12x forward multiple, a premium to Micron's 9x, and the oversubscription implies dollar-denominated access to HBM supply commands a premium above the arbitrage cost.
 
 ## AI & Tech
 
@@ -281,6 +349,14 @@ export function strictAitViolations(flags: Flag[]): Flag[] {
   return flags.filter(f => f.check === 'pricing-magnitude' && AIT_WHERE_RE.test(f.where));
 }
 
+// IMP-099 (ESC-008 / E-CC-SECTION-WEAKNESS-01, 07-25 — restored 07-31): --strict-cc turns a
+// cc-deal-magnitude FLAG into a HARD Editor REJECT (the --strict-ait pattern applied to C&C).
+// Default mode stays exit-0 advisory, so the brief ALWAYS ships; --strict-cc is what Brief_Editor
+// Gate 14(f) runs to gate the pass.
+export function strictCcViolations(flags: Flag[]): Flag[] {
+  return flags.filter(f => f.check === 'cc-deal-magnitude');
+}
+
 // Selftest fixtures for --strict-ait: an unpriced AI&T bullet (a tally, the 07-16 shape) must FIRE;
 // a priced AI&T bullet ($ / multiple) must stay SILENT.
 const AIT_STRICT_BAD = `# ▸ THE SIX
@@ -302,35 +378,82 @@ const AIT_STRICT_GOOD = `# ▸ THE SIX
 - **A curiosity.**
 `;
 
+// IMP-111 fixtures for the three restored checks. CC_BAD: a deal bullet with no scale money/count
+// (fires cc-deal-magnitude + --strict-cc), a section with only EPS-vs-estimate (fires cc-pricing-
+// rung), and a Nokia Model illustration (fires model-canonical-example). CC_GOOD: a deal with $4.7B
+// + 646,000 subs, an 8x/discount-to-Verizon/2015-precedent comparative, and a non-canonical Model.
+const CC_BAD_FIXTURE = `# ▸ THE SIX
+
+## Companies & Crypto
+
+- **Acme agreed to acquire Beta in an all-stock merger that reshapes the sector.** The takeover ends a long rivalry, and management guided to earnings of $2.10 against a $1.90 estimate next quarter, a clean beat.
+
+## AI & Tech
+
+- **A filler bullet with a $30 million line and a 13x gap.** Scoped out of C&C.
+
+# ▸ THE MODEL
+
+### The Innovator's Trap
+
+A classic case: Nokia dominated mobile and then missed the smartphone shift, the lesson every strategy deck repeats.
+`;
+const CC_GOOD_FIXTURE = `# ▸ THE SIX
+
+## Companies & Crypto
+
+- **AT&T agreed to acquire a regional fiber operator for $4.7 billion, adding 646,000 subscribers.** The deal trades at 8x EBITDA, a discount to Verizon's 11x, echoing the 2015 DirecTV logic that took years to pay off.
+
+## AI & Tech
+
+- **A filler bullet.** Scoped out of C&C.
+
+# ▸ THE MODEL
+
+### The Eutectic Point
+
+A metallurgy principle: two individually safe components can fail below either one's melting point.
+`;
+
 function selftest(): number {
+  let fails = 0, total = 0;
+  const assert = (ok: boolean, label: string) => { total++; console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`); if (!ok) fails++; };
+
   const badFlags = lint(BAD_FIXTURE);
   const cleanFlags = lint(CLEAN_FIXTURE);
   const expectBad = ['intro-preview-padding', 'intro-watch-missing', 'intro-throughline-label', 'number-presence', 'pricing-magnitude', 'hollow-significance', 'thematic-echo'];
-  let fails = 0;
-  for (const check of expectBad) {
-    const fired = badFlags.some(f => f.check === check);
-    console.log(`  ${fired ? 'PASS' : 'FAIL'} — ${check} fires on the rigged bad brief`);
-    if (!fired) fails++;
+  for (const check of expectBad) assert(badFlags.some(f => f.check === check), `${check} fires on the rigged bad brief`);
+  // The 07-14 gaming case: a bullet whose only numerals are a date and a TALLY must be caught by
+  // pricing-magnitude, NOT waved through by number-presence. (IMP-050.)
+  assert(badFlags.some(f => f.check === 'pricing-magnitude' && /Regulators designated/.test(f.message)), `"4 cloud providers / the 4 hyperscalers" (real 07-14 AI&T-3) FLAGS as unpriced: a count is not a price`);
+  assert(cleanFlags.length === 0, `zero flags on the payoff-grade clean brief${cleanFlags.length ? ` (got: ${cleanFlags.map(f => `${f.check}@${f.where}`).join(', ')})` : ''}`);
+  // IMP-071 (ESC-008): --strict-ait turns an AI&T pricing-magnitude FLAG into a REJECT.
+  assert(strictAitViolations(lint(AIT_STRICT_BAD)).length > 0, `--strict-ait FIRES on an unpriced AI&T bullet (a tally, the 07-16 shape)`);
+  assert(strictAitViolations(lint(AIT_STRICT_GOOD)).length === 0, `--strict-ait SILENT on a priced AI&T bullet ($30M / 13x)`);
+
+  // IMP-111 — the three checks reverted by the 07-29 uncommitted-rebase, restored + committed 07-31.
+  const ccBad = lint(CC_BAD_FIXTURE), ccGood = lint(CC_GOOD_FIXTURE);
+  assert(ccBad.some(f => f.check === 'cc-deal-magnitude'), `[IMP-099] cc-deal-magnitude FIRES on a deal bullet with no scale money/count`);
+  assert(!ccGood.some(f => f.check === 'cc-deal-magnitude'), `[IMP-099] cc-deal-magnitude SILENT on a deal with $4.7B + 646,000 subs`);
+  assert(strictCcViolations(ccBad).length > 0, `[IMP-099] --strict-cc FIRES on the unpriced deal (HARD Editor REJECT)`);
+  assert(strictCcViolations(ccGood).length === 0, `[IMP-099] --strict-cc SILENT on the priced deal`);
+  assert(ccBad.some(f => f.check === 'cc-pricing-rung'), `[IMP-108] cc-pricing-rung FIRES on a C&C section with no comparative (deal + EPS-vs-estimate only)`);
+  assert(!ccGood.some(f => f.check === 'cc-pricing-rung'), `[IMP-108] cc-pricing-rung SILENT when a bullet carries 8x / discount to Verizon / 2015 precedent`);
+  assert(ccBad.some(f => f.check === 'model-canonical-example'), `[IMP-103] model-canonical-example FIRES on a Nokia Model illustration`);
+  assert(!ccGood.some(f => f.check === 'model-canonical-example'), `[IMP-103] model-canonical-example SILENT on a non-canonical Model`);
+
+  // Real-artifact both-directions: the shipped 07-31 v2 (mechanical PASS clean) must carry 0 of the
+  // three restored flags — Apple/Coinbase/DTCC are not deals; C&C cites 2011/2000 precedents; the
+  // Model is the Legibility Trap, not a canonical business case.
+  const realV2 = path.join(process.cwd(), 'daily-briefs/2026-07-31-v2.md');
+  if (fs.existsSync(realV2)) {
+    const rf = lint(fs.readFileSync(realV2, 'utf8')).filter(f => ['cc-deal-magnitude', 'cc-pricing-rung', 'model-canonical-example'].includes(f.check));
+    assert(rf.length === 0, `restored checks SILENT on the REAL 07-31 v2 (clean)${rf.length ? ` (got: ${rf.map(f => `${f.check}@${f.where}`).join(', ')})` : ''}`);
   }
-  // The 07-14 gaming case specifically: a bullet whose only numerals are a date and a TALLY must be
-  // caught by pricing-magnitude, NOT waved through by number-presence. (IMP-050.)
-  const tallyCase = badFlags.some(f => f.check === 'pricing-magnitude' && /Regulators designated/.test(f.message));
-  console.log(`  ${tallyCase ? 'PASS' : 'FAIL'} — "4 cloud providers / the 4 hyperscalers" (real 07-14 AI&T-3) FLAGS as unpriced: a count is not a price`);
-  if (!tallyCase) fails++;
-  const cleanOk = cleanFlags.length === 0;
-  console.log(`  ${cleanOk ? 'PASS' : 'FAIL'} — zero flags on the payoff-grade clean brief${cleanOk ? '' : ` (got: ${cleanFlags.map(f => `${f.check}@${f.where}`).join(', ')})`}`);
-  if (!cleanOk) fails++;
-  // IMP-071 (ESC-008 escalation): --strict-ait turns an AI&T pricing-magnitude FLAG into a REJECT.
-  const aitStrictFires = strictAitViolations(lint(AIT_STRICT_BAD)).length > 0;
-  console.log(`  ${aitStrictFires ? 'PASS' : 'FAIL'} — --strict-ait FIRES on an unpriced AI&T bullet (a tally, the 07-16 shape)`);
-  if (!aitStrictFires) fails++;
-  const aitStrictClean = strictAitViolations(lint(AIT_STRICT_GOOD)).length === 0;
-  console.log(`  ${aitStrictClean ? 'PASS' : 'FAIL'} — --strict-ait SILENT on a priced AI&T bullet ($30M / 13x)`);
-  if (!aitStrictClean) fails++;
-  const total = expectBad.length + 4;
+
   console.log(`\nceiling-lint selftest — ${total - fails}/${total} assertions passed`);
   if (fails) { console.error('✗ SELFTEST FAILED — a lint check no longer bites both directions.'); return 1; }
-  console.log('✓ All 7 lint checks verified in both directions.');
+  console.log('✓ All 10 lint checks verified in both directions (+ --strict-ait / --strict-cc gates).');
   return 0;
 }
 
@@ -355,6 +478,18 @@ function main() {
       process.exit(1);
     }
     console.log('   ✅ --strict-ait: every AI&T bullet carries a priced magnitude.');
+  }
+
+  // IMP-099 (ESC-008 / E-CC-SECTION-WEAKNESS-01, restored 07-31): C&C deal magnitude is a HARD Editor
+  // REJECT. Default stays advisory (exit 0); --strict-cc is what Brief_Editor Gate 14(f) runs.
+  if (process.argv.slice(2).includes('--strict-cc')) {
+    const v = strictCcViolations(flags);
+    if (v.length) {
+      console.error(`\n✗ CEILING-LINT --strict-cc: ${v.length} C&C deal bullet(s) carry NO deal magnitude — Editor must REJECT-and-rebuild with the price paid, the user/subscriber base, or the revenue at stake. A percentage of the target's own revenue does not satisfy it.`);
+      for (const f of v) console.error(`   ✗ ${f.where}: ${f.message.slice(0, 90)}…`);
+      process.exit(1);
+    }
+    console.log('   ✅ --strict-cc: every C&C deal bullet carries a deal magnitude.');
   }
   process.exit(0);
 }
