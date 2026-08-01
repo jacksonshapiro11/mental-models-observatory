@@ -50,7 +50,9 @@ export function violations(draft: string, corrections: Correction[]): Correction
 }
 
 function runOnDate(date: string, stage: string, root = process.cwd()): number {
-  const candidates = stage === 'v1'
+  const candidates = stage === 'published'
+    ? [`content/daily-updates/${date}.md`]
+    : stage === 'v1'
     ? [`daily-briefs/${date}-v1.md`, `daily-briefs/${date}-v1-pre-quality-gate.md`]
     : [`daily-briefs/${date}-${stage}.md`];
   const draftPath = candidates.map(p => path.join(root, p)).find(fs.existsSync);
@@ -96,7 +98,7 @@ function main(): number {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
   const date = args.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a));
-  if (!date) { console.error('usage: predraft-correction-gate.ts <YYYY-MM-DD> [--stage v1|v1.5|v2] | --selftest'); return 2; }
+  if (!date) { console.error('usage: predraft-correction-gate.ts <YYYY-MM-DD> [--stage v1|v1.5|v2|published] | --selftest'); return 2; }
   const si = args.indexOf('--stage');
   return runOnDate(date, si !== -1 ? args[si + 1]! : 'v1');
 }

@@ -40,6 +40,14 @@ const run = (cmd) => {
   catch (e) { return { out: (e.stdout || '') + (e.stderr || ''), code: e.status ?? 1 }; }
 };
 
+// Count findings by severity. ceiling-lint emits advisory flags as "⚠" (not 🔴/🟡/✗),
+// so the original harness showed `·` on every day while the gate was actually firing —
+// the 3a diagnosis on 2026-08-01 (model-canonical-example FLAG on published + v2, invisible
+// to replay). Soft markers (🟡 word budgets, ⚠ ceiling flags) must not be mistaken for
+// silence OR for hard blocks.
+const HARD = /🔴|✗ /g;
+const SOFT = /🟡|⚠/g;
+
 const results = {};
 for (const g of GATES) {
   results[g.name] = {};
@@ -47,8 +55,13 @@ for (const g of GATES) {
     const target = g.kind === 'published' ? `content/daily-updates/${d}.md` : d;
     const extra = (g.extra || []).join(' ');
     const { out, code } = run(`node --experimental-strip-types scripts/${g.name}.ts ${target} ${extra}`);
-    const findings = (out.match(/🔴|🟡|✗ /g) || []).length;
-    results[g.name][d] = code === 2 ? '–' : (findings ? `${code ? 'F' : 'f'}${findings}` : '·');
+    if (code === 2) { results[g.name][d] = '–'; continue; }
+    const hard = (out.match(HARD) || []).length;
+    const soft = (out.match(SOFT) || []).length;
+    // Prefer hard count when the gate blocked OR emitted hard markers; else soft (advisory).
+    if (hard) results[g.name][d] = `${code ? 'F' : 'f'}${hard}`;
+    else if (soft) results[g.name][d] = `f${soft}`;
+    else results[g.name][d] = '·';
   }
 }
 
@@ -57,9 +70,10 @@ console.log('\nGATE REPLAY — ' + dates[0] + ' → ' + dates[dates.length - 1] 
 console.log(' '.repeat(w) + dates.map(d => d.slice(5).padStart(7)).join(''));
 for (const g of GATES) console.log(g.name.padEnd(w) + dates.map(d => (results[g.name][d] || '?').padStart(7)).join(''));
 console.log(`
-  ·  clean      F{n}  {n} findings, gate BLOCKS      f{n}  {n} findings, advisory      –  not applicable
+  ·  clean      F{n}  hard findings + gate BLOCKS      f{n}  advisory only (🟡 / ⚠)      –  not applicable
 
   Read it like this: a row that is mostly '·' with F on the days you disliked is well tuned.
   A row that is F everywhere is mistuned and will be ignored. A row that is '·' everywhere has
   either nothing to catch or is blind — check it fires on a known-bad fixture before trusting it.
+  Soft ceilings (word budgets) and ceiling-lint FLAGs show as f{n}, not F{n} and not silence.
 `);
