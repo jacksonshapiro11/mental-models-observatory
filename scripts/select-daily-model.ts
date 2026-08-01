@@ -14,8 +14,9 @@
  * FILE. Selection is a pure function of the date (queue.models[(date - epoch) mod len]) —
  * idempotent, reproducible, no discretion. Queue length (119) > 100 makes a 100-day no-repeat
  * structural; consecutive head entries come from different domains, so style rotates.
- * ENFORCED at the gate: scripts/validate-brief.ts checkModelAssigned rejects a brief whose
- * Model slug ≠ the assignment for its date — the prose rule failed, the validator cannot.
+ * ENFORCED at the gate: scripts/validate-brief.ts checkModelAssigned calls select() — the same
+ * function — so a brief whose Model slug ≠ what the selector would hand the Writer is REJECTED.
+ * (Previously the gate used naive queue[days%len] and disagreed with select's cooldown skips.)
  *
  * v2 (2026-07-24 review hardening):
  *   - Paths moved system/ → data/ so the queue/ledger are TRACKED (system/ is gitignored and
@@ -158,7 +159,10 @@ export function refusalReason(slug: string, dateStr: string): string | null {
   return null;
 }
 
-function select(dateStr: string): { date: string; queueIndex: number; skippedFrom?: number; skipNote?: string } & Model {
+/** Deterministic assignment for a date — includes cooldown / lifetime-use skips.
+ *  Exported so validate-brief checkModelAssigned uses the SAME assignment the Writer was handed
+ *  (IMP-095 wiring gap: validator used naive queue[days%len], selector skipped — false FAILs). */
+export function select(dateStr: string): { date: string; queueIndex: number; skippedFrom?: number; skipNote?: string } & Model {
   const q = loadQueueFile();
   const base = indexForDate(dateStr, q);
   const len = q.models.length;
@@ -369,7 +373,10 @@ function selftest(): number {
   return 0;
 }
 
-// ── main ───────────────────────────────────────────────────────────────────────
+// ── main (CLI only — safe to import select() from validate-brief) ──────────────
+import { fileURLToPath } from 'url';
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
 const arg = process.argv[2];
 if (arg === '--selftest') {
   process.exit(selftest());
@@ -408,4 +415,5 @@ if (arg === '--selftest') {
   const isToday = dateStr === todayET();
   if (isToday) appendLedger(pick);
   console.log(JSON.stringify(isToday ? pick : { ...pick, peek: true }, null, 2));
+}
 }
