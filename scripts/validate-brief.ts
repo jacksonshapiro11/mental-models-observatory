@@ -1415,10 +1415,10 @@ function checkNamedSectionWordBudget(body: string): Failure[] {
     const words = text.split(/\s+/).filter(Boolean).length;
     if (words > Math.round(budget * 1.15)) {
       out.push({ check: 'named-section-word-budget',
-        message: `🔴 HARD FAIL: ${name} is ${words} words against a ${budget}-word budget. Compress.` });
+        message: `OVER: ${name} is ${words} words against a ${budget}-word soft ceiling. Compress.` });
     } else if (words > budget) {
       out.push({ check: 'named-section-word-budget',
-        message: `🟡 FLAG: ${name} is ${words} words against a ${budget}-word budget. Compress if possible.` });
+        message: `NEAR: ${name} is ${words} words against a ${budget}-word soft ceiling.` });
     }
   }
   return out;
@@ -1454,10 +1454,10 @@ function checkSixSectionWordBudget(body: string): Failure[] {
       if (depth) depthUnits++;
       if (words > hard) {
         out.push({ check: 'six-section-word-budget',
-          message: `🔴 HARD FAIL: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (ceiling ${ceil}, hard fail ${hard}). Compress or split.${depth ? ' (DEPTH-TREATMENT)' : ''}` });
+          message: `OVER: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (soft ceiling ${ceil}). Compress or split.${depth ? ' (DEPTH-TREATMENT)' : ''}` });
       } else if (words > ceil) {
         out.push({ check: 'six-section-word-budget',
-          message: `🟡 FLAG: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (ceiling ${ceil}). Compress.${depth ? ' (DEPTH-TREATMENT)' : ''}` });
+          message: `OVER: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (ceiling ${ceil}). Compress.${depth ? ' (DEPTH-TREATMENT)' : ''}` });
       }
     });
 
@@ -1467,7 +1467,7 @@ function checkSixSectionWordBudget(body: string): Failure[] {
     const budget = 3 * UNIT + Math.min(depthUnits, 2) * (DEPTH - UNIT);
     if (total > budget) {
       out.push({ check: 'six-section-word-budget',
-        message: `🔴 HARD FAIL: ${sectionName} totals ${total} words across ${units.length} unit(s) against a ${budget}-word section budget (3 units x ${UNIT}${depthUnits ? ` + ${Math.min(depthUnits, 2)} depth-treatment` : ''}). The Six runs 2-3 units per section; compress or cut a unit.` });
+        message: `OVER: ${sectionName} totals ${total} words across ${units.length} unit(s) against a ${budget}-word section budget (3 units x ${UNIT}${depthUnits ? ` + ${Math.min(depthUnits, 2)} depth-treatment` : ''}). The Six runs 2-3 units per section; compress or cut a unit.` });
     }
   }
   return out;
@@ -2162,8 +2162,13 @@ function main() {
   failures.push(...checkDashboardSentenceCeiling(body));
   // --- Six bullet word ceiling (May 11, 2026) ---
   failures.push(...checkSixBulletWordCeiling(body));
-  failures.push(...checkSixSectionWordBudget(body));
-  failures.push(...checkNamedSectionWordBudget(body));
+  {
+    // SOFT CEILING — advisory only, never blocks (Jackson, 2026-08-01: "I don't want a strict
+    // word budget I just want a soft ceiling"). The Editor compresses on these; the brief ships.
+    const soft = [...checkSixSectionWordBudget(body), ...checkNamedSectionWordBudget(body)];
+    for (const f of soft) console.log(`  🟡 [${f.check}] ${f.message}`);
+    if (soft.length) console.log(`🟡 LENGTH ADVISORY — ${soft.length} section(s) over their soft ceiling. Compress where you can; this does NOT block the brief.`);
+  }
   {
     // ADVISORY ONLY — never a failure. ~160 wpm TTS: 30-min target ≈ 4,800 words.
     const w = body.split(/\s+/).filter(Boolean).length;
