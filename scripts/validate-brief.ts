@@ -1379,6 +1379,51 @@ function checkWildCardStaleness(body: string, briefDir: string, absPath: string)
  * lines, so a `- **Lead**` bullet and a bare prose paragraph are both units. It also always
  * reports the unit count, so blindness is visible instead of silent.
  */
+/**
+ * checkNamedSectionWordBudget — caps the sections nothing else caps (2026-08-01, Jackson).
+ *
+ * checkSixSectionWordBudget covers only the four Six subsections. THE SIGNAL and THE WILD CARD
+ * live inside THE SIX but are not in that list, and THE TAKE / THE MODEL / DISCOVERY had no word
+ * cap anywhere. On 2026-08-01 that left The Signal (1,193 w vs a 741 trailing median) and The
+ * Model (759 vs 486) completely unmeasured — together +725 words, second only to M&M.
+ *
+ * Budgets: the documented target where one exists (Take "~400 words", Brief_Writer), otherwise
+ * the trailing-week median with ~30% headroom, so a normal brief is silent and a blowout is not.
+ * Format-agnostic: measures the whole section, never looks for a markup shape.
+ */
+const NAMED_SECTION_BUDGETS: Record<string, number> = {
+  // Derived from the MAX observed across 07-28..07-31 (four briefs Jackson accepted) + ~12%
+  // headroom — not from guesses. On 2026-08-01 only The Signal exceeds its band; the Take,
+  // Wild Card, Model and Discovery were all within normal range, which matches Jackson's read
+  // that "the take and signal didn't actually seem that long, it was the other stuff".
+  'The Signal':     960,  // 07-28..31: 655/618/857/821  ·  08-01: 1,190  ← the real overrun
+  'The Wild Card':  730,  // 246/383/650/321             ·  08-01:   436
+  '▸ THE TAKE':     640,  // 476/483/567/477             ·  08-01:   578
+  '▸ THE MODEL':    780,  // 403/561/272/697             ·  08-01:   755
+  '▸ DISCOVERY':    550,  // 480/487/481/492             ·  08-01:   507
+};
+
+function checkNamedSectionWordBudget(body: string): Failure[] {
+  const out: Failure[] = [];
+  for (const [name, budget] of Object.entries(NAMED_SECTION_BUDGETS)) {
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const m = body.match(new RegExp(`\\n#{1,2} ${esc}\\b`));
+    if (!m || m.index === undefined) continue;
+    const rest = body.slice(m.index + m[0].length);
+    const next = rest.search(/\n#{1,2} ▸|\n## /);
+    const text = next === -1 ? rest : rest.slice(0, next);
+    const words = text.split(/\s+/).filter(Boolean).length;
+    if (words > Math.round(budget * 1.15)) {
+      out.push({ check: 'named-section-word-budget',
+        message: `🔴 HARD FAIL: ${name} is ${words} words against a ${budget}-word budget. Compress.` });
+    } else if (words > budget) {
+      out.push({ check: 'named-section-word-budget',
+        message: `🟡 FLAG: ${name} is ${words} words against a ${budget}-word budget. Compress if possible.` });
+    }
+  }
+  return out;
+}
+
 function checkSixSectionWordBudget(body: string): Failure[] {
   const out: Failure[] = [];
   const sixStart = body.indexOf('# ▸ THE SIX');
@@ -2118,6 +2163,7 @@ function main() {
   // --- Six bullet word ceiling (May 11, 2026) ---
   failures.push(...checkSixBulletWordCeiling(body));
   failures.push(...checkSixSectionWordBudget(body));
+  failures.push(...checkNamedSectionWordBudget(body));
   {
     // ADVISORY ONLY — never a failure. ~160 wpm TTS: 30-min target ≈ 4,800 words.
     const w = body.split(/\s+/).filter(Boolean).length;
