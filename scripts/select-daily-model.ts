@@ -116,10 +116,79 @@ function indexForDate(dateStr: string, q: QueueFile): number {
   return days % q.models.length;
 }
 
-function select(dateStr: string): { date: string; queueIndex: number } & Model {
+// ── IMP-112 (08-01 Critic mandate #1, 🔴): LIFETIME-USE refusal ────────────────────────────────
+// The queue's history-gap invariant is computed against data/model-rotation-ledger.json, which holds
+// SEVEN rows (2026-07-18 … 07-24). The published archive holds 154 briefs. So on 2026-08-01 the
+// rotation confidently assigned queue index 7 = levels-of-emergence-scale-transitions — a slug the
+// archive already carried on 02-26, 04-27, 05-02 and 06-28 — and every downstream gate passed it,
+// because the 30-day cooldown (cleared by 4 days) cannot tell a first use from a fifth. The archive,
+// not the ledger, is the ground truth for lifetime repetition.
+//
+// RULE: a slug with >= LIFETIME_THRESHOLD prior published appearances carries a LIFETIME_COOLDOWN_DAYS
+// cooldown instead of the 30-day one. A refused assignment is SKIPPED FORWARD deterministically
+// (idx+1, idx+2, …), so selection stays a pure function of (date, archive) and the brief always ships.
+const LIFETIME_THRESHOLD = 3;
+const LIFETIME_COOLDOWN_DAYS = 180;
+const SHORT_COOLDOWN_DAYS = 30;
+const UPDATES_DIR = path.join(ROOT, 'content/daily-updates');
+
+/** Dates (ascending) of every published full brief strictly BEFORE `beforeDate` that taught `slug`. */
+export function publishedUses(slug: string, beforeDate: string): string[] {
+  let files: string[];
+  try { files = fs.readdirSync(UPDATES_DIR); } catch { return []; }
+  const out: string[] = [];
+  for (const f of files.sort()) {
+    const m = f.match(/^(\d{4}-\d{2}-\d{2})\.md$/); // full briefs only — -light.md would double-count
+    if (!m || m[1]! >= beforeDate) continue;
+    try { if (fs.readFileSync(path.join(UPDATES_DIR, f), 'utf8').includes(slug)) out.push(m[1]!); } catch { /* skip */ }
+  }
+  return out;
+}
+
+/** Null if the slug may be assigned on `dateStr`; otherwise the human reason it is refused. */
+export function refusalReason(slug: string, dateStr: string): string | null {
+  const uses = publishedUses(slug, dateStr);
+  if (!uses.length) return null;
+  const last = uses[uses.length - 1]!;
+  const since = Math.round((utcDay(dateStr) - utcDay(last)) / DAY_MS);
+  if (since < SHORT_COOLDOWN_DAYS) return `published ${last} (${since}d ago) — inside the ${SHORT_COOLDOWN_DAYS}-day cooldown`;
+  if (uses.length >= LIFETIME_THRESHOLD && since < LIFETIME_COOLDOWN_DAYS) {
+    return `${uses.length} lifetime published uses (${uses.join(', ')}), last ${since}d ago — >= ${LIFETIME_THRESHOLD} uses carries a ${LIFETIME_COOLDOWN_DAYS}-day cooldown, not ${SHORT_COOLDOWN_DAYS}`;
+  }
+  return null;
+}
+
+function select(dateStr: string): { date: string; queueIndex: number; skippedFrom?: number; skipNote?: string } & Model {
   const q = loadQueueFile();
-  const idx = indexForDate(dateStr, q);
-  return { date: dateStr, queueIndex: idx, ...q.models[idx]! };
+  const base = indexForDate(dateStr, q);
+  const len = q.models.length;
+  // Probe order matters. base+1 is TOMORROW's assignment, so a naive forward skip teaches the same
+  // model two days running. With len=119 no index is >=100 days away in BOTH directions (that is
+  // exactly why the queue's no-repeat-in-100 invariant only just holds), so the honest choice is the
+  // MAXIMALLY DISTANT index: offsets ordered ~len/2 outward (59, 60, 58, 61, …). A borrowed slug is
+  // ~59 days from its own scheduled day in either direction — comfortably past the 30-day cooldown.
+  const half = Math.floor(len / 2);
+  const order = [0];
+  for (let k = 0; k < len; k++) {
+    const off = half + (k % 2 === 0 ? k / 2 : -(k + 1) / 2);
+    const norm = ((off % len) + len) % len;
+    if (norm !== 0 && !order.includes(norm)) order.push(norm);
+  }
+  const notes: string[] = [];
+  for (const step of order) {
+    const idx = (base + step) % len;
+    const m = q.models[idx]!;
+    const reason = refusalReason(m.slug, dateStr);
+    if (!reason) {
+      return step === 0
+        ? { date: dateStr, queueIndex: idx, ...m }
+        : { date: dateStr, queueIndex: idx, skippedFrom: base, skipNote: notes.join(' | '), ...m };
+    }
+    notes.push(`${m.slug}: ${reason}`);
+  }
+  // Unreachable in practice (24 of 119 slugs are refusable today). Ship rather than crash.
+  const m = q.models[base]!;
+  return { date: dateStr, queueIndex: base, skippedFrom: base, skipNote: `NO CLEAN SLUG IN QUEUE — shipping the base assignment. ${notes[0]}`, ...m };
 }
 
 function appendLedger(pick: { date: string; queueIndex: number } & Model): void {
@@ -271,10 +340,31 @@ function selftest(): number {
     console.error('SELFTEST FAIL:\n  - ' + fails.join('\n  - '));
     return 1;
   }
+  // IMP-112 — the lifetime-use refusal, verified BOTH directions on the real archive.
+  const lifeFails: string[] = [];
+  const t = (ok: boolean, label: string) => { console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`); if (!ok) lifeFails.push(label); };
+  const REPEATED = 'levels-of-emergence-scale-transitions';
+  const uses = publishedUses(REPEATED, '2026-08-01');
+  t(uses.length >= LIFETIME_THRESHOLD, `[IMP-112] archive shows ${uses.length} prior published uses of ${REPEATED} (${uses.join(', ')}) — the 7-row ledger showed 0`);
+  t(refusalReason(REPEATED, '2026-08-01') !== null, `[IMP-112] refusalReason FIRES on the 08-01 assignment (5th appearance, 34d after 06-28 — clears 30d, fails 180d)`);
+  const fresh = q.models.find((m) => publishedUses(m.slug, '2026-08-01').length === 0);
+  t(!!fresh && refusalReason(fresh.slug, '2026-08-01') === null, `[IMP-112] refusalReason SILENT on a never-published slug (${fresh ? fresh.slug : 'none found'}) — the gate does not refuse everything`);
+  const pick0801 = select('2026-08-01');
+  t(pick0801.slug !== REPEATED, `[IMP-112] select('2026-08-01') no longer assigns the 5x-repeated slug (now ${pick0801.slug}, skippedFrom ${pick0801.skippedFrom})`);
+  t(refusalReason(pick0801.slug, '2026-08-01') === null, `[IMP-112] the skip replacement itself clears both cooldowns`);
+  // The naive forward skip (base+1) would teach the SAME model on consecutive days — base+1 IS
+  // tomorrow's assignment. The maximally-distant probe must not reproduce that.
+  const pick0802 = select('2026-08-02');
+  t(pick0801.slug !== pick0802.slug, `[IMP-112] the skip does not collide with tomorrow's assignment (08-01 ${pick0801.slug} vs 08-02 ${pick0802.slug})`);
+  if (lifeFails.length) {
+    console.error('SELFTEST FAIL (IMP-112 lifetime-use):\n  - ' + lifeFails.join('\n  - '));
+    return 1;
+  }
+
   console.log(
     `SELFTEST PASS — queue=${q.models.length} (epoch ${q.epoch}, ${q.parked} parked), no-repeat-in-100 ✓, ` +
       `domain rotation across ${q.models.length - q.parked} head days ✓, wrap ✓, ledger history gap >= 100 days ✓, ` +
-      `the 07-19/07-21 same-slug repeat is structurally impossible ✓`,
+      `the 07-19/07-21 same-slug repeat is structurally impossible ✓, lifetime-use refusal ✓`,
   );
   return 0;
 }

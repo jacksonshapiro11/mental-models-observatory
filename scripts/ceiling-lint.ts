@@ -228,10 +228,24 @@ function checkCcPricingRung(brief: string): Flag[] {
 // case (Nokia/Blockbuster/Kodak/BlackBerry/MySpace/Sears/Xerox PARC). Advisory — the angle can still
 // be fresh (Kodak's undeployed CCD patent), so the Editor confirms the angle is non-obvious.
 const CANONICAL_MODEL_CASE_RE = /\b(Nokia|Blockbuster|Kodak|BlackBerry|MySpace|Sears|Xerox PARC)\b/i;
+// IMP-112 (08-01 Critic mandate #1, 🔴): the 07-31 whitelist rewrite made rule 5 explicit — "a
+// familiar model is fine; the ILLUSTRATION is where the section earns its novelty" — and the very
+// next brief taught Levels of Emergence with the circular-track traffic jam AND "a single molecule
+// has no temperature", i.e. THE two textbook emergence examples, and every gate passed it. The
+// 07-26 family covered business-school cases only; the science-canon family is the other half of
+// the same failure. Scoped to the Model section, so a traffic jam in a Markets bullet is untouched.
+const SCIENCE_CANON_MODEL_CASE_RE = /\b(traffic jam|ant colon(?:y|ies)|flocking|boids|bird flock\w*|termite mound|slime mou?ld|Game of Life|Conway's|double[- ]slit|butterfly effect)\b|\bwater\b.{0,10}\bwet\b|\bmolecules?\b.{0,20}\btemperature\b/i;
 function checkModelCanonicalExample(brief: string): Flag[] {
-  const m = modelSection(brief).match(CANONICAL_MODEL_CASE_RE);
-  if (!m) return [];
-  return [{ check: 'model-canonical-example', where: 'The Model', message: `The Model illustrates with "${m[0]}" — among the most overused business-school cases in existence. Under pool exhaustion the illustration is where the section earns novelty: prefer a current-brief entity living the same tradeoff, or a less-obvious anchor. If the angle is genuinely fresh (e.g. Kodak's undeployed CCD patent), confirm it is non-obvious before keeping.` }];
+  const section = modelSection(brief);
+  const m = section.match(CANONICAL_MODEL_CASE_RE);
+  if (m) {
+    return [{ check: 'model-canonical-example', where: 'The Model', message: `The Model illustrates with "${m[0]}" — among the most overused business-school cases in existence. Under pool exhaustion the illustration is where the section earns novelty: prefer a current-brief entity living the same tradeoff, or a less-obvious anchor. If the angle is genuinely fresh (e.g. Kodak's undeployed CCD patent), confirm it is non-obvious before keeping.` }];
+  }
+  const s = section.match(SCIENCE_CANON_MODEL_CASE_RE);
+  if (s) {
+    return [{ check: 'model-canonical-example', where: 'The Model', message: `The Model illustrates with "${s[0].trim()}" — the science-canon equivalent of Nokia: the example every popular account of emergence/complexity already uses (traffic jams, ant colonies, flocking, "a molecule has no temperature", the double slit, the butterfly effect). Whitelist rule 5: under a well-known concept the ILLUSTRATION is where the section earns its novelty. Replace it with a current-brief entity living the same mechanism, or an anchor the reader cannot predict.` }];
+  }
+  return [];
 }
 
 function lint(brief: string): Flag[] {
@@ -357,6 +371,14 @@ export function strictCcViolations(flags: Flag[]): Flag[] {
   return flags.filter(f => f.check === 'cc-deal-magnitude');
 }
 
+// IMP-112 (08-01 Critic mandate #1): --strict-model turns a model-canonical-example FLAG into a
+// HARD Editor REJECT (the --strict-ait / --strict-cc pattern applied to the Model). The REJECT is
+// on the ILLUSTRATION, never the concept — the fix is to re-illustrate, not to re-pick the model.
+// Default mode stays exit-0 advisory so the brief ALWAYS ships.
+export function strictModelViolations(flags: Flag[]): Flag[] {
+  return flags.filter(f => f.check === 'model-canonical-example');
+}
+
 // Selftest fixtures for --strict-ait: an unpriced AI&T bullet (a tally, the 07-16 shape) must FIRE;
 // a priced AI&T bullet ($ / multiple) must stay SILENT.
 const AIT_STRICT_BAD = `# ▸ THE SIX
@@ -442,6 +464,25 @@ function selftest(): number {
   assert(ccBad.some(f => f.check === 'model-canonical-example'), `[IMP-103] model-canonical-example FIRES on a Nokia Model illustration`);
   assert(!ccGood.some(f => f.check === 'model-canonical-example'), `[IMP-103] model-canonical-example SILENT on a non-canonical Model`);
 
+  // IMP-112 — the science-canon illustration family + --strict-model. Fixtures first, then the two
+  // REAL published Models the 08-01 Critic named as the acceptance gate.
+  const MODEL_SCI_BAD = `# ▸ THE MODEL\n\n### Levels of Emergence\n\nA team put cars on a circular track. The traffic jam that formed drifted backwards while every car moved forwards. Temperature is the famous instance, since a single molecule has no temperature.\n`;
+  const MODEL_SCI_GOOD = `# ▸ THE MODEL\n\n### Levels of Emergence\n\nSoil fertility is not a property of any microbe. It is a property of a community, which is why a farmer who sterilizes a field and adds exactly the missing nutrients ends up with worse soil.\n`;
+  assert(lint(MODEL_SCI_BAD).some(f => f.check === 'model-canonical-example'), `[IMP-112] model-canonical-example FIRES on the science-canon illustration (traffic jam / molecule-temperature)`);
+  assert(!lint(MODEL_SCI_GOOD).some(f => f.check === 'model-canonical-example'), `[IMP-112] model-canonical-example SILENT on a non-canonical illustration (soil fertility)`);
+  assert(strictModelViolations(lint(MODEL_SCI_BAD)).length > 0, `[IMP-112] --strict-model FIRES on the canonical illustration (HARD Editor REJECT)`);
+  assert(strictModelViolations(lint(MODEL_SCI_GOOD)).length === 0, `[IMP-112] --strict-model SILENT on the fresh illustration`);
+  // ACCEPTANCE GATE (08-01 Critic mandate #1), on real artifacts: --strict-model must bite on the
+  // published 08-01 Model (traffic jam + molecule-temperature) and stay silent on the published
+  // 07-28 Model (Jump to Universality — alphabets, DNA, Turing machines: none of them cached).
+  for (const [d, shouldFire] of [['2026-08-01', true], ['2026-07-28', false]] as const) {
+    const p = path.join(process.cwd(), `content/daily-updates/${d}.md`);
+    if (!fs.existsSync(p)) continue;
+    const v = strictModelViolations(lint(fs.readFileSync(p, 'utf8')));
+    assert(shouldFire ? v.length > 0 : v.length === 0,
+      `[IMP-112] --strict-model ${shouldFire ? 'FIRES' : 'SILENT'} on the REAL published ${d} Model${!shouldFire && v.length ? ` (got: ${v.map(f => f.message.slice(0, 40)).join(', ')})` : ''}`);
+  }
+
   // Real-artifact both-directions: the shipped 07-31 v2 (mechanical PASS clean) must carry 0 of the
   // three restored flags — Apple/Coinbase/DTCC are not deals; C&C cites 2011/2000 precedents; the
   // Model is the Legibility Trap, not a canonical business case.
@@ -490,6 +531,18 @@ function main() {
       process.exit(1);
     }
     console.log('   ✅ --strict-cc: every C&C deal bullet carries a deal magnitude.');
+  }
+
+  // IMP-112 (08-01 Critic mandate #1): a canonical Model ILLUSTRATION is a HARD Editor REJECT.
+  // Default stays advisory (exit 0); --strict-model is what Brief_Editor Gate 8/14 runs.
+  if (process.argv.slice(2).includes('--strict-model')) {
+    const v = strictModelViolations(flags);
+    if (v.length) {
+      console.error(`\n✗ CEILING-LINT --strict-model: the Model's illustration is canonical — Editor must REJECT-and-re-illustrate (keep the concept, change the example). Whitelist rule 5: under a well-known concept the illustration is where the section earns its novelty.`);
+      for (const f of v) console.error(`   ✗ ${f.where}: ${f.message.slice(0, 120)}…`);
+      process.exit(1);
+    }
+    console.log('   ✅ --strict-model: the Model illustration is non-canonical.');
   }
   process.exit(0);
 }

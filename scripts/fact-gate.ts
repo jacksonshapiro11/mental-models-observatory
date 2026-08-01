@@ -1360,6 +1360,71 @@ function stockMoveReactionFindings(body: string, _briefDate: string | null): Fin
   return findings;
 }
 
+// IMP-115 (carry-forward, deferred #1 from the 07-31 improvement report; ≥3 occurrences → a real
+// FLOOR/truth gap, proxy-discipline exempt). THE TAKE shipped a publicly-unverifiable load-bearing
+// quantitative claim into v2 on THREE consecutive days, each caught only by the Critic's manual read
+// — no mechanical detector fired:
+//   07-30: China's "5M bpd discretionary cut, larger than the entire IEA reserve release"
+//   07-31: "from 562 trucks to 2,090 … roughly 55% of the world's total"
+//   08-01: "against roughly $1.6 billion in all of 2025" — 🔴 the Critic sourced this as WRONG
+//          (~$1.6B is the 2026 YTD sum, which EXCEEDS all of 2025; the comparison inverted).
+// Why the existing gates miss it: IMP-107's truth-corroboration gate needs a ≥300% change or a
+// share-of-national-whole in {issuance, supply, market}; `aggregate` needs a cross-entity connective;
+// `yoy` needs a prior-year referent. THREE narrow signatures, TAKE-SCOPED (the documented failure
+// class, and the scoping is what keeps the false-positive rate at zero across the archive):
+//   (a) SHARE-OF-WORLD    — "N% of the world's / of all / of global <anything>"
+//   (b) FULL-PERIOD BASE  — a money/quantity figure vs "in all of <year> / for the full year <year>"
+//   (c) BENCHMARK COMPARE — "larger/bigger than the entire <Named benchmark>"
+// Advisory FLAG: the brief always ships; the Morning Truth Gate must resolve or soften each line.
+// The Take's body sits under its own TITLE sub-heading ("### The Effective-Coverage Collapse"), so
+// sectionOf() returns the title, not "THE TAKE" — scope by the REGION between the `▸ THE TAKE`
+// heading and the next top-level `▸` heading instead.
+function takeRegion(body: string): { start: number; end: number } | null {
+  const m = body.match(/^#{1,3}\s*▸?\s*THE TAKE\s*$/mi);
+  if (m?.index === undefined) return null;
+  const start = m.index + m[0].length;
+  const after = body.slice(start);
+  const nxt = after.search(/^#\s*▸/m);
+  return { start, end: nxt === -1 ? body.length : start + nxt };
+}
+const TAKE_SHARE_OF_WORLD_RE = /(\d+(?:\.\d+)?)\s*(?:%|percent\b)\s+of\s+(?:the\s+world'?s?|all\b|global\b|the\s+global\b|the\s+entire\b)/i;
+const TAKE_FULL_PERIOD_RE = /\b(?:in|for|across|over|against)\s+all\s+of\s+((?:20\d\d)|last year)\b|\bfor\s+the\s+full\s+year\s+(20\d\d)\b/i;
+const TAKE_BENCHMARK_CMP_RE = /\b(?:larger|bigger|greater|more)\s+than\s+the\s+(?:entire|whole|combined|total)\s+[A-Za-z]/i;
+const TAKE_FIGURE_RE = /[$€£¥]\s?\d[\d,.]*\s*(?:billion|million|trillion|bn\b|mn\b)?|\b\d[\d,.]*\s*(?:billion|million|trillion|barrels?|tonnes?|tons?|units?|trucks?)\b/i;
+function takeExtraordinaryFindings(body: string, _briefDate: string | null): Finding[] {
+  const findings: Finding[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  const push = (sig: string, idx: number, quote: string, why: string) => {
+    const key = `${sig}:${quote.slice(0, 40).toLowerCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    findings.push({
+      check: 'take-extraordinary-claim',
+      severity: 'FLAG',
+      message: `TAKE EXTRAORDINARY CLAIM (${sig}) — "${quote.slice(0, 170)}". ${why} The Take is the brief's load-bearing argument; a figure that carries it must be resolvable to a source. MORNING GATE: resolve it against a citable source, SOFTEN it (drop the precision), or CUT it. Receipts: 07-30 China 5M bpd vs the IEA release, 07-31 "562 → 2,090 trucks, 55% of the world's total", 08-01 "roughly $1.6 billion in all of 2025" — which was WRONG (that sum is 2026 YTD and EXCEEDS all of 2025).`,
+    });
+  };
+  const region = takeRegion(stripped);
+  if (!region) return findings;
+  let offset = 0;
+  for (const line of stripped.split('\n')) {
+    const idx = offset; offset += line.length + 1;
+    if (idx < region.start || idx >= region.end) continue;
+    for (const sentence of line.split(/(?<=[.!?])\s+/)) {
+      const s = sentence.trim();
+      if (!s) continue;
+      const shareM = s.match(TAKE_SHARE_OF_WORLD_RE);
+      if (shareM) push('share-of-world', idx, s, `A share-of-the-whole superlative (${shareM[0].trim()}) requires a denominator somebody publishes — this is the class IMP-107's corroboration gate misses, because its noun set is issuance/supply/market.`);
+      const periodM = s.match(TAKE_FULL_PERIOD_RE);
+      if (periodM && TAKE_FIGURE_RE.test(s)) push('full-period-baseline', idx, s, `A full-period aggregate ("${periodM[0].trim()}") used as a comparison BASELINE is the single most error-prone figure in a Take: a YTD sum relabelled as an annual total inverts the comparison it is carrying.`);
+      const cmpM = s.match(TAKE_BENCHMARK_CMP_RE);
+      if (cmpM) push('benchmark-comparison', idx, s, `A "${cmpM[0].trim()}…" comparison asserts two magnitudes at once — the claim AND the benchmark — and neither is sourced by the sentence.`);
+    }
+  }
+  return findings;
+}
+
 // Superlative contradictions (FAIL) + price-vs-archive deviations (FLAG).
 function archiveBackstop(superlatives: Claim[], briefPrices: Record<string, number>, archive: Record<string, ArchivePoint[]>): Finding[] {
   const findings: Finding[] = [];
@@ -2036,6 +2101,28 @@ function selftest(): number {
   const smAmzn = stockMoveReactionFindings('## AI & Tech\n- **Amazon posted its first $200 billion quarter, AWS grew 37% to $42.23 billion, and the stock rose about 10% after hours.** Filler.', '2026-07-31');
   const okSmPrecise = smAmzn.some((f) => f.check === 'stock-move-reaction' && /\b10\s*%/.test(f.message) && !/\b37\s*%/.test(f.message));
 
+  // --- IMP-115: the Take's publicly-unverifiable load-bearing figure. FIRE on all three real
+  //     shapes (07-31 v2 "55% of the world's total", 08-01 "in all of 2025", 07-30 v2 "larger than
+  //     the entire IEA reserve release"); SILENT outside the Take, and SILENT on an ordinary
+  //     sourced Take figure. Real artifacts where they exist, fixtures otherwise. ---
+  const takeWrap = (s: string) => `# ▸ THE TAKE\n\n${s}\n`;
+  const teShare = takeExtraordinaryFindings(takeWrap("China's autonomous mining fleet went from 562 trucks to 2,090 in a single year, roughly 55% of the world's total and the largest battery-electric autonomous fleet on earth."), '2026-07-31');
+  const okTeShare = teShare.some((f) => f.check === 'take-extraordinary-claim' && /share-of-world/.test(f.message));
+  const tePeriod = takeExtraordinaryFindings(takeWrap('Capital deployed reached roughly $1.6 billion year to date against roughly $1.6 billion in all of 2025.'), '2026-08-01');
+  const okTePeriod = tePeriod.some((f) => /full-period-baseline/.test(f.message));
+  const teCmp = takeExtraordinaryFindings(takeWrap('The Chinese import withdrawal, a discretionary cut larger than the entire IEA reserve release during the 2022 crisis, is the deferred curve\'s anchor.'), '2026-07-30');
+  const okTeCmp = teCmp.some((f) => /benchmark-comparison/.test(f.message));
+  // Scoping: the identical sentence in a SIX bullet is NOT this failure class (the Six is priced and
+  // sourced bullet-by-bullet; the Take is the load-bearing argument). Zero findings outside the Take.
+  const okTeScoped = takeExtraordinaryFindings("## Markets & Macro\n\nChina refines roughly 55% of the world's rare earths.", '2026-07-31').length === 0;
+  const okTeSilentOrdinary = takeExtraordinaryFindings(takeWrap('Constellation Software deployed $809 million in Q1 2026, and organic recurring revenue decelerated to 4% FX-neutral.'), '2026-08-01').length === 0;
+  // REAL artifacts: the 07-31 v2 Take (pre-morning-gate, where the truck claim still lives) and the
+  // published 08-01 Take (where the $1.6B/2025 baseline shipped and the Critic sourced it WRONG).
+  const v2_0731 = path.join(process.cwd(), 'daily-briefs', '2026-07-31-v2.md');
+  const okTeReal31 = !fs.existsSync(v2_0731) || takeExtraordinaryFindings(fs.readFileSync(v2_0731, 'utf8'), '2026-07-31').some((f) => /world'?s total|55\s*%/.test(f.message));
+  const pub_0801 = path.join(process.cwd(), 'content', 'daily-updates', '2026-08-01.md');
+  const okTeReal01 = !fs.existsSync(pub_0801) || takeExtraordinaryFindings(fs.readFileSync(pub_0801, 'utf8'), '2026-08-01').some((f) => /all of 2025/.test(f.message));
+
   // --- IMP-086: earnings-result vs consensus. FIRE on the real 07-22 fabricated EQT shape (the "beat"
   //     that was a miss) AND the real published 07-22 EQT line; RESOLVE to PASS with truth; SILENT on a
   //     bare YoY (owned by yoy), a guidance line, and a stock-price move. ---
@@ -2068,6 +2155,12 @@ function selftest(): number {
   console.log(`  [IMP-101] FIRE: "the stock fell 8 percent" (07-26 GE Vernova) is a stock-move FLAG: ${okSmFire ? '✓' : '✗'}`);
   console.log(`  [IMP-101] SILENT on a YoY / index move ("S&P fell 1.2%") / name-only move ("Micron surged 12%"): ${okSmSilentYoy && okSmSilentIndex && okSmSilentName ? '✓' : '✗'}`);
   console.log(`  [IMP-101] PRECISION: quotes the stock move (10%), not the metric % (37%), on a mixed bullet: ${okSmPrecise ? '✓' : '✗'}`);
+  console.log(`  [IMP-115] FIRE: "55% of the world's total" (07-31 Take) is a share-of-world FLAG: ${okTeShare ? '✓' : '✗'}`);
+  console.log(`  [IMP-115] FIRE: "in all of 2025" as a comparison baseline (08-01 Take, sourced WRONG) is a full-period FLAG: ${okTePeriod ? '✓' : '✗'}`);
+  console.log(`  [IMP-115] FIRE: "larger than the entire IEA reserve release" (07-30 Take) is a benchmark FLAG: ${okTeCmp ? '✓' : '✗'}`);
+  console.log(`  [IMP-115] SCOPED: SILENT on the identical sentence in a Six bullet: ${okTeScoped ? '✓' : '✗'}`);
+  console.log(`  [IMP-115] SILENT on an ordinary sourced Take figure ($809M in Q1 2026, 4% FXN): ${okTeSilentOrdinary ? '✓' : '✗'}`);
+  console.log(`  [IMP-115] FIRE on the REAL 07-31 v2 Take and the REAL published 08-01 Take: ${okTeReal31 && okTeReal01 ? '✓' : '✗'}`);
   console.log(`  [IMP-086] FIRE: EQT "$2.56B against a $1.84B consensus … $0.45 versus $0.41 expected" is a CRITICAL earnings claim: ${okEarnFire ? '✓' : '✗'}`);
   console.log(`  [IMP-086] RESOLVES to PASS once truth carries earnings:<slug>: ${okEarnResolves ? '✓' : '✗'} (key=${earnKey.slice(0, 32)})`);
   console.log(`  [IMP-086] SILENT on a bare YoY ("revenue $48.03B, up 1.9% YoY" — owned by yoy): ${okEarnSilentYoy ? '✓' : '✗'}`);
@@ -2153,6 +2246,7 @@ function selftest(): number {
     okCorpFire && okCorpSilentMacro && okCorpSilentBare && okCorpReal &&
     okSegFire && okSegSilentDisclosed &&
     okSmFire && okSmSilentYoy && okSmSilentIndex && okSmSilentName && okSmPrecise &&
+    okTeShare && okTePeriod && okTeCmp && okTeScoped && okTeSilentOrdinary && okTeReal31 && okTeReal01 &&
     okEarnFire && okEarnResolves && okEarnSilentYoy && okEarnSilentGuidance && okEarnSilentMove && okEarnReal;
   if (ok) {
     console.log('\n✅ SELFTEST PASS — gate bites the 07-10/07-11/07-13 failures (reuse, transposition, entity misattribution, harmonize-to-published, release-date falsehood) and stays silent on the corrected/healthy cases — including its own two false positives.');
@@ -2338,6 +2432,7 @@ function main() {
   // Advisory; the Morning Truth Gate confirms the line is reported or the figure is labeled/sourced.
   findings.push(...segmentMetricFindings(body, briefDate));
   findings.push(...stockMoveReactionFindings(body, briefDate)); // IMP-101 (restored)
+  findings.push(...takeExtraordinaryFindings(body, briefDate)); // IMP-115
 
   // 5. Truth cross-check (if truth present)
   if (truth) findings.push(...crossCheck(claims, truth));

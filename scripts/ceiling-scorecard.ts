@@ -16,7 +16,21 @@
  *   node --experimental-strip-types scripts/ceiling-scorecard.ts <critic-report.md> [--trend <path>]
  *   node --experimental-strip-types scripts/ceiling-scorecard.ts --selftest
  *
- * Exit: 0 always (advisory; "no block found" is a FLAG, not a failure), selftest 0/1, usage 2.
+ * Exit: 0 on a well-formed block; **1 on a PARSE-INTEGRITY failure** (added 2026-08-01 — IMP-114,
+ * the 08-01 Critic's mandate #3). "no block found" remains an advisory FLAG at exit 0.
+ *
+ * PARSE INTEGRITY (IMP-114). On 07-31 the Critic emitted grades of `B+` and `A-`. The old parser
+ * accepted only /^[ABC]$/i, so **9 of 16 top-slot rows were silently dropped**: the trend recorded
+ * graded_top=7 for a 16-slot brief and c_top=0 against a claimed top_slot_c=1. The instrument whose
+ * stated job is "the judge is audited" ran into a void, and the whole trailing window for that date
+ * was corrupt — while the script exited 0. An instrument that cannot fail cannot audit anything.
+ * Three hard errors now:
+ *   (a) a recognized slot key whose value is not a bare A/B/C (B+, A-, D, "n/a"),
+ *   (b) a claimed `top_slot_c` that disagrees with the recomputed count,
+ *   (c) a claimed `must_read` that disagrees with the recomputed fixed conjunction.
+ * Plus (d) a missing/º out-of-range `breath` (1-30), which is stated, not recomputable.
+ * A failing row is still written to the trend, stamped `parse_status: "CORRUPT-PARSE"`, and EXCLUDED
+ * from the rolling windows — so a corrupt day is visibly absent rather than silently understated.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -36,9 +50,14 @@ interface Row {
   aCountTop: number;
   cCountTop: number;
   gradedTop: number;
+  errors: string[];                 // IMP-114 — parse-integrity failures (non-empty ⇒ exit 1)
 }
 
 const TOP_SLOT = /^(take|mm_\d+|cc_\d+|ait_\d+|geo_\d+|signal_\d+)$/;
+// IMP-114: every key the scorecard recognizes as a GRADED slot. `model`, `discovery`, `inner_game`
+// and `wild_card` ARE graded, but are NOT top slots — they cannot break the Must-Read conjunction.
+const SLOT_KEY = /^(take|mm_\d+|cc_\d+|ait_\d+|geo_\d+|signal_\d+|wild_card|inner_game|model|discovery)$/;
+const BARE_GRADE = /^[ABC]$/;
 
 function parseBlock(md: string): { date: string; lines: string[] } | null {
   const m = md.match(/<!--\s*CEILING SCORECARD\s+(\d{4}-\d{2}-\d{2})\s*\n([\s\S]*?)-->/);
@@ -52,8 +71,9 @@ function parseRow(md: string): Row | null {
   const row: Row = {
     date: block.date, grades: {}, missing: {}, bloomberg: false, payoff: 'unknown',
     payoffClass: '', watch: false, breath: 0, topSlotC: -1, mustReadClaimed: false,
-    mustReadComputed: false, aCountTop: 0, cCountTop: 0, gradedTop: 0,
+    mustReadComputed: false, aCountTop: 0, cCountTop: 0, gradedTop: 0, errors: [],
   };
+  let sawBreath = false, sawMustRead = false;
   for (const line of block.lines) {
     const kv = line.match(/^([a-z_0-9]+):\s*([^|]+)(?:\|(.*))?$/i);
     if (!kv) continue;
@@ -66,10 +86,16 @@ function parseRow(md: string): Row | null {
       if (f) fields[f[1].toLowerCase()] = f[2].trim();
     }
     if (key === 'payoff') { row.payoff = /pass/i.test(val) ? 'pass' : 'fail'; row.payoffClass = (fields['class'] || '').toLowerCase(); row.watch = /^y/i.test(fields['watch'] || ''); continue; }
-    if (key === 'breath') { row.breath = parseInt(val, 10) || 0; continue; }
+    if (key === 'breath') { row.breath = parseInt(val, 10) || 0; sawBreath = true; continue; }
     if (key === 'top_slot_c') { row.topSlotC = parseInt(val, 10); continue; }
-    if (key === 'must_read') { row.mustReadClaimed = /^y/i.test(val); continue; }
-    if (/^[ABC]$/i.test(val)) {
+    if (key === 'must_read') { row.mustReadClaimed = /^y/i.test(val); sawMustRead = true; continue; }
+    // IMP-114 (a): a recognized slot key MUST carry a bare A/B/C. `B+`/`A-`/`D`/`n/a` used to fall
+    // through this branch silently and vanish from the tally — the 07-31 corruption.
+    if (SLOT_KEY.test(key) && !BARE_GRADE.test(val)) {
+      row.errors.push(`grade token "${val}" on \`${key}\` is not a bare A/B/C — modifiers are BANNED (nuance belongs in note:). Silently dropped rows corrupt graded_top/a_top/c_top for the whole date.`);
+      continue;
+    }
+    if (BARE_GRADE.test(val)) {
       row.grades[key] = val.toUpperCase();
       if (fields['missing']) row.missing[key] = fields['missing'];
       if (key === 'take') row.bloomberg = /^y/i.test(fields['bloomberg_differentiated'] || '');
@@ -86,6 +112,21 @@ function parseRow(md: string): Row | null {
   row.mustReadComputed =
     row.grades['take'] === 'A' && row.bloomberg && aBeyondTake >= 2 &&
     row.payoff === 'pass' && row.breath >= 3 && row.cCountTop === 0;
+
+  // IMP-114 (b)/(c)/(d): the emitted block must AGREE with the recomputation, else the trailing
+  // window is calibrated on a number nobody computed. Only checked when the grades parsed cleanly —
+  // a corrupt token already invalidates the tallies, and a second cascading error adds no signal.
+  if (!row.errors.length) {
+    if (row.topSlotC >= 0 && row.topSlotC !== row.cCountTop) {
+      row.errors.push(`top_slot_c: ${row.topSlotC} disagrees with the recomputed C-count among top slots (${row.cCountTop}). Top slots are take / mm_x / cc_x / ait_x / geo_x / signal_x — model, discovery, inner_game and wild_card are NOT top slots and cannot break the conjunction.`);
+    }
+    if (sawMustRead && row.mustReadClaimed !== row.mustReadComputed) {
+      row.errors.push(`must_read: claimed=${row.mustReadClaimed ? 'YES' : 'no'} but the fixed conjunction computes ${row.mustReadComputed ? 'YES' : 'no'}. The conjunction wins — fix the grades or the verdict.`);
+    }
+  }
+  if (!sawBreath || !(row.breath >= 1 && row.breath <= 30)) {
+    row.errors.push(`breath: ${sawBreath ? row.breath : 'MISSING'} — must be present and between 1 and 30.`);
+  }
   return row;
 }
 
@@ -104,13 +145,17 @@ function appendTrend(trendPath: string, row: Row) {
     take: row.grades['take'] || null, bloomberg_differentiated: row.bloomberg,
     payoff: row.payoff, payoff_class: row.payoffClass, watch: row.watch,
     breath: row.breath, must_read_claimed: row.mustReadClaimed, must_read_computed: row.mustReadComputed,
+    // IMP-114: a corrupt day is stamped and excluded from the windows rather than silently
+    // understating the date (07-31 recorded graded_top 7 for a 16-slot brief).
+    ...(row.errors.length ? { parse_status: 'CORRUPT-PARSE', parse_errors: row.errors } : {}),
   });
   trend.sort((a: any, b: any) => a.date < b.date ? -1 : 1);
   fs.writeFileSync(trendPath, JSON.stringify(trend, null, 2) + '\n');
   return trend;
 }
 
-function windows(trend: any[]) {
+function windows(all: any[]) {
+  const trend = all.filter((r: any) => r.parse_status !== 'CORRUPT-PARSE'); // IMP-114
   const last = (n: number) => trend.slice(-n);
   const w7 = last(7), w21 = last(21);
   const avg = (xs: number[]) => xs.length ? (xs.reduce((a, b) => a + b, 0) / xs.length) : 0;
@@ -161,7 +206,7 @@ const FIXTURE_MISMATCH = FIXTURE_OK
   .replace('must_read: no | blockers: payoff_fail,top_slot_c', 'must_read: no | blockers: none');
 
 function selftest(): number {
-  let fails = 0;
+  let fails = 0, total = 0;
   const t = (name: string, cond: boolean) => { console.log(`  ${cond ? 'PASS' : 'FAIL'} — ${name}`); if (!cond) fails++; };
 
   const r1 = parseRow(FIXTURE_OK)!;
@@ -181,7 +226,41 @@ function selftest(): number {
   const noBlock = parseRow('# a report with no scorecard block');
   t('missing block → null (advisory flag path, not a crash)', noBlock === null);
 
-  console.log(`\nceiling-scorecard selftest — ${11 - fails}/11 assertions passed`);
+  // ── IMP-114 (08-01 Critic mandate #3): the instrument must be able to FAIL ──────────────────
+  total = 11;
+  const T = (name: string, cond: boolean) => { total++; console.log(`  ${cond ? 'PASS' : 'FAIL'} — ${name}`); if (!cond) fails++; };
+  T('[IMP-114] a clean block has zero parse errors', r1.errors.length === 0);
+  const MODIFIER = FIXTURE_OK.replace('mm_1: B | missing: falsifier', 'mm_1: B+ | missing: falsifier');
+  const rMod = parseRow(MODIFIER)!;
+  T('[IMP-114] a `B+` grade token is an ERROR, not a silent drop (the exact 07-31 corruption)',
+    rMod.errors.some(e => /B\+/.test(e)) && rMod.grades['mm_1'] === undefined);
+  const CMISMATCH = FIXTURE_OK.replace('top_slot_c: 1', 'top_slot_c: 0');
+  T('[IMP-114] a top_slot_c that disagrees with the recomputed C-count is an ERROR',
+    parseRow(CMISMATCH)!.errors.some(e => /top_slot_c/.test(e)));
+  const MRMISMATCH = FIXTURE_MISMATCH; // conjunction computes YES, block claims no
+  T('[IMP-114] a must_read claim that disagrees with the fixed conjunction is an ERROR',
+    parseRow(MRMISMATCH)!.errors.some(e => /must_read/.test(e)));
+  const NOBREATH = FIXTURE_OK.replace('breath: 4\n', '');
+  T('[IMP-114] a missing breath is an ERROR', parseRow(NOBREATH)!.errors.some(e => /breath/.test(e)));
+  // `model` is graded but is NOT a top slot — it cannot break the conjunction (the 07-31 verdict
+  // rationale, "conjunction fails on C(top)=1; Model C", was wrong on the script's own terms).
+  const MODELC = FIXTURE_OK
+    .replace('mm_3: C | missing: mechanism,pricing | note: regime restated day 3', 'mm_3: B | missing: none')
+    .replace('model: B | bar: specialist', 'model: C | bar: specialist')
+    .replace('top_slot_c: 1', 'top_slot_c: 0');
+  const rModel = parseRow(MODELC)!;
+  T('[IMP-114] a Model C does NOT count toward top_slot_c (model is not a top slot)',
+    rModel.cCountTop === 0 && !rModel.errors.some(e => /top_slot_c/.test(e)) && rModel.grades['model'] === 'C');
+
+  // ACCEPTANCE GATE, real artifacts: the 07-31 report (B+/A- tokens) must FAIL; the 08-01 report
+  // (clean A/B/C, 16 top slots) must PASS with graded_top 16.
+  const r31 = (() => { const p = path.join(process.cwd(), 'daily-briefs/2026-07-31-critic.md'); return fs.existsSync(p) ? parseRow(fs.readFileSync(p, 'utf8')) : null; })();
+  if (r31) T(`[IMP-114] REAL 2026-07-31 critic FAILS parse integrity (${r31.errors.length} errors — 9 rows used to vanish silently)`, r31.errors.length > 0);
+  const r01 = (() => { const p = path.join(process.cwd(), 'daily-briefs/2026-08-01-critic.md'); return fs.existsSync(p) ? parseRow(fs.readFileSync(p, 'utf8')) : null; })();
+  if (r01) T(`[IMP-114] REAL 2026-08-01 critic PASSES with graded_top=${r01.gradedTop} (expected 16), 0 errors`,
+    r01.errors.length === 0 && r01.gradedTop === 16);
+
+  console.log(`\nceiling-scorecard selftest — ${total - fails}/${total} assertions passed`);
   if (fails) { console.error('✗ SELFTEST FAILED'); return 1; }
   console.log('✓ Parser + fixed conjunction verified in both directions (honest block agrees; drifted claim flagged).');
   return 0;
@@ -213,7 +292,17 @@ function main() {
   if (w.days21 >= 21 && w.mustRead21 === 0) {
     console.log('  ⚠ CALIBRATION: zero computed Must-Reads in 21 days — if A-count is trending up, the grades have drifted (Ceiling Doctrine v0.5 §2 symmetric rule): run the calibration review.');
   }
-  console.log('\n✅ CEILING-SCORECARD PASS (advisory)');
+
+  // IMP-114 (08-01 Critic mandate #3): parse integrity is BLOCKING. The instrument that audits the
+  // judge must be able to fail, or it audits nothing. The row is on disk stamped CORRUPT-PARSE and
+  // excluded from the windows; the non-zero exit is what makes somebody fix the report.
+  if (row.errors.length) {
+    console.error(`\n✗ CEILING-SCORECARD PARSE-INTEGRITY FAILURE — ${row.errors.length} error(s) in the ${row.date} block. Row written as CORRUPT-PARSE and EXCLUDED from the trailing windows.`);
+    for (const e of row.errors) console.error(`   ✗ ${e}`);
+    console.error(`   Fix the CEILING SCORECARD block in the report (grades are A/B/C with no modifiers; nuance goes in note:) and re-run — the re-run is idempotent and will overwrite the corrupt row.`);
+    process.exit(1);
+  }
+  console.log('\n✅ CEILING-SCORECARD PASS (parse integrity verified; grade tallies advisory)');
   process.exit(0);
 }
 

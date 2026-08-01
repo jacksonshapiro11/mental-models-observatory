@@ -1927,7 +1927,82 @@ function checkQGAITDifferentiation(briefDir: string, absPath: string): Failure[]
   return out;
 }
 
+// ── IMP-113 (2026-08-01 Critic mandate #2, 🔴, RC2): CATALYST ENUMERATION ─────────────────────
+// RECEIPT: 08-01 M&M-2 framed the record Kospi session as "the two available explanations imply
+// opposite trades" and rested its whole architecture on "the discriminator does not exist until
+// August 7-10". The discriminator DID exist on Friday and the wire had it: hedge fund Situational
+// Awareness completed its deleveraging, foreign investors net bought W7.22tn against ~$5.7bn of
+// retail selling, and Samsung and SK Hynix both reported strong earnings. Three reported catalysts,
+// zero named, in a bullet whose value proposition IS enumerating catalysts. Same failure shape as
+// the 07-31 Take fleet data: the Writer reasoning from a frame instead of from the tape.
+//
+// THE GATE: a Six bullet that frames COMPETING EXPLANATIONS must contain at least one ATTRIBUTED
+// CATALYST inside the same bullet — a named fund/desk, a flow figure, an earnings reference, or a
+// wire source. Deliberately narrow: the trigger is the competing-explanation architecture itself, so
+// an ordinary bullet is untouched, and the clear is satisfiable only by naming what was reported.
+// Override-eligible (evidence in the editor log) — a genuine "the wire reported nothing" case has a
+// DECLARED path, never silence.
+const COMPETING_FRAME_RE = /\btwo (?:available |possible |competing )?(?:explanations|readings|stories|interpretations)\b|\bthe two readings\b|\bopposite trades\b|\bthe other read\b|\bthe second reading\b|\btwo ways to read\b/i;
+const CATALYST_NAMED_FUND_RE = /\b(?:hedge fund|asset manager|the desk at)\s+[A-Z]|\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?\s+(?:Capital|Management|Partners|Advisors|Securities|Asset Management)\b/;
+const CATALYST_FLOW_RE = /\bnet (?:bought|sold|buying|selling|purchases|inflows?|outflows?)\b|\b(?:inflows?|outflows?|net flows?)\s+of\b|\bforeign (?:investors?|buying|selling)\b[^.]{0,60}\d/i;
+const CATALYST_EARNINGS_RE = /\b(?:reported|posted|printed)\s+(?:strong\s+|weak\s+|record\s+)?(?:earnings|results|revenue|profit|a beat|a miss)\b|\bearnings (?:beat|miss|report|print)\b|\bEPS\b/i;
+const CATALYST_WIRE_RE = /\b(?:Reuters|Bloomberg|Nikkei|Yonhap|Associated Press|Dow Jones|Wall Street Journal|WSJ|Financial Times|CNBC|AFP|Xinhua|Kyodo)\b/;
+function hasAttributedCatalyst(bullet: string): boolean {
+  return CATALYST_NAMED_FUND_RE.test(bullet) || CATALYST_FLOW_RE.test(bullet) ||
+         CATALYST_EARNINGS_RE.test(bullet) || CATALYST_WIRE_RE.test(bullet);
+}
+export function checkCatalystEnumeration(body: string): Failure[] {
+  const out: Failure[] = [];
+  const sixStart = body.indexOf('# ▸ THE SIX');
+  if (sixStart === -1) return out;
+  const sixEnd = body.indexOf('# ▸ THE TAKE');
+  const sixBody = body.slice(sixStart, sixEnd === -1 ? undefined : sixEnd);
+  let section = '';
+  let idx = 0;
+  for (const block of sixBody.split(/\n\s*\n/)) {
+    const b = block.trim();
+    if (!b) continue;
+    const h = b.match(/^##\s+(.+)$/m);
+    if (h && /^##/.test(b)) { section = h[1]!.trim(); idx = 0; continue; }
+    if (!/^(?:-\s*)?\*\*/.test(b)) continue;
+    idx++;
+    if (!COMPETING_FRAME_RE.test(b)) continue;
+    if (hasAttributedCatalyst(b)) continue;
+    out.push({
+      check: 'catalyst-enumeration',
+      message: `🔴 FAIL: ${section || 'Six'} bullet ${idx} frames COMPETING EXPLANATIONS ("${(b.match(COMPETING_FRAME_RE) || [''])[0]}") but names NO attributed catalyst — no named fund/desk, no flow figure, no earnings reference, no wire source anywhere in the bullet. A bullet whose value proposition is enumerating explanations must first name the proximate cause(s) actually reported and dispose of each one (adopted / rejected with a stated reason / folded in) before proposing an alternative frame. If the wire genuinely reported no cause, say so in the bullet, or declare FALSE-POSITIVE OVERRIDE: [catalyst-enumeration] with the evidence in the editor log.`,
+    });
+  }
+  return out;
+}
+
+// ── IMP-113 selftest — fixtures + the REAL 08-01 acceptance gate (fires on M&M-2, silent on M&M-3)
+function selftestValidator(): number {
+  let fails = 0;
+  const t = (ok: boolean, label: string) => { console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`); if (!ok) fails++; };
+  const wrap = (mm: string) => `# ▸ THE SIX\n\n## Markets & Macro\n\n${mm}\n\n# ▸ THE TAKE\n\n**A take.** Body.\n`;
+  const BAD = `**A record move, and the two available explanations imply opposite trades.** Part of it is mechanical: the name had fallen 58% into the session. The other read is that a dated forecast came due, and the discriminator does not exist until August 7.`;
+  const GOOD_WIRE = `**A record move, and the two available explanations imply opposite trades.** Reuters reported the forced seller had finished; the other read is that a dated forecast came due.`;
+  const GOOD_FLOW = `**A record move, and the two available explanations imply opposite trades.** Foreign investors net bought 7.22 trillion won against retail selling; the other read is a dated forecast coming due.`;
+  const ORDINARY = `**The Employment Cost Index landed Friday with private compensation up 3.3%.** Benefits ran 3.8% against wages at 3.1%, a 70bp gap.`;
+  t(checkCatalystEnumeration(wrap(BAD)).length === 1, '[IMP-113] FIRES on competing-explanation framing with no attributed catalyst');
+  t(checkCatalystEnumeration(wrap(GOOD_WIRE)).length === 0, '[IMP-113] SILENT when the bullet cites a wire source (Reuters)');
+  t(checkCatalystEnumeration(wrap(GOOD_FLOW)).length === 0, '[IMP-113] SILENT when the bullet carries a flow figure (net bought)');
+  t(checkCatalystEnumeration(wrap(ORDINARY)).length === 0, '[IMP-113] SILENT on an ordinary bullet with no competing-explanation framing');
+  // ACCEPTANCE GATE, real artifact: fires on the published 08-01 M&M-2, silent on 08-01 M&M-3.
+  const real = path.join(process.cwd(), 'content/daily-updates/2026-08-01.md');
+  if (fs.existsSync(real)) {
+    const f = checkCatalystEnumeration(stripComments(fs.readFileSync(real, 'utf8')));
+    t(f.length === 1 && /bullet 2\b/.test(f[0]!.message), `[IMP-113] REAL 08-01: fires on M&M-2 and ONLY M&M-2 (got ${f.length}: ${f.map(x => x.message.slice(0, 40)).join('; ')})`);
+    const mm3 = fs.readFileSync(real, 'utf8').split(/\n\s*\n/).find(b => /Japan and Korea intervened jointly/.test(b)) || '';
+    t(!!mm3 && hasAttributedCatalyst(mm3), '[IMP-113] REAL 08-01 M&M-3 carries an attributed catalyst (Barraud, citing Reuters) → SILENT');
+  }
+  console.log(`\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration verified both directions)`);
+  return fails ? 1 : 0;
+}
+
 function main() {
+  if (process.argv.slice(2).includes('--selftest')) process.exit(selftestValidator());
   const [, , argPath] = process.argv;
   if (!argPath) {
     console.error('Usage: validate-brief.ts <path-to-brief.md>');
@@ -2010,6 +2085,8 @@ function main() {
   failures.push(...checkModelStandalone(body));
   // --- AI&T differentiation check (July 5, 2026 — E-AI-SECTION-CONSENSUS-01) ---
   failures.push(...checkQGAITDifferentiation(briefDir, absPath));
+  // --- Catalyst enumeration (August 1, 2026 — IMP-113, 08-01 Critic mandate #2, RC2) ---
+  failures.push(...checkCatalystEnumeration(body));
 
   // --- QG-must-have-run integrity check (June 16, 2026) ---
   // E-PIPELINE-SEQUENCING-01: if validating a v2, assert that the quality gate ran.
@@ -2087,6 +2164,9 @@ function main() {
     // Rotation assignment (2026-07-24): override-eligible so a genuine editorial emergency has
     // a DECLARED path around the assignment — evidence in the editor log, never silence.
     'model-rotation',
+    // Catalyst enumeration (2026-08-01, IMP-113): override-eligible so "the wire genuinely reported
+    // no proximate cause" has a DECLARED path with evidence, never a silent pass.
+    'catalyst-enumeration',
   ];
   {
     const dateMatchOverride = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
@@ -2141,4 +2221,7 @@ function main() {
   process.exit(1);
 }
 
-main();
+// Run only as an entry point, so the exported checks can be imported by a test/sweep harness
+// without main() hijacking the process (added 2026-08-01 with IMP-113).
+const invokedDirectly = !!process.argv[1] && path.resolve(process.argv[1]).endsWith('validate-brief.ts');
+if (invokedDirectly) main();
