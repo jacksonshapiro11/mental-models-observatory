@@ -1366,6 +1366,68 @@ function checkWildCardStaleness(body: string, briefDir: string, absPath: string)
 // Bullets marked with <!-- DEPTH-TREATMENT --> get 350-word ceiling instead of 170.
 // This resolves the three-way ceiling contradiction (validator 170, QG 220, Editor 350).
 // Canonical ceiling for depth-treated bullets: 350.
+/**
+ * checkSixSectionWordBudget — FORMAT-AGNOSTIC length enforcement (2026-08-01, Jackson).
+ *
+ * WHY: checkSixBulletWordCeiling only measures lines starting with `- **`. On 2026-08-01 the
+ * Writer composed Markets & Macro (1,147 words) and Geopolitics (958 words) as prose, so the
+ * check found ZERO bullets, measured nothing, and reported zero violations. The Editor logged
+ * "Word ceilings 0 violations" on a brief with ~290-word units. A gate that can silently measure
+ * nothing will eventually measure nothing.
+ *
+ * This measures EVERY unit regardless of markup: subsections are split into blocks on blank
+ * lines, so a `- **Lead**` bullet and a bare prose paragraph are both units. It also always
+ * reports the unit count, so blindness is visible instead of silent.
+ */
+function checkSixSectionWordBudget(body: string): Failure[] {
+  const out: Failure[] = [];
+  const sixStart = body.indexOf('# ▸ THE SIX');
+  const sixEnd = body.indexOf('# ▸ THE TAKE');
+  if (sixStart === -1 || sixEnd === -1) return out;
+  const sixBody = body.slice(sixStart, sixEnd);
+  const SIX_SECTIONS = ['Markets & Macro', 'Companies & Crypto', 'AI & Tech', 'Geopolitics'];
+  const UNIT = 170, UNIT_HARD = 200, DEPTH = 350, DEPTH_HARD = 400;
+
+  for (const sectionName of SIX_SECTIONS) {
+    const m = sixBody.match(new RegExp(`## ${sectionName}\\b`));
+    if (!m || m.index === undefined) continue;
+    const rest = sixBody.slice(m.index + m[0].length);
+    const nextHeader = rest.search(/\n#{1,2} /);
+    const text = nextHeader === -1 ? rest : rest.slice(0, nextHeader);
+
+    const units = text.split(/\n\s*\n/)
+      .map(u => u.trim())
+      .filter(u => u.length > 0 && !/^#{1,6} /.test(u) && !/^<!--/.test(u));
+    if (units.length === 0) continue;
+
+    let total = 0, depthUnits = 0;
+    units.forEach((u, i) => {
+      const words = u.split(/\s+/).filter(Boolean).length;
+      total += words;
+      const depth = u.includes('<!-- DEPTH-TREATMENT -->') || u.includes('\u200Bdepth_treatment\u200B') || u.includes('INVESTMENT TARGET');
+      const ceil = depth ? DEPTH : UNIT, hard = depth ? DEPTH_HARD : UNIT_HARD;
+      if (depth) depthUnits++;
+      if (words > hard) {
+        out.push({ check: 'six-section-word-budget',
+          message: `🔴 HARD FAIL: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (ceiling ${ceil}, hard fail ${hard}). Compress or split.${depth ? ' (DEPTH-TREATMENT)' : ''}` });
+      } else if (words > ceil) {
+        out.push({ check: 'six-section-word-budget',
+          message: `🟡 FLAG: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (ceiling ${ceil}). Compress.${depth ? ' (DEPTH-TREATMENT)' : ''}` });
+      }
+    });
+
+    // The Six runs 2-3 units per section ("elastic by the day", Editorial Bible), so the section
+    // budget is the ALLOWED count (3) x the unit ceiling — not the count actually shipped.
+    // Otherwise writing more units raises your own budget, which is the failure mode being fixed.
+    const budget = 3 * UNIT + Math.min(depthUnits, 2) * (DEPTH - UNIT);
+    if (total > budget) {
+      out.push({ check: 'six-section-word-budget',
+        message: `🔴 HARD FAIL: ${sectionName} totals ${total} words across ${units.length} unit(s) against a ${budget}-word section budget (3 units x ${UNIT}${depthUnits ? ` + ${Math.min(depthUnits, 2)} depth-treatment` : ''}). The Six runs 2-3 units per section; compress or cut a unit.` });
+    }
+  }
+  return out;
+}
+
 function checkSixBulletWordCeiling(body: string): Failure[] {
   const out: Failure[] = [];
   const sixStart = body.indexOf('# ▸ THE SIX');
@@ -2055,6 +2117,14 @@ function main() {
   failures.push(...checkDashboardSentenceCeiling(body));
   // --- Six bullet word ceiling (May 11, 2026) ---
   failures.push(...checkSixBulletWordCeiling(body));
+  failures.push(...checkSixSectionWordBudget(body));
+  {
+    // ADVISORY ONLY — never a failure. ~160 wpm TTS: 30-min target ≈ 4,800 words.
+    const w = body.split(/\s+/).filter(Boolean).length;
+    const mins = Math.round(w / 160);
+    const mark = w > 6000 ? '🔴' : w > 5500 ? '🟡' : '✅';
+    console.log(`${mark} BRIEF LENGTH: ${w.toLocaleString()} words ≈ ${mins} min audio (target 30 min ≈ 4,800 words) — advisory, does not block`);
+  }
   // --- AI section minimum 2-bullet floor (June 14, 2026) ---
   failures.push(...checkAISectionMinBullets(body));
   // --- Signal named investable entities (June 16, 2026) ---
