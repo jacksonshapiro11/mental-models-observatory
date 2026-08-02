@@ -76,7 +76,7 @@ interface Claim {
   key: string;
   asset: string;
   tier: Tier;
-  claimType?: 'market' | 'superlative' | 'event' | 'aggregate' | 'entity-count' | 'effective-date' | 'ai-product' | 'yoy';
+  claimType?: 'market' | 'superlative' | 'event' | 'aggregate' | 'entity-count' | 'effective-date' | 'ai-product' | 'yoy' | 'headline' | 'byline';
   direction: 'up' | 'down' | 'flat' | 'unknown';
   magnitudePct: number | null;
   level: string | null;
@@ -1425,6 +1425,144 @@ function takeExtraordinaryFindings(body: string, _briefDate: string | null): Fin
   return findings;
 }
 
+// ── IMP-116 (2026-08-02 Critic mandate #1, 🔴, RC5+RC2): HEADLINE ANCHORS ────────────────────
+// RECEIPT: the three most-read numerals in the 08-02 brief all failed a from-scratch check and
+// NONE of them was extracted. The title said "Ten Ships Through Hormuz" (Kpler's own 31 July
+// publication: 5 vessels in the 24h window to 21:00 UTC, and 12 crossings on 28 July against the
+// brief's "eleven Tuesday"). The Dashboard opened on the Magnificent Seven at "exactly 0.0%" YTD
+// (the tracked series: −3.39% as of 07-29). The payoff told the reader to watch Sunday's crude
+// reopen against a "$84.67" WTI settle that could not be retrieved, with Brent at $92.27 Friday
+// morning. `fact-gate` extracted 4 market claims and not one of them was any of these, because the
+// extraction surface is the ASSET LEXICON: a numeral only becomes a claim if it sits next to a
+// known asset name. The title and the watch line are load-bearing by CONSTRUCTION, not by lexicon
+// membership — the title is the claim the reader remembers and the watch anchor is the only
+// instruction the issue gives. A wrong title cannot be fixed after publish; a wrong watch anchor
+// invalidates the instruction.
+//
+// THE RULE: any numeral in (a) the Daily Title heading or (b) the Intro Summary sentence carrying
+// `watch` is a CRITICAL claim unconditionally, resolved under `headline:<slug>` in {date}-truth.json.
+// FALSE-POSITIVE SWEEP over the trailing 40 published briefs: 6 title-numeral days and 7
+// watch-price days — the extractor is targeted, not a storm, and every hit is a number a reader
+// is guaranteed to see ("Nine Ships Through the Needle", "22 Hours and $49 Billion", "4,800 Out,
+// 6,000 In"). Watch-line extraction is PRICE-SHAPED ($ amounts, percentages, decimal levels,
+// comma-grouped levels) so a bare calendar date ("Watch August 7 to 10") does not ride the
+// critical rails — the class that matters is the price the reader will check.
+const HEADLINE_DATELINE_RE = /^(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,\s+\w+\s+\d{1,2},\s+20\d\d$/i;
+const HEADLINE_WORDNUM_RE = /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion)\b/i;
+const HEADLINE_PRICE_RE = /\$\s?\d[\d,]*(?:\.\d+)?|\b\d+(?:\.\d+)?\s*(?:%|percent\b)|\b\d[\d,]*\.\d+\b|\b\d{1,3}(?:,\d{3})+\b/g;
+// The head region ends at the Dashboard: everything above it is title + payoff intro.
+function headlineRegion(body: string): string {
+  const d = body.search(/^#\s*▸\s*THE DASHBOARD/m);
+  return d === -1 ? body.slice(0, 4000) : body.slice(0, d);
+}
+// The Daily Title is the first ##/### heading above the Dashboard that is not the date line.
+// (Heading level drifted between ## and ### across the archive; both are accepted.)
+function dailyTitleMatch(body: string): { raw: string; title: string; idx: number } | null {
+  const head = headlineRegion(body);
+  for (const m of head.matchAll(/^#{2,3}\s+(.+?)\s*$/gm)) {
+    const title = m[1]!.trim();
+    if (HEADLINE_DATELINE_RE.test(title)) continue;
+    return { raw: m[0], title, idx: m.index! };
+  }
+  return null;
+}
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+}
+function headlineAnchorClaims(body: string, _briefDate: string | null): Claim[] {
+  const claims: Claim[] = [];
+  const head = headlineRegion(body);
+  const tm = dailyTitleMatch(body);
+  if (!tm) return claims;
+
+  // (a) THE DAILY TITLE. Any digit or cardinal word-numeral in the title.
+  const titleDigits = tm.title.match(/\d[\d,.]*/g) || [];
+  const titleWords = tm.title.match(new RegExp(HEADLINE_WORDNUM_RE.source, 'gi')) || [];
+  for (const n of [...titleDigits, ...titleWords]) {
+    claims.push({
+      key: `headline:title:${slugify(String(n))}`,
+      asset: `DAILY TITLE numeral "${n}"`,
+      tier: 'critical',
+      claimType: 'headline',
+      direction: 'unknown',
+      magnitudePct: null,
+      level: String(n),
+      section: 'Daily Title',
+      sentence: tm.title,
+      status: 'UNVERIFIED',
+    });
+  }
+
+  // (b) THE WATCH LINE of the payoff intro. Price-shaped numerals only, and only those inside a
+  // 240-char WINDOW after the `watch` token — the ANCHOR, not every number in the paragraph. The
+  // window exists because the intro's closing sentence is sometimes a run-on (07-17 carried ten
+  // price-shaped numerals in one sentence; only the first, "above 66%", is the threshold the
+  // reader is told to check). Capped at 3: a watch instruction with four anchors has no anchor.
+  const intro = head.slice(tm.idx + tm.raw.length);
+  for (const sentence of intro.split(/(?<=[.!?])\s+/)) {
+    const w = sentence.match(/\bwatch\b/i);
+    if (!w || w.index === undefined) continue;
+    const window = sentence.slice(w.index, w.index + 240);
+    for (const n of [...new Set(window.match(HEADLINE_PRICE_RE) || [])].slice(0, 3)) {
+      claims.push({
+        key: `headline:watch:${slugify(String(n))}`,
+        asset: `INTRO WATCH anchor "${String(n).trim()}"`,
+        tier: 'critical',
+        claimType: 'headline',
+        direction: 'unknown',
+        magnitudePct: null,
+        level: String(n).trim(),
+        section: 'Intro Summary (watch line)',
+        sentence: sentence.trim().slice(0, 300),
+        status: 'UNVERIFIED',
+      });
+    }
+  }
+  return claims;
+}
+
+// ── IMP-117 (2026-08-02 Critic mandate #3, 🔴, RC2): BYLINE ATTRIBUTION ──────────────────────
+// RECEIPT: M&M-4 credited "Bloomberg's Colby Smith reported Friday evening". Colby Smith is the
+// NEW YORK TIMES' Federal Reserve correspondent (independently re-verified 2026-08-02: NYT
+// announced the hire from the FT in January 2025); Bloomberg's own headline on the same story
+// reads "Warsh Considering Reducing Number of Fed Meetings, NYT Reports" — the brief credited the
+// aggregator, not the reporting outlet. This is the 07-10 transposition lesson applied to
+// attribution: every number in the sentence was right and the SUBJECT was wrong, and nothing in
+// the chain checks a pairing that is not asset+number. An outlet-bound reporter name is a
+// CHECKABLE PAIRING — one search resolves it — so it rides the critical rails under
+// `byline:<outlet>-<person>`. Narrow by construction: the possessive binds a named OUTLET to a
+// PERSON, so "Kpler's daily series" (no person), "Bloomberg puts the residual near $10 billion"
+// (no possessive) and "Jim Bianco" (no outlet) are all silent. FALSE-POSITIVE SWEEP: 0 hits
+// across the trailing 40 published briefs — this fires on the failure and nothing else.
+// (The 08-02 mandate named this `bylineAttributionFindings`; it is implemented as a CRITICAL
+// CLAIM rather than a Finding so it rides the truth rails and SELF-CLEARS the moment the Morning
+// Truth Gate records the correct outlet — the same shape as every other checkable pairing.)
+const BYLINE_OUTLET_RE = /\b(Bloomberg|Reuters|the FT|the Financial Times|the Journal|the WSJ|the Times|the New York Times|CNBC|Axios|Politico)(?:['’]s)\s+([A-Z][a-z]+ [A-Z][a-z]+)/g;
+function bylineAttributionClaims(body: string, _briefDate: string | null): Claim[] {
+  const claims: Claim[] = [];
+  const seen = new Set<string>();
+  for (const m of body.matchAll(BYLINE_OUTLET_RE)) {
+    const outlet = m[1]!.trim();
+    const person = m[2]!.trim();
+    const key = `byline:${slugify(`${outlet}-${person}`)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    claims.push({
+      key,
+      asset: `BYLINE pairing "${outlet}'s ${person}"`,
+      tier: 'critical',
+      claimType: 'byline',
+      direction: 'unknown',
+      magnitudePct: null,
+      level: null,
+      section: sectionOf(body, m.index!),
+      sentence: sentenceAround(body, m.index!),
+      status: 'UNVERIFIED',
+    });
+  }
+  return claims;
+}
+
 // Superlative contradictions (FAIL) + price-vs-archive deviations (FLAG).
 function archiveBackstop(superlatives: Claim[], briefPrices: Record<string, number>, archive: Record<string, ArchivePoint[]>): Finding[] {
   const findings: Finding[] = [];
@@ -1704,6 +1842,15 @@ function entityAttribution(body: string, bindings: Binding[], health?: RegistryH
 const HARMONIZE_RE = /harmoni[sz]\w*|align(?:ed|ing)?\s+(?:to|with)\s+the\s+published|defer(?:red|ring)?\s+to\s+the\s+published|match(?:ed|ing)?\s+the\s+published/i;
 const PUBLISHED_REF_RE = /published\s+(?:record|brief|figure|number)|the\s+published\s+\d{2}-\d{2}|prior\s+brief|yesterday'?s?\s+brief|our\s+archive/i;
 const PRIMARY_SOURCE_RE = /https?:\/\/|primary source|verified against|per (?:Reuters|Bloomberg|the FT|the WSJ|CNBC|AP|Al Jazeera)|company filing|press release|8-K|prospectus/i;
+// IMP-EDITOR-2026-08-02: NEGATION GUARD. The gate reads the QG log for a CONFESSION of
+// harmonizing. A QG that OBEYS the rule must disclose the contradiction it declined to
+// resolve by preference — and that disclosure necessarily contains the words "harmonize"
+// and "the published brief". Without this guard the gate FAILs the compliant QG for
+// pasting the receipt the rule demands, which is the same class as the 2026-08-01
+// provenance-gate CHECK A finding (a zero-absence record read as four absence assertions).
+// Two gates, one night, one shape: a negated declaration read as an admission.
+// Scoped tightly — only an EXPLICIT negation of the harmonizing verb clears the line.
+const HARMONIZE_NEGATED_RE = /\b(?:did|do|does|would|will|could)\s+(?:\*{0,2}not\*{0,2}|n[o']t)\s+\w{0,12}\s?harmoni[sz]|\bnot\s+harmoni[sz]|\brefused\s+to\s+harmoni[sz]|\bdeclined\s+to\s+harmoni[sz]|\bwithout\s+harmoni[sz]|\bnever\s+harmoni[sz]/i;
 
 function findQgLog(briefPath: string, briefDate: string | null): string | null {
   if (!briefDate) return null;
@@ -1749,6 +1896,7 @@ function truthHarmonization(qg: string | null, briefDate: string | null = null):
     if (!HARMONIZE_RE.test(line)) continue;
     if (!PUBLISHED_REF_RE.test(line)) continue;   // harmonizing style/format is fine; the published RECORD is not a source
     if (PRIMARY_SOURCE_RE.test(line)) continue;   // resolved against a real source -> legal
+    if (HARMONIZE_NEGATED_RE.test(line)) continue; // an explicit "did NOT harmonize" is compliance, not confession
     findings.push(resolved.length > 0 ? {
       check: 'truth-harmonization',
       severity: 'FLAG',
@@ -2226,7 +2374,61 @@ function selftest(): number {
   console.log(`  [IMP-064] an unusable binding row is REPORTED, not silently skipped: ${okRegBadRow ? '✓' : '✗'}`);
   console.log(`  [IMP-064] the REAL registries on disk are healthy right now: ${okRegRealHealthy ? '✓' : '✗'}`);
 
+  // ── IMP-116: HEADLINE ANCHORS — the title numeral and the watch-line price ─────────────────
+  const HA_BAD = `# MARKETS, MEDITATIONS & MENTAL MODELS\n\n**Sunday, August 2, 2026**\n\n### Ten Ships Through Hormuz\n\n*Hormuz got counted. Watch Sunday evening's Asian crude reopen against Friday's $84.67 WTI settle, because a gap of more than a few dollars is not the market pricing a war.*\n\n---\n\n# ▸ THE DASHBOARD\n\n### Equities\n\n*The S&P 500 rose 1.2% to 7,000.*\n`;
+  const HA_CLEAN = `# MARKETS, MEDITATIONS & MENTAL MODELS\n\n**Sunday, August 2, 2026**\n\n### What Won't Reverse\n\n*Two inflation channels stack into the meeting. Watch the FOMC decision and Monday's oil open after the Jazan strike.*\n\n---\n\n# ▸ THE DASHBOARD\n\n### Equities\n\n*The S&P 500 rose 1.2% to 7,000.*\n`;
+  const haBad = headlineAnchorClaims(HA_BAD, '2026-08-02');
+  const okHaTitle = haBad.some((c) => c.section === 'Daily Title' && /Ten/i.test(String(c.level)));
+  const okHaWatch = haBad.some((c) => /watch line/i.test(c.section) && String(c.level).includes('84.67'));
+  const okHaCritical = haBad.every((c) => c.tier === 'critical' && c.status === 'UNVERIFIED');
+  // SILENT on a title with no numeral and a watch line with no price (a bare calendar watch).
+  const okHaClean = headlineAnchorClaims(HA_CLEAN, '2026-08-02').length === 0;
+  // The date line is never mistaken for the title (older briefs used `## {weekday}, {month} {d}, {yyyy}`).
+  const okHaDateline = !headlineAnchorClaims(
+    `# MARKETS, MEDITATIONS & MENTAL MODELS\n\n## Saturday, June 20, 2026\n\nBody.\n\n# ▸ THE DASHBOARD\n`, '2026-06-20',
+  ).some((c) => /June|2026|20/.test(String(c.level)));
+  // ACCEPTANCE GATE, real artifact: the 08-02 v2's title "Ten" and the intro's $84.67 both extract.
+  const v2_0802 = path.join(process.cwd(), 'daily-briefs/2026-08-02-v2.md');
+  let okHaReal = true;
+  if (fs.existsSync(v2_0802)) {
+    const real = headlineAnchorClaims(stripComments(fs.readFileSync(v2_0802, 'utf8')), '2026-08-02');
+    okHaReal = real.some((c) => c.section === 'Daily Title' && /^Ten$/i.test(String(c.level))) &&
+               real.some((c) => String(c.level).includes('84.67'));
+  }
+  // FALSE-POSITIVE DISCIPLINE: a bare calendar watch ("Watch August 7 to 10") stays off the rails.
+  const okHaNoDate = headlineAnchorClaims(
+    `# H\n\n### Pay Went Backwards\n\n*Watch August 7 to 10 for the memory tell.*\n\n# ▸ THE DASHBOARD\n`, '2026-08-01',
+  ).filter((c) => /watch line/i.test(c.section)).length === 0;
+
+  // ── IMP-117: BYLINE PAIRINGS — outlet bound to a person is a checkable pairing ─────────────
+  const byBad = bylineAttributionClaims(`# ▸ THE SIX\n\n## Markets & Macro\n\n**A scheduling story.** Bloomberg's Colby Smith reported Friday evening that Warsh is considering fewer meetings.\n`, '2026-08-02');
+  const okByFire = byBad.length === 1 && byBad[0]!.tier === 'critical' && /Colby Smith/.test(byBad[0]!.asset);
+  const okBySilentOrg = bylineAttributionClaims(`Kpler's daily series shows ten crossings.`, null).length === 0;
+  const okBySilentNoPossessive = bylineAttributionClaims(`Bloomberg puts the residual near $10 billion.`, null).length === 0;
+  const okBySilentBarePerson = bylineAttributionClaims(`Jim Bianco supplied the tradable version.`, null).length === 0;
+  // ACCEPTANCE GATE, real artifact: fires on the 08-02 v2's "Bloomberg's Colby Smith".
+  let okByReal = true;
+  if (fs.existsSync(v2_0802)) {
+    okByReal = bylineAttributionClaims(stripComments(fs.readFileSync(v2_0802, 'utf8')), '2026-08-02')
+      .some((c) => /Colby Smith/.test(c.asset));
+  }
+
+  console.log(`  [IMP-116] FIRES on the title numeral "Ten": ${okHaTitle ? '✓' : '✗'}`);
+  console.log(`  [IMP-116] FIRES on the watch-line anchor $84.67: ${okHaWatch ? '✓' : '✗'}`);
+  console.log(`  [IMP-116] headline anchors ride the CRITICAL rails: ${okHaCritical ? '✓' : '✗'}`);
+  console.log(`  [IMP-116] SILENT on a numberless title + a priceless watch line: ${okHaClean ? '✓' : '✗'}`);
+  console.log(`  [IMP-116] the date line is never read as the title: ${okHaDateline ? '✓' : '✗'}`);
+  console.log(`  [IMP-116] SILENT on a bare calendar watch ("August 7 to 10"): ${okHaNoDate ? '✓' : '✗'}`);
+  console.log(`  [IMP-116] REAL 08-02 v2: title "Ten" AND intro $84.67 both extract: ${okHaReal ? '✓' : '✗'}`);
+  console.log(`  [IMP-117] FIRES on "Bloomberg's Colby Smith" (outlet+person pairing): ${okByFire ? '✓' : '✗'}`);
+  console.log(`  [IMP-117] SILENT on "Kpler's daily series" (organisation, no person): ${okBySilentOrg ? '✓' : '✗'}`);
+  console.log(`  [IMP-117] SILENT on "Bloomberg puts the residual…" (outlet, no possessive): ${okBySilentNoPossessive ? '✓' : '✗'}`);
+  console.log(`  [IMP-117] SILENT on "Jim Bianco" (person, no outlet): ${okBySilentBarePerson ? '✓' : '✗'}`);
+  console.log(`  [IMP-117] REAL 08-02 v2: fires on the Colby Smith pairing: ${okByReal ? '✓' : '✗'}`);
+
   const ok =
+    okHaTitle && okHaWatch && okHaCritical && okHaClean && okHaDateline && okHaNoDate && okHaReal &&
+    okByFire && okBySilentOrg && okBySilentNoPossessive && okBySilentBarePerson && okByReal &&
     okFire && okSilentDated && okSilentFirst &&
     okFpFire && okFpNikkei && okFpSilentDated && okFpSilentFirst &&
     okMagWord && okMagSym &&
@@ -2388,6 +2590,19 @@ function main() {
   const earningsClaims = earningsResultClaims(body, briefDate);
   for (const e of earningsClaims) if (truth?.claims?.[e.key]) e.status = 'PASS';
 
+  // 3h. HEADLINE ANCHORS (IMP-116, the 08-02 Critic's mandate #1). The Daily Title numeral and the
+  // Intro's watch-line price are the two strings a reader is guaranteed to see, and the asset-lexicon
+  // extraction surface could not see either. Load-bearing by construction → CRITICAL, resolved under
+  // `headline:<slug>`. RESOLVE-FIRST at the morning gate: a wrong title cannot be fixed after publish.
+  const headlineClaims = headlineAnchorClaims(body, briefDate);
+  for (const e of headlineClaims) if (truth?.claims?.[e.key]) e.status = 'PASS';
+
+  // 3i. BYLINE PAIRINGS (IMP-117, the 08-02 Critic's mandate #3). "Bloomberg's Colby Smith" — the
+  // reporter is the NYT's. A checkable pairing that no number-shaped check can see; the 07-10
+  // transposition class applied to attribution. CRITICAL, resolved under `byline:<slug>`.
+  const bylineClaims = bylineAttributionClaims(body, briefDate);
+  for (const e of bylineClaims) if (truth?.claims?.[e.key]) e.status = 'PASS';
+
   // 4. Archive backstop (zero-network): disprove false superlatives + flag price fabrications.
   const archive = loadArchive(briefPath, briefDate, archiveDays);
   const archiveAssetsKnown = Object.keys(archive).length;
@@ -2441,7 +2656,7 @@ function main() {
   // verification, not blocked here). Event claims join the critical rails deliberately: a
   // same-session release-date assertion is exactly as load-bearing as a price, and on 07-13 it
   // was more so — it was a section's entire premise.
-  const unverifiedCritical = [...claims, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims].filter((c) => c.tier === 'critical' && c.status === 'UNVERIFIED');
+  const unverifiedCritical = [...claims, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims, ...headlineClaims, ...bylineClaims].filter((c) => c.tier === 'critical' && c.status === 'UNVERIFIED');
   if (!allowUnverified) {
     for (const c of unverifiedCritical) {
       findings.push({
@@ -2458,7 +2673,7 @@ function main() {
   // infrastructure failure, not a clean pass. (07-10 receipt: 6 market claims + 7 superlatives,
   // 0 pass / 0 fail / 13 unverified, truthFile null → published. Among them: the 30Y-JGB
   // superlative that was actually the 10Y's record — right number, wrong asset.)
-  const truthBypass = !truth && (claims.length > 0 || superlatives.length > 0 || eventClaims.length > 0 || aggClaims.length > 0 || entityCounts.length > 0 || effectiveDates.length > 0 || aiProducts.length > 0 || yoyClaims.length > 0 || earningsClaims.length > 0);
+  const truthBypass = !truth && (claims.length > 0 || superlatives.length > 0 || eventClaims.length > 0 || aggClaims.length > 0 || entityCounts.length > 0 || effectiveDates.length > 0 || aiProducts.length > 0 || yoyClaims.length > 0 || earningsClaims.length > 0 || headlineClaims.length > 0 || bylineClaims.length > 0);
   if (truthBypass) {
     findings.push({
       check: 'truth-bypass',
@@ -2476,7 +2691,7 @@ function main() {
     }
   }
 
-  const allClaims = [...claims, ...superlatives, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims];
+  const allClaims = [...claims, ...superlatives, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims, ...headlineClaims, ...bylineClaims];
 
   // Ledger output (the worklist the editorial agents clear by verify-and-correct).
   const ledger = {
@@ -2492,6 +2707,8 @@ function main() {
       effectiveDates: effectiveDates.length,
       aiProducts: aiProducts.length,
       earnings: earningsClaims.length,
+      headlineAnchors: headlineClaims.length, // IMP-116
+      bylines: bylineClaims.length,           // IMP-117
       pass: allClaims.filter((c) => c.status === 'PASS').length,
       fail: allClaims.filter((c) => c.status === 'FAIL').length,
       unverified: allClaims.filter((c) => c.status === 'UNVERIFIED').length,
@@ -2519,7 +2736,7 @@ function main() {
   const flags = findings.filter((f) => f.severity === 'FLAG');
 
   console.log(`fact-gate — ${path.basename(briefPath)}`);
-  console.log(`  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`);
+  console.log(`  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`);
   console.log(`  archive: ${archiveAssetsKnown} assets known from our last ${archiveDays} briefs`);
   console.log(`  truth file: ${truthPath ? path.basename(truthPath) : 'NONE (critical claims will block unless --allow-unverified)'}`);
   // IMP-064: the premise layer states its own health on every run. A silent registry

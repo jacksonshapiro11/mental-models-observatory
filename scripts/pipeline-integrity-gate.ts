@@ -59,6 +59,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { spawnSync } from 'child_process'; // IMP-119: re-execute the gate the status line claims to have run
 
 export type PipelineState = 'HEALTHY' | 'NOT_STARTED' | 'SILENT_V1_FAILURE' | 'PARTIAL';
 
@@ -127,6 +128,47 @@ export function provenanceWarns(root: string, date: string): string[] {
   return out;
 }
 
+// ── IMP-119 (2026-08-02, E-EDITOR-GATE-SELFREPORT-01, RC2): DON'T TRUST A GATE VERDICT YOU
+// DIDN'T RUN. ────────────────────────────────────────────────────────────────────────────────
+// RECEIPT (08-02 Critic, PIPELINE-STATE EVIDENCE): the `brief-editor` SUCCESS line asserted of the
+// promoted v2 — "Full battery on the promoted v2: … fact-gate PASS …" — while the SAME line
+// separately reported the truth file as NONE with 4 market claims + 5 superlatives unverified. Run
+// against that unmodified file, `fact-gate` exited 1 with two unverified-critical rows. A status
+// line saying PASS where the gate says FAIL is the exact shape that produced the 2026-07-10 truth
+// incident ("fact-gate PASS" meaning "no contradictions found against nothing"), and every
+// downstream consumer — the morning gate, the health check, the improvement loop — reads status
+// lines. Nothing re-executed the gate.
+//
+// THE RULE: a self-reported gate verdict is a CLAIM, and this brief's own doctrine says a claim is
+// checked by re-running the primary source. This warn re-executes fact-gate on the promoted v2 and
+// contradicts the status line when they disagree. WARN-ONLY by construction (exit 0) — it never
+// blocks a brief; it makes a lying status line loud and dated.
+// NO TIMING FALSE POSITIVE: the only asserted direction is "status says PASS, gate says FAIL". A
+// later re-run can only ever gain a truth file, which moves the gate toward PASS — so a
+// contradiction found now was necessarily true then, and the warn SELF-CLEARS the moment the gate
+// genuinely passes or the line stops claiming it.
+const SELFREPORT_PASS_RE = /fact-gate[^.\n]{0,24}\bPASS\b/i;
+/** Pure decision function: does a status line's self-reported verdict contradict a re-run? */
+export function selfReportContradiction(statusText: string, gateExit: number): string | null {
+  const line = statusText.split('\n').find((l) => /\bbrief-editor\b/.test(l) && SELFREPORT_PASS_RE.test(l));
+  if (!line) return null;
+  if (gateExit === 0) return null;
+  const quoted = (line.match(SELFREPORT_PASS_RE) || [''])[0];
+  return `GATE-SELFREPORT-CONTRADICTED: the brief-editor status line asserts "${quoted}" but re-executing fact-gate on the promoted v2 exits ${gateExit}. A self-reported gate verdict is a CLAIM; this one is false as written. Re-run the gate and correct the status line — a pipeline whose status lines say PASS where the gate says FAIL is the 2026-07-10 truth-incident shape (E-EDITOR-GATE-SELFREPORT-01).`;
+}
+/** Disk wrapper: re-executes fact-gate on {date}-v2.md and compares to the editor's self-report. */
+export function gateSelfReportWarns(root: string, date: string): string[] {
+  const statusPath = path.join(root, 'daily-briefs', `${date}-pipeline-status.md`);
+  const v2Path = path.join(root, 'daily-briefs', `${date}-v2.md`);
+  const gatePath = path.join(root, 'scripts', 'fact-gate.ts');
+  if (!fs.existsSync(statusPath) || !fs.existsSync(v2Path) || !fs.existsSync(gatePath)) return [];
+  const statusText = fs.readFileSync(statusPath, 'utf8');
+  if (!statusText.split('\n').some((l) => /\bbrief-editor\b/.test(l) && SELFREPORT_PASS_RE.test(l))) return [];
+  const r = spawnSync(process.execPath, ['--experimental-strip-types', gatePath, v2Path], { encoding: 'utf8', cwd: root });
+  const warn = selfReportContradiction(statusText, r.status ?? 0);
+  return warn ? [warn] : [];
+}
+
 /** Classify the evening chain's state for `date` from the artifacts on disk. Pure function of disk. */
 export function diagnose(root: string, date: string): Diagnosis {
   const briefs = 'daily-briefs';
@@ -153,6 +195,7 @@ export function diagnose(root: string, date: string): Diagnosis {
     // Brief was produced. The one remaining cascade tail: the critic never ran (07-27 lost it).
     if (!hasCritic) warnings.push(`CRITIC-ABSENT: ${date}-v2.md exists but ${date}-critic.md does not — the feedback loop for this brief is broken (the improvement cycle inherits no adversarial read).`);
     warnings.push(...provenanceWarns(root, date)); // IMP-106: stamp-didn't-run + Writer fabricated-absent
+    warnings.push(...gateSelfReportWarns(root, date)); // IMP-119: status line says PASS, gate says FAIL
     return { date, state: 'HEALTHY', fail: false, warnings, detail: `v2 present${hasCritic ? ' + critic' : ' (critic MISSING)'}.` };
   }
 
@@ -247,6 +290,21 @@ function selftest(): number {
     r = mk([`${D}-cc-predraft.md`, `${D}-take-draft.md`, `${D}-predraft-manifest.md`, `${D}-v1.5.md`, `${D}-v2.md`, `${D}-critic.md`]); roots.push(r);
     fs.writeFileSync(path.join(r, 'daily-briefs', `${D}-v1-pre-quality-gate.md`), `| discovery-draft | ABSENT  --  no discovery-draft on disk, honest |\n`);
     results.push(['IMP-106: SILENT on an HONEST absent (v1 says absent AND the pre-draft truly is absent)', (() => { const d = diagnose(r, D); return !d.warnings.some((w) => w.startsWith('PREDRAFT-FABRICATION')); })()]);
+
+    // IMP-119 — GATE-SELFREPORT. The decision function is pure so the assertion is deterministic
+    // (the disk wrapper re-executes fact-gate; the logic under test is the comparison).
+    const REAL_LINE = `2026-08-01T23:27:45Z | brief-editor | daily-briefs/2026-08-02-v2.md | SUCCESS | Full battery on the promoted v2: validate-brief 8 SOFT, fact-gate PASS, truth file NONE with 9 unverified items.`;
+    results.push(['IMP-119: FIRES when the editor line claims "fact-gate PASS" and the re-run exits 1 (the real 08-02 line)',
+      (() => { const w = selfReportContradiction(REAL_LINE, 1); return !!w && w.startsWith('GATE-SELFREPORT-CONTRADICTED') && /fact-gate PASS/.test(w); })()]);
+    results.push(['IMP-119: SILENT when the claim is true (line says PASS, re-run exits 0) — self-clears',
+      selfReportContradiction(REAL_LINE, 0) === null]);
+    results.push(['IMP-119: SILENT when the editor line makes no fact-gate claim (nothing to contradict)',
+      selfReportContradiction('2026-08-01T23:27:45Z | brief-editor | v2 | SUCCESS | promoted.', 1) === null]);
+    results.push(['IMP-119: SILENT on a non-editor line that mentions fact-gate PASS (scoping)',
+      selfReportContradiction('2026-08-01T10:00Z | brief-morning | fact-gate PASS after truth resolve', 1) === null]);
+    // Disk wrapper is inert when the artifacts are absent — no crash, no false warn.
+    r = mk([`${D}-cc-predraft.md`]); roots.push(r);
+    results.push(['IMP-119: disk wrapper is INERT when v2/status are absent (no crash, no warn)', gateSelfReportWarns(r, D).length === 0]);
   } finally {
     for (const r of roots) fs.rmSync(r, { recursive: true, force: true });
   }

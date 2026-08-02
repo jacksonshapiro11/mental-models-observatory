@@ -2081,6 +2081,58 @@ export function checkCatalystEnumeration(body: string): Failure[] {
   return out;
 }
 
+// ── IMP-118 (2026-08-02 Critic mandate #2, 🔴, RC5): PRECEDENT ANALOGY ────────────────────────
+// RECEIPT: E-WRITER-CATALYST-OMISSION-01 Day 2 — it recurred ONE DAY after IMP-113 shipped, one
+// bullet UPSTREAM of the bullet IMP-113 fixed. 08-02 M&M-1 (the brief's lede and the payoff's
+// anchor) told the reader to "price the base rate of non-execution" because "this same option …
+// reached the order stage once before and Trump paused it in late March" — and never named the
+// proximate cause of THIS escalation: Iran's 29 July missile attack on US forces in Jordan (IRGC
+// hit Muwaffaq Salti Air Base and a CENTCOM centre; Jordan intercepted five missiles), after which
+// Trump said the US would "be hitting them hard" and ran a "heavy wave" of strikes on Thursday.
+// Verified: Al Jazeera 2026-07-29, Forbes 2026-07-29, NPR 2026-07-30. A precedent analogy is a
+// STRONGER claim than a competing-explanation frame — it asserts the causal setup is unchanged —
+// so it needs the current cause on the page even more.
+//
+// WHY THE CLEAR IS A DECLARATION, NOT A CONTENT TEST (the honest part). IMP-113's model — trigger
+// on the frame, clear on an attributed catalyst — CANNOT work here, and this was tested rather
+// than assumed: the real 08-02 M&M-1 satisfies every content-based clear-condition available. It
+// carries three wire sources (WSJ, CBS, NBC), a dated actor action ("ordered … at 21:24 UTC
+// Friday"), and an explicit what-changed enumeration ("two things argue that base rate is now
+// weaker and one argues the tail is fatter"). `hasAttributedCatalyst()` returns TRUE on it. What
+// is missing is a FACT ABOUT THE WORLD — the Jordan attack — and no regex knows the Jordan attack
+// happened. Any auto-clear tuned to fire here would be an arbitrary discriminator, which is a
+// Goodhart trap with a false-positive tail. So the gate does the one thing it CAN do honestly: it
+// makes a rare, high-damage shape MANDATORY TO DECLARE. The Editor either adds the proximate cause
+// to the bullet or writes the override naming the most recent dated event in that theatre and the
+// source that carried it — the check that was skipped becomes a check on the record.
+// FALSE-POSITIVE COST, measured: 0 trigger hits across the trailing 30 published briefs. This
+// shape appears roughly once a month; the declaration is cheap and the omission is not.
+const PRECEDENT_ANALOGY_RE = /\b(?:the )?base rate of\b|\breached (?:the|this) (?:order|same) stage (?:once )?before\b|\bthis same (?:option|play|sequence)\b|\bthe last time this\b|\bpaused it in\b|\bwithdrawn once\b/i;
+export function checkPrecedentAnalogy(body: string): Failure[] {
+  const out: Failure[] = [];
+  const sixStart = body.indexOf('# ▸ THE SIX');
+  if (sixStart === -1) return out;
+  const sixEnd = body.indexOf('# ▸ THE TAKE');
+  const sixBody = body.slice(sixStart, sixEnd === -1 ? undefined : sixEnd);
+  let section = '';
+  let idx = 0;
+  for (const block of sixBody.split(/\n\s*\n/)) {
+    const b = block.trim();
+    if (!b) continue;
+    const h = b.match(/^##\s+(.+)$/m);
+    if (h && /^##/.test(b)) { section = h[1]!.trim(); idx = 0; continue; }
+    if (!/^(?:-\s*)?\*\*/.test(b)) continue;
+    idx++;
+    const m = b.match(PRECEDENT_ANALOGY_RE);
+    if (!m) continue;
+    out.push({
+      check: 'precedent-analogy',
+      message: `🔴 FAIL: ${section || 'Six'} bullet ${idx} prices a PRECEDENT ANALOGY ("${m[0]}") — it asserts the causal setup is unchanged since a prior instance and instructs the reader to price that base rate. A precedent is a claim that the setup is the SAME; earn it by naming what is DIFFERENT. Before this ships, sweep the wire for the proximate event that triggered THIS instance (the subject event's own report does not count, and neither does commentary about it) and put it in the bullet. If the sweep genuinely returns nothing new, declare FALSE-POSITIVE OVERRIDE: [precedent-analogy] in the editor log, naming the most recent dated event in that theatre and the source that carried it. Receipt: 08-02 M&M-1 built its whole read on the late-March pause and omitted Iran's 29 July missile attack on US forces in Jordan (Al Jazeera 2026-07-29, NPR 2026-07-30).`,
+    });
+  }
+  return out;
+}
+
 // ── IMP-113 selftest — fixtures + the REAL 08-01 acceptance gate (fires on M&M-2, silent on M&M-3)
 function selftestValidator(): number {
   let fails = 0;
@@ -2102,7 +2154,44 @@ function selftestValidator(): number {
     const mm3 = fs.readFileSync(real, 'utf8').split(/\n\s*\n/).find(b => /Japan and Korea intervened jointly/.test(b)) || '';
     t(!!mm3 && hasAttributedCatalyst(mm3), '[IMP-113] REAL 08-01 M&M-3 carries an attributed catalyst (Barraud, citing Reuters) → SILENT');
   }
-  console.log(`\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration verified both directions)`);
+
+  // ── IMP-118 PRECEDENT ANALOGY — fixtures + the REAL 08-02 acceptance gate ───────────────────
+  const PREC_BAD = `**The order lands in the one stretch of the week when nothing can take the other side.** The print is a bet on the base rate of non-execution, because this same option reached the order stage once before and Trump paused it in late March.`;
+  const PREC_NONE = `**The Employment Cost Index landed Friday with private compensation up 3.3%.** Benefits ran 3.8% against wages at 3.1%, a 70bp gap that has not closed since 2022.`;
+  t(checkPrecedentAnalogy(wrap(PREC_BAD)).length === 1, '[IMP-118] FIRES on a precedent-analogy bullet pricing a base rate');
+  t(checkPrecedentAnalogy(wrap(PREC_NONE)).length === 0, '[IMP-118] SILENT on an ordinary bullet with no precedent framing');
+  // The IMP-113 fixtures must stay in their own lane — a competing-explanation frame is NOT a
+  // precedent analogy, so the two gates never double-charge the same bullet.
+  t(checkPrecedentAnalogy(wrap(BAD)).length === 0, '[IMP-118] SILENT on the IMP-113 competing-explanation fixture (no double-jeopardy)');
+  // ACCEPTANCE GATE, real artifacts: fires on the real 08-02 M&M-1; silent on the real 08-02 M&M-3
+  // and on the real published 08-01 (whose M&M-2 is IMP-113's case, already fixed).
+  const v2 = path.join(process.cwd(), 'daily-briefs/2026-08-02-v2.md');
+  if (fs.existsSync(v2)) {
+    const f = checkPrecedentAnalogy(stripComments(fs.readFileSync(v2, 'utf8')));
+    t(f.length === 1 && /bullet 1\b/.test(f[0]!.message),
+      `[IMP-118] REAL 08-02 v2: fires on M&M-1 and ONLY M&M-1 (got ${f.length}: ${f.map(x => x.message.slice(0, 46)).join('; ')})`);
+    const mm3 = fs.readFileSync(v2, 'utf8').split(/\n\s*\n/).find(b => /Japan spent roughly \$53 billion/.test(b)) || '';
+    t(!!mm3 && !PRECEDENT_ANALOGY_RE.test(mm3), '[IMP-118] REAL 08-02 M&M-3 (Setser/Pettis/BOJ) does NOT trigger → SILENT');
+  }
+  const pub01 = path.join(process.cwd(), 'content/daily-updates/2026-08-01.md');
+  if (fs.existsSync(pub01)) {
+    t(checkPrecedentAnalogy(stripComments(fs.readFileSync(pub01, 'utf8'))).length === 0,
+      '[IMP-118] REAL published 08-01: SILENT (the IMP-113 bullet is not a precedent analogy)');
+  }
+  // FALSE-POSITIVE SWEEP, on the record: 0 hits across the trailing 30 published briefs.
+  {
+    const dir = path.join(process.cwd(), 'content/daily-updates');
+    let hits = 0, swept = 0;
+    if (fs.existsSync(dir)) {
+      for (const f of fs.readdirSync(dir).filter(x => /^2026-\d\d-\d\d\.md$/.test(x)).sort().slice(-30)) {
+        swept++;
+        hits += checkPrecedentAnalogy(stripComments(fs.readFileSync(path.join(dir, f), 'utf8'))).length;
+      }
+    }
+    t(hits === 0, `[IMP-118] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0)`);
+  }
+
+  console.log(`\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration + precedent-analogy verified both directions)`);
   return fails ? 1 : 0;
 }
 
@@ -2206,6 +2295,7 @@ function main() {
   failures.push(...checkQGAITDifferentiation(briefDir, absPath));
   // --- Catalyst enumeration (August 1, 2026 — IMP-113, 08-01 Critic mandate #2, RC2) ---
   failures.push(...checkCatalystEnumeration(body));
+  failures.push(...checkPrecedentAnalogy(body)); // IMP-118
 
   // --- QG-must-have-run integrity check (June 16, 2026) ---
   // E-PIPELINE-SEQUENCING-01: if validating a v2, assert that the quality gate ran.
@@ -2286,6 +2376,10 @@ function main() {
     // Catalyst enumeration (2026-08-01, IMP-113): override-eligible so "the wire genuinely reported
     // no proximate cause" has a DECLARED path with evidence, never a silent pass.
     'catalyst-enumeration',
+    // Precedent analogy (2026-08-02, IMP-118): the clear IS the declaration — the Editor either
+    // puts the current proximate cause in the bullet or names, on the record, the most recent
+    // dated event in that theatre and its source. Never a silent pass.
+    'precedent-analogy',
   ];
   {
     const dateMatchOverride = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
