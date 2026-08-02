@@ -1447,7 +1447,16 @@ function takeExtraordinaryFindings(body: string, _briefDate: string | null): Fin
 // 6,000 In"). Watch-line extraction is PRICE-SHAPED ($ amounts, percentages, decimal levels,
 // comma-grouped levels) so a bare calendar date ("Watch August 7 to 10") does not ride the
 // critical rails — the class that matters is the price the reader will check.
-const HEADLINE_DATELINE_RE = /^(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,\s+\w+\s+\d{1,2},\s+20\d\d$/i;
+// ENFORCEMENT EPOCH. A new claim class may not retroactively condemn artifacts that shipped before
+// it existed: the truth files of published briefs predate `headline:*` and can never carry those
+// keys, so re-running `--require-resolved` over the archive would red-fail history for the crime of
+// being old. (This was not theory — `verify-improvements.ts` caught exactly that on first run: the
+// IMP-045/061/062 archive acceptance gates went RED on 07-13 and 07-17. The gate that audits the
+// improvement loop earned its keep.) Enforcement begins with the first brief drafted under the rule.
+const HEADLINE_EPOCH = '2026-08-02';
+// A heading that is a DATE or a DATE RANGE is never the Daily Title. Two live shapes: the older
+// daily format's `## Saturday, June 20, 2026`, and the Weekly's `## July 5-11, 2026`.
+const HEADLINE_DATELINE_RE = /^(?:(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}\s*(?:[–—-]\s*(?:(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+)?\d{1,2})?,?\s+20\d\d$/i;
 const HEADLINE_WORDNUM_RE = /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion)\b/i;
 const HEADLINE_PRICE_RE = /\$\s?\d[\d,]*(?:\.\d+)?|\b\d+(?:\.\d+)?\s*(?:%|percent\b)|\b\d[\d,]*\.\d+\b|\b\d{1,3}(?:,\d{3})+\b/g;
 // The head region ends at the Dashboard: everything above it is title + payoff intro.
@@ -1469,14 +1478,19 @@ function dailyTitleMatch(body: string): { raw: string; title: string; idx: numbe
 function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 }
-function headlineAnchorClaims(body: string, _briefDate: string | null): Claim[] {
+function headlineAnchorClaims(body: string, briefDate: string | null): Claim[] {
   const claims: Claim[] = [];
+  // DAILY BRIEFS ONLY, and only from the enforcement epoch forward. A week id ("2026-W28") has no
+  // Daily Title and no watch line — running the extractor over a Weekly produced junk claims off its
+  // "July 5-11, 2026" date-range heading.
+  if (!briefDate || !/^\d{4}-\d{2}-\d{2}$/.test(briefDate) || briefDate < HEADLINE_EPOCH) return claims;
   const head = headlineRegion(body);
   const tm = dailyTitleMatch(body);
   if (!tm) return claims;
 
-  // (a) THE DAILY TITLE. Any digit or cardinal word-numeral in the title.
-  const titleDigits = tm.title.match(/\d[\d,.]*/g) || [];
+  // (a) THE DAILY TITLE. Any digit or cardinal word-numeral in the title. A bare 4-digit YEAR is
+  // excluded — "The 2026 Problem" names a period, not a measurement, and nothing is resolvable there.
+  const titleDigits = (tm.title.match(/\d[\d,.]*/g) || []).filter((n) => !/^20\d\d$/.test(n));
   const titleWords = tm.title.match(new RegExp(HEADLINE_WORDNUM_RE.source, 'gi')) || [];
   for (const n of [...titleDigits, ...titleWords]) {
     claims.push({
@@ -1538,8 +1552,11 @@ function headlineAnchorClaims(body: string, _briefDate: string | null): Claim[] 
 // CLAIM rather than a Finding so it rides the truth rails and SELF-CLEARS the moment the Morning
 // Truth Gate records the correct outlet — the same shape as every other checkable pairing.)
 const BYLINE_OUTLET_RE = /\b(Bloomberg|Reuters|the FT|the Financial Times|the Journal|the WSJ|the Times|the New York Times|CNBC|Axios|Politico)(?:['’]s)\s+([A-Z][a-z]+ [A-Z][a-z]+)/g;
-function bylineAttributionClaims(body: string, _briefDate: string | null): Claim[] {
+function bylineAttributionClaims(body: string, briefDate: string | null): Claim[] {
   const claims: Claim[] = [];
+  // Same enforcement epoch as IMP-116: a truth file written before this rule cannot carry a
+  // `byline:*` key, so the archive is read, never condemned.
+  if (!briefDate || briefDate < HEADLINE_EPOCH) return claims;
   const seen = new Set<string>();
   for (const m of body.matchAll(BYLINE_OUTLET_RE)) {
     const outlet = m[1]!.trim();
@@ -2383,10 +2400,21 @@ function selftest(): number {
   const okHaCritical = haBad.every((c) => c.tier === 'critical' && c.status === 'UNVERIFIED');
   // SILENT on a title with no numeral and a watch line with no price (a bare calendar watch).
   const okHaClean = headlineAnchorClaims(HA_CLEAN, '2026-08-02').length === 0;
-  // The date line is never mistaken for the title (older briefs used `## {weekday}, {month} {d}, {yyyy}`).
-  const okHaDateline = !headlineAnchorClaims(
-    `# MARKETS, MEDITATIONS & MENTAL MODELS\n\n## Saturday, June 20, 2026\n\nBody.\n\n# ▸ THE DASHBOARD\n`, '2026-06-20',
-  ).some((c) => /June|2026|20/.test(String(c.level)));
+  // The date line is never mistaken for the title (older briefs used `## {weekday}, {month} {d}, {yyyy}`)
+  // and neither is the Weekly's date-range heading (`## July 5-11, 2026`). A bare year is not a claim.
+  const okHaDateline = headlineAnchorClaims(
+    `# MARKETS, MEDITATIONS & MENTAL MODELS\n\n## Saturday, June 20, 2026\n\nBody.\n\n# ▸ THE DASHBOARD\n`, '2026-08-05',
+  ).length === 0;
+  const okHaWeekRange = headlineAnchorClaims(
+    `# MARKETS, MEDITATIONS & MENTAL MODELS\n\n## July 5-11, 2026\n\nBody.\n\n# ▸ THE DASHBOARD\n`, '2026-08-05',
+  ).length === 0;
+  const okHaYear = headlineAnchorClaims(
+    `# H\n\n### The 2026 Problem\n\n*No watch line here.*\n\n# ▸ THE DASHBOARD\n`, '2026-08-05',
+  ).length === 0;
+  // ENFORCEMENT EPOCH: the archive is read, never condemned. A pre-epoch brief and a WEEKLY (week id)
+  // extract nothing, so re-running --require-resolved over history cannot red-fail it.
+  const okHaEpoch = headlineAnchorClaims(HA_BAD, '2026-07-17').length === 0;
+  const okHaWeekly = headlineAnchorClaims(HA_BAD, '2026-W31').length === 0;
   // ACCEPTANCE GATE, real artifact: the 08-02 v2's title "Ten" and the intro's $84.67 both extract.
   const v2_0802 = path.join(process.cwd(), 'daily-briefs/2026-08-02-v2.md');
   let okHaReal = true;
@@ -2397,15 +2425,16 @@ function selftest(): number {
   }
   // FALSE-POSITIVE DISCIPLINE: a bare calendar watch ("Watch August 7 to 10") stays off the rails.
   const okHaNoDate = headlineAnchorClaims(
-    `# H\n\n### Pay Went Backwards\n\n*Watch August 7 to 10 for the memory tell.*\n\n# ▸ THE DASHBOARD\n`, '2026-08-01',
+    `# H\n\n### Pay Went Backwards\n\n*Watch August 7 to 10 for the memory tell.*\n\n# ▸ THE DASHBOARD\n`, '2026-08-05',
   ).filter((c) => /watch line/i.test(c.section)).length === 0;
 
   // ── IMP-117: BYLINE PAIRINGS — outlet bound to a person is a checkable pairing ─────────────
   const byBad = bylineAttributionClaims(`# ▸ THE SIX\n\n## Markets & Macro\n\n**A scheduling story.** Bloomberg's Colby Smith reported Friday evening that Warsh is considering fewer meetings.\n`, '2026-08-02');
   const okByFire = byBad.length === 1 && byBad[0]!.tier === 'critical' && /Colby Smith/.test(byBad[0]!.asset);
-  const okBySilentOrg = bylineAttributionClaims(`Kpler's daily series shows ten crossings.`, null).length === 0;
-  const okBySilentNoPossessive = bylineAttributionClaims(`Bloomberg puts the residual near $10 billion.`, null).length === 0;
-  const okBySilentBarePerson = bylineAttributionClaims(`Jim Bianco supplied the tradable version.`, null).length === 0;
+  const okBySilentOrg = bylineAttributionClaims(`Kpler's daily series shows ten crossings.`, '2026-08-05').length === 0;
+  const okBySilentNoPossessive = bylineAttributionClaims(`Bloomberg puts the residual near $10 billion.`, '2026-08-05').length === 0;
+  const okBySilentBarePerson = bylineAttributionClaims(`Jim Bianco supplied the tradable version.`, '2026-08-05').length === 0;
+  const okByEpoch = bylineAttributionClaims(`Bloomberg's Colby Smith reported Friday evening.`, '2026-07-17').length === 0;
   // ACCEPTANCE GATE, real artifact: fires on the 08-02 v2's "Bloomberg's Colby Smith".
   let okByReal = true;
   if (fs.existsSync(v2_0802)) {
@@ -2418,6 +2447,11 @@ function selftest(): number {
   console.log(`  [IMP-116] headline anchors ride the CRITICAL rails: ${okHaCritical ? '✓' : '✗'}`);
   console.log(`  [IMP-116] SILENT on a numberless title + a priceless watch line: ${okHaClean ? '✓' : '✗'}`);
   console.log(`  [IMP-116] the date line is never read as the title: ${okHaDateline ? '✓' : '✗'}`);
+  console.log(`  [IMP-116] the Weekly's "July 5-11, 2026" range heading is not a title: ${okHaWeekRange ? '✓' : '✗'}`);
+  console.log(`  [IMP-116] a bare YEAR in a title is not a claim ("The 2026 Problem"): ${okHaYear ? '✓' : '✗'}`);
+  console.log(`  [IMP-116] EPOCH: a pre-2026-08-02 brief extracts nothing (the archive is read, not condemned): ${okHaEpoch ? '✓' : '✗'}`);
+  console.log(`  [IMP-116] EPOCH: a WEEKLY (week id) extracts nothing: ${okHaWeekly ? '✓' : '✗'}`);
+  console.log(`  [IMP-117] EPOCH: a pre-epoch brief extracts no byline claim: ${okByEpoch ? '✓' : '✗'}`);
   console.log(`  [IMP-116] SILENT on a bare calendar watch ("August 7 to 10"): ${okHaNoDate ? '✓' : '✗'}`);
   console.log(`  [IMP-116] REAL 08-02 v2: title "Ten" AND intro $84.67 both extract: ${okHaReal ? '✓' : '✗'}`);
   console.log(`  [IMP-117] FIRES on "Bloomberg's Colby Smith" (outlet+person pairing): ${okByFire ? '✓' : '✗'}`);
@@ -2428,6 +2462,7 @@ function selftest(): number {
 
   const ok =
     okHaTitle && okHaWatch && okHaCritical && okHaClean && okHaDateline && okHaNoDate && okHaReal &&
+    okHaWeekRange && okHaYear && okHaEpoch && okHaWeekly && okByEpoch &&
     okByFire && okBySilentOrg && okBySilentNoPossessive && okBySilentBarePerson && okByReal &&
     okFire && okSilentDated && okSilentFirst &&
     okFpFire && okFpNikkei && okFpSilentDated && okFpSilentFirst &&
