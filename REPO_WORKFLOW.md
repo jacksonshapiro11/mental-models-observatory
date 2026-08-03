@@ -51,7 +51,7 @@ If push fails, see `git-push-protocol.md`.
 
 ## Email
 
-Resend + Redis subscribers (`scripts/send-daily-email.ts`). Beehiiv scripts are legacy — **do not use**. Disable any scheduled Beehiiv draft task in Claude.
+Resend + Redis subscribers (`scripts/send-daily-email.ts`). Beehiiv is killed — `daily-brief-email-draft` RETIRED 2026-08-01 (body is SKIPPED stub). Do not rebuild `publish-to-beehiiv.ts`. Unregister the task in Claude scheduler if still listed.
 
 **Resend ceiling:** Free tier = 100 emails/day. Upgrade Resend plan when subscriber count approaches **80** (headroom for welcome + daily sends).
 
@@ -120,7 +120,7 @@ Vercel Cron invokes the **deployment `*.vercel.app` host**, not the custom domai
 - **Scheduled task `brief-morning-verify`** — run 30 min after `brief-morning`:
 
 ```bash
-python .claude/skills/publish-brief/scripts/publish.py --verify \
+python scripts/publish-brief.py --verify \
   --content-dir content/daily-updates
 ```
 

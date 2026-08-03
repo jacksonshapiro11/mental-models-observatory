@@ -7,9 +7,10 @@ content/daily-updates/weekly/, and ships as two files:
     {slug}-{mon-dd-dd}.md   (full weekly)
     {slug}-light.md         (weekly light / super brief)
 
-This is a focused sibling of .claude/skills/publish-brief/scripts/publish.py.
+This is a focused sibling of `scripts/publish-brief.py` (the tracked daily publisher;
+the old `.claude/skills/publish-brief/scripts/publish.py` path is a shim to that file).
 It exists because that publisher is date-addressed (content/daily-updates/{date}.md)
-and the interactive agent cannot edit files under .claude/. Same robust transport:
+and historically lived under gitignored `.claude/`. Same robust transport:
 clone to /tmp, commit, push (avoids the repo's stale .git/index.lock).
 
 After a successful push this script polls
