@@ -193,6 +193,12 @@ export async function generateFullBriefAudio(
     for (const w of fidelity.warnings) console.warn(`[audio:full] ⚠ FIDELITY — ${w}`);
 
     const selectedVoice = process.env.TTS_VOICE || 'onyx';
+    // SELF-REPORT (2026-08-03). Says N/A deliberately: the full brief HARDCODES skipLlmCleanup:false
+    // above, so AUDIO_FAITHFUL_VOICING does NOT apply here even when it is set. Setting the env var
+    // changes the Super Brief only. Making that asymmetry visible in the log is the point.
+    console.log(
+      `[audio:full] VOICE=${selectedVoice} · FAITHFUL-VOICING=N/A (full brief hardcodes skipLlmCleanup:false; the env var does not reach this path)`,
+    );
     const ttsClient = new OpenAITTSClient(openaiApiKey, {
       voice: selectedVoice,
       model: 'gpt-4o-mini-tts',

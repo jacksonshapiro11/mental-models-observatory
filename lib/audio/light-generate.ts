@@ -144,6 +144,12 @@ export async function generateLightAudio(
     for (const w of fidelity.warnings) console.warn(`[audio:light] ⚠ FIDELITY — ${w}`);
 
     const selectedVoice = process.env.TTS_VOICE || 'onyx';
+    // SELF-REPORT (2026-08-03). Nothing recorded which voice or which script path actually shipped,
+    // so a correctly-built, correctly-committed feature that was never switched on stayed invisible
+    // for days and was only discoverable by listening. Both facts now land in the nightly log.
+    console.log(
+      `[audio:light] VOICE=${selectedVoice} · FAITHFUL-VOICING=${process.env.AUDIO_FAITHFUL_VOICING === '1' ? 'ON (no GPT distillation)' : 'OFF (GPT path)'}`,
+    );
     const ttsClient = new OpenAITTSClient(openaiApiKey, {
       voice: selectedVoice,
       model: 'gpt-4o-mini-tts',
