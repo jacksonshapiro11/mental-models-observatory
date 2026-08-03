@@ -2457,9 +2457,25 @@ function main() {
     const lenOverride = /<!--\s*LENGTH-OVERRIDE:\s*([^>]{20,}?)\s*-->/.exec(raw);
     const mark = w > LEN_HARD ? '🔴' : w > LEN_SOFT ? '🟡' : '✅';
     console.log(`${mark} BRIEF LENGTH: ${w.toLocaleString()} words ≈ ${mins} min audio (target 30 min ≈ ${LEN_TARGET.toLocaleString()} words, ceiling ${LEN_HARD.toLocaleString()})`);
+    // ── THE BRIEF ALWAYS SHIPS ────────────────────────────────────────────────────────────────
+    // Length blocks ONLY under --enforce-length, which the EDITOR passes inside its own compression
+    // loop (Gate 16). Everywhere else -- and specifically at the 7:00 PM `brief-validate-mechanical`
+    // gate, where Pipeline_Controller treats a non-zero exit as a HARD STOP with no critic, no light
+    // and no email -- it prints loudly and returns nothing.
+    //
+    // WHY: a length rail that can stop publication is worse than the problem it fixes. The failure
+    // it prevents is a 52-minute brief; the failure it would CAUSE is no brief at all. Those are not
+    // comparable, and "the brief always ships" is the standing rule that already rejected a blocking
+    // audio-fidelity gate. Put the block where someone can still fix it -- the Editor can compress,
+    // the 7 PM gate can only refuse -- and make the unenforced path impossible to miss instead.
+    const enforceLength = process.argv.includes('--enforce-length');
     if (w > LEN_HARD && lenDate >= LEN_EPOCH) {
       if (lenOverride) {
         console.log(`  ⚪ LENGTH-OVERRIDE accepted — ${lenOverride[1].trim()}`);
+      } else if (!enforceLength) {
+        console.log(`  🔴 OVER BUDGET by ${(w - LEN_HARD).toLocaleString()} words (${mins} min vs 30). NOT BLOCKING — the brief always ships.`);
+        console.log(`     The Editor owns this at Gate 16 (\`validate-brief <file> --enforce-length\`). If you are seeing this`);
+        console.log(`     at the 7:00 PM gate, Gate 16 did not compress and did not declare — that is the thing to fix, not the brief.`);
       } else {
         failures.push({
           check: 'brief-length',
