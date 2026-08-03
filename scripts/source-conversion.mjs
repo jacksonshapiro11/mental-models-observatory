@@ -87,7 +87,7 @@ if (fs.existsSync(INTEL)) {
 // A roster entry is often "Person / Outlet" ("Charlie Bilello / Creative Planning") while the brief
 // writes only "Charlie Bilello". Matching the full string calls a LIVE source dead, so score each
 // component separately and take the best. Components under 4 chars are too collision-prone to use.
-const hits = roster.map((n) => {
+let hits = roster.map((n) => {
   const parts = n.split(/\s*[/|]\s*/).map((p) => p.trim()).filter((p) => p.length >= 4);
   // Score EVERY component and take the best, because the roster name and the prose name diverge in
   // both directions. First-component-only called "Citrini Research" (84 intel mentions), "hildobby
@@ -97,7 +97,28 @@ const hits = roster.map((n) => {
   // story subjects, so a match on them says nothing about whether the SOURCE was consulted.
   // `via` is always reported — this cannot be fully automated (roster names differ arbitrarily from
   // prose names), so the output is a list to eyeball, not a number to trust blindly.
-  const cand = parts.length ? parts : [n];
+  // A roster name with no separator but a GENERIC TRAILING WORD is written short in prose:
+  // "Citrini Research" -> "Citrini" (84 intel hits, and the slate was re-sweeping it every cycle),
+  // "hildobby Dune" -> "hildobby", "Asterisk Magazine" -> "Asterisk". Only strip a known generic
+  // suffix — probing the leading token of any two-word name would match "Russell Napier" against
+  // the Russell 2000. Found by Cursor review; the previous "the slate is robust to this" was wrong.
+  const GENERIC_TAIL = /\s+(Research|Magazine|Dune|Podcast|Capital|Analytics|Advisors|Partners|Group|Media|Seminars|Analysis|Economics|Letter|Report)$/i;
+  // NB: split() returns a 1-element array when there is no separator, so gating the suffix rule on
+  // `parts.length` made it dead code — "Citrini Research" never got probed as "Citrini" and kept
+  // re-appearing on the rotation slate. Expand EVERY candidate, not just the no-separator case.
+  const base = parts.length ? parts : [n];
+  // "Outlet (Person)" — "Founders (David Senra)", "Not Boring (Packy McCormick)" — is written in
+  // prose as either half. Probe both. (Cursor review: both were sitting on the rotation slate.)
+  const cand = base.flatMap((p) => {
+    const out = GENERIC_TAIL.test(p) ? [p, p.replace(GENERIC_TAIL, '')] : [p];
+    const paren = p.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+    // Only the PERSON half. The outlet half of "Founders (David Senra)" is the word "Founders",
+    // which matches generic business prose 100+ times a month and would fake a converter. The
+    // parenthetical is a proper name and is safe. Narrower is right when the cost of a false
+    // positive is "we stop sweeping a source we are not actually seeing".
+    if (paren) out.push(paren[2].trim());
+    return out;
+  });
   let best = 0, bestI = 0, via = n;
   for (const p of cand) {
     if (SUBJECT_ORGS.has(p.toLowerCase())) continue;
@@ -108,6 +129,19 @@ const hits = roster.map((n) => {
   }
   return { name: n, n: best, intel: bestI, via };
 }).sort((a, b) => b.n - a.n);
+
+// DEDUPE: distinct roster rows can resolve to the same probe ("Robin Brooks" and "Robin Brooks /
+// Brookings"; "Glassnode / On-chain Data" and "James Check / Glassnode"), which double-counted them
+// as converters and inflated the published total. One probe, one source. (Cursor review.)
+const seenVia = new Map();
+for (const h of hits) {
+  const k = h.via.toLowerCase();
+  const prev = seenVia.get(k);
+  if (!prev) seenVia.set(k, h);
+  else { prev.dupes = (prev.dupes || 1) + 1; h.dupe = true; }
+}
+const dupeCount = hits.filter((h) => h.dupe).length;
+hits = hits.filter((h) => !h.dupe);
 
 const live = hits.filter((h) => h.n > 0);
 const dead = hits.filter((h) => h.n === 0);
@@ -153,7 +187,7 @@ if (rot) {
 // ── report ───────────────────────────────────────────────────────────────────────────────────
 const pct = (x, y) => (y ? ((x / y) * 100).toFixed(0) : '0');
 console.log(`\nSOURCE CONVERSION — ${files.length} briefs (${files[0].slice(0,10)} → ${files.at(-1).slice(0,10)})\n`);
-console.log(`  roster entries parsed : ${roster.length}   (+${retired.size} already struck through, excluded)`);
+console.log(`  roster entries parsed : ${roster.length}   (+${retired.size} struck through, ${dupeCount} duplicate rows collapsed)`);
 console.log(`  appear in a brief     : ${live.length} (${pct(live.length, roster.length)}%)`);
 console.log(`  NEVER appear (DEAD)   : ${dead.length} (${pct(dead.length, roster.length)}%)`);
 console.log(`  producing but UNLISTED: ${unlisted.length}\n`);

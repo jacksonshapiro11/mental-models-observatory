@@ -2434,9 +2434,15 @@ function main() {
     // this tells the Editor WHETHER.
     //
     // CALIBRATION: the 28 published July briefs — the 30-minute product we are getting back —
-    // ran min 4,135 / median 4,924 (30.8 min) / max 6,846. A 5,500 ceiling would have fired on
-    // 4 of those 28 (14%): rare enough to mean something when it fires. 5,200 would have fired on
-    // 25% of work Jackson accepted, which is how a gate earns the right to be ignored (IMP-125).
+    // ran min 4,135 / median 4,924.5 (30.8 min) / max 6,846. A 5,500 ceiling would have fired on
+    // 5 of those 28 (18%) — the over-5,500 set is 5,506 / 5,687 / 5,799 / 5,972 / 6,846. Rare
+    // enough to mean something when it fires. 5,200 would have fired on 7/28 (25%) of work Jackson
+    // accepted, which is how a gate earns the right to be ignored (IMP-125).
+    //
+    // CORRECTED 2026-08-03 (Cursor review). This comment said 4/28 (14%). That number was read off
+    // a 5,600 measurement and never computed at 5,500; 5,506 sits eight words over the line. The
+    // rail is unchanged — asserting a figure instead of measuring it is the precise failure this
+    // whole engagement was about, so the receipt stays in the file.
     //
     // ENFORCEMENT EPOCH: the archive is read, never condemned. Briefs dated before 2026-08-04
     // are measured and reported, never failed — the mistake IMP-125 had to undo.
