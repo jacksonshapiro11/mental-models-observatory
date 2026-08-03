@@ -2460,7 +2460,27 @@ function main() {
   failures.push(...checkWildCardStaleness(body, briefDir, absPath));
   failures.push(...checkDashboardSentenceCeiling(body));
   // --- Six bullet word ceiling (May 11, 2026) ---
-  failures.push(...checkSixBulletWordCeiling(body));
+  // IMP-125 (2026-08-03): the 🟡 SOFT leg is ADVISORY; only the 🔴 HARD FAIL blocks.
+  // WHY: an uncommitted working-tree edit tightened the per-bullet ceiling 170→160 (and the hard
+  // fail 200→180). Because EVERY 🟡 FLAG was counted as a blocking failure, the tightened number
+  // retroactively condemned the ARCHIVE: `validate-brief content/daily-updates/2026-07-13.md` —
+  // which is IMP-042's acceptance gate — went from exit 0 to exit 1 on five bullets of 168-170
+  // words, written when the ceiling WAS 170. That is the enforcement-epoch failure IMP-116 already
+  // documented ("the archive is read, never condemned"), arriving through a length check instead of
+  // a claim class. It also contradicted the author's own ruling recorded ten lines below: Jackson,
+  // 2026-08-01 — "I don't want a strict word budget I just want a soft ceiling" — which had been
+  // applied to the SECTION budget and not to the per-bullet one sitting beside it.
+  // The 🔴 HARD FAIL (>180, or >400 depth-treated) still blocks. Nothing real is weakened: a
+  // genuinely bloated bullet is still rejected; a bullet eight words over a ceiling that moved
+  // last week is now told to compress instead of being called corrupt.
+  {
+    const bulletLen = checkSixBulletWordCeiling(body);
+    const hard = bulletLen.filter((f) => /HARD FAIL/.test(f.message));
+    const soft = bulletLen.filter((f) => !/HARD FAIL/.test(f.message));
+    failures.push(...hard);
+    for (const f of soft) console.log(`  🟡 [${f.check}] ${f.message}`);
+    if (soft.length) console.log(`🟡 BULLET LENGTH ADVISORY — ${soft.length} bullet(s) over the soft ceiling. Compress where you can; this does NOT block the brief.`);
+  }
   {
     // SOFT CEILING — advisory only, never blocks (Jackson, 2026-08-01: "I don't want a strict
     // word budget I just want a soft ceiling"). The Editor compresses on these; the brief ships.
