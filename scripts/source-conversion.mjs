@@ -65,6 +65,8 @@ const roster = [...names].filter((n) => !SKIP.test(n));
 const files = fs.readdirSync(BRIEFS).filter((f) => /^\d{4}-\d{2}-\d{2}\.md$/.test(f)).sort().slice(-days);
 if (!files.length) { console.error('no briefs found'); process.exit(2); }
 const corpus = files.map((f) => fs.readFileSync(path.join(BRIEFS, f), 'utf8')).join('\n');
+const SUBJECT_ORGS = new Set(['anthropic','openai','hugging face','brookings','cambridge','google',
+  'microsoft','meta','apple','nvidia','deepmind','schwab','blackrock','goldman','jpmorgan','citi']);
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // ── the CONSIDERATION layer ──────────────────────────────────────────────────────────────────
@@ -87,14 +89,24 @@ if (fs.existsSync(INTEL)) {
 // component separately and take the best. Components under 4 chars are too collision-prone to use.
 const hits = roster.map((n) => {
   const parts = n.split(/\s*[/|]\s*/).map((p) => p.trim()).filter((p) => p.length >= 4);
-  // FIRST component only. Roster entries are "Person / Outlet", and scoring the outlet counts the
-  // company as a STORY SUBJECT rather than as a source: "Jack Clark / Anthropic" scored 45 on
-  // "Anthropic" across a month of AI coverage in which Jack Clark was never cited once.
-  const probe = parts.length ? parts[0] : n;
-  const re = () => new RegExp(`(?<![A-Za-z])${esc(probe)}(?![A-Za-z])`, 'gi');
-  const c = (corpus.match(re()) || []).length;
-  const i = intelCorpus ? (intelCorpus.match(re()) || []).length : 0;
-  return { name: n, n: c, intel: i, via: probe };
+  // Score EVERY component and take the best, because the roster name and the prose name diverge in
+  // both directions. First-component-only called "Citrini Research" (84 intel mentions), "hildobby
+  // Dune" (60) and "Shawn Wang / Latent Space" (7) unseen. All-components-max called "Jack Clark /
+  // Anthropic" a top converter on 45 hits of the COMPANY in AI coverage where Clark was never cited.
+  // SUBJECT_ORGS is the narrow denylist for that second failure: outfits that appear constantly as
+  // story subjects, so a match on them says nothing about whether the SOURCE was consulted.
+  // `via` is always reported — this cannot be fully automated (roster names differ arbitrarily from
+  // prose names), so the output is a list to eyeball, not a number to trust blindly.
+  const cand = parts.length ? parts : [n];
+  let best = 0, bestI = 0, via = n;
+  for (const p of cand) {
+    if (SUBJECT_ORGS.has(p.toLowerCase())) continue;
+    const mk = () => new RegExp(`(?<![A-Za-z])${esc(p)}(?![A-Za-z])`, 'gi');
+    const i = intelCorpus ? (intelCorpus.match(mk()) || []).length : 0;
+    const c = (corpus.match(mk()) || []).length;
+    if (i + c > best + bestI) { best = c; bestI = i; via = p; }
+  }
+  return { name: n, n: best, intel: bestI, via };
 }).sort((a, b) => b.n - a.n);
 
 const live = hits.filter((h) => h.n > 0);
@@ -112,6 +124,31 @@ const unlisted = CANDIDATES.map((c) => {
   const re = new RegExp(`(?<![A-Za-z])${esc(c)}(?![A-Za-z])`, 'gi');
   return { name: c, n: (corpus.match(re) || []).length, onRoster: rosterLower.has(c.toLowerCase()) };
 }).filter((c) => c.n > 0 && !c.onRoster).sort((a, b) => b.n - a.n);
+
+// ── ROTATION MODE ────────────────────────────────────────────────────────────────────────────
+// The real mechanism behind "never seen": Source_Network_Scanner.md Phase 1 is a HARDCODED list of
+// ~13 sources swept every session. Phases 2-3 fire only when a source is bound to an ACTIVE thesis
+// or Big Story. So of ~161 roster entries, 13 are guaranteed and the rest are reachable only by
+// coincidence. Nothing rotates, so a source outside Phase 1 with no active thesis is structurally
+// unreachable no matter how good it is.
+//
+// --rotate N emits the N least-recently-seen roster entries WITH their search patterns, so the
+// Scanner has something mechanical to run instead of a judgement call. At N=8 across 6 sweeps a day
+// the whole roster is considered every ~3-4 days, at a cost of 8 searches per sweep.
+const rot = process.argv.find((a) => a.startsWith('--rotate'));
+if (rot) {
+  const N = Number(rot.split('=')[1]) || 8;
+  const stale = [...unseen, ...considered].sort((a, b) => a.intel - b.intel).slice(0, N);
+  console.log(`\nROTATION SLATE — ${stale.length} least-recently-seen roster sources.`);
+  console.log('Run these in addition to Phase 1. They are the ones nothing else will reach.\n');
+  for (const st of stale) {
+    const cells = rowOf.get(st.name) || [];
+    const pattern = cells.find((c) => /`/.test(c)) || cells[1] || cells[0] || '(no search pattern on the roster row)';
+    console.log(`  ${st.name}\n      ${pattern.replace(/`/g, '')}\n      seen in intel: ${st.intel} · in briefs: ${st.n}`);
+  }
+  console.log('');
+  process.exit(0);
+}
 
 // ── report ───────────────────────────────────────────────────────────────────────────────────
 const pct = (x, y) => (y ? ((x / y) * 100).toFixed(0) : '0');
