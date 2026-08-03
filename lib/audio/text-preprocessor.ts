@@ -1856,10 +1856,10 @@ const LIGHT_SECTION_TRANSITIONS: Record<string, string> = {
 // ALWAYS follows — mirroring how the full brief's endings have always worked.
 
 export const DAILY_LIGHT_SIGN_OFF =
-  'That\'s today\'s Super Brief. Quick, sharp, and hopefully you\'re walking away with something useful. We\'ll be back tomorrow. Until then, stay curious.';
+  'Thanks for stopping by. See you tomorrow.';
 
 export const WEEKLY_LIGHT_SIGN_OFF =
-  'That\'s the week. Thanks for spending part of your Sunday with us. The daily brief is back tomorrow morning. Until then, stay curious.';
+  'Thanks for stopping by. The daily brief is back tomorrow.';
 
 /** The light episode's ending: the WRITTEN close verbatim (markdown is cleaned by the final
  *  normalize pass), then the deterministic sign-off. Pure — exercised by audio-gate-regression. */
@@ -2100,8 +2100,12 @@ export async function preprocessBriefLightForTTS(
 
     const used = new Set<string>();
     for (const section of ordered.filter(s => s.id !== 'the-close')) {
-      const t = lookupSection(LIGHT_SECTION_TRANSITIONS, section.id) ??
-                lookupSection(LIGHT_SECTION_TRANSITIONS, section.label);
+      // Same resolution order as the GPT branch: weekly override by id, then daily map.
+      // Without this, a Sunday with AUDIO_FAITHFUL_VOICING=1 would say "today" on a week-in-review.
+      const t =
+        (options.isWeekly ? LIGHT_WEEKLY_TRANSITION_OVERRIDES[section.id] : undefined) ??
+        lookupSection(LIGHT_SECTION_TRANSITIONS, section.id) ??
+        lookupSection(LIGHT_SECTION_TRANSITIONS, section.label);
       if (t && !used.has(section.id)) {
         parts.push(`${t}\n\n${section.content}`);
         used.add(section.id);
