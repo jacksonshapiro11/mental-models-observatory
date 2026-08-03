@@ -20,6 +20,9 @@ export { weeklyFullEpisodeKey };
 const CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates');
 const WEEKLY_CONTENT_DIR = path.join(CONTENT_DIR, 'weekly');
 
+/** gpt-4o-mini-tts voice for the full brief. */
+const TTS_VOICE = 'ash' as const;
+
 export type FullAudioStatus = 'success' | 'exists' | 'skipped' | 'error';
 
 export interface FullAudioResult {
@@ -192,15 +195,12 @@ export async function generateFullBriefAudio(
     const fidelity = checkScriptFidelity(rawMarkdown || '', preprocessed.fullText, { minRatio: 0.45 });
     for (const w of fidelity.warnings) console.warn(`[audio:full] ⚠ FIDELITY — ${w}`);
 
-    const selectedVoice = process.env.TTS_VOICE || 'onyx';
-    // SELF-REPORT (2026-08-03). Says N/A deliberately: the full brief HARDCODES skipLlmCleanup:false
-    // above, so AUDIO_FAITHFUL_VOICING does NOT apply here even when it is set. Setting the env var
-    // changes the Super Brief only. Making that asymmetry visible in the log is the point.
+    // Full brief keeps GPT register conversion (skipLlmCleanup: false above). Super Brief is faithful.
     console.log(
-      `[audio:full] VOICE=${selectedVoice} · FAITHFUL-VOICING=N/A (full brief hardcodes skipLlmCleanup:false; the env var does not reach this path)`,
+      `[audio:full] VOICE=${TTS_VOICE} · FAITHFUL-VOICING=N/A (full brief uses GPT register conversion)`,
     );
     const ttsClient = new OpenAITTSClient(openaiApiKey, {
-      voice: selectedVoice,
+      voice: TTS_VOICE,
       model: 'gpt-4o-mini-tts',
     });
 

@@ -45,7 +45,7 @@ export class OpenAITTSClient implements TTSProvider {
 
   constructor(apiKey: string, options?: { voice?: string | undefined; model?: string | undefined }) {
     this.client = new OpenAI({ apiKey });
-    this.defaultVoice = options?.voice || 'onyx'; // Default voice — pass voice option to override per-run
+    this.defaultVoice = options?.voice || 'ash';
     this.defaultModel = options?.model || 'gpt-4o-mini-tts';
   }
 

@@ -15,6 +15,11 @@ import { weeklyLightEpisodeKey } from '@/lib/audio/episode-keys';
 
 export { weeklyLightEpisodeKey };
 
+/** Super Brief always voices the written page — no GPT rewrite. */
+const FAITHFUL_VOICING = true;
+/** gpt-4o-mini-tts voice for Super Brief. */
+const TTS_VOICE = 'ash' as const;
+
 export type LightAudioStatus = 'success' | 'exists' | 'skipped' | 'error';
 
 export interface LightAudioResult {
@@ -104,10 +109,7 @@ export async function generateLightAudio(
       },
       {
         openaiApiKey,
-        // FAITHFUL VOICING EXPERIMENT (2026-08-01) — DEFAULT OFF.
-        // Set AUDIO_FAITHFUL_VOICING=1 to build the Super Brief script without GPT.
-        // Unset or any other value = today's behaviour, byte-for-byte.
-        skipLlmCleanup: process.env.AUDIO_FAITHFUL_VOICING === '1',
+        skipLlmCleanup: FAITHFUL_VOICING,
         isWeekly,
       },
     );
@@ -143,15 +145,11 @@ export async function generateLightAudio(
     );
     for (const w of fidelity.warnings) console.warn(`[audio:light] ⚠ FIDELITY — ${w}`);
 
-    const selectedVoice = process.env.TTS_VOICE || 'onyx';
-    // SELF-REPORT (2026-08-03). Nothing recorded which voice or which script path actually shipped,
-    // so a correctly-built, correctly-committed feature that was never switched on stayed invisible
-    // for days and was only discoverable by listening. Both facts now land in the nightly log.
     console.log(
-      `[audio:light] VOICE=${selectedVoice} · FAITHFUL-VOICING=${process.env.AUDIO_FAITHFUL_VOICING === '1' ? 'ON (no GPT distillation)' : 'OFF (GPT path)'}`,
+      `[audio:light] VOICE=${TTS_VOICE} · FAITHFUL-VOICING=${FAITHFUL_VOICING ? 'ON (no GPT distillation)' : 'OFF (GPT path)'}`,
     );
     const ttsClient = new OpenAITTSClient(openaiApiKey, {
-      voice: selectedVoice,
+      voice: TTS_VOICE,
       model: 'gpt-4o-mini-tts',
     });
 
