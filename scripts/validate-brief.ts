@@ -1429,7 +1429,9 @@ function checkSixSectionWordBudget(body: string): Failure[] {
   if (sixStart === -1 || sixEnd === -1) return out;
   const sixBody = body.slice(sixStart, sixEnd);
   const SIX_SECTIONS = ['Markets & Macro', 'Companies & Crypto', 'AI & Tech', 'Geopolitics'];
-  const UNIT = 170, UNIT_HARD = 200, DEPTH = 350, DEPTH_HARD = 400;
+  // Jackson, 2026-08-03: target ~160/bullet, hard ceiling 180. The Signal runs a little longer.
+  const UNIT = 160, UNIT_HARD = 180, DEPTH = 350, DEPTH_HARD = 400;
+  const SIGNAL_UNIT = 220, SIGNAL_HARD = 250;
 
   for (const sectionName of SIX_SECTIONS) {
     const m = sixBody.match(new RegExp(`## ${sectionName}\\b`));
@@ -1448,7 +1450,9 @@ function checkSixSectionWordBudget(body: string): Failure[] {
       const words = u.split(/\s+/).filter(Boolean).length;
       total += words;
       const depth = u.includes('<!-- DEPTH-TREATMENT -->') || u.includes('\u200Bdepth_treatment\u200B') || u.includes('INVESTMENT TARGET');
-      const ceil = depth ? DEPTH : UNIT, hard = depth ? DEPTH_HARD : UNIT_HARD;
+      const isSignal = /Signal/i.test(sectionName);
+      const ceil = depth ? DEPTH : isSignal ? SIGNAL_UNIT : UNIT;
+      const hard = depth ? DEPTH_HARD : isSignal ? SIGNAL_HARD : UNIT_HARD;
       if (depth) depthUnits++;
       if (words > hard) {
         out.push({ check: 'six-section-word-budget',
@@ -1462,7 +1466,7 @@ function checkSixSectionWordBudget(body: string): Failure[] {
     // The Six runs 2-3 units per section ("elastic by the day", Editorial Bible), so the section
     // budget is the ALLOWED count (3) x the unit ceiling — not the count actually shipped.
     // Otherwise writing more units raises your own budget, which is the failure mode being fixed.
-    const budget = 3 * UNIT + Math.min(depthUnits, 2) * (DEPTH - UNIT);
+    const budget = 3 * UNIT_HARD + Math.min(depthUnits, 2) * (DEPTH - UNIT_HARD);
     if (total > budget) {
       out.push({ check: 'six-section-word-budget',
         message: `OVER: ${sectionName} totals ${total} words across ${units.length} unit(s) against a ${budget}-word section budget (3 units x ${UNIT}${depthUnits ? ` + ${Math.min(depthUnits, 2)} depth-treatment` : ''}). The Six runs 2-3 units per section; compress or cut a unit.` });
@@ -1507,8 +1511,8 @@ function checkSixBulletWordCeiling(body: string): Failure[] {
       const isDepthTreated = currentBullet.includes('<!-- DEPTH-TREATMENT -->') ||
                              currentBullet.includes('​depth_treatment​') ||
                              currentBullet.includes('INVESTMENT TARGET');
-      const ceiling = isDepthTreated ? 350 : 170;
-      const hardFail = isDepthTreated ? 400 : 200;
+      const ceiling = isDepthTreated ? 350 : 160;
+      const hardFail = isDepthTreated ? 400 : 180;
       if (words > hardFail) {
         out.push({
           check: 'six-bullet-word-ceiling',
@@ -2133,6 +2137,139 @@ export function checkPrecedentAnalogy(body: string): Failure[] {
   return out;
 }
 
+// ── IMP-122 (2026-08-03 Critic mandate #3, 🟡, RC5): THE HOOK'S NUMERATOR ─────────────────────
+// RECEIPT: 08-03 AI&T-3 opened "Two frontier labs' own models breached SIX real organizations
+// during safety evaluations" and the body substantiates THREE — "Anthropic's three incidents out of
+// 141,006 runs… a 0.002 percent rate". The second lab's contribution is never enumerated; indeed
+// the bullet's own payload is that the OpenAI model "was internal-only, never released, and
+// therefore outside every safety framework". The reader is handed a numerator the paragraph never
+// reaches, and the 0.002% rate — correctly computed from 3/141,006 — is arithmetically inconsistent
+// with a six-organization claim.
+//
+// GENERALISES IMP-116's RATIO RULE FROM RATIOS TO COUNTS: a numerator the body never reaches is the
+// same failure as a numerator without a denominator. The bold hook is the sentence most readers
+// retain and often the only one they read; a count in it is a PROMISE THE BODY MUST PAY.
+//
+// NARROW BY CONSTRUCTION — the entity-noun set is exactly the Critic's, not a wider guess. That is
+// why the three negatives it names are silent for a structural reason rather than a tuned one:
+// Geo-3's "About 49,000 people", Wild Card 2's "Nine American schools" and AI&T-2's "Four position
+// documents" carry nouns outside the set. Widening the set to catch them would buy false positives
+// on every count the body legitimately leaves as an aggregate. Override-eligible, so a genuinely
+// substantiated count that the regex cannot see has a DECLARED path, never silence.
+const HOOK_ENTITY_NOUN = 'organi[sz]ations?|companies|firms|systems|countries|agencies|banks';
+// `(?<![-\w])` is load-bearing, not decoration: without it the sweep flagged 2026-07-25's
+// "**Twenty-five** US tech companies" because `\bfive\b` matches inside a hyphenated compound.
+const HOOK_COUNT_RE = new RegExp(String.raw`(?<![-\w])(six|five|four|three|two|\d+)\s+(?:\w+\s+){0,2}?(${HOOK_ENTITY_NOUN})\b`, 'i');
+// THE ENUMERABLE RANGE. A hook count is a PROMISE only when the body could plausibly pay it item by
+// item. "Crypto venture participation fell to **150 firms** in July" (07-29) is a market statistic,
+// not an enumeration owed — demanding the body list 150 firms is a category error. Floor of 3 for
+// the mirror reason: a two-item hook is paid in prose essentially every time ("the one that…, the
+// one that…" — 08-01 C&C-2), so a count of two carries no gap worth detecting. Both bounds were set
+// by the false-positive sweep, not by taste.
+const HOOK_COUNT_MIN = 3;
+const HOOK_COUNT_MAX = 10;
+/** A comma-separated run of proper nouns / acronyms — the body naming the entities it promised.
+ *  An item may carry an internal lowercase connective ("Bank **of** America"): without that the
+ *  07-15 list "JPMorgan, Bank of America, Goldman, Wells, and Citi" counted 4 of its 5 members and
+ *  the gate flagged a bullet that had named every bank it promised. */
+const NAMED_ITEM = String.raw`[A-Z][A-Za-z&.'’-]*(?:\s+(?:of|the|de|van|von|und|&)\s+[A-Z][A-Za-z&.'’-]*|\s+[A-Z][A-Za-z&.'’-]*){0,2}`;
+const NAMED_LIST_RE = new RegExp(String.raw`${NAMED_ITEM}(?:,\s+(?:and\s+)?${NAMED_ITEM}){2,}`, 'g');
+const CARDINAL: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+const toCount = (s: string): number | null => {
+  const w = CARDINAL[s.toLowerCase()];
+  if (w) return w;
+  const n = parseInt(s.replace(/,/g, ''), 10);
+  return Number.isFinite(n) ? n : null;
+};
+/** The bold hook is the leading `**…**` run of the bullet; the body is everything after it. */
+function splitHook(bullet: string): { hook: string; body: string } | null {
+  const m = bullet.match(/\*\*([\s\S]*?)\*\*/);
+  if (!m) return null;
+  return { hook: m[1]!, body: bullet.slice(m.index! + m[0].length) };
+}
+export function checkHookNumeratorSubstantiation(body: string): Failure[] {
+  const out: Failure[] = [];
+  const sixStart = body.indexOf('# ▸ THE SIX');
+  if (sixStart === -1) return out;
+  const sixEnd = body.indexOf('# ▸ THE TAKE');
+  const sixBody = body.slice(sixStart, sixEnd === -1 ? undefined : sixEnd);
+  let section = '';
+  let idx = 0;
+  for (const block of sixBody.split(/\n\s*\n/)) {
+    const b = block.trim();
+    if (!b) continue;
+    const h = b.match(/^##\s+(.+)$/m);
+    if (h && /^##/.test(b)) { section = h[1]!.trim(); idx = 0; continue; }
+    if (!/^(?:-\s*)?\*\*/.test(b)) continue;
+    idx++;
+    const parts = splitHook(b);
+    if (!parts) continue;
+    const m = parts.hook.match(HOOK_COUNT_RE);
+    if (!m) continue;
+    const claimed = toCount(m[1]!);
+    if (claimed === null || claimed < HOOK_COUNT_MIN || claimed > HOOK_COUNT_MAX) continue;
+    const noun = m[2]!;
+    // THE BODY PAYS THE PROMISE two ways. (1) THE NUMERATOR REAPPEARS in the body's accounting —
+    // deliberately not "bound to the same noun", and this was learned from the artifact: this
+    // morning's CORRECTED AI&T-3 reads "three real outside organizations" in the hook and pays it
+    // with "Anthropic's **three** incidents out of 141,006 runs". A noun-bound test flags the fixed
+    // bullet, which would make the gate an obstacle to its own repair. (2) An ENUMERATION SUMS to
+    // it. Over-delivery is not a defect, so ≥ clears.
+    const numeralWord = Object.entries(CARDINAL).find(([, v]) => v === claimed)?.[0] ?? '';
+    const reappearsRe = new RegExp(String.raw`(?<![-\w])(?:${claimed}${numeralWord ? `|${numeralWord}` : ''})\b`, 'i');
+    const bodyCounts = [...parts.body.matchAll(
+      new RegExp(String.raw`(?<![-\w])(one|two|three|four|five|six|seven|eight|nine|ten|\d[\d,]*)\s+(?:\w+\s+){0,2}?(?:${HOOK_ENTITY_NOUN})\b`, 'gi'),
+    )].map((x) => toCount(x[1]!) ?? 0);
+    const reappears = reappearsRe.test(parts.body);
+    const summed = bodyCounts.length > 1 && bodyCounts.reduce((a, c) => a + c, 0) >= claimed;
+    // (3) ENUMERATION BY NAME — the well-written case, and the sweep's last two false positives
+    // were both exactly it: 07-18's "six agencies" pays with "The OCC, FDIC, Fed, SEC, CFTC, and
+    // Treasury", 07-15's "five largest US banks" with "JPMorgan, Bank of America, Goldman, Wells,
+    // and Citi". A body that NAMES all N has paid the promise more completely than one that
+    // restates the number, so this must clear or the gate punishes the best version of the bullet.
+    const named = Math.max(0, ...[...parts.body.matchAll(NAMED_LIST_RE)].map((x) => x[0].split(',').length));
+    if (reappears || summed || named >= claimed) continue;
+    out.push({
+      check: 'hook-numerator',
+      message: `🔴 FAIL: ${section || 'Six'} bullet ${idx}'s BOLD HOOK asserts a count of ${claimed} ${noun} ("${m[0]}") and the body never reaches it — no restatement of ${claimed} ${noun}, and no enumeration summing to ${claimed}${bodyCounts.length ? ` (the body accounts for ${bodyCounts.reduce((a, c) => a + c, 0)})` : ' (the body names no count against that noun at all)'}. The hook is the sentence most readers retain and often the only one they read: a count in it is a promise the body must pay. Either enumerate the remainder or restate the hook at the number you can substantiate. Generalises IMP-116's RATIO RULE from ratios to counts — a numerator the body never reaches is the same failure as a numerator without a denominator. If the remainder IS substantiated somewhere the check cannot see it, declare FALSE-POSITIVE OVERRIDE: [hook-numerator] naming where. Receipt: 08-03 AI&T-3 claimed "six real organizations" and substantiated three (Anthropic, 3 incidents / 141,006 runs), while its own payload was that the second lab's model was never released.`,
+    });
+  }
+  return out;
+}
+
+// ── IMP-123 (2026-08-03 pipeline defect, RC3 → mechanised): MARKER PLACEMENT ──────────────────
+// RECEIPT: the Editor wrote `<!-- take-move: orthogonal-compliance -->` on LINE 1 of
+// daily-briefs/2026-08-03-v2.md. `publish.py`'s corruption guard ("File doesn't start with a
+// markdown heading — may be corrupted") rejected the file, and the brief lost a full publish
+// attempt on a morning that was already fighting a network failure. This is NOT day one: the same
+// marker sits on line 1 of daily-briefs/2026-08-02-v2.md. Nothing upstream caught either.
+//
+// THE DISCRIMINATOR IS CLEAN AND MEASURED: **0 of the trailing 60 published briefs carry any HTML
+// comment before the first heading.** The rule is therefore absolute and needs no tuning — a marker
+// is metadata about a section, so it belongs INSIDE that section (the 08-01 precedent puts
+// `take-move` inside The Take), and nothing whatsoever belongs above the document's own title.
+// HARD FAIL, and deliberately not override-eligible: this is a file-format invariant that a
+// downstream consumer enforces by refusing to publish, not a judgment call.
+export function checkMarkerPlacement(body: string): Failure[] {
+  const out: Failure[] = [];
+  const firstHeading = body.search(/^#/m);
+  const preamble = firstHeading === -1 ? body : body.slice(0, firstHeading);
+  for (const m of preamble.matchAll(/<!--([\s\S]*?)-->/g)) {
+    out.push({
+      check: 'marker-placement',
+      message: `🔴 FAIL: an HTML marker (\`<!--${m[1]!.trim().slice(0, 60)}-->\`) sits BEFORE the document's first markdown heading. \`publish.py\` treats a file that does not start with a heading as CORRUPTED and refuses to publish it — this cost the 2026-08-03 brief a full publish attempt during a network incident, and the identical marker is on line 1 of the 08-02 v2. A marker is metadata about a section and belongs INSIDE that section (\`take-move\` goes in The Take — see the 08-01 precedent). 0 of the trailing 60 published briefs carry a comment above the first heading; there is no legitimate case. Move it, do not override it.`,
+    });
+  }
+  // DELIBERATELY NOT CHECKED: where `take-move` sits *relative to* `# ▸ THE TAKE`. The first draft
+  // of this gate asserted the marker must live INSIDE the Take section and the archive said no —
+  // 07-15, 07-16 and 08-01 all place it immediately ABOVE the `# ▸ THE TAKE` heading, after the
+  // `---` rule, and 07-02 puts it under the document title. That is a convention this session
+  // invented, not one the system has; enforcing it would have failed 4 of 60 published briefs on
+  // day one. The invariant that IS real, is measured, and is the one a downstream consumer
+  // actually enforces is the single rule above: nothing above the first heading.
+  return out;
+}
+
 // ── IMP-113 selftest — fixtures + the REAL 08-01 acceptance gate (fires on M&M-2, silent on M&M-3)
 function selftestValidator(): number {
   let fails = 0;
@@ -2191,7 +2328,82 @@ function selftestValidator(): number {
     t(hits === 0, `[IMP-118] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0)`);
   }
 
-  console.log(`\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration + precedent-analogy verified both directions)`);
+  // ── IMP-122: THE HOOK'S NUMERATOR — a count in the hook is a promise the body must pay ────────
+  {
+    const v2_0803 = path.join(process.cwd(), 'daily-briefs/2026-08-03-v2.md');
+    if (fs.existsSync(v2_0803)) {
+      const raw0803 = stripComments(fs.readFileSync(v2_0803, 'utf8'));
+      const f = checkHookNumeratorSubstantiation(raw0803);
+      t(f.length === 1 && /count of 6 organi/i.test(f[0]!.message),
+        `[IMP-122] REAL 08-03 v2: fires on AI&T-3's "six real organizations" and ONLY it (got ${f.length}: ${f.map(x => x.message.slice(0, 60)).join('; ')})`);
+      // The three negatives the Critic named, asserted individually so a future widening of the
+      // noun set cannot silently break them.
+      const blockWith = (needle: string) => raw0803.split(/\n\s*\n/).find(b => b.includes(needle)) || '';
+      for (const [needle, label] of [
+        ['49,000 people crossed', 'Geo-3 "About 49,000 people" (substantiated)'],
+        ['Nine American schools', 'Wild Card 2 "Nine American schools" (three states, eight districts)'],
+        ['Four position documents', 'AI&T-2 "Four position documents" (all four enumerated)'],
+      ] as [string, string][]) {
+        const blk = blockWith(needle);
+        const parts = blk ? splitHook(blk) : null;
+        t(!!blk && (!parts || !HOOK_COUNT_RE.test(parts.hook)), `[IMP-122] SILENT on ${label}`);
+      }
+      // SUBSTANTIATION CLEARS: the same bullet with the body naming the remainder must go silent.
+      const paid = `# ▸ THE SIX\n\n## AI & Tech\n\n- **Two frontier labs' own models breached six real organizations during safety evaluations.** Anthropic accounts for three organizations and OpenAI for three organizations, enumerated below.\n`;
+      t(checkHookNumeratorSubstantiation(paid).length === 0, '[IMP-122] SILENT once the body enumerates 3 + 3 = the hook\'s six');
+      const restated = `# ▸ THE SIX\n\n## AI & Tech\n\n- **Models breached six real organizations.** All six organizations were notified.\n`;
+      t(checkHookNumeratorSubstantiation(restated).length === 0, '[IMP-122] SILENT when the body restates the same count against the same noun');
+    }
+    // FALSE-POSITIVE SWEEP across the trailing 30 published briefs.
+    const dir = path.join(process.cwd(), 'content/daily-updates');
+    let hits = 0, swept = 0;
+    if (fs.existsSync(dir)) {
+      for (const f of fs.readdirSync(dir).filter(x => /^2026-\d\d-\d\d\.md$/.test(x)).sort().slice(-30)) {
+        swept++;
+        hits += checkHookNumeratorSubstantiation(stripComments(fs.readFileSync(path.join(dir, f), 'utf8'))).length;
+      }
+    }
+    t(hits === 0, `[IMP-122] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0 — three substantiation paths: restated numeral, summed enumeration, named list)`);
+  }
+
+  // ── IMP-123: MARKER PLACEMENT — the line-1 marker that cost a publish attempt ──────────────────
+  {
+    const line1 = `<!-- take-move: orthogonal-compliance -->\n# MARKETS, MEDITATIONS & MENTAL MODELS\n\n# ▸ THE TAKE\n\nBody.\n`;
+    t(checkMarkerPlacement(line1).some(f => /BEFORE the document's first markdown heading/.test(f.message)),
+      '[IMP-123] FIRES on a marker above the first heading (the publish.py corruption signature)');
+    const inside = `# MARKETS, MEDITATIONS & MENTAL MODELS\n\n# ▸ THE TAKE\n\n<!-- take-move: effective-n-collapse -->\n\nBody.\n`;
+    t(checkMarkerPlacement(inside).length === 0, '[IMP-123] SILENT when take-move sits inside The Take (the 08-01 precedent)');
+    // The ARCHIVE'S OWN CONVENTION, asserted so a future session cannot "tidy" it into a failure:
+    // take-move sits immediately ABOVE `# ▸ THE TAKE` (07-15, 07-16, 08-01) — that is CLEAN.
+    const above = `# MARKETS, MEDITATIONS & MENTAL MODELS\n\nIntro.\n\n---\n\n<!-- take-move: effective-n-collapse -->\n\n# ▸ THE TAKE\n\nBody.\n`;
+    t(checkMarkerPlacement(above).length === 0,
+      '[IMP-123] SILENT when take-move sits just above `# ▸ THE TAKE` (the archive\'s actual convention, 3 of 4 occurrences)');
+    // ACCEPTANCE GATE on the REAL artifacts: fires on the 08-03 and 08-02 v2 files (both line 1),
+    // and is SILENT on the PUBLISHED 08-03 where the morning pass moved it into The Take.
+    for (const [p, want, label] of [
+      ['daily-briefs/2026-08-03-v2.md', true, 'REAL 08-03 v2 (marker on line 1 — cost a publish attempt)'],
+      ['daily-briefs/2026-08-02-v2.md', true, 'REAL 08-02 v2 (same marker, line 1 — this is Day 2, not Day 1)'],
+      ['content/daily-updates/2026-08-03.md', false, 'REAL published 08-03 (marker moved into The Take)'],
+      ['content/daily-updates/2026-08-01.md', false, 'REAL published 08-01 (clean)'],
+    ] as [string, boolean, string][]) {
+      const abs = path.join(process.cwd(), p);
+      if (!fs.existsSync(abs)) continue;
+      const n = checkMarkerPlacement(fs.readFileSync(abs, 'utf8')).length;
+      t(want ? n > 0 : n === 0, `[IMP-123] ${want ? 'FIRES' : 'SILENT'} on ${label}${want ? '' : ` (got ${n})`}`);
+    }
+    // FALSE-POSITIVE SWEEP: 0 of the trailing 60 published briefs carry a pre-heading comment.
+    const dir = path.join(process.cwd(), 'content/daily-updates');
+    let hits = 0, swept = 0;
+    if (fs.existsSync(dir)) {
+      for (const f of fs.readdirSync(dir).filter(x => /^2026-\d\d-\d\d\.md$/.test(x)).sort().slice(-60)) {
+        swept++;
+        hits += checkMarkerPlacement(fs.readFileSync(path.join(dir, f), 'utf8')).length;
+      }
+    }
+    t(hits === 0, `[IMP-123] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0)`);
+  }
+
+  console.log(`\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration + precedent-analogy + hook-numerator + marker-placement verified both directions)`);
   return fails ? 1 : 0;
 }
 
@@ -2296,6 +2508,9 @@ function main() {
   // --- Catalyst enumeration (August 1, 2026 — IMP-113, 08-01 Critic mandate #2, RC2) ---
   failures.push(...checkCatalystEnumeration(body));
   failures.push(...checkPrecedentAnalogy(body)); // IMP-118
+  failures.push(...checkHookNumeratorSubstantiation(body)); // IMP-122
+  // IMP-123 runs on the RAW file — the markers ARE the subject, and `body` has had them stripped.
+  failures.push(...checkMarkerPlacement(raw));
 
   // --- QG-must-have-run integrity check (June 16, 2026) ---
   // E-PIPELINE-SEQUENCING-01: if validating a v2, assert that the quality gate ran.

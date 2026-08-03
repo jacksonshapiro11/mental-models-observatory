@@ -199,6 +199,117 @@ export function canSelfHeal(root: string, date: string, now = new Date()): Viola
   return v;
 }
 
+// ── IMP-121 (2026-08-03 Critic mandate #2, 🔴, RC3): QG LIVENESS ─────────────────────────────
+// E-QG-RACE-GUARD-MISCALIBRATION-01, Day 1. This file already encodes the correct primitive ONE
+// STAGE DOWNSTREAM — liveness is the artifact's mtime, never a countdown — and the QG had no
+// equivalent protection. RECEIPT, from the 08-03 status board and the Editor's own log:
+//   brief-quality-gate CANARY 2026-08-02T22:42:31Z · real v1.5 written 00:08:17Z · SUCCESS 00:12:33Z
+//   → a NINETY-MINUTE run.
+// The Editor's guard used a 21-minute ceiling and a 45-minute slot window, computed EXPIRED at
+// 23:57Z, and seeded a passthrough v1.5 byte-identical to v1 (md5 8283cf41b04e6224060178fc9f364324).
+// Its own log: "THE RACE GUARD WAS WRONG AND I REPORT IT AGAINST MYSELF… Nothing in the guard covers
+// 'the QG is slow but alive'… the guard told me to overwrite its work." Had it not noticed mid-pass
+// and voluntarily rebased, v2 would have shipped without the QG's truth correction, its Inner Game
+// re-cut and four staleness rewrites. `brief-email` died on the IDENTICAL misreading at 23:57:32Z
+// and, unlike the Editor, never recovered — no email shipped for 08-03.
+//
+// A slow QG is not a crashed QG, exactly as a slow Editor is not a crashed Editor.
+/** The QG's artifacts. ANY of them moving is proof of life; it writes the pre-gate copy first,
+ *  the log throughout, and v1.5 last — which is why a v1.5-only liveness test sees nothing for
+ *  most of the run. */
+const QG_ARTIFACTS = (date: string) => [
+  `${date}-v1.5.md`,
+  `${date}-quality-gate-log.md`,
+  `${date}-v1-pre-quality-gate.md`,
+];
+/** Same 20-minute silence-is-death rule as the Editor: below this, the QG is still writing. */
+export const QG_QUIET_MIN = 20;
+/** Nothing on disk at all this long after the QG CANARY ⇒ it died before writing.
+ *  EVIDENCED, NOT CHOSEN — from the observed QG runtime distribution on the real status boards:
+ *    2026-08-01 17.0 min · 2026-08-02 18.5 min · 2026-08-03 90.0 min   (max 90.0)
+ *  The sample is THIN (n=3 — the QG canary discipline is new), which argues for MORE headroom over
+ *  the max, not less: 105 = observed max + 15. The `--selftest` re-derives the distribution from
+ *  the real trailing status boards and FAILS if this constant ever falls to or below the observed
+ *  max, so the number cannot quietly go stale the way the Editor's 21/45 did. */
+export const QG_NO_ARTIFACT_WAIT_MIN = 105;
+
+function qgLines(root: string, date: string): EditorLine[] {
+  const out: EditorLine[] = [];
+  for (const raw of statusLines(root, date)) {
+    if (!/brief-quality-gate|\|\s*quality-gate\s*\|/i.test(raw)) continue;
+    const tsm = raw.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2}))/);
+    // The board carries BOTH `…Z` and `…-0400` (no colon) forms; Date parses only the latter with
+    // a colon. Normalising here is why the runtime distribution above is 90 min and not 75.
+    let ts: Date | null = null;
+    if (tsm) {
+      let s = tsm[1];
+      if (/[+-]\d{4}$/.test(s)) s = `${s.slice(0, -2)}:${s.slice(-2)}`;
+      const d = new Date(s);
+      ts = isNaN(d.getTime()) ? null : d;
+    }
+    const fields = raw.split('|').map((f) => f.trim());
+    const has = (re: RegExp) => fields.some((f) => re.test(f));
+    const kind: EditorLine['kind'] =
+      has(/^SUCCESS$/i) ? 'SUCCESS'
+      : has(/^FAIL/i) ? 'FAIL'
+      : has(/^SKIPPED/i) ? 'SUCCESS'
+      : has(/^CANARY\b/i) ? 'CANARY'
+      : 'OTHER';
+    out.push({ ts, kind, raw: raw.trim() });
+  }
+  return out;
+}
+
+/** THE LOAD-BEARING FUNCTION, one stage upstream. exit 1 = ALIVE = do not inline-QG, do not seed
+ *  a passthrough v1.5. Mirrors `liveness()` deliberately: same primitive, same failure it prevents. */
+export function qgLiveness(root: string, date: string, now = new Date()): Liveness {
+  const lines = qgLines(root, date);
+  const canary = lines.find((l) => l.kind === 'CANARY');
+  const terminal = lines.find((l) => l.kind === 'SUCCESS' || l.kind === 'FAIL');
+  const canaryAgeMin = canary?.ts ? (now.getTime() - canary.ts.getTime()) / 60000 : null;
+  const paths = QG_ARTIFACTS(date).map((f) => path.join(DB(root), f));
+  const present = paths.filter((p) => fs.existsSync(p));
+  const freshestMin = present.length
+    ? Math.min(...present.map((p) => (now.getTime() - fs.statSync(p).mtimeMs) / 60000))
+    : null;
+  const label = present.length ? path.basename(present[0]!) : `${date}-v1.5.md`;
+
+  // A terminal line ENDS the question — the QG announced it is done. QUIET, whatever the mtimes say.
+  if (terminal) {
+    return {
+      state: 'QUIET', quietMin: freshestMin, canaryAgeMin, workingPath: label,
+      reason: `brief-quality-gate posted a ${terminal.kind} line for ${date} — the QG has finished`,
+    };
+  }
+  if (!canary) {
+    return {
+      state: 'ABSENT', quietMin: freshestMin, canaryAgeMin, workingPath: label,
+      reason: `no brief-quality-gate CANARY line on the ${date} board — the QG has not started`,
+    };
+  }
+  // CANARY with no terminal line. Proof of life is an ARTIFACT THAT MOVED, never a countdown.
+  if (freshestMin !== null && freshestMin < QG_QUIET_MIN) {
+    return {
+      state: 'ALIVE', quietMin: freshestMin, canaryAgeMin, workingPath: label,
+      reason: `${label} was written ${freshestMin.toFixed(1)} min ago (< ${QG_QUIET_MIN}) — the QG is STILL RUNNING. Do NOT inline-QG and do NOT seed a passthrough v1.5.`,
+    };
+  }
+  // Nothing on disk yet: the QG writes nothing for the first stretch of a long pass. Wait out the
+  // budget derived from the observed distribution — this is the 08-03 branch exactly.
+  if (freshestMin === null && canaryAgeMin !== null && canaryAgeMin < QG_NO_ARTIFACT_WAIT_MIN) {
+    return {
+      state: 'ALIVE', quietMin: null, canaryAgeMin, workingPath: label,
+      reason: `brief-quality-gate CANARY is ${canaryAgeMin.toFixed(0)} min old with no artifact yet (budget ${QG_NO_ARTIFACT_WAIT_MIN} min, observed runtimes reach 90) — a SLOW QG IS NOT A CRASHED QG. Do NOT seed a passthrough v1.5; this is the 2026-08-03 failure.`,
+    };
+  }
+  return {
+    state: 'QUIET', quietMin: freshestMin, canaryAgeMin, workingPath: label,
+    reason: freshestMin !== null
+      ? `no QG artifact has changed for ${freshestMin.toFixed(0)} min (≥ ${QG_QUIET_MIN}) and no terminal line — the QG has stopped`
+      : `nothing on disk ${canaryAgeMin?.toFixed(0)} min after the CANARY (≥ ${QG_NO_ARTIFACT_WAIT_MIN}) — the QG died before writing`,
+  };
+}
+
 function readHold(root: string, date: string): string | null {
   const p = path.join(DB(root), `${date}-editor-log.md`);
   if (!fs.existsSync(p)) return null;
@@ -366,9 +477,69 @@ function selftest(): number {
   const okLoggedSilent = !auditHandoff(unlogged, ud).some((x) => x.check === 'editor-status-unlogged');
   fs.rmSync(unlogged, { recursive: true, force: true });
 
+  // --- IMP-121: QG LIVENESS. The acceptance gate is stated against the REAL 08-03 timestamps, so
+  //     the fixture replays the REAL status lines verbatim and evaluates at the REAL decision moments.
+  const qgRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-qg-'));
+  fs.mkdirSync(path.join(qgRoot, 'daily-briefs'), { recursive: true });
+  const QD = '2026-08-03';
+  const qgStatus = path.join(qgRoot, 'daily-briefs', `${QD}-pipeline-status.md`);
+  // Verbatim from the real 08-03 board — including the `-0400` offset form that a naive parser drops.
+  fs.writeFileSync(qgStatus, '2026-08-02T22:42:31Z | brief-quality-gate | CANARY | WRITE-OK\n');
+  const decisionMoment = new Date('2026-08-02T23:57:43Z'); // the instant the Editor computed EXPIRED
+  const qgAtDecision = qgLiveness(qgRoot, QD, decisionMoment);
+  // (a) THE FAILURE ITSELF: 75 min in, nothing on disk yet, no terminal line → ALIVE, exit 1.
+  const okQgAlive = qgAtDecision.state === 'ALIVE';
+  // (b) …and it becomes QUIET only once the QG posts its real SUCCESS line at 00:12:33Z.
+  fs.appendFileSync(qgStatus, '2026-08-02T20:12:33-0400 | brief-quality-gate | daily-briefs/2026-08-03-v1.5.md | SUCCESS\n');
+  const okQgQuietAfter = qgLiveness(qgRoot, QD, new Date('2026-08-03T00:15:00Z')).state === 'QUIET';
+  // (c) THE `-0400` FORM MUST PARSE. If it does not, the SUCCESS line is invisible and the guard
+  //     stays ALIVE forever — the mirror-image deadlock. (This is the bug that made the observed
+  //     runtime read 75 min instead of 90 during calibration.)
+  const okQgOffsetParsed = qgLines(qgRoot, QD).some((l) => l.kind === 'SUCCESS' && l.ts !== null);
+  // (d) A REAL CRASH still ends the wait: past the budget with nothing on disk → QUIET, never a deadlock.
+  const crashRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-qgcrash-'));
+  fs.mkdirSync(path.join(crashRoot, 'daily-briefs'), { recursive: true });
+  fs.writeFileSync(path.join(crashRoot, 'daily-briefs', `${QD}-pipeline-status.md`),
+    `${new Date(Date.now() - (QG_NO_ARTIFACT_WAIT_MIN + 10) * 60000).toISOString().replace(/\.\d+Z$/, 'Z')} | brief-quality-gate | CANARY | WRITE-OK\n`);
+  const okQgCrash = qgLiveness(crashRoot, QD).state === 'QUIET';
+  // (e) SILENT on a night the QG finished BEFORE the Editor's canary — the real 08-01 board:
+  //     QG CANARY 22:41:38Z, SUCCESS 22:58:40Z, brief-editor CANARY 23:09:44Z.
+  const okQg0801 = qgLiveness(root, '2026-08-01', new Date('2026-07-31T23:09:44Z')).state === 'QUIET';
+  const okQg0802 = qgLiveness(root, '2026-08-02', new Date('2026-08-01T23:09:43Z')).state === 'QUIET';
+  // (f) THE CONSTANT IS EVIDENCED, NOT CHOSEN. Re-derive the QG runtime distribution from the REAL
+  //     trailing status boards and fail if QG_NO_ARTIFACT_WAIT_MIN has fallen to or below the max.
+  //     This is what the Editor's 21/45 lacked: a number that cannot quietly go stale.
+  const runtimes: number[] = [];
+  const dbDir = path.join(root, 'daily-briefs');
+  if (fs.existsSync(dbDir)) {
+    const boards = fs.readdirSync(dbDir).filter((f) => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(f)).sort().slice(-30);
+    for (const b of boards) {
+      const d = b.slice(0, 10);
+      const ls = qgLines(root, d);
+      const c = ls.filter((l) => l.kind === 'CANARY' && l.ts).map((l) => l.ts!.getTime());
+      const t = ls.filter((l) => (l.kind === 'SUCCESS' || l.kind === 'FAIL') && l.ts).map((l) => l.ts!.getTime());
+      if (c.length && t.length) {
+        const mins = (Math.max(...t) - Math.min(...c)) / 60000;
+        if (mins > 0) runtimes.push(mins);
+      }
+    }
+  }
+  const observedMax = runtimes.length ? Math.max(...runtimes) : 0;
+  const okQgCalibrated = QG_NO_ARTIFACT_WAIT_MIN > observedMax;
+  console.log(`  [IMP-121] observed QG runtimes (trailing 30 boards, n=${runtimes.length}): ${runtimes.map((m) => m.toFixed(1)).join(' · ')} min → max ${observedMax.toFixed(1)}, budget ${QG_NO_ARTIFACT_WAIT_MIN}`);
+  fs.rmSync(qgRoot, { recursive: true, force: true });
+  fs.rmSync(crashRoot, { recursive: true, force: true });
+
   for (const d of [alive, dead, early, held, ceiling]) fs.rmSync(d, { recursive: true, force: true });
 
   const rows: [string, boolean][] = [
+    ['IMP-121 QG ALIVE at 23:57:43Z on the REAL 08-03 board (the moment the guard said EXPIRED)', okQgAlive],
+    ['IMP-121 QG QUIET only after the real 00:12:33Z SUCCESS line', okQgQuietAfter],
+    ['IMP-121 the board\'s `-0400` timestamp form parses (else the guard deadlocks ALIVE)', okQgOffsetParsed],
+    ['IMP-121 a genuinely crashed QG goes QUIET past the budget (never deadlock)', okQgCrash],
+    ['IMP-121 SILENT on real 08-01 — QG finished before the Editor\'s canary', okQg0801],
+    ['IMP-121 SILENT on real 08-02 — same clean ordering', okQg0802],
+    [`IMP-121 the ${QG_NO_ARTIFACT_WAIT_MIN}-min budget still exceeds the observed max (${observedMax.toFixed(1)})`, okQgCalibrated],
     ['FIRES on real 07-14 (mid-pass snapshot promoted, then superseded)', ok14],
     ['FIRES on real 07-13 (self-heal over a live Editor)', ok13],
     ['FIRES on real 07-13 (Critic PROVISIONAL, later Editor SUCCESS)', ok13Recon],
@@ -406,7 +577,7 @@ function main() {
   if (argv.includes('--selftest')) process.exit(selftest());
 
   const root = process.cwd();
-  const modes = ['--can-self-heal', '--can-promote', '--audit', '--liveness'];
+  const modes = ['--can-self-heal', '--can-promote', '--audit', '--liveness', '--qg-liveness'];
   const i = argv.findIndex((a) => modes.includes(a));
   if (i < 0 || !argv[i + 1]) {
     console.error(`usage: editor-handoff-gate.ts (${modes.join(' | ')}) <DATE> | --selftest`);
@@ -414,6 +585,22 @@ function main() {
   }
   const mode = argv[i]!;
   const date = argv[i + 1]!;
+
+  if (mode === '--qg-liveness') {
+    const l = qgLiveness(root, date);
+    console.log(`editor-handoff-gate --qg-liveness ${date}`);
+    console.log(`   state: ${l.state} — ${l.reason}`);
+    if (l.state === 'ALIVE') {
+      console.log('\n⏳ QUALITY GATE ALIVE — WAIT. Do NOT inline-QG. Do NOT seed a passthrough v1.5.');
+      console.log('   (2026-08-03: the guard called EXPIRED on a QG with 14 minutes left to run and');
+      console.log('    seeded a v1.5 byte-identical to v1. A slow QG is not a crashed QG.)');
+      process.exit(1);
+    }
+    console.log(l.state === 'QUIET'
+      ? '\n✅ QG QUIET — it finished or stopped. Proceed; if you seed a v1.5, declare INLINE-QG SEEDED: in the status line.'
+      : '\n✅ NO QG CANARY — the QG has not started.');
+    process.exit(0);
+  }
 
   if (mode === '--liveness') {
     const l = liveness(root, date);

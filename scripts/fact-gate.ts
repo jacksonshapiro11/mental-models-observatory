@@ -1580,6 +1580,139 @@ function bylineAttributionClaims(body: string, briefDate: string | null): Claim[
   return claims;
 }
 
+// ── IMP-120 (2026-08-03 Critic mandate #1, 🔴, RC2): DERIVED ARITHMETIC ──────────────────────
+// RECEIPT: C&C-1 — the one bullet in the brief that is nothing but arithmetic — printed "At Friday
+// July 31's close of $123.54, under the $135 IPO price, the same money is about seventy percent
+// more shares" and "it has fallen about 45 percent". SpaceX closed 2026-07-31 at $108.37 (a new
+// closing low, ~52% off the confirmed $225.64 high). `fact-gate` extracted 3 market claims and NONE
+// was this price, because the extraction surface is the ASSET LEXICON: a numeral is only checkable
+// if it stands next to a name the archive already knows, and SpaceX is not among the 5 archive-known
+// assets. This is IMP-116's root cause one class over — that fix widened the surface to titles and
+// watch lines; it still did not include A PRICE THE BRIEF PERFORMS ARITHMETIC ON.
+//
+// TWO LEGS, deliberately different in kind:
+//
+// (a) `derivedArithmeticClaims` — a currency numeral bound to a POSSESSIVE/TEMPORAL PRICE FRAME
+//     ("close of $123.54", "closing high of $211.39", "$135 IPO price") is a CRITICAL claim
+//     INDEPENDENT OF ASSET-ARCHIVE MEMBERSHIP. **The arithmetic is the warrant, not the ticker.**
+//     Narrow by construction: the frame is a price NOUN bound by `of` (or a price noun trailing the
+//     figure), so "settled at $87.93" (Geo-1, correct) and "$3.6 trillion in thirteen months"
+//     (M&M-2, correct) are both silent — neither is a quoted price the sentence then computes from.
+//
+// (b) `derivedPercentageFindings` — the OFFLINE half, and the one that needed no web access at all.
+//     Within a SINGLE bullet carrying ≥2 FRAMED prices (leg (a)'s frames, not every currency
+//     numeral), a percentage-CHANGE claim that cannot be reconciled with ANY ordered pair of those
+//     prices to within 3pp is internally falsifiable: $211.39 → $123.54 is 41.6%, printed as
+//     "about 45 percent". The bullet contradicted its own two printed numbers before reality was
+//     consulted. ADVISORY (FLAG, never FAIL): the recon is a heuristic, and a derivation whose
+//     inputs live in an adjacent bullet would otherwise block a true brief.
+//
+// ANTI-NOISE — MEASURED, AND THE FIRST DESIGN WAS THROWN AWAY BECAUSE THE MEASUREMENT SAID SO.
+// The obvious construction (≥2 BARE prices in the bullet) swept **31 flags across 16 of the
+// trailing 40 briefs** — every one a false positive, because a bullet routinely prints two
+// unrelated prices and two unrelated percentages ("Brent settled at $78.19, up 5.4 percent, and
+// WTI at $73.52, up 4.4 percent"): co-presence is not derivation. The pair set is therefore
+// restricted to prices the sentence itself FRAMES as quoted price points — a close, a high, an IPO
+// price — which is the only shape where a change percentage is a claim ABOUT those two numbers.
+// Re-swept: **1 flag across 40 briefs, and it is C&C-1.** Additionally the change VERB must PRECEDE
+// the percentage, so "roughly 3.4 percent dilution" (a ratio, not a price change) and "about
+// seventy percent more shares" (which reconciles at 71.1% anyway) stay silent inside the very
+// bullet that fails.
+const DERIVED_EPOCH = '2026-08-03';
+// A price NOUN bound to the figure: "<price-noun> [word] [word] of $X" or "$X <price-noun>".
+const DERIVED_PRICE_FRAME_RE = /\b(?:clos(?:e|ed|ing)|settle(?:s|d|ment)?|price|high|low)\b(?:\s+\w+){0,2}\s+of\s+(\$\s?\d[\d,]*(?:\.\d+)?)|(\$\s?\d[\d,]*(?:\.\d+)?)\s+(?:IPO\s+price|offer(?:ing)?\s+price|strike|clos(?:e|ing)\b)/gi;
+// A magnitude unit word disqualifies a figure as a PRICE POINT: "$60 billion" is a deal size.
+const DERIVED_MAGNITUDE_UNIT_RE = /^\s*(?:billion|trillion|million|thousand|bn\b|tn\b|mn\b|k\b|b\b|m\b)/i;
+// A percentage-CHANGE claim: the change verb PRECEDES the figure (within 40 chars). Digits only —
+// a word numeral ("seventy percent") is not reliably a computed change and stays off this leg.
+const DERIVED_PCT_CHANGE_RE = /\b(?:fallen|fell|falls|risen|rose|rises|dropp?(?:ed|ing)?|declin(?:ed|ing|e)|gained?|lost|losing|slid|slipp?ed|surged|jumped|plunged|climbed|sank|shed|down|up|off)\b[^.]{0,40}?(\d+(?:\.\d+)?)\s*(?:%|percent\b|pct\b)/gi;
+
+/** Bullets of THE SIX and its neighbours: a markdown list item is the unit of one argument. */
+function bulletRegions(body: string): { text: string; idx: number }[] {
+  const out: { text: string; idx: number }[] = [];
+  for (const m of body.matchAll(/^[-*]\s+\*\*[\s\S]*?(?=\n\s*\n|$)/gm)) {
+    out.push({ text: m[0], idx: m.index! });
+  }
+  return out;
+}
+
+/** Every price the text FRAMES as a quoted price point (a close, a high, an IPO price). Shared by
+ *  both legs so the claim surface and the reconciliation surface can never drift apart. */
+function framedPrices(text: string): { raw: string; value: number; idx: number }[] {
+  const out: { raw: string; value: number; idx: number }[] = [];
+  const re = new RegExp(DERIVED_PRICE_FRAME_RE.source, 'gi');
+  for (const m of text.matchAll(re)) {
+    const raw = (m[1] ?? m[2] ?? '').replace(/\s+/g, '');
+    if (!raw) continue;
+    const after = text.slice(m.index! + m[0].length);
+    if (DERIVED_MAGNITUDE_UNIT_RE.test(after)) continue; // "price of $60 billion" is a deal size
+    const value = parseFloat(raw.replace(/[$,]/g, ''));
+    if (!Number.isFinite(value) || value <= 0) continue;
+    out.push({ raw, value, idx: m.index! });
+  }
+  return out;
+}
+
+function derivedArithmeticClaims(body: string, briefDate: string | null): Claim[] {
+  const claims: Claim[] = [];
+  // ENFORCEMENT EPOCH, same discipline as IMP-116/117: the truth files of published briefs cannot
+  // carry a `derived:*` key, so the archive is read, never condemned.
+  if (!briefDate || !/^\d{4}-\d{2}-\d{2}$/.test(briefDate) || briefDate < DERIVED_EPOCH) return claims;
+  const seen = new Set<string>();
+  for (const p of framedPrices(body)) {
+    const key = `derived:price:${slugify(p.raw)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    claims.push({
+      key,
+      asset: `COMPUTED-FROM price "${p.raw}"`,
+      tier: 'critical',
+      claimType: 'derived-price',
+      direction: 'unknown',
+      magnitudePct: null,
+      level: p.raw,
+      section: sectionOf(body, p.idx),
+      sentence: sentenceAround(body, p.idx),
+      status: 'UNVERIFIED',
+    });
+  }
+  return claims;
+}
+
+/** Pure function — the arithmetic assertion, testable without a disk. */
+function derivedPercentageInconsistencies(bullet: string, tolerancePp = 3): { pct: number; best: number | null; prices: number[] }[] {
+  const prices = [...new Set(framedPrices(bullet).map((p) => p.value))];
+  if (prices.length < 2) return [];
+  const candidates: number[] = [];
+  for (const a of prices) for (const b of prices) {
+    if (a === b) continue;
+    candidates.push(Math.abs((b - a) / a) * 100);
+  }
+  const out: { pct: number; best: number | null; prices: number[] }[] = [];
+  for (const m of bullet.matchAll(DERIVED_PCT_CHANGE_RE)) {
+    const pct = parseFloat(m[1]!);
+    if (!Number.isFinite(pct)) continue;
+    let best: number | null = null;
+    for (const c of candidates) if (best === null || Math.abs(c - pct) < Math.abs(best - pct)) best = c;
+    if (best !== null && Math.abs(best - pct) > tolerancePp) out.push({ pct, best, prices });
+  }
+  return out;
+}
+
+function derivedPercentageFindings(body: string, _briefDate: string | null): Finding[] {
+  const findings: Finding[] = [];
+  for (const b of bulletRegions(body)) {
+    for (const bad of derivedPercentageInconsistencies(b.text)) {
+      findings.push({
+        check: 'derived-percentage-inconsistent',
+        severity: 'FLAG',
+        message: `derived-percentage-inconsistent — the bullet claims a ${bad.pct}% change, but no ordered pair of the prices it prints (${bad.prices.map((p) => `$${p}`).join(', ')}) produces it; the nearest is ${bad.best!.toFixed(1)}%, off by ${Math.abs(bad.best! - bad.pct).toFixed(1)}pp. A bullet whose analytical claim IS a computation must recompute from a verified input, not renumber. Section: ${sectionOf(body, b.idx)}. "${b.text.replace(/\s+/g, ' ').slice(0, 180)}"`,
+      });
+    }
+  }
+  return findings;
+}
+
 // Superlative contradictions (FAIL) + price-vs-archive deviations (FLAG).
 function archiveBackstop(superlatives: Claim[], briefPrices: Record<string, number>, archive: Record<string, ArchivePoint[]>): Finding[] {
   const findings: Finding[] = [];
@@ -2442,6 +2575,58 @@ function selftest(): number {
       .some((c) => /Colby Smith/.test(c.asset));
   }
 
+  // ── IMP-120: DERIVED ARITHMETIC — the price the bullet COMPUTES FROM ───────────────────────
+  const DA_CC1 = `- **SpaceX floated the exchange ratio on its $60 billion purchase of Cursor, so the deal costs its own shareholders more every time the stock falls, and it has fallen about 45 percent.** At the June 16 closing high of $211.39 that was roughly 3.4 percent dilution. At Friday July 31's close of $123.54, under the $135 IPO price, the same money is about seventy percent more shares.\n`;
+  const daCc1 = derivedArithmeticClaims(DA_CC1, '2026-08-03');
+  const okDaFire = ['$211.39', '$123.54', '$135'].every((p) => daCc1.some((c) => c.level === p)) &&
+                   daCc1.every((c) => c.tier === 'critical' && c.status === 'UNVERIFIED');
+  // SILENT where a price is quoted but NOT framed as a price point the sentence computes from.
+  const okDaSilentSettledAt = derivedArithmeticClaims(
+    `The market's price on it is Brent, which settled at $87.93 on Friday after gaining roughly 24 percent in July.`, '2026-08-03').length === 0;
+  const okDaSilentMagnitude = derivedArithmeticClaims(
+    `The national debt is up $3.6 trillion in thirteen months, roughly $15 billion a day of new supply.`, '2026-08-03').length === 0;
+  // "price of $60 billion" is a DEAL SIZE, not a price point — the magnitude unit disqualifies it.
+  const okDaSilentDealSize = derivedArithmeticClaims(
+    `Cursor changed hands at a price of $60 billion in all-stock consideration.`, '2026-08-03').length === 0;
+  // ENFORCEMENT EPOCH: a pre-epoch brief and a WEEKLY extract nothing — the archive is read, not condemned.
+  const okDaEpoch = derivedArithmeticClaims(DA_CC1, '2026-07-17').length === 0;
+  const okDaWeekly = derivedArithmeticClaims(DA_CC1, '2026-W31').length === 0;
+  // LEG (b), the OFFLINE half: $211.39 → $123.54 is 41.6%, printed as "about 45 percent" (3.4pp).
+  const daInc = derivedPercentageInconsistencies(DA_CC1);
+  const okDaPctFire = daInc.length === 1 && daInc[0]!.pct === 45 && Math.abs(daInc[0]!.best! - 41.56) < 0.1;
+  // ...and the OTHER two percentages in the SAME failing bullet stay silent: "3.4 percent dilution"
+  // is a ratio, not a price change (no change verb precedes it), and "seventy percent more shares"
+  // reconciles at 71.1%. A detector that flags the whole bullet has learned nothing.
+  const okDaPctNarrow = !daInc.some((x) => x.pct === 3.4 || x.pct === 70);
+  // CO-PRESENCE IS NOT DERIVATION. The first design keyed on ≥2 BARE prices and swept 31 false
+  // positives across 16 of 40 briefs, this shape being the commonest. Framed-prices-only kills it.
+  const okDaPctCoPresence = derivedPercentageInconsistencies(
+    `- **Crude repriced.** Brent crude settled at $78.19, up 5.4 percent, and WTI at $73.52, up 4.4 percent, a sharp single-session repricing.\n`).length === 0;
+  // ACCEPTANCE GATE, real artifacts: fires on the 08-03 v2's C&C-1 and ONLY there; and the
+  // PUBLISHED 08-03 (corrected to $225.64/$108.37 at the morning gate) no longer flags.
+  const v2_0803 = path.join(process.cwd(), 'daily-briefs/2026-08-03-v2.md');
+  let okDaReal = true, okDaRealScoped = true;
+  if (fs.existsSync(v2_0803)) {
+    const realBody = stripComments(fs.readFileSync(v2_0803, 'utf8'));
+    const realClaims = derivedArithmeticClaims(realBody, '2026-08-03');
+    okDaReal = realClaims.some((c) => c.level === '$123.54') &&
+               derivedPercentageFindings(realBody, '2026-08-03').length === 1;
+    // SILENT on the two correct derivations the Critic named: M&M-2's $3.6tn/$15bn-a-day and
+    // Geo-1's $87.93 / "roughly 24 percent in July".
+    okDaRealScoped = !realClaims.some((c) => /87\.93|3\.6|15/.test(String(c.level)));
+  }
+
+  console.log(`  [IMP-120] FIRES on C&C-1's three framed prices ($211.39/$123.54/$135): ${okDaFire ? '✓' : '✗'}`);
+  console.log(`  [IMP-120] SILENT on "settled at $87.93" (quoted, not computed from): ${okDaSilentSettledAt ? '✓' : '✗'}`);
+  console.log(`  [IMP-120] SILENT on "$3.6 trillion … $15 billion a day" (magnitudes): ${okDaSilentMagnitude ? '✓' : '✗'}`);
+  console.log(`  [IMP-120] SILENT on "a price of $60 billion" (deal size, not a price point): ${okDaSilentDealSize ? '✓' : '✗'}`);
+  console.log(`  [IMP-120] EPOCH: pre-epoch brief and WEEKLY extract nothing: ${okDaEpoch && okDaWeekly ? '✓' : '✗'}`);
+  console.log(`  [IMP-120] OFFLINE LEG fires on 41.6%-printed-as-45%: ${okDaPctFire ? '✓' : '✗'}`);
+  console.log(`  [IMP-120] and stays SILENT on the same bullet's 3.4% dilution + 70% share count: ${okDaPctNarrow ? '✓' : '✗'}`);
+  console.log(`  [IMP-120] CO-PRESENCE IS NOT DERIVATION — Brent/WTI two-price two-percent bullet silent: ${okDaPctCoPresence ? '✓' : '✗'}`);
+  console.log(`  [IMP-120] REAL 08-03 v2: $123.54 rides the critical rails, exactly 1 pct flag: ${okDaReal ? '✓' : '✗'}`);
+  console.log(`  [IMP-120] REAL 08-03 v2: M&M-2 and Geo-1's correct figures stay off the rails: ${okDaRealScoped ? '✓' : '✗'}`);
+
   console.log(`  [IMP-116] FIRES on the title numeral "Ten": ${okHaTitle ? '✓' : '✗'}`);
   console.log(`  [IMP-116] FIRES on the watch-line anchor $84.67: ${okHaWatch ? '✓' : '✗'}`);
   console.log(`  [IMP-116] headline anchors ride the CRITICAL rails: ${okHaCritical ? '✓' : '✗'}`);
@@ -2461,6 +2646,9 @@ function selftest(): number {
   console.log(`  [IMP-117] REAL 08-02 v2: fires on the Colby Smith pairing: ${okByReal ? '✓' : '✗'}`);
 
   const ok =
+    okDaFire && okDaSilentSettledAt && okDaSilentMagnitude && okDaSilentDealSize &&
+    okDaEpoch && okDaWeekly && okDaPctFire && okDaPctNarrow && okDaPctCoPresence &&
+    okDaReal && okDaRealScoped &&
     okHaTitle && okHaWatch && okHaCritical && okHaClean && okHaDateline && okHaNoDate && okHaReal &&
     okHaWeekRange && okHaYear && okHaEpoch && okHaWeekly && okByEpoch &&
     okByFire && okBySilentOrg && okBySilentNoPossessive && okBySilentBarePerson && okByReal &&
@@ -2638,6 +2826,12 @@ function main() {
   const bylineClaims = bylineAttributionClaims(body, briefDate);
   for (const e of bylineClaims) if (truth?.claims?.[e.key]) e.status = 'PASS';
 
+  // 3j. DERIVED ARITHMETIC (IMP-120, the 08-03 Critic's mandate #1). A price the bullet COMPUTES
+  // FROM is load-bearing regardless of whether the archive knows the asset — the arithmetic is the
+  // warrant, not the ticker. C&C-1 ran a dilution ladder off a $123.54 close that was $108.37.
+  const derivedClaims = derivedArithmeticClaims(body, briefDate);
+  for (const e of derivedClaims) if (truth?.claims?.[e.key]) e.status = 'PASS';
+
   // 4. Archive backstop (zero-network): disprove false superlatives + flag price fabrications.
   const archive = loadArchive(briefPath, briefDate, archiveDays);
   const archiveAssetsKnown = Object.keys(archive).length;
@@ -2683,6 +2877,8 @@ function main() {
   findings.push(...segmentMetricFindings(body, briefDate));
   findings.push(...stockMoveReactionFindings(body, briefDate)); // IMP-101 (restored)
   findings.push(...takeExtraordinaryFindings(body, briefDate)); // IMP-115
+  // IMP-120 leg (b): the offline half — a bullet that contradicts its own printed prices.
+  findings.push(...derivedPercentageFindings(body, briefDate));
 
   // 5. Truth cross-check (if truth present)
   if (truth) findings.push(...crossCheck(claims, truth));
@@ -2691,7 +2887,7 @@ function main() {
   // verification, not blocked here). Event claims join the critical rails deliberately: a
   // same-session release-date assertion is exactly as load-bearing as a price, and on 07-13 it
   // was more so — it was a section's entire premise.
-  const unverifiedCritical = [...claims, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims, ...headlineClaims, ...bylineClaims].filter((c) => c.tier === 'critical' && c.status === 'UNVERIFIED');
+  const unverifiedCritical = [...claims, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims, ...headlineClaims, ...bylineClaims, ...derivedClaims].filter((c) => c.tier === 'critical' && c.status === 'UNVERIFIED');
   if (!allowUnverified) {
     for (const c of unverifiedCritical) {
       findings.push({
@@ -2708,7 +2904,7 @@ function main() {
   // infrastructure failure, not a clean pass. (07-10 receipt: 6 market claims + 7 superlatives,
   // 0 pass / 0 fail / 13 unverified, truthFile null → published. Among them: the 30Y-JGB
   // superlative that was actually the 10Y's record — right number, wrong asset.)
-  const truthBypass = !truth && (claims.length > 0 || superlatives.length > 0 || eventClaims.length > 0 || aggClaims.length > 0 || entityCounts.length > 0 || effectiveDates.length > 0 || aiProducts.length > 0 || yoyClaims.length > 0 || earningsClaims.length > 0 || headlineClaims.length > 0 || bylineClaims.length > 0);
+  const truthBypass = !truth && (claims.length > 0 || superlatives.length > 0 || eventClaims.length > 0 || aggClaims.length > 0 || entityCounts.length > 0 || effectiveDates.length > 0 || aiProducts.length > 0 || yoyClaims.length > 0 || earningsClaims.length > 0 || headlineClaims.length > 0 || bylineClaims.length > 0 || derivedClaims.length > 0);
   if (truthBypass) {
     findings.push({
       check: 'truth-bypass',
@@ -2726,7 +2922,7 @@ function main() {
     }
   }
 
-  const allClaims = [...claims, ...superlatives, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims, ...headlineClaims, ...bylineClaims];
+  const allClaims = [...claims, ...superlatives, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims, ...headlineClaims, ...bylineClaims, ...derivedClaims];
 
   // Ledger output (the worklist the editorial agents clear by verify-and-correct).
   const ledger = {
@@ -2744,6 +2940,7 @@ function main() {
       earnings: earningsClaims.length,
       headlineAnchors: headlineClaims.length, // IMP-116
       bylines: bylineClaims.length,           // IMP-117
+      derivedPrices: derivedClaims.length,    // IMP-120
       pass: allClaims.filter((c) => c.status === 'PASS').length,
       fail: allClaims.filter((c) => c.status === 'FAIL').length,
       unverified: allClaims.filter((c) => c.status === 'UNVERIFIED').length,
@@ -2771,7 +2968,7 @@ function main() {
   const flags = findings.filter((f) => f.severity === 'FLAG');
 
   console.log(`fact-gate — ${path.basename(briefPath)}`);
-  console.log(`  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`);
+  console.log(`  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} · derived-prices: ${derivedClaims.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`);
   console.log(`  archive: ${archiveAssetsKnown} assets known from our last ${archiveDays} briefs`);
   console.log(`  truth file: ${truthPath ? path.basename(truthPath) : 'NONE (critical claims will block unless --allow-unverified)'}`);
   // IMP-064: the premise layer states its own health on every run. A silent registry
