@@ -266,7 +266,7 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy e
       audioUrl: blob.url,
       duration: estimatedDuration,
       fileSize: audio.length,
-      voice: selectedVoice,
+      voice: TTS_VOICE,
       generatedAt: new Date().toISOString(),
     };
 

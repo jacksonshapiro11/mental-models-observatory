@@ -212,7 +212,7 @@ Avoid: rushing, robotic cadence, singsong patterns, dramatic over-pausing, breat
       audioUrl: blob.url,
       duration: estimatedDuration,
       fileSize: audio.length,
-      voice: selectedVoice,
+      voice: TTS_VOICE,
       generatedAt: new Date().toISOString(),
     };
 
