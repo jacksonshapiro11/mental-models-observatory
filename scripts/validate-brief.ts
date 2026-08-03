@@ -73,7 +73,7 @@ const BANNED_ORIENTATION_PHRASES = [
 function stripComments(src: string): string {
   // Remove HTML comment blocks (Staleness Ledger, Validation Report)
   // Convert DEPTH-TREATMENT markers to invisible zero-width-space tokens before stripping,
-  // so checkSixBulletWordCeiling can still detect them without triggering em-dash or entity checks.
+  // so checkSixSectionWordBudget can still detect them without triggering em-dash or entity checks.
   const DT_TOKEN = '​depth_treatment​';
   let result = src.replace(/<!--\s*DEPTH-TREATMENT\s*-->/g, DT_TOKEN);
   result = result.replace(/<!--[\s\S]*?-->/g, '');
@@ -298,8 +298,15 @@ function checkAISectionMinBullets(body: string): Failure[] {
   const rest = body.slice(start);
   const nextHeader = rest.indexOf('\n## ', 1);
   const section = nextHeader === -1 ? rest : rest.slice(0, nextHeader);
-  // Count bold-lead bullets (lines starting with - **), same idiom as checkSixBulletWordCeiling
-  const bullets = (section.match(/^- \*\*/gm) || []).length;
+  // FORMAT-AGNOSTIC unit count (2026-08-03). This counted only `- **` lines. On 08-03 the Writer
+  // composed Markets & Macro and Geopolitics as bold-lead PROSE with no list marker; the day AI &
+  // Tech is written the same way, this floor would count 0 units and HARD-STOP a perfectly good
+  // brief at the 7:00 PM mechanical gate. A ceiling that goes blind ships bloat; a FLOOR that goes
+  // blind halts the pipeline. Units are blocks separated by blank lines, the same split
+  // checkSixSectionWordBudget uses, so both directions stay honest about markup.
+  const units = section.split(/\n\s*\n/).map((u: string) => u.trim())
+    .filter((u: string) => u.length > 0 && !/^#{1,6} /.test(u) && !/^<!--/.test(u) && !/^-{3,}$/.test(u));
+  const bullets = units.length;
   if (bullets < 2) {
     out.push({
       check: 'ai-section-min-bullets',
@@ -308,12 +315,12 @@ function checkAISectionMinBullets(body: string): Failure[] {
   }
   // AI two-bullet distinctness advisory (added June 15 — RC4, strengthens June-14 floor)
   if (bullets === 2) {
-    const leads = (section.match(/^- \*\*(.+?)\*\*/gm) || []).map((s: string) => s.toLowerCase());
+    const leads = (section.match(/^(?:- )?\*\*(.+?)\*\*/gm) || []).map((s: string) => s.toLowerCase());
     if (leads.length === 2) {
       // Extract capitalized tokens (proper nouns) from each lead, excluding common stopwords
       const stopwords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'it', 'its', 'as', 'that', 'this', 'how', 'why', 'what', 'when', 'where', 'who', 'which', 'not', 'no', 'new', 'just', 'now', 'out', 'up', 'all']);
       const extractEntities = (s: string) => {
-        const raw = s.replace(/^- \*\*/, '').replace(/\*\*.*/, '');
+        const raw = s.replace(/^(?:- )?\*\*/, '').replace(/\*\*.*/, '');
         return raw.split(/\s+/).filter((w: string) => w.length > 2 && /^[A-Z]/.test(w) && !stopwords.has(w.toLowerCase())).map((w: string) => w.toLowerCase().replace(/[^a-z]/g, ''));
       };
       const e1 = new Set(extractEntities(leads[0]));
@@ -1390,15 +1397,15 @@ function checkWildCardStaleness(body: string, briefDir: string, absPath: string)
  * Format-agnostic: measures the whole section, never looks for a markup shape.
  */
 const NAMED_SECTION_BUDGETS: Record<string, number> = {
-  // Derived from the MAX observed across 07-28..07-31 (four briefs Jackson accepted) + ~12%
-  // headroom — not from guesses. On 2026-08-01 only The Signal exceeds its band; the Take,
-  // Wild Card, Model and Discovery were all within normal range, which matches Jackson's read
-  // that "the take and signal didn't actually seem that long, it was the other stuff".
-  'The Signal':     960,  // 07-28..31: 655/618/857/821  ·  08-01: 1,190  ← the real overrun
-  'The Wild Card':  730,  // 246/383/650/321             ·  08-01:   436
-  '▸ THE TAKE':     640,  // 476/483/567/477             ·  08-01:   578
-  '▸ THE MODEL':    780,  // 403/561/272/697             ·  08-01:   755
-  '▸ DISCOVERY':    550,  // 480/487/481/492             ·  08-01:   507
+  // Rebuilt 2026-08-03 off the JULY MEDIAN — the 30-minute product we are trying to get back —
+  // not the July MAX + 12% the previous table used. Calibrating a ceiling to the top of the
+  // period you are correcting ratifies the regression: THE MODEL's old 780 was 1.9x its own
+  // July median of 414, so a section that had doubled still passed as "within normal range".
+  // The Signal and The Wild Card moved OUT of this table: they are Six subsections, now measured
+  // per-unit by checkSixSectionWordBudget where the 220/250 Signal ceiling already lived.
+  '▸ THE TAKE':     640,  // July median 577
+  '▸ THE MODEL':    480,  // July median 414   (was 780)
+  '▸ DISCOVERY':    540,  // July median 478
 };
 
 function checkNamedSectionWordBudget(body: string): Failure[] {
@@ -1428,7 +1435,11 @@ function checkSixSectionWordBudget(body: string): Failure[] {
   const sixEnd = body.indexOf('# ▸ THE TAKE');
   if (sixStart === -1 || sixEnd === -1) return out;
   const sixBody = body.slice(sixStart, sixEnd);
-  const SIX_SECTIONS = ['Markets & Macro', 'Companies & Crypto', 'AI & Tech', 'Geopolitics'];
+  // The Signal and The Wild Card are Six subsections and belong here. They were missing until
+  // 2026-08-03, which is why SIGNAL_UNIT/SIGNAL_HARD below were unreachable dead code: the
+  // isSignal branch could never fire because sectionName could never be 'The Signal'. Jackson
+  // caught the same omission once already (the first length fix covered four of six).
+  const SIX_SECTIONS = ['Markets & Macro', 'Companies & Crypto', 'AI & Tech', 'Geopolitics', 'The Wild Card', 'The Signal'];
   // Jackson, 2026-08-03: target ~160/bullet, hard ceiling 180. The Signal runs a little longer.
   const UNIT = 160, UNIT_HARD = 180, DEPTH = 350, DEPTH_HARD = 400;
   const SIGNAL_UNIT = 220, SIGNAL_HARD = 250;
@@ -1466,83 +1477,26 @@ function checkSixSectionWordBudget(body: string): Failure[] {
     // The Six runs 2-3 units per section ("elastic by the day", Editorial Bible), so the section
     // budget is the ALLOWED count (3) x the unit ceiling — not the count actually shipped.
     // Otherwise writing more units raises your own budget, which is the failure mode being fixed.
-    const budget = 3 * UNIT_HARD + Math.min(depthUnits, 2) * (DEPTH - UNIT_HARD);
+    // The section budget must use THIS section's unit ceiling, not the default: The Signal runs
+    // to 250/unit, so 3 x 180 would have condemned a compliant Signal the moment it was added.
+    const sectionUnitHard = /Signal/i.test(sectionName) ? SIGNAL_HARD : UNIT_HARD;
+    const budget = 3 * sectionUnitHard + Math.min(depthUnits, 2) * (DEPTH - sectionUnitHard);
     if (total > budget) {
       out.push({ check: 'six-section-word-budget',
-        message: `OVER: ${sectionName} totals ${total} words across ${units.length} unit(s) against a ${budget}-word section budget (3 units x ${UNIT}${depthUnits ? ` + ${Math.min(depthUnits, 2)} depth-treatment` : ''}). The Six runs 2-3 units per section; compress or cut a unit.` });
+        message: `OVER: ${sectionName} totals ${total} words across ${units.length} unit(s) against a ${budget}-word section budget (3 units x ${sectionUnitHard}${depthUnits ? ` + ${Math.min(depthUnits, 2)} depth-treatment` : ''}). The Six runs 2-3 units per section; compress or cut a unit.` });
     }
   }
   return out;
 }
 
-function checkSixBulletWordCeiling(body: string): Failure[] {
-  const out: Failure[] = [];
-  const sixStart = body.indexOf('# ▸ THE SIX');
-  const sixEnd = body.indexOf('# ▸ THE TAKE');
-  if (sixStart === -1 || sixEnd === -1) return out;
-  const sixBody = body.slice(sixStart, sixEnd);
-
-  // Split into subsections by ## headers
-  const SIX_SECTIONS = ['Markets & Macro', 'Companies & Crypto', 'AI & Tech', 'Geopolitics'];
-
-  for (const sectionName of SIX_SECTIONS) {
-    const sectionPattern = new RegExp(`## ${sectionName.replace(/&/g, '&')}\\b`);
-    const sectionMatch = sixBody.match(sectionPattern);
-    if (!sectionMatch || sectionMatch.index === undefined) continue;
-
-    const startIdx = sectionMatch.index + sectionMatch[0].length;
-    // Find next ## header or end of six body
-    const remaining = sixBody.slice(startIdx);
-    const nextHeader = remaining.search(/\n## /);
-    const sectionText = nextHeader === -1 ? remaining : remaining.slice(0, nextHeader);
-
-    // Extract bullets (lines starting with - **)
-    const lines = sectionText.split('\n');
-    let bulletIdx = 0;
-    let currentBullet = '';
-
-    const flushBullet = () => {
-      if (!currentBullet.trim()) return;
-      bulletIdx++;
-      const words = currentBullet.trim().split(/\s+/).filter(w => w.length > 0).length;
-      // Check for DEPTH-TREATMENT marker (added June 10 — canonical ceiling 350)
-      // stripComments converts <!-- DEPTH-TREATMENT --> to a ZWS-delimited token to avoid
-      // triggering em-dash and entity checks while remaining detectable here.
-      const isDepthTreated = currentBullet.includes('<!-- DEPTH-TREATMENT -->') ||
-                             currentBullet.includes('​depth_treatment​') ||
-                             currentBullet.includes('INVESTMENT TARGET');
-      const ceiling = isDepthTreated ? 350 : 160;
-      const hardFail = isDepthTreated ? 400 : 180;
-      if (words > hardFail) {
-        out.push({
-          check: 'six-bullet-word-ceiling',
-          message: `🔴 HARD FAIL: ${sectionName} bullet ${bulletIdx} is ${words} words (ceiling: ${ceiling}, hard fail: ${hardFail}). Must compress.${isDepthTreated ? ' (DEPTH-TREATMENT ceiling applied)' : ''}`,
-        });
-      } else if (words > ceiling) {
-        out.push({
-          check: 'six-bullet-word-ceiling',
-          message: `🟡 FLAG: ${sectionName} bullet ${bulletIdx} is ${words} words (ceiling: ${ceiling}). Compress if possible.${isDepthTreated ? ' (DEPTH-TREATMENT ceiling applied)' : ''}`,
-        });
-      }
-    };
-
-    for (const line of lines) {
-      if (/^- \*\*/.test(line)) {
-        flushBullet();
-        currentBullet = line;
-      } else if (currentBullet && /^\s/.test(line) && line.trim()) {
-        // Continuation line of current bullet
-        currentBullet += ' ' + line.trim();
-      } else if (line.trim() === '') {
-        // Empty line might end a bullet or separate paragraphs within a bullet
-        // Keep accumulating — bullets can span multiple paragraphs
-      }
-    }
-    flushBullet(); // Last bullet
-  }
-
-  return out;
-}
+// checkSixBulletWordCeiling — REMOVED 2026-08-03.
+// It measured only lines starting with `- **`. On 08-01 and 08-03 the Writer composed
+// Markets & Macro and Geopolitics as bold-lead PROSE, so the ONLY length check with a
+// blocking HARD FAIL found zero bullets in the two sections carrying the entire overrun
+// and reported no violations on an 8,241-word brief. checkSixSectionWordBudget below does
+// the same job format-agnostically and always prints its unit count, so blindness is
+// visible instead of silent. Two checks measuring one thing, one of them blind, is worse
+// than one check that sees: the blind one was the one with teeth.
 
 /**
  * CHECK: Editorial placeholder text in any section (May 12, 2026).
@@ -2459,28 +2413,7 @@ function main() {
   failures.push(...checkSignalStaleness(body, briefDir, absPath));
   failures.push(...checkWildCardStaleness(body, briefDir, absPath));
   failures.push(...checkDashboardSentenceCeiling(body));
-  // --- Six bullet word ceiling (May 11, 2026) ---
-  // IMP-125 (2026-08-03): the 🟡 SOFT leg is ADVISORY; only the 🔴 HARD FAIL blocks.
-  // WHY: an uncommitted working-tree edit tightened the per-bullet ceiling 170→160 (and the hard
-  // fail 200→180). Because EVERY 🟡 FLAG was counted as a blocking failure, the tightened number
-  // retroactively condemned the ARCHIVE: `validate-brief content/daily-updates/2026-07-13.md` —
-  // which is IMP-042's acceptance gate — went from exit 0 to exit 1 on five bullets of 168-170
-  // words, written when the ceiling WAS 170. That is the enforcement-epoch failure IMP-116 already
-  // documented ("the archive is read, never condemned"), arriving through a length check instead of
-  // a claim class. It also contradicted the author's own ruling recorded ten lines below: Jackson,
-  // 2026-08-01 — "I don't want a strict word budget I just want a soft ceiling" — which had been
-  // applied to the SECTION budget and not to the per-bullet one sitting beside it.
-  // The 🔴 HARD FAIL (>180, or >400 depth-treated) still blocks. Nothing real is weakened: a
-  // genuinely bloated bullet is still rejected; a bullet eight words over a ceiling that moved
-  // last week is now told to compress instead of being called corrupt.
-  {
-    const bulletLen = checkSixBulletWordCeiling(body);
-    const hard = bulletLen.filter((f) => /HARD FAIL/.test(f.message));
-    const soft = bulletLen.filter((f) => !/HARD FAIL/.test(f.message));
-    failures.push(...hard);
-    for (const f of soft) console.log(`  🟡 [${f.check}] ${f.message}`);
-    if (soft.length) console.log(`🟡 BULLET LENGTH ADVISORY — ${soft.length} bullet(s) over the soft ceiling. Compress where you can; this does NOT block the brief.`);
-  }
+  // --- Six section word budget: see the single format-agnostic check below ---
   {
     // SOFT CEILING — advisory only, never blocks (Jackson, 2026-08-01: "I don't want a strict
     // word budget I just want a soft ceiling"). The Editor compresses on these; the brief ships.
@@ -2489,11 +2422,45 @@ function main() {
     if (soft.length) console.log(`🟡 LENGTH ADVISORY — ${soft.length} section(s) over their soft ceiling. Compress where you can; this does NOT block the brief.`);
   }
   {
-    // ADVISORY ONLY — never a failure. ~160 wpm TTS: 30-min target ≈ 4,800 words.
+    // BRIEF LENGTH — the ONE blocking length rail (2026-08-03, Jackson).
+    //
+    // WHY IT BLOCKS: until today every length check in this file was advisory. The 2026-08-03
+    // brief ran 8,241 words / 52 minutes against a 30-minute product and `validate-brief` exited
+    // 0 with sixteen 🟡 findings. Sixteen advisories that never fail are a log, not a gate.
+    //
+    // WHY *ONE* RAIL AND NOT TWELVE: per-section ceilings can be satisfied while the brief still
+    // runs long (write more units), and they go blind when markup changes. A whole-file word count
+    // cannot be gamed and cannot go blind. Sections stay advisory — they tell the Writer WHERE;
+    // this tells the Editor WHETHER.
+    //
+    // CALIBRATION: the 28 published July briefs — the 30-minute product we are getting back —
+    // ran min 4,135 / median 4,924 (30.8 min) / max 6,846. A 5,500 ceiling would have fired on
+    // 4 of those 28 (14%): rare enough to mean something when it fires. 5,200 would have fired on
+    // 25% of work Jackson accepted, which is how a gate earns the right to be ignored (IMP-125).
+    //
+    // ENFORCEMENT EPOCH: the archive is read, never condemned. Briefs dated before 2026-08-04
+    // are measured and reported, never failed — the mistake IMP-125 had to undo.
+    //
+    // ESCAPE HATCH: `<!-- LENGTH-OVERRIDE: <reason, 20+ chars> -->`. The brief ALWAYS ships; a
+    // genuinely long day is a declared, countable editorial decision, not a silent drift. The
+    // improvement loop counts overrides the same way it counts PREDRAFT-OVERRIDE.
     const w = body.split(/\s+/).filter(Boolean).length;
     const mins = Math.round(w / 160);
-    const mark = w > 6000 ? '🔴' : w > 5500 ? '🟡' : '✅';
-    console.log(`${mark} BRIEF LENGTH: ${w.toLocaleString()} words ≈ ${mins} min audio (target 30 min ≈ 4,800 words) — advisory, does not block`);
+    const LEN_TARGET = 4800, LEN_SOFT = 5000, LEN_HARD = 5500, LEN_EPOCH = '2026-08-04';
+    const lenDate = briefDateMatch ? briefDateMatch[1] : '';
+    const lenOverride = /<!--\s*LENGTH-OVERRIDE:\s*([^>]{20,}?)\s*-->/.exec(raw);
+    const mark = w > LEN_HARD ? '🔴' : w > LEN_SOFT ? '🟡' : '✅';
+    console.log(`${mark} BRIEF LENGTH: ${w.toLocaleString()} words ≈ ${mins} min audio (target 30 min ≈ ${LEN_TARGET.toLocaleString()} words, ceiling ${LEN_HARD.toLocaleString()})`);
+    if (w > LEN_HARD && lenDate >= LEN_EPOCH) {
+      if (lenOverride) {
+        console.log(`  ⚪ LENGTH-OVERRIDE accepted — ${lenOverride[1].trim()}`);
+      } else {
+        failures.push({
+          check: 'brief-length',
+          message: `🔴 HARD FAIL: brief is ${w.toLocaleString()} words ≈ ${mins} min against a 30-minute product (target ${LEN_TARGET.toLocaleString()}, ceiling ${LEN_HARD.toLocaleString()}). This is the second draft, not a trim. Cut in Craft_Standard order: numbers without scale, then corroborating figures, then the second explanation of the same idea. Never the conclusion, never the one scaled/sourced/dated figure the unit turns on. Prefer cutting a UNIT over shrinking every unit: a Six subsection is 2-3 units. If today genuinely needs the length, declare it: <!-- LENGTH-OVERRIDE: <reason, 20+ chars> -->`,
+        });
+      }
+    }
   }
   // --- AI section minimum 2-bullet floor (June 14, 2026) ---
   failures.push(...checkAISectionMinBullets(body));
