@@ -104,7 +104,10 @@ export async function generateLightAudio(
       },
       {
         openaiApiKey,
-        skipLlmCleanup: false,
+        // FAITHFUL VOICING EXPERIMENT (2026-08-01) — DEFAULT OFF.
+        // Set AUDIO_FAITHFUL_VOICING=1 to build the Super Brief script without GPT.
+        // Unset or any other value = today's behaviour, byte-for-byte.
+        skipLlmCleanup: process.env.AUDIO_FAITHFUL_VOICING === '1',
         isWeekly,
       },
     );

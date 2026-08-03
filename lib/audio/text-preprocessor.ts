@@ -2087,9 +2087,32 @@ export async function preprocessBriefLightForTTS(
       fullText = regexNormalize(applyLightPronunciations(`${rawContent}\n\n${ending}`));
     }
   } else {
-    const rawContent = ordered.filter(s => s.id !== 'the-close').map(s => `${s.label}:\n${s.content}`).join('\n\n');
-    const ending = buildLightEnding(ordered.find(s => s.id === 'the-close')?.content, options.isWeekly ?? false);
-    fullText = regexNormalize(applyLightPronunciations(`${rawContent}\n\n${ending}`));
+    // FAITHFUL VOICING — no GPT (2026-08-01, Jackson's experiment).
+    // Mirrors the GPT branch's assembly exactly: deterministic intro prefix, epigraph, the same
+    // LIGHT_SECTION_TRANSITIONS, the same SECTION_PAUSE stitching, and the same verbatim close +
+    // sign-off. The ONLY difference from the GPT path is that each section's text is the written
+    // source normalized for speech instead of a model rewrite. Nothing is dropped, reordered or
+    // paraphrased, so this can never gut a section — it is the identity function plus pronunciation.
+    const parts: string[] = [];
+    const introPrefix = buildDeterministicLightIntroPrefix(brief.date, brief.dailyTitle);
+    const cleanEpi = brief.epigraph.replace(/\*+/g, '').replace(/[_~`]/g, '').trim();
+    parts.push(cleanEpi ? `${introPrefix}\n\n${cleanEpi}` : introPrefix);
+
+    const used = new Set<string>();
+    for (const section of ordered.filter(s => s.id !== 'the-close')) {
+      const t = lookupSection(LIGHT_SECTION_TRANSITIONS, section.id) ??
+                lookupSection(LIGHT_SECTION_TRANSITIONS, section.label);
+      if (t && !used.has(section.id)) {
+        parts.push(`${t}\n\n${section.content}`);
+        used.add(section.id);
+      } else {
+        parts.push(section.content);
+      }
+    }
+    parts.push(buildLightEnding(ordered.find(s => s.id === 'the-close')?.content, options.isWeekly ?? false));
+    fullText = regexNormalize(applyLightPronunciations(parts.join('\n\n...\n\n')));
+    gateWarnings = [...gateWarnings, 'FAITHFUL-VOICING: script built without GPT (skipLlmCleanup) — every beat, number and name from the written source'];
+    console.log(`[audio:light] FAITHFUL VOICING (no GPT): ${fullText.length} characters`);
   }
 
   const sections = ordered.map(s => ({
