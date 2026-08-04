@@ -1496,7 +1496,7 @@ function checkSixSectionWordBudget(body: string): Failure[] {
     const budget = allowedUnits * sectionUnitHard + headlineAllowance + Math.min(depthUnits, 2) * (DEPTH - sectionUnitHard);
     if (total > budget) {
       out.push({ check: 'six-section-word-budget',
-        message: `OVER: ${sectionName} totals ${total} words across ${units.length} unit(s) against a ${budget}-word section budget (${allowedUnits} x ${sectionUnitHard}${depthUnits ? ` + ${Math.min(depthUnits, 2)} depth-treatment` : ''}). The Six runs 2-3 units per section; compress or cut a unit.` });
+        message: `OVER: ${sectionName} totals ${total} words across ${units.length} unit(s) against a ${budget}-word section budget (${allowedUnits} x ${sectionUnitHard}${depthUnits ? ` + ${Math.min(depthUnits, 2)} depth-treatment` : ''}). ${isSignalSection ? 'The Signal runs 2 IDEAS; compress them, do not add a third.' : 'The Six runs 2-3 units per section; compress or cut a unit.'}` });
     }
   }
   return out;
