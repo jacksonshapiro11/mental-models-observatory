@@ -1442,7 +1442,14 @@ function checkSixSectionWordBudget(body: string): Failure[] {
   const SIX_SECTIONS = ['Markets & Macro', 'Companies & Crypto', 'AI & Tech', 'Geopolitics', 'The Wild Card', 'The Signal'];
   // Jackson, 2026-08-03: target ~160/bullet, hard ceiling 180. The Signal runs a little longer.
   const UNIT = 160, UNIT_HARD = 180, DEPTH = 350, DEPTH_HARD = 400;
-  const SIGNAL_UNIT = 220, SIGNAL_HARD = 250;
+  // Signal, retuned 2026-08-04 (Jackson). The Signal runs TWO IDEAS, each a bold one-line header
+  // plus one body block. On 08-04 the bodies ran 393 and 426 words -- 2.5x a Six bullet, ~2.7 min of
+  // audio on a single forming trend, and it dragged. July ran ~330/idea. 300/340 spends exactly the
+  // ENUMERATION budget (listing five states where three make the point) which is item 1 on
+  // Craft_Standard's compression order; going below ~270 would start on the second explanation, and
+  // in a Signal idea the second explanation IS the mechanism -- the thing that makes a forming trend
+  // legible and separates a Signal from an Overnight item. That is the line where it stops being free.
+  const SIGNAL_UNIT = 300, SIGNAL_HARD = 340;
 
   for (const sectionName of SIX_SECTIONS) {
     const m = sixBody.match(new RegExp(`## ${sectionName}\\b`));
@@ -1480,10 +1487,16 @@ function checkSixSectionWordBudget(body: string): Failure[] {
     // The section budget must use THIS section's unit ceiling, not the default: The Signal runs
     // to 250/unit, so 3 x 180 would have condemned a compliant Signal the moment it was added.
     const sectionUnitHard = /Signal/i.test(sectionName) ? SIGNAL_HARD : UNIT_HARD;
-    const budget = 3 * sectionUnitHard + Math.min(depthUnits, 2) * (DEPTH - sectionUnitHard);
+    // The Signal is 2 IDEAS, not 3 units, so the generic 3-unit budget would never bind on it
+    // (3 x 340 = 1,020 against a section that should run ~665). Its two bold one-line headers are
+    // real blocks but are not ideas, hence the small headline allowance.
+    const isSignalSection = /Signal/i.test(sectionName);
+    const allowedUnits = isSignalSection ? 2 : 3;
+    const headlineAllowance = isSignalSection ? 80 : 0;
+    const budget = allowedUnits * sectionUnitHard + headlineAllowance + Math.min(depthUnits, 2) * (DEPTH - sectionUnitHard);
     if (total > budget) {
       out.push({ check: 'six-section-word-budget',
-        message: `OVER: ${sectionName} totals ${total} words across ${units.length} unit(s) against a ${budget}-word section budget (3 units x ${sectionUnitHard}${depthUnits ? ` + ${Math.min(depthUnits, 2)} depth-treatment` : ''}). The Six runs 2-3 units per section; compress or cut a unit.` });
+        message: `OVER: ${sectionName} totals ${total} words across ${units.length} unit(s) against a ${budget}-word section budget (${allowedUnits} x ${sectionUnitHard}${depthUnits ? ` + ${Math.min(depthUnits, 2)} depth-treatment` : ''}). The Six runs 2-3 units per section; compress or cut a unit.` });
     }
   }
   return out;
