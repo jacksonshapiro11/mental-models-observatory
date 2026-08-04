@@ -1474,10 +1474,10 @@ function checkSixSectionWordBudget(body: string): Failure[] {
       if (depth) depthUnits++;
       if (words > hard) {
         out.push({ check: 'six-section-word-budget',
-          message: `OVER: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (soft ceiling ${ceil}). Compress or split.${depth ? ' (DEPTH-TREATMENT)' : ''}` });
+          message: `OVER: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (hard ceiling ${hard}). Compress or split.${depth ? ' (DEPTH-TREATMENT)' : ''}` });
       } else if (words > ceil) {
         out.push({ check: 'six-section-word-budget',
-          message: `OVER: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (ceiling ${ceil}). Compress.${depth ? ' (DEPTH-TREATMENT)' : ''}` });
+          message: `OVER: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (soft ceiling ${ceil}). Compress.${depth ? ' (DEPTH-TREATMENT)' : ''}` });
       }
     });
 
@@ -1485,7 +1485,7 @@ function checkSixSectionWordBudget(body: string): Failure[] {
     // budget is the ALLOWED count (3) x the unit ceiling — not the count actually shipped.
     // Otherwise writing more units raises your own budget, which is the failure mode being fixed.
     // The section budget must use THIS section's unit ceiling, not the default: The Signal runs
-    // to 250/unit, so 3 x 180 would have condemned a compliant Signal the moment it was added.
+    // to SIGNAL_HARD/unit (340 as of 2026-08-04), so 3 x UNIT_HARD would mis-budget a compliant Signal.
     const sectionUnitHard = /Signal/i.test(sectionName) ? SIGNAL_HARD : UNIT_HARD;
     // The Signal is 2 IDEAS, not 3 units, so the generic 3-unit budget would never bind on it
     // (3 x 340 = 1,020 against a section that should run ~665). Its two bold one-line headers are
