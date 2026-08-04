@@ -53,6 +53,37 @@ function ageDays(dateStr: string): number {
   return Math.floor((Date.now() - d) / 86400000);
 }
 
+/**
+ * ANCHOR FORENSICS — IMP-129 (2026-08-04, RC7). "Enforcement ABSENT" is two completely
+ * different events wearing one message, and the fix for each is the opposite of the other:
+ *
+ *   REVERT      — the enforcement was lost (nightly rebase, a bad merge, a `git clean`).
+ *                 The fix is to RESTORE THE CODE. Re-pointing the ledger row would launder
+ *                 a real regression into a green registry.
+ *   SUPERSESSION— the enforcement was deliberately replaced by something stronger, and the
+ *                 row's anchor is now stale. The fix is to RE-POINT THE ROW at the surviving
+ *                 enforcement. Restoring the old code would resurrect a retired gate.
+ *
+ * On 2026-08-04 all three RED rows were supersessions and every one of them LOOKED like a
+ * revert: IMP-125's "BULLET LENGTH ADVISORY" was deleted by be7fdf0 ("delete the blind
+ * bullet-ceiling duplicate") after a stronger whole-brief length rail replaced it; IMP-041's
+ * and IMP-019's enforcement moved when `.claude/skills/publish-brief/scripts/publish.py`
+ * became a 643-byte shim pointing at the newly TRACKED `scripts/publish-brief.py`. A session
+ * that re-points on reflex is one bad night away from doing the same to a genuine revert.
+ *
+ * So the tool hands over the receipt instead of relying on the next session knowing the
+ * protocol: on any absent anchor, print the commit that removed it. `git log -S` answers
+ * "was this ever here, and what took it out" in one line, and the answer decides the fix.
+ */
+function anchorForensics(file: string, needle: string): string {
+  const res = spawnSync('git', ['log', '--oneline', '-S', needle, '--', file], { encoding: 'utf8', timeout: 30000 });
+  const lines = (res.stdout || '').trim().split('\n').filter(Boolean);
+  if (res.status !== 0 || lines.length === 0) {
+    return `\n      FORENSICS: git log -S finds NO commit that ever added this string to ${file}. Either the enforcement never landed, or it lives in a gitignored path. Treat as NEVER-LANDED, not as a revert.`;
+  }
+  return `\n      FORENSICS: last commit touching this string in ${file} → ${lines[0]}\n      Classify before you act: REVERT (restore the code) or SUPERSESSION (re-point the row at the enforcement that replaced it, and prove the behaviour survives with a run: leg). Re-pointing a REVERT is how a regression turns green.`;
+}
+
 /** Run ONE check leg. Returns null on pass, an error string on fail. */
 function runLeg(leg: string, id: string): string | null {
   leg = leg.trim();
@@ -65,7 +96,7 @@ function runLeg(leg: string, id: string): string | null {
     const fp = path.join(process.cwd(), file);
     if (!fs.existsSync(fp)) return `${id}: grep target missing: ${file}`;
     if (!fs.readFileSync(fp, 'utf8').includes(needle)) {
-      return `${id}: enforcement text ABSENT — "${needle}" not found in ${file} (the improvement was reverted or never landed)`;
+      return `${id}: enforcement text ABSENT — "${needle}" not found in ${file} (the improvement was reverted or never landed)` + anchorForensics(file, needle);
     }
     return null;
   }
@@ -88,7 +119,7 @@ function runLeg(leg: string, id: string): string | null {
       return `${id}: gitshow target missing from HEAD: ${file}\n      ${(res.stderr || '').trim().split('\n').slice(-2).join('\n      ')}`;
     }
     if (!(res.stdout || '').includes(needle)) {
-      return `${id}: enforcement ABSENT from committed tree — "${needle}" not in HEAD:${file} (working tree may still have it; nightly rebase will not)`;
+      return `${id}: enforcement ABSENT from committed tree — "${needle}" not in HEAD:${file} (working tree may still have it; nightly rebase will not)` + anchorForensics(file, needle);
     }
     return null;
   }
@@ -213,7 +244,19 @@ function selftest(): number {
     console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`);
     if (!ok) fails++;
   }
-  console.log(`\nverify-improvements selftest — ${cases.length - fails}/${cases.length} assertions passed`);
+  // IMP-129 — an absent anchor must arrive WITH its forensics, so the next session classifies
+  // revert-vs-supersession from a receipt instead of from a hunch. Both directions:
+  const t2 = (ok: boolean, label: string) => { console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`); if (!ok) fails++; };
+  {
+    const msg = executeCheck(`grep:${self}:${absent}`, 'SELFTEST').join('');
+    t2(/FORENSICS:/.test(msg), '[IMP-129] an absent anchor carries FORENSICS');
+    t2(/NEVER-LANDED/.test(msg), '[IMP-129] a string no commit ever added is classified NEVER-LANDED, not a revert');
+    // A REAL supersession from today: be7fdf0 deleted this string from validate-brief.ts.
+    const sup = executeCheck('grep:scripts/validate-brief.ts:BULLET LENGTH ADVISORY', 'SELFTEST').join('');
+    t2(/FORENSICS: last commit touching this string/.test(sup) && /SUPERSESSION/.test(sup),
+      '[IMP-129] a deleted-but-once-committed anchor names the commit that removed it (the real IMP-125 case)');
+  }
+  console.log(`\nverify-improvements selftest — ${cases.length + 3 - fails}/${cases.length + 3} assertions passed`);
   if (fails) { console.error('✗ SELFTEST FAILED — compound-check logic no longer bites both directions.'); return 1; }
   console.log('✓ compound-check (run:<selftest> && grep:<anchor> && gitshow:<anchor>) verified — a reverted enforcement now goes RED.');
   return 0;

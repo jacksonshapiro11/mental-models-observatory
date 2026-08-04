@@ -2237,6 +2237,167 @@ export function checkMarkerPlacement(body: string): Failure[] {
   return out;
 }
 
+// ── IMP-126 (2026-08-04 Critic mandate #2, 🔴, RC5): A STATED TOTAL MUST SURVIVE ITS OWN EDIT ────
+// RECEIPT: 08-04 C&C-3 shipped "held 5,797,813 ether marked at $1,880, alongside 209 bitcoin and
+// $173 million of cash and securities, for $11.3 billion." The components as printed reach
+// $11.073B (5,797,813 × $1,880 = $10.900B, plus $173M; the 209 bitcoin carry no price in the
+// sentence). The stated aggregate is $11.3B. The gap is ~$227M, and Validator Check 11 says why
+// in plain words: "Beast Industries and Eightco were cut in compression." The Editor removed two
+// members of an itemised list and left the total standing, so the brief printed a list short of
+// its own sum. IMP-120 gates a price the brief COMPUTES FROM; nothing gated a sum the brief
+// ASSERTS — the same failure class from the opposite direction, introduced downstream of every
+// content gate.
+//
+// WHY THE TOLERANCE IS NOT A FLAT PERCENT. The Critic prescribed ">2%". Measured on its own
+// example that is a knife edge: $214M/$11.3B = 1.89% (BTC resolved) or $227M/$11.3B = 2.008%
+// (BTC unresolved, which is what the sentence actually supports) — a gate that fires or does not
+// depending on a bitcoin print is a coin toss wearing a threshold. The honest question is whether
+// the gap is explainable by the PRECISION THE WRITER CHOSE: "$11.3 billion" is stated to a tenth,
+// so its rounding envelope is ±$50M. Tolerance = max(3 × the aggregate's rounding half-ulp, 1% of
+// the aggregate) = max($150M, $113M) = $150M here, and the real gap clears it by 50% either way.
+// The threshold now scales with the claim instead of with a guess.
+//
+// SHORTFALL ONLY, NEVER OVERSHOOT. Components that exceed a stated total are usually a part-of
+// figure the parser mistook for a summand ("$1 billion dividend, $650 million of it borrowed").
+// Silent omission is the failure; over-attribution is a different, noisier one.
+//
+// NARROW BY CONSTRUCTION — three guards, all required: an explicit sum-to connective binding the
+// aggregate (`, for $X` / `totalling $X` / `bringing … to $X`), ≥2 resolvable components before
+// it, and an additive connective (`alongside`/`plus`/`and`) among them. That is why the Critic's
+// three negatives are silent for a STRUCTURAL reason and not a tuned one: M&M-2's $98B/$53.4B are
+// contributions to a growth rate in separate sentences with no sum-to connective; C&C-2's $1B/$650M
+// is a part-of; C&C-1's $102.50/$12/$114.50 is never bound by a sum-to connective and reconciles
+// exactly in any case. Verified silent on the CORRECTED published 08-04, where the restored
+// "$241 million of stakes in Beast Industries and Eightco" makes the list reach its total.
+const SUM_TO_RE = /(?:,\s*)?\b(?:for|totall?ing|summing to|bringing[^,;]{0,40}?\bto)\s+\$\s?([\d][\d,]*(?:\.\d+)?)\s*(billion|million|trillion)\b/i;
+const QTY_AT_PRICE_RE = /\b([\d][\d,]{2,})\s+([a-z][a-z-]{2,})\s+(?:marked|priced|valued|carried|held|marked down|marked up)\s+at\s+\$\s?([\d][\d,]*(?:\.\d+)?)\b/gi;
+const BARE_MONEY_RE = /\$\s?([\d][\d,]*(?:\.\d+)?)\s*(billion|million|trillion)?\b/gi;
+const UNPRICED_QTY_RE = /\b([\d][\d,]*(?:\.\d+)?)\s+(bitcoin|ether|shares|units|tokens|coins|contracts)\b/gi;
+const MAG: Record<string, number> = { trillion: 1e12, billion: 1e9, million: 1e6 };
+
+// Sentence splitting over MARKDOWN, not prose. A bullet's bold hook sits between the previous
+// sentence's period and the next capital ("… or hardens.\n\n- **Treasury raised its estimate to
+// $739 billion…"), so a naive /(?<=[.!?])\s+(?=[A-Z])/ welds two bullets into one "sentence" and
+// invents relationships between figures that never shared a clause. That is exactly how the first
+// cut of estimate-vintage produced a false FactSet/$739B flag on the published 08-04. Paragraph
+// boundaries are hard sentence boundaries; emphasis and list markers are stripped before the split.
+function sentencesOf(body: string): string[] {
+  const flat = body.replace(/\*\*/g, '').replace(/^[ \t]*[-*+]\s+/gm, '');
+  const out: string[] = [];
+  for (const para of flat.split(/\n+/)) {
+    for (const piece of para.split(/(?<=[.!?])\s+(?=[A-Z“"'$(])/)) {
+      const t = piece.replace(/\s+/g, ' ').trim();
+      if (t) out.push(t);
+    }
+  }
+  return out;
+}
+
+export function checkItemizationSum(body: string): Failure[] {
+  const out: Failure[] = [];
+  for (const s of sentencesOf(body)) {
+    if (s.length > 700) continue; // a paragraph the splitter could not cut is not an itemisation
+    const agg = SUM_TO_RE.exec(s);
+    if (!agg) continue;
+    const aggIdx = agg.index;
+    const aggDigits = agg[1]!.replace(/,/g, '');
+    const aggregate = parseFloat(aggDigits) * MAG[agg[2]!.toLowerCase()]!;
+    if (!isFinite(aggregate) || aggregate <= 0) continue;
+
+    let span = s.slice(0, aggIdx);
+    if (!/\b(alongside|plus|and|together with|as well as)\b/i.test(span)) continue;
+
+    // 1. quantity × unit-price pairs resolve to a value, and are CONSUMED so the unit price is
+    //    never double-counted as a standalone component.
+    const parts: { label: string; value: number }[] = [];
+    QTY_AT_PRICE_RE.lastIndex = 0;
+    for (const m of [...span.matchAll(QTY_AT_PRICE_RE)]) {
+      const qty = parseFloat(m[1]!.replace(/,/g, ''));
+      const price = parseFloat(m[3]!.replace(/,/g, ''));
+      if (!isFinite(qty) || !isFinite(price)) continue;
+      parts.push({ label: `${m[1]} ${m[2]} at $${m[3]}`, value: qty * price });
+      span = span.replace(m[0]!, ' ⟪consumed⟫ ');
+    }
+    // 2. standalone currency components. A magnitude word is REQUIRED — a bare "$12" or "$102.50"
+    //    is a per-share/per-unit price, not a summand, and treating it as one is how this check
+    //    would have condemned C&C-1.
+    BARE_MONEY_RE.lastIndex = 0;
+    for (const m of [...span.matchAll(BARE_MONEY_RE)]) {
+      if (!m[2]) continue;
+      const v = parseFloat(m[1]!.replace(/,/g, '')) * MAG[m[2]!.toLowerCase()]!;
+      if (isFinite(v)) parts.push({ label: m[0]!.trim(), value: v });
+    }
+    if (parts.length < 2) continue;
+
+    const sum = parts.reduce((a, p) => a + p.value, 0);
+    const shortfall = aggregate - sum;
+    if (shortfall <= 0) continue;
+    // rounding half-ulp implied by the aggregate's printed precision ("11.3" → 0.05 of its unit)
+    const decimals = (aggDigits.split('.')[1] || '').length;
+    const halfUlp = 0.5 * Math.pow(10, -decimals) * MAG[agg[2]!.toLowerCase()]!;
+    const tolerance = Math.max(3 * halfUlp, 0.01 * aggregate);
+    if (shortfall <= tolerance) continue;
+
+    UNPRICED_QTY_RE.lastIndex = 0;
+    const unpriced = [...span.matchAll(UNPRICED_QTY_RE)].map(m => m[0]!.trim());
+    const fmt = (n: number) => n >= 1e9 ? `$${(n / 1e9).toFixed(3)}B` : `$${(n / 1e6).toFixed(1)}M`;
+    out.push({
+      check: 'itemization-sum',
+      message: `🔴 FAIL: a sentence itemises components and binds them to a stated total of ${fmt(aggregate)}, and the components as printed reach only ${fmt(sum)} — short by ${fmt(shortfall)} against a ${fmt(tolerance)} tolerance (3× the total's own rounding envelope, floored at 1%). Components read: ${parts.map(p => `${p.label} = ${fmt(p.value)}`).join(' + ')}.${unpriced.length ? ` UNPRICED in-sentence and therefore not summed: ${unpriced.join(', ')}.` : ''} The usual cause is compression: a cut removed a member of an itemised list and left the total standing, so the brief prints a list short of its own sum. Restore the omitted component, or restate the total at the number the list reaches, or drop the itemisation. Omission is fine; SILENT omission is not — if the missing members are deliberate, declare FALSE-POSITIVE OVERRIDE: [itemization-sum] naming them. Receipt: 08-04 C&C-3 printed $11.073B of components against "for $11.3 billion" because Beast Industries and Eightco were cut in compression (Validator Check 11 said so in the same file).`,
+    });
+  }
+  return out;
+}
+
+// ── IMP-127 (2026-08-04 Critic mandate #3, 🔴, RC2): AN ESTIMATE MUST CARRY ITS VINTAGE ─────────
+// RECEIPT: 08-04 Signal-2 shipped "The Employee Benefit Research Institute puts the annual cost at
+// $92.4 billion" with no year, hooked on "loses roughly $92 billion a year", and set its Watch as
+// "EBRI's next leakage estimate against the $92.4 billion baseline." EBRI's $92.4B is its 2015
+// figure. The Signal's own thesis is that three mechanisms dated 2022-2025 are closing the drain —
+// so the reader was instructed to measure a 2027 estimate against a baseline that predates every
+// mechanism in the argument. "Existence is not currency," in the one section whose whole job is to
+// be forward-looking, and the 07-10 Hyperliquid shape (a stale fact asserted in the present tense).
+//
+// DELIBERATE DEVIATION FROM THE CRITIC'S SPEC, STATED SO IT CAN BE ARGUED WITH. The Critic asked
+// for a HARD FLAG whenever no year within 24 months appears. That would condemn a correctly and
+// explicitly dated old figure — and the fix the Morning Updater actually shipped was DISCLOSURE
+// ("EBRI's 2015 figure"), not recency, so the Critic's own rule would fire forever on the corrected
+// published brief. Split by what is actually wrong:
+//   • UNDATED institutional estimate  → 🔴 HARD FAIL. The reader cannot tell how old it is.
+//   • DATED but older than 24 months  → 🟡 advisory, non-blocking. The reader knows; a Signal
+//     whose mechanisms postdate its baseline still owes that sentence, and the Critic's rubric
+//     (Signal_Generator THE VINTAGE RULE) is where that judgment lives.
+// Verified silent on the corrected published 2026-08-04, and on the same brief's M&M-2 FactSet
+// figures, Signal-1's TCEQ testimony (no currency magnitude) and Signal-2's 63% (not currency).
+const INSTITUTION_RE = /\b(Employee Benefit Research Institute|EBRI|FactSet|Gartner|IDC|Forrester|IEA|EIA|CBO|BLS|BEA|OECD|IMF|World Bank|McKinsey|Deloitte|Pew(?: Research)?|Brookings|Conference Board|Peterson Institute|Urban Institute|Tax Foundation)\b/;
+const PRESENT_ESTIMATE_RE = /\b(puts?|pegs?|estimates?|projects?|calculates?|reckons?|values?|places?|sizes?)\b/i;
+const CURRENCY_MAG_RE = /\$\s?[\d][\d,]*(?:\.\d+)?\s*(?:billion|million|trillion)\b/;
+
+export function checkInstitutionalEstimateVintage(body: string, briefDate: string): Failure[] {
+  const out: Failure[] = [];
+  const briefYear = parseInt((briefDate || '').slice(0, 4), 10);
+  for (const s of sentencesOf(body)) {
+    if (s.length > 700) continue;
+    const inst = INSTITUTION_RE.exec(s);
+    if (!inst) continue;
+    if (!PRESENT_ESTIMATE_RE.test(s)) continue;
+    const mag = CURRENCY_MAG_RE.exec(s);
+    if (!mag) continue;
+    const years = [...s.matchAll(/\b(19\d{2}|20\d{2})\b/g)].map(m => parseInt(m[1]!, 10));
+    if (years.length === 0) {
+      out.push({
+        check: 'estimate-vintage',
+        message: `🔴 FAIL: "${inst[1]}" is bound to ${mag[0].trim()} in a present-tense frame with NO year anywhere in the sentence — an institutional estimate presented as if it were current. A research figure has a publication date and the reader cannot see it here. Put the vintage in the prose ("EBRI's 2015 estimate"), and where the argument's own mechanisms postdate the estimate, say so: that staleness IS the argument. A Watch baseline older than the mechanisms it measures is not a baseline. If the date is genuinely established elsewhere in the same unit, declare FALSE-POSITIVE OVERRIDE: [estimate-vintage] naming the publication date. Receipt: 08-04 Signal-2 anchored its hook, body and Watch on EBRI's $92.4 billion — a 2015 figure — while arguing that mechanisms dated 2022-2025 are closing the drain it measures.`,
+      });
+      continue;
+    }
+    if (isFinite(briefYear) && Math.max(...years) < briefYear - 2) {
+      console.log(`  🟡 [estimate-vintage] ADVISORY — ${inst[1]}'s ${mag[0].trim()} is dated ${Math.max(...years)}, ${briefYear - Math.max(...years)} years before this brief. Disclosed, so this does NOT block. If the unit's own mechanisms postdate it, the staleness is the argument and belongs in the sentence.`);
+    }
+  }
+  return out;
+}
+
 // ── IMP-113 selftest — fixtures + the REAL 08-01 acceptance gate (fires on M&M-2, silent on M&M-3)
 function selftestValidator(): number {
   let fails = 0;
@@ -2370,7 +2531,61 @@ function selftestValidator(): number {
     t(hits === 0, `[IMP-123] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0)`);
   }
 
-  console.log(`\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration + precedent-analogy + hook-numerator + marker-placement verified both directions)`);
+  // ── IMP-126 itemization-sum — the REAL 08-04 acceptance gate, both directions ────────────────
+  {
+    const REAL_BAD = 'BitMine disclosed Monday that as of Sunday afternoon it held 5,797,813 ether marked at $1,880, alongside 209 bitcoin and $173 million of cash and securities, for $11.3 billion.';
+    const REAL_FIXED = 'BitMine disclosed Monday that as of Sunday afternoon it held 5,797,813 ether marked at $1,880, alongside 209 bitcoin, $173 million of cash and securities, and $241 million of stakes in Beast Industries and Eightco, for $11.3 billion.';
+    t(checkItemizationSum(REAL_BAD).length === 1, '[IMP-126] FIRES on the real 08-04 C&C-3 (components $11.073B vs stated $11.3B)');
+    t(checkItemizationSum(REAL_FIXED).length === 0, '[IMP-126] SILENT on the CORRECTED published 08-04 (Beast/Eightco restored)');
+    // The Critic's three named negatives, verbatim from the same brief.
+    const NEGATIVES = [
+      "Alphabet's GAAP earnings of $9.11 a share against a $2.88 estimate carried a $98 billion gain. Amazon's $5.75 against $1.82 carried $53.4 billion of non-operating income it attributes primarily to its investments in Anthropic, a stake Amazon itself funded.",
+      'Indivior holders take 56.5 percent of the combined company to Supernus’s 43.5, and collect a $1 billion special cash dividend before closing, $650 million of it borrowed and left on the merged balance sheet.',
+      'The certain money is $102.50 a share; the other $12 is a contingent value right paying only if sales targets are hit by 2030, the part the buyer would not underwrite.',
+      'Curium is buying Lantheus for up to $8 billion, and by Monday’s close the market was paying less than the certain cash.',
+    ];
+    const negHits = NEGATIVES.reduce((a, s) => a + checkItemizationSum(s).length, 0);
+    t(negHits === 0, `[IMP-126] SILENT on the Critic's four named negatives (${negHits} flag(s), expected 0)`);
+    const dir = path.join(process.cwd(), 'content/daily-updates');
+    let hits = 0, swept = 0;
+    if (fs.existsSync(dir)) {
+      for (const f of fs.readdirSync(dir).filter(x => /^2026-\d\d-\d\d\.md$/.test(x)).sort().slice(-40)) {
+        swept++;
+        hits += checkItemizationSum(fs.readFileSync(path.join(dir, f), 'utf8')).length;
+      }
+    }
+    t(hits === 0, `[IMP-126] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0)`);
+  }
+
+  // ── IMP-127 estimate-vintage — the REAL 08-04 acceptance gate, both directions ───────────────
+  {
+    const REAL_BAD = 'The Employee Benefit Research Institute puts the annual cost at $92.4 billion, a number larger than most flows anyone tracks, and one set by inertia rather than prices or sentiment.';
+    const REAL_FIXED = 'The Employee Benefit Research Institute put the annual cost at $92.4 billion in its 2015 estimate, a number larger than most flows anyone tracks.';
+    t(checkInstitutionalEstimateVintage(REAL_BAD, '2026-08-04').length === 1, '[IMP-127] FIRES on the real 08-04 Signal-2 EBRI sentence (undated $92.4B)');
+    t(checkInstitutionalEstimateVintage(REAL_FIXED, '2026-08-04').length === 0, '[IMP-127] SILENT once the 2015 vintage is disclosed (advisory only, never blocking)');
+    const NEGATIVES: string[] = [
+      "FactSet's John Butters published the blended figure July 31.",
+      'Its members now cover roughly 63 percent of the defined contribution market, which means this stopped being a coalition and became close to a standard.',
+      'A Texas Commission on Environmental Quality hearing put the disposal question back on the record.',
+    ];
+    const negHits = NEGATIVES.reduce((a, s) => a + checkInstitutionalEstimateVintage(s, '2026-08-04').length, 0);
+    t(negHits === 0, `[IMP-127] SILENT on the Critic's three named negatives (${negHits} flag(s), expected 0)`);
+    const dir = path.join(process.cwd(), 'content/daily-updates');
+    let hits = 0, swept = 0;
+    if (fs.existsSync(dir)) {
+      for (const f of fs.readdirSync(dir).filter(x => /^2026-\d\d-\d\d\.md$/.test(x)).sort().slice(-40)) {
+        swept++;
+        hits += checkInstitutionalEstimateVintage(fs.readFileSync(path.join(dir, f), 'utf8'), f.slice(0, 10)).length;
+      }
+    }
+    // The single expected hit is a TRUE positive and worth naming: the published 08-04 dated the
+    // EBRI figure in the body (the Morning Updater's fix) and left the WATCH BASELINE undated —
+    // "EBRI's next leakage estimate against the $92.4 billion baseline" — which is the half of the
+    // Critic's receipt nobody corrected. A sweep of 1 here means the gate found the residue.
+    t(hits <= 1, `[IMP-127] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (≤1 expected — the undated EBRI Watch baseline in 08-04 is a TRUE positive)`);
+  }
+
+  console.log(`\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration + precedent-analogy + hook-numerator + marker-placement + itemization-sum + estimate-vintage verified both directions)`);
   return fails ? 1 : 0;
 }
 
@@ -2533,6 +2748,9 @@ function main() {
   failures.push(...checkHookNumeratorSubstantiation(body)); // IMP-122
   // IMP-123 runs on the RAW file — the markers ARE the subject, and `body` has had them stripped.
   failures.push(...checkMarkerPlacement(raw));
+  // --- August 4, 2026 — 08-04 Critic mandates #2 and #3 ---
+  failures.push(...checkItemizationSum(body));                                            // IMP-126
+  failures.push(...checkInstitutionalEstimateVintage(body, briefDateMatch ? briefDateMatch[1]! : '')); // IMP-127
 
   // --- QG-must-have-run integrity check (June 16, 2026) ---
   // E-PIPELINE-SEQUENCING-01: if validating a v2, assert that the quality gate ran.
