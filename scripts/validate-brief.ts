@@ -917,6 +917,60 @@ function checkEventLeadSingleHome(body: string): Failure[] {
  * Counter-case must be ≥30% of total Take words.
  * No more relying on prose-layer measurement that erodes.
  */
+// ── Counter-case, everywhere ────────────────────────────────────────────────────────────────
+// system/Counter_Case_Standard.md is the single home. This is its single IMPLEMENTATION: one helper,
+// many call sites. Duplicating the checks per section would be the same failure the standard exists
+// to prevent -- four homes for one rule means three drift.
+//
+// ALL ADVISORY. Sweep 2026-08-05 over 30 briefs: first person 46%, proportion 43%, banned form 26%.
+// Firing on half of accepted work is far too hot to block; promote one at a time under ~15%.
+const CC_ARGUMENT = /\b(because|argues?|holds?|contends?|the case against|against it|incentive|mistaken|however|the objection|would nod|is not|are not|reads? as|on that reading|the strongest)\b/i;
+const CC_OBSERVABLE_ONLY = /\*\*\s*Watch\b|\bthe tell\b|\bwatch (for |whether |the )/i;
+const CC_FIRST_PERSON = /\b(I|my|I'd|I'm)\b/;
+
+function counterCaseAdvisories(block: string, label: string): void {
+  // BANNED FORM: an observable standing in for an objection. A Watch clause is legal as a CLOSING
+  // beat after a real argument; it is never the argument. Naming a metric is not naming an objection,
+  // and it can be written by somebody who never read the story.
+  if (CC_OBSERVABLE_ONLY.test(block) && !CC_ARGUMENT.test(block)) {
+    console.log(`  \ud83d\udfe1 [counter-case] ${label}: names an OBSERVABLE with no argument beside it. "Watch X" is a closing beat, never the objection \u2014 system/Counter_Case_Standard.md.`);
+  }
+  // FIRST PERSON: the counter is about the claim, not the author. This is news, not a column.
+  if (CC_FIRST_PERSON.test(block)) {
+    console.log(`  \ud83d\udfe1 [counter-case] ${label}: FIRST PERSON. State the error, not the author\u2019s uncertainty \u2014 "the signal was timing, not structure".`);
+  }
+}
+
+// Applies the standard beyond The Take: every Signal idea, and every Six unit carrying a forward read.
+function checkCounterCaseEverywhere(body: string): Failure[] {
+  const sixStart = body.indexOf('# \u25b8 THE SIX');
+  const sixEnd = body.indexOf('# \u25b8 THE TAKE');
+  if (sixStart === -1 || sixEnd === -1) return [];
+  const six = body.slice(sixStart, sixEnd);
+
+  // The Signal \u2014 two ideas, each a bold header plus one body block.
+  const sigIdx = six.indexOf('## The Signal');
+  if (sigIdx !== -1) {
+    const sig = six.slice(sigIdx);
+    const blocks = sig.split(/\n\s*\n/).map((b) => b.trim())
+      .filter((b) => b.length > 0 && !/^#{1,6} /.test(b) && b.split(/\s+/).length > 60);
+    blocks.forEach((b, i) => counterCaseAdvisories(b, `The Signal idea ${i + 1}`));
+  }
+
+  // The Six \u2014 only units that actually project forward carry a counter-case obligation.
+  for (const name of ['Markets & Macro', 'Companies & Crypto', 'AI & Tech', 'Geopolitics']) {
+    const m = six.match(new RegExp(`## ${name.replace(/&/g, '&')}\\b`));
+    if (!m || m.index === undefined) continue;
+    const rest = six.slice(m.index + m[0].length);
+    const nx = rest.search(/\n#{1,2} /);
+    const text = nx === -1 ? rest : rest.slice(0, nx);
+    text.split(/\n\s*\n/).map((u) => u.trim())
+      .filter((u) => u.split(/\s+/).length > 60 && CC_OBSERVABLE_ONLY.test(u))
+      .forEach((u, i) => counterCaseAdvisories(u, `${name} forward read ${i + 1}`));
+  }
+  return [];
+}
+
 function checkTakeCounterCase(body: string): Failure[] {
   // Counter-case: see system/Counter_Case_Standard.md (the operational form of
   // Deep_Analysis_Standard beat two, "a genuine steelman... written so well that the people who hold
@@ -965,15 +1019,7 @@ function checkTakeCounterCase(body: string): Failure[] {
 
   // (a) BANNED FORM \u2014 a counter whose only content is a date plus a metric can be written by
   // somebody who never read the story. It names a metric instead of an argument.
-  const hasDate = /\b(20\d\d|Q[1-4]|January|February|March|April|May|June|July|August|September|October|November|December)\b/.test(counterBody);
-  const hasArgumentVerb = /\b(because|argues?|holds?|contends?|the case|incentive|mistaken|strawman|would nod|reads?|means?|is not|are not)\b/i.test(counterBody);
-  if (hasDate && !hasArgumentVerb) {
-    console.log('  \ud83d\udfe1 [take-counter-case] BANNED FORM: names a date and a metric but no argument. "Watch X by date Y" is a closing beat, never the objection itself.');
-  }
-  // (b) FIRST PERSON \u2014 the counter is about the claim, not the author.
-  if (/\b(I|my|I'd|I'm)\b/.test(counterBody)) {
-    console.log('  \ud83d\udfe1 [take-counter-case] FIRST PERSON in the counter-case. State the error, not the author\u2019s uncertainty: "the signal was timing, not structure".');
-  }
+  counterCaseAdvisories(counterBody, 'The Take');
   // (c) PROPORTION \u2014 a CEILING, replacing the old floor. If the objection needs more room than
   // the argument, there is no read; there is a question.
   if (counterWords > caseWords) {
@@ -2656,6 +2702,7 @@ function main() {
   failures.push(...checkEntityLeadSingleHome(body));
   failures.push(...checkEventLeadSingleHome(body));
   failures.push(...checkTakeCounterCase(body));
+  failures.push(...checkCounterCaseEverywhere(body));
   failures.push(...checkSignalStaleness(body, briefDir, absPath));
   failures.push(...checkWildCardStaleness(body, briefDir, absPath));
   failures.push(...checkDashboardSentenceCeiling(body));
