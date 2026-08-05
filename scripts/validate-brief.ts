@@ -918,52 +918,70 @@ function checkEventLeadSingleHome(body: string): Failure[] {
  * No more relying on prose-layer measurement that erodes.
  */
 function checkTakeCounterCase(body: string): Failure[] {
+  // Counter-case: see system/Counter_Case_Standard.md (the operational form of
+  // Deep_Analysis_Standard beat two, "a genuine steelman... written so well that the people who hold
+  // it would nod").
+  //
+  // WHAT CHANGED 2026-08-05. This check used to require the counter-case to be >=30% of the Take BY
+  // WORD COUNT, blocking. Nothing verified an objection was present, so 30% of hedging passed -- and
+  // the floor was gamed in the obvious direction: the 08-04 editor log reads "The Take -- main case
+  // only -- which raises the counter-case ratio (39.1%)." The ratio was hit by COMPRESSING THE CASE.
+  // A metric satisfiable without the thing it measures changing is the Constitution's law in one line.
+  //
+  // PRESENCE stays blocking, and now also accepts an explicit "no serious argument" declaration --
+  // which is what stops manufacturing: a format demanding a counter every day gets slop every day.
+  // Everything else is ADVISORY: those thresholds are taste, not measurement, and per this repo's own
+  // standard (HOOK_COUNT_MIN/MAX: "both bounds were set by the false-positive sweep, not by taste")
+  // they do not block until replayed. Net effect versus the old check is a LOOSENING.
   const out: Failure[] = [];
-  const takeStart = body.indexOf('# ▸ THE TAKE');
-  const takeEnd = body.indexOf('# ▸ INNER GAME');
+  const takeStart = body.indexOf('# \u25b8 THE TAKE');
+  const takeEnd = body.indexOf('# \u25b8 INNER GAME');
   if (takeStart === -1 || takeEnd === -1) return out;
-
   const takeBody = body.slice(takeStart, takeEnd);
-  const totalWords = takeBody.split(/\s+/).filter(w => w.length > 0).length;
+  const totalWords = takeBody.split(/\s+/).filter((w) => w.length > 0).length;
 
-  // Find counter-case section: "Where this might be wrong" or "Where this breaks" or similar
-  const counterHeaders = [
-    'where this might be wrong',
-    'where this breaks',
-    'where this could be wrong',
-    'the counter-case',
-    'counter-case',
-    'what could go wrong',
-  ];
-
-  let counterStart = -1;
-  const takeLower = takeBody.toLowerCase();
-  for (const h of counterHeaders) {
-    const idx = takeLower.indexOf(h);
-    if (idx !== -1) {
-      counterStart = idx;
-      break;
-    }
+  const NONE_RE = /no (serious|real|strong) (argument|objection|counter)/i;
+  if (NONE_RE.test(takeBody)) {
+    console.log('  \u26aa TAKE COUNTER-CASE: declared none ("no serious argument"). Legal and preferred when true \u2014 rate-tracked.');
+    return out;
   }
 
+  const counterHeaders = ['where this might be wrong', 'where this breaks', 'where this could be wrong',
+    'the counter-case', 'counter-case', 'what could go wrong', 'the case against', 'against it'];
+  const takeLower = takeBody.toLowerCase();
+  let counterStart = -1;
+  for (const h of counterHeaders) { const idx = takeLower.indexOf(h); if (idx !== -1) { counterStart = idx; break; } }
+
   if (counterStart === -1) {
-    out.push({
-      check: 'take-counter-case',
-      message: `No counter-case section found in The Take. Look for "Where this might be wrong" or equivalent header. Counter-case is mandatory and must be ≥30% of total Take words.`,
-    });
+    out.push({ check: 'take-counter-case',
+      message: `\ud83d\udd34 No counter-case in The Take, and no declared "no serious argument against this one". One or the other is required \u2014 see system/Counter_Case_Standard.md.` });
     return out;
   }
 
   const counterBody = takeBody.slice(counterStart);
-  const counterWords = counterBody.split(/\s+/).filter(w => w.length > 0).length;
-  const pct = (counterWords / totalWords * 100).toFixed(1);
+  const counterWords = counterBody.split(/\s+/).filter((w) => w.length > 0).length;
+  const caseWords = totalWords - counterWords;
+  const pct = ((counterWords / totalWords) * 100).toFixed(1);
 
-  if (counterWords / totalWords < 0.30) {
-    out.push({
-      check: 'take-counter-case',
-      message: `Take counter-case is ${pct}% (${counterWords}/${totalWords} words). Minimum is 30%. EXPAND the counter-case with additional evidence for the opposing view, a second falsification test, or expansion of existing reasoning. Do NOT shrink the main Take to hit the ratio.`,
-    });
+  // (a) BANNED FORM \u2014 a counter whose only content is a date plus a metric can be written by
+  // somebody who never read the story. It names a metric instead of an argument.
+  const hasDate = /\b(20\d\d|Q[1-4]|January|February|March|April|May|June|July|August|September|October|November|December)\b/.test(counterBody);
+  const hasArgumentVerb = /\b(because|argues?|holds?|contends?|the case|incentive|mistaken|strawman|would nod|reads?|means?|is not|are not)\b/i.test(counterBody);
+  if (hasDate && !hasArgumentVerb) {
+    console.log('  \ud83d\udfe1 [take-counter-case] BANNED FORM: names a date and a metric but no argument. "Watch X by date Y" is a closing beat, never the objection itself.');
   }
+  // (b) FIRST PERSON \u2014 the counter is about the claim, not the author.
+  if (/\b(I|my|I'd|I'm)\b/.test(counterBody)) {
+    console.log('  \ud83d\udfe1 [take-counter-case] FIRST PERSON in the counter-case. State the error, not the author\u2019s uncertainty: "the signal was timing, not structure".');
+  }
+  // (c) PROPORTION \u2014 a CEILING, replacing the old floor. If the objection needs more room than
+  // the argument, there is no read; there is a question.
+  if (counterWords > caseWords) {
+    console.log(`  \ud83d\udfe1 [take-counter-case] Counter (${counterWords}w) runs LONGER than the case (${caseWords}w). The objection should never outweigh the argument.`);
+  } else if (counterWords / totalWords > 0.40) {
+    console.log(`  \ud83d\udfe1 [take-counter-case] Counter is ${pct}% of The Take (ceiling ~40%).`);
+  }
+  console.log(`  \u2139 TAKE COUNTER-CASE: ${counterWords}w counter / ${caseWords}w case (${pct}%). Advisory pending a gate-replay sweep \u2014 thresholds are taste until measured.`);
   return out;
 }
 
