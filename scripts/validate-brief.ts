@@ -1466,7 +1466,8 @@ const NAMED_SECTION_BUDGETS: Record<string, number> = {
   // period you are correcting ratifies the regression: THE MODEL's old 780 was 1.9x its own
   // July median of 414, so a section that had doubled still passed as "within normal range".
   // The Signal and The Wild Card moved OUT of this table: they are Six subsections, now measured
-  // per-unit by checkSixSectionWordBudget where the 220/250 Signal ceiling already lived.
+  // per-unit by checkSixSectionWordBudget where the Signal ceiling lives (220/250 when this note was
+  // written; retuned to 300/340 on 2026-08-04 — see SIGNAL_UNIT/SIGNAL_HARD, which are canonical).
   '▸ THE TAKE':     640,  // July median 577
   '▸ THE MODEL':    480,  // July median 414   (was 780)
   '▸ DISCOVERY':    540,  // July median 478
@@ -2049,7 +2050,7 @@ function checkQGAITDifferentiation(briefDir: string, absPath: string): Failure[]
     const diffLine = qgContent.split('\n').find(l => l.includes('AI&T DIFFERENTIATION:'));
     if (diffLine) {
       const hasPass = /→\s*(PASS|🔴 all-consensus → replaced)/.test(diffLine);
-      const hasDifferentiated = /DIFFERENTIATED:/.test(diffLine);
+      const hasDifferentiated = /DIFFERENTIATED\s*[:(]/.test(diffLine);
       if (!hasPass) {
         out.push({
           check: 'qg-ait-differentiation-invalid-verdict',
