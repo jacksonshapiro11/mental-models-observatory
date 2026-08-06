@@ -914,7 +914,8 @@ function checkEventLeadSingleHome(body: string): Failure[] {
 
 /**
  * Check 4b-CODE: Take Counter-Case Percentage.
- * Counter-case must be ≥30% of total Take words.
+ * Counter-case: see system/Counter_Case_Standard.md. The >=30% WORD FLOOR IS DELETED (it was
+ * satisfiable by 30% of hedging, and was gamed by compressing the case). Proportion is now a CEILING.
  * No more relying on prose-layer measurement that erodes.
  */
 // ── Counter-case, everywhere ────────────────────────────────────────────────────────────────
@@ -924,7 +925,17 @@ function checkEventLeadSingleHome(body: string): Failure[] {
 //
 // ALL ADVISORY. Sweep 2026-08-05 over 30 briefs: first person 46%, proportion 43%, banned form 26%.
 // Firing on half of accepted work is far too hot to block; promote one at a time under ~15%.
-const CC_ARGUMENT = /\b(because|argues?|holds?|contends?|the case against|against it|incentive|mistaken|however|the objection|would nod|is not|are not|reads? as|on that reading|the strongest)\b/i;
+// KNOWN PROXY. This is a regex standing in for "does this passage contain an argument", which is
+// exactly Root_Cause_Library PATTERN 8 (THE COUNTABLE PROXY). It is deliberately kept ADVISORY for
+// that reason. Documented replacement path: attribution + stakes, or a set-difference against the
+// claim's own evidence -- not more vocabulary. Do not promote to blocking on regex alone.
+//
+// Removed 2026-08-05 (Cursor): 'the case against' and 'against it' are the two legal counter-case
+// HEADERS, so counting them as argument tokens made the test a tautology -- writing the header
+// satisfied "has an argument". 'holds' removed: in a markets brief it almost always means a level
+// holding, not "holds that". Contractions added: isn't/aren't never matched is not/are not, so
+// natural prose was punished.
+const CC_ARGUMENT = /\b(because|argues?|contends?|maintains?|incentive|mistaken|however|the objection|would nod|is ?n[o']t|are ?n[o']t|is not|are not|reads? as|on that reading|the strongest|strawman|overstates?|understates?)\b/i;
 const CC_OBSERVABLE_ONLY = /\*\*\s*Watch\b|\bthe tell\b|\bwatch (for |whether |the )/i;
 const CC_FIRST_PERSON = /\b(I|my|I'd|I'm)\b/;
 
@@ -932,7 +943,13 @@ function counterCaseAdvisories(block: string, label: string): void {
   // BANNED FORM: an observable standing in for an objection. A Watch clause is legal as a CLOSING
   // beat after a real argument; it is never the argument. Naming a metric is not naming an objection,
   // and it can be written by somebody who never read the story.
-  if (CC_OBSERVABLE_ONLY.test(block) && !CC_ARGUMENT.test(block)) {
+  // Scope the argument test to the observable's NEIGHBOURHOOD. Testing the whole block meant a thesis
+  // containing "is not" hundreds of words earlier silenced the advisory on a Watch-only closer.
+  const om = block.match(CC_OBSERVABLE_ONLY);
+  const near = om && om.index !== undefined
+    ? block.slice(Math.max(0, om.index - 220), Math.min(block.length, om.index + 320))
+    : block;
+  if (om && !CC_ARGUMENT.test(near)) {
     console.log(`  \ud83d\udfe1 [counter-case] ${label}: names an OBSERVABLE with no argument beside it. "Watch X" is a closing beat, never the objection \u2014 system/Counter_Case_Standard.md.`);
   }
   // FIRST PERSON: the counter is about the claim, not the author. This is news, not a column.
@@ -994,7 +1011,11 @@ function checkTakeCounterCase(body: string): Failure[] {
   const takeBody = body.slice(takeStart, takeEnd);
   const totalWords = takeBody.split(/\s+/).filter((w) => w.length > 0).length;
 
-  const NONE_RE = /no (serious|real|strong) (argument|objection|counter)/i;
+  // BOUNDARY IS LOAD-BEARING (fixed 2026-08-05, found by Cursor). Without it, "no real COUNTERparty
+  // risk" matched "no real counter" and early-returned -- switching off the blocking presence gate and
+  // every advisory below it. counterweight and counterfactual did the same. A blocker disabled by an
+  // unrelated noun is the worst failure shape in this file.
+  const NONE_RE = /\bno (serious|real|strong) (argument|objection|counter)(?![-\w])/i;
   if (NONE_RE.test(takeBody)) {
     console.log('  \u26aa TAKE COUNTER-CASE: declared none ("no serious argument"). Legal and preferred when true \u2014 rate-tracked.');
     return out;
