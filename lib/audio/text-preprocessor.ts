@@ -1890,21 +1890,29 @@ const LIGHT_WEEKLY_TRANSITION_OVERRIDES: Record<string, string> = {
   'the-model': 'And finally, this week\'s mental model.',
 };
 
-// ─── THE LINE — beat between items (v2, 2026-08) ─────────────────────────────
-// THE LINE is 8-12 items of ~36 words each. Spoken with ordinary paragraph
-// pacing they blur into a list being recited — the exact failure the handoff
-// flagged as "most likely to be wrong and least likely to be caught by a test."
-// This joins the items with the same '...' beat the episode already uses
-// between sections (the TTS reads '...' as a short breath; cleanFormatting
-// leaves it alone), so every item lands as its own thought in BOTH the GPT
-// path and faithful voicing. Pure — exercised by audio-gate-regression.
+// THE LINE - spoken cue + beat between items (v2, 2026-08).
+// A pause alone was not enough: story SECTIONS get a spoken transition AND a '...'
+// beat, but the LINE one-liners only ever got the beat, so ten items separated by
+// silence read as a list being recited. Fix: give each item after the first a short
+// ROTATING spoken cue (Next. / Also. / Then. / ...) right after the beat, so the
+// boundary is HEARD, not just paused - the treatment story sections already get.
+// Audio-only (the page and email render the items visually). Pure; exercised by
+// audio-gate-regression.
+const LINE_ITEM_CUES = ['Next.', 'Also.', 'Then.', 'Elsewhere.', 'One more.', 'On a different front.'];
+
 export function formatLineSectionForSpeech(content: string): string {
   const items = content
     .split(/\n\s*\n/)
     .map(b => b.trim())
-    .filter(b => b.length > 0 && !/^[-*_]{3,}$/.test(b));
-  if (items.length <= 1) return content.trim();
-  return items.map(b => b.replace(/\n+/g, ' ')).join('\n\n...\n\n');
+    .filter(b => b.length > 0 && !/^(?:[-*_]\s*){3,}$/.test(b))
+    .map(b => b.replace(/\n+/g, ' '));
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0]!;
+  // First item follows the section lead-in ("...One line each."); each later item
+  // gets a rotating cue + the '...' beat: a transition and a pause between every item.
+  return items
+    .map((b, i) => (i === 0 ? b : `${LINE_ITEM_CUES[(i - 1) % LINE_ITEM_CUES.length]} ${b}`))
+    .join('\n\n...\n\n');
 }
 
 // Dedicated system prompt for the SUPER BRIEF. The super brief is already curated and
@@ -2015,6 +2023,31 @@ export async function preprocessBriefLightForTTS(
 
   let fullText: string;
   let gateWarnings: string[] = [];
+  const assembleFaithful = (): string => {
+    const parts: string[] = [];
+    const introPrefix = buildDeterministicLightIntroPrefix(brief.date, brief.dailyTitle);
+    const cleanEpi = brief.epigraph.replace(/\*+/g, '').replace(/[_~`]/g, '').trim();
+    parts.push(cleanEpi ? `${introPrefix}\n\n${cleanEpi}` : introPrefix);
+
+    const used = new Set<string>();
+    for (const section of ordered.filter(s => s.id !== 'the-close')) {
+      const transition =
+        (options.isWeekly ? LIGHT_WEEKLY_TRANSITION_OVERRIDES[section.id] : undefined) ??
+        lookupSection(LIGHT_SECTION_TRANSITIONS, section.id) ??
+        lookupSection(LIGHT_SECTION_TRANSITIONS, section.label);
+      const spoken = section.id === 'the-line'
+        ? formatLineSectionForSpeech(section.content)
+        : section.content;
+      if (transition && !used.has(section.id)) {
+        parts.push(`${transition}\n\n${spoken}`);
+        used.add(section.id);
+      } else {
+        parts.push(spoken);
+      }
+    }
+    parts.push(buildLightEnding(ordered.find(s => s.id === 'the-close')?.content, options.isWeekly ?? false));
+    return regexNormalize(applyLightPronunciations(parts.join('\n\n...\n\n')));
+  };
 
   if (!options.skipLlmCleanup && options.openaiApiKey) {
     try {
@@ -2077,7 +2110,11 @@ export async function preprocessBriefLightForTTS(
             : section.content;
 
         console.log(`[audio:light] Section: ${rewriteLabel}${section.title ? ` — ${section.title}` : ''}...`);
-        const { script, warnings: sectionWarnings } = await rewriteSectionChecked(client, rewriteLabel, rewriteContent, context, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
+        // THE LINE is already the final compressed product. Keep its cue/item contract
+        // deterministic instead of asking GPT to preserve a mechanical sequence probabilistically.
+        const { script, warnings: sectionWarnings } = section.id === 'the-line'
+          ? { script: rewriteContent, warnings: [] }
+          : await rewriteSectionChecked(client, rewriteLabel, rewriteContent, context, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
         gateWarnings.push(...sectionWarnings);
         console.log(`[audio:light]   → ${script.length} chars`);
 
@@ -2114,9 +2151,7 @@ export async function preprocessBriefLightForTTS(
     } catch (err) {
       console.warn('[audio:light] Scriptwriter failed, falling back to regex-only:', err);
       gateWarnings = [`light scriptwriter failed (${err}) — regex-only fallback for the WHOLE brief`];
-      const rawContent = ordered.filter(s => s.id !== 'the-close').map(s => `${s.label}:\n${s.content}`).join('\n\n');
-      const ending = buildLightEnding(ordered.find(s => s.id === 'the-close')?.content, options.isWeekly ?? false);
-      fullText = regexNormalize(applyLightPronunciations(`${rawContent}\n\n${ending}`));
+      fullText = assembleFaithful();
     }
   } else {
     // FAITHFUL VOICING — no GPT (2026-08-01, Jackson's experiment).
@@ -2125,33 +2160,7 @@ export async function preprocessBriefLightForTTS(
     // sign-off. The ONLY difference from the GPT path is that each section's text is the written
     // source normalized for speech instead of a model rewrite. Nothing is dropped, reordered or
     // paraphrased, so this can never gut a section — it is the identity function plus pronunciation.
-    const parts: string[] = [];
-    const introPrefix = buildDeterministicLightIntroPrefix(brief.date, brief.dailyTitle);
-    const cleanEpi = brief.epigraph.replace(/\*+/g, '').replace(/[_~`]/g, '').trim();
-    parts.push(cleanEpi ? `${introPrefix}\n\n${cleanEpi}` : introPrefix);
-
-    const used = new Set<string>();
-    for (const section of ordered.filter(s => s.id !== 'the-close')) {
-      // Same resolution order as the GPT branch: weekly override by id, then daily map.
-      // Without this, a Sunday with AUDIO_FAITHFUL_VOICING=1 would say "today" on a week-in-review.
-      const t =
-        (options.isWeekly ? LIGHT_WEEKLY_TRANSITION_OVERRIDES[section.id] : undefined) ??
-        lookupSection(LIGHT_SECTION_TRANSITIONS, section.id) ??
-        lookupSection(LIGHT_SECTION_TRANSITIONS, section.label);
-      // THE LINE gets a beat between items in the faithful path too — ten
-      // 36-word items with paragraph pacing sound like a list being recited.
-      const spoken = section.id === 'the-line'
-        ? formatLineSectionForSpeech(section.content)
-        : section.content;
-      if (t && !used.has(section.id)) {
-        parts.push(`${t}\n\n${spoken}`);
-        used.add(section.id);
-      } else {
-        parts.push(spoken);
-      }
-    }
-    parts.push(buildLightEnding(ordered.find(s => s.id === 'the-close')?.content, options.isWeekly ?? false));
-    fullText = regexNormalize(applyLightPronunciations(parts.join('\n\n...\n\n')));
+    fullText = assembleFaithful();
     gateWarnings = [...gateWarnings, 'FAITHFUL-VOICING: script built without GPT (skipLlmCleanup) — every beat, number and name from the written source'];
     console.log(`[audio:light] FAITHFUL VOICING (no GPT): ${fullText.length} characters`);
   }

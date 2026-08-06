@@ -479,21 +479,51 @@ check(
   a => a === true,
 );
 
-console.log('── 10. Two-tier THE LINE item beats ──');
+console.log('-- 10. Two-tier THE LINE item beats + spoken cues --');
 
-const lineItems =
-  '**First conclusion.** First implication.\n\n' +
-  '**Second conclusion.** Second implication.\n\n' +
-  '---\n\n' +
-  '**Third conclusion.** Third implication.';
+const lineItemBlocks = Array.from(
+  { length: 8 },
+  (_, i) => `**Item ${i + 1}.** Implication ${i + 1}.`,
+);
+const lineItems = [
+  ...lineItemBlocks.slice(0, 3),
+  '---',
+  ...lineItemBlocks.slice(3),
+].join('\n\n');
 check(
-  'THE LINE preserves every item and inserts exactly one beat between adjacent items',
+  'THE LINE gives every item a beat AND a rotating spoken cue between them',
   formatLineSectionForSpeech(lineItems),
-  a =>
-    a ===
-    '**First conclusion.** First implication.\n\n...\n\n' +
-      '**Second conclusion.** Second implication.\n\n...\n\n' +
-      '**Third conclusion.** Third implication.',
+  a => {
+    const out = a as string;
+    const spokenItems = out.split('\n\n...\n\n');
+    const expectedCues = [
+      '',
+      'Next. ',
+      'Also. ',
+      'Then. ',
+      'Elsewhere. ',
+      'One more. ',
+      'On a different front. ',
+      'Next. ',
+    ];
+    return spokenItems.length === lineItemBlocks.length
+      && spokenItems.every((item, i) => item === `${expectedCues[i]}${lineItemBlocks[i]}`);
+  },
+);
+check(
+  'THE LINE empty/rule-only content produces no spoken artifact',
+  formatLineSectionForSpeech('  - - -  '),
+  a => a === '',
+);
+check(
+  'THE LINE normalizes a single multiline item even when no cue is needed',
+  formatLineSectionForSpeech('**One item.** First line\ncontinues here.'),
+  a => a === '**One item.** First line continues here.',
+);
+check(
+  'THE LINE ignores spaced rules between items',
+  formatLineSectionForSpeech('**First.** One.\n\n- - -\n\n**Second.** Two.'),
+  a => a === '**First.** One.\n\n...\n\nNext. **Second.** Two.',
 );
 
 console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);
