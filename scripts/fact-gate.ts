@@ -2002,6 +2002,18 @@ const PRIMARY_SOURCE_RE = /https?:\/\/|primary source|verified against|per (?:Re
 // Scoped tightly — only an EXPLICIT negation of the harmonizing verb clears the line.
 const HARMONIZE_NEGATED_RE = /\b(?:did|do|does|would|will|could)\s+(?:\*{0,2}not\*{0,2}|n[o']t)\s+\w{0,12}\s?harmoni[sz]|\bnot\s+harmoni[sz]|\brefused\s+to\s+harmoni[sz]|\bdeclined\s+to\s+harmoni[sz]|\bwithout\s+harmoni[sz]|\bnever\s+harmoni[sz]|\bharmoni[sz]\w*\s*[:=]\s*\**\s*(?:none|no|n\/a|nil)\b|\bno\s+sentence\s+was\s+moved\s+toward\s+the\s+published\s+record/i;
 
+function carriesUnresolvedHarmonization(line: string): boolean {
+  // Negation belongs to its clause, not the whole line. A compliant
+  // "harmonization: none" cannot launder a later confession after "but" or ";".
+  const clauses = line.split(/\s*(?:;|\bbut\b|\bhowever\b)\s*/i).filter(Boolean);
+  return clauses.some(clause =>
+    HARMONIZE_RE.test(clause)
+    && PUBLISHED_REF_RE.test(clause)
+    && !PRIMARY_SOURCE_RE.test(clause)
+    && !HARMONIZE_NEGATED_RE.test(clause),
+  );
+}
+
 function findQgLog(briefPath: string, briefDate: string | null): string | null {
   if (!briefDate) return null;
   const name = `${briefDate}-quality-gate-log.md`;
@@ -2043,10 +2055,7 @@ function truthHarmonization(qg: string | null, briefDate: string | null = null):
   for (const raw of qg.split('\n')) {
     const line = raw.trim();
     if (!line || line.length < 40) continue;
-    if (!HARMONIZE_RE.test(line)) continue;
-    if (!PUBLISHED_REF_RE.test(line)) continue;   // harmonizing style/format is fine; the published RECORD is not a source
-    if (PRIMARY_SOURCE_RE.test(line)) continue;   // resolved against a real source -> legal
-    if (HARMONIZE_NEGATED_RE.test(line)) continue; // an explicit "did NOT harmonize" is compliance, not confession
+    if (!carriesUnresolvedHarmonization(line)) continue;
     findings.push(resolved.length > 0 ? {
       check: 'truth-harmonization',
       severity: 'FLAG',
@@ -2212,6 +2221,12 @@ function selftest(): number {
   const okThSourced = truthHarmonization(
     'QG harmonized the SK Hynix figure to the published record after verifying against https://reuters.com/... — $26.5B confirmed.', null
   ).length === 0;
+  const okThNominal = truthHarmonization(
+    'Truth harmonization: none. No sentence was moved toward the published record; the discrepancy remains routed for primary verification.', null
+  ).length === 0;
+  const okThMixed = truthHarmonization(
+    'Truth harmonization: none against the published record; but the QG later harmonized the disputed figure to the published brief without a source.', null
+  ).some(f => f.check === 'truth-harmonization' && f.severity === 'FAIL');
   // THE CURE: once the archive correction is logged for that date (COR-001/002 on 2026-07-11),
   // the FAIL downgrades to an advisory FLAG — otherwise the gate blocks every re-run of a day
   // it already fixed, and sessions learn to route around it.
@@ -2516,6 +2531,8 @@ function selftest(): number {
   console.log(`  FAIL on real 07-11 QG harmonize-to-published-record: ${okThFire ? '✓' : '✗'} (${thFire.length} finding(s))`);
   console.log(`  SILENT on real 07-10 QG log (no harmonization): ${okThSilent ? '✓' : '✗'} (${thSilent.length} finding(s))`);
   console.log(`  SILENT when harmonization cites a primary source: ${okThSourced ? '✓' : '✗'}`);
+  console.log(`  SILENT on nominal compliance ("harmonization: none"): ${okThNominal ? '✓' : '✗'}`);
+  console.log(`  FIRE when nominal compliance precedes a later confession on the same line: ${okThMixed ? '✓' : '✗'}`);
   console.log(`  DOWNGRADES to FLAG once the archive correction is logged (COR row): ${okThResolved ? '✓' : '✗'}`);
   console.log(`  [IMP-064] registry-integrity SILENT on a healthy registry: ${okRegOk ? '✓' : '✗'}`);
   console.log(`  [IMP-064] FAIL when the premise registry is MALFORMED (the 07-17 blind-gate case): ${okRegMalformed ? '✓' : '✗'}`);
@@ -2656,7 +2673,7 @@ function selftest(): number {
     okFpFire && okFpNikkei && okFpSilentDated && okFpSilentFirst &&
     okMagWord && okMagSym &&
     okBindingsLoad && okEaFire && okEaSilent && okJgbFire && okJgbSilent &&
-    okThFire && okThSilent && okThSourced && okThResolved &&
+    okThFire && okThSilent && okThSourced && okThNominal && okThMixed && okThResolved &&
     okCalLoad && okEvFire && okEvSilent && okEvNoCal && okEvWrongDay &&
     okWtiAttrib && okToa && okToaNarrow &&
     okAggFire && okAggResolves && okAggSingle && okAggSilent13 &&

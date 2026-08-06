@@ -45,14 +45,25 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+const EPOCH = '2026-08-07';
 const STOP = new Set(['a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'not', 'no', 'and', 'or', 'but', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from', 'as', 'it', 'its', 'this', 'that', 'these', 'those', 'you', 'your']);
 const MIN_NGRAM = 4;      // consecutive words
 const MIN_CONTENT = 3;    // of which at least this many are not stopwords
 
 export type Kill = { n: number; thesis: string; reason: string };
 
+function stripHtmlComments(s: string): string {
+  return s.replace(/<!--[\s\S]*?-->/g, ' ').replace(/<!--[\s\S]*$/g, ' ');
+}
+
 export function norm(s: string): string[] {
-  return s.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').split(/\s+/).filter(Boolean);
+  return stripHtmlComments(s)
+    .toLowerCase()
+    .replace(/\bre-([a-z])/g, 're$1')
+    .replace(/-/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
 }
 
 /**
@@ -86,7 +97,8 @@ function sectionAt(draft: string, needle: string): string {
 }
 
 export function findReuse(draft: string, kills: Kill[]): Reuse[] {
-  const hay = norm(draft).join(' ');
+  const visibleDraft = stripHtmlComments(draft);
+  const hay = ` ${norm(visibleDraft).join(' ')} `;
   const out: Reuse[] = [];
   for (const k of kills) {
     const words = norm(k.thesis);
@@ -95,10 +107,10 @@ export function findReuse(draft: string, kills: Kill[]): Reuse[] {
       for (let i = 0; i + len <= words.length; i++) {
         const gram = words.slice(i, i + len);
         if (gram.filter(w => !STOP.has(w)).length < MIN_CONTENT) continue;
-        if (hay.includes(gram.join(' '))) { hit = gram.join(' '); break; }
+        if (hay.includes(` ${gram.join(' ')} `)) { hit = gram.join(' '); break; }
       }
     }
-    if (hit) out.push({ thesis: k.thesis, phrase: hit, section: sectionAt(draft, hit) });
+    if (hit) out.push({ thesis: k.thesis, phrase: hit, section: sectionAt(visibleDraft, hit) });
   }
   return out;
 }
@@ -110,9 +122,15 @@ function readFirst(...paths: string[]): { body: string; path: string } | null {
 
 function runOne(date: string, stage: string, emit: boolean, quiet = false): number {
   const dir = path.join(process.cwd(), 'daily-briefs');
+  const missing = (detail: string): number => {
+    const blocks = date >= EPOCH;
+    if (!quiet) console.log(`killed-thesis-gate — ${date}: ${detail}. ${blocks ? 'IN EPOCH — cannot enforce, blocking.' : `Pre-${EPOCH} — reported only.`}`);
+    return blocks ? 1 : 0;
+  };
   const td = readFirst(path.join(dir, `${date}-take-draft.md`));
-  if (!td) { if (!quiet) console.log(`killed-thesis-gate — ${date}: no take-draft on disk, nothing to enforce.`); return 0; }
+  if (!td) return missing('take-draft is missing');
   const kills = parseKills(td.body);
+  if (kills.length === 0) return missing('take-draft parsed to zero killed candidates (format drift or an incomplete tournament)');
 
   if (emit) {
     const outPath = path.join(dir, `${date}-killed-theses.json`);
@@ -123,7 +141,7 @@ function runOne(date: string, stage: string, emit: boolean, quiet = false): numb
   const draft = stage === 'v2'
     ? readFirst(path.join(dir, `${date}-v2.md`))
     : readFirst(path.join(dir, `${date}-v1.md`), path.join(dir, `${date}-v1-pre-quality-gate.md`));
-  if (!draft) { if (!quiet) console.log(`killed-thesis-gate — ${date}: no ${stage} draft on disk, nothing to check.`); return 0; }
+  if (!draft) return missing(`${stage} draft is missing`);
 
   const reuse = findReuse(draft.body, kills);
   if (!quiet) {
@@ -165,6 +183,10 @@ function selftest(): number {
     '[IMP-134] SILENT on the same topic, actors and evidence without the killed conclusion — the kill was of a thesis, not a subject');
   t(findReuse('## Markets & Macro\nThe risk is not reduction of supply but of the route.', kills).length === 0,
     '[IMP-134] SILENT on scattered shared words that are not a contiguous phrase');
+  t(findReuse('## Geopolitics\n<!-- Rerouting is not risk reduction when the route moves. -->\nVisible prose reaches a different conclusion.', kills).length === 0,
+    '[IMP-134] SILENT when the killed thesis appears only inside an HTML comment');
+  t(findReuse('## Geopolitics\nRe-routing is not risk reduction when the adversary follows the diversion.', kills).length === 1,
+    '[IMP-134] FIRES through the visible re-routing/rerouting hyphen variant');
 
   // Live acceptance legs: the Critic asked for SILENT on 08-05 and 08-04.
   for (const d of ['2026-08-05', '2026-08-04']) {
@@ -172,6 +194,8 @@ function selftest(): number {
   }
   const live = runOne('2026-08-06', 'v1', false, true);
   t(live === 1, '[IMP-134] EXIT 1 on the real 2026-08-06 v1 — the acceptance case, end to end on disk');
+  t(runOne('2099-01-01', 'v1', false, true) === 1,
+    '[IMP-134] FAILS CLOSED in epoch when the take-draft is missing');
 
   console.log(`\nkilled-thesis-gate selftest — ${fails ? 'FAILED' : 'PASS'} (parse + reuse + topic-only silence verified both directions)`);
   return fails ? 1 : 0;
@@ -183,7 +207,9 @@ function main(): number {
   const date = args.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a));
   if (!date) { console.error('Usage: killed-thesis-gate.ts <YYYY-MM-DD> [--stage v1|v2] [--emit] | --selftest'); return 2; }
   const si = args.indexOf('--stage');
-  return runOne(date, si === -1 ? 'v1' : (args[si + 1] || 'v1'), args.includes('--emit'));
+  const stage = si === -1 ? 'v1' : (args[si + 1] || '');
+  if (!['v1', 'v2'].includes(stage)) { console.error('--stage must be v1 or v2'); return 2; }
+  return runOne(date, stage, args.includes('--emit'));
 }
 
 const invokedDirectly = !!process.argv[1] && path.resolve(process.argv[1]).endsWith('killed-thesis-gate.ts');

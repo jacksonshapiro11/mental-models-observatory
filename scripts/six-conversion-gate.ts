@@ -71,6 +71,10 @@ export function stripHtmlComments(md: string): string {
   return out;
 }
 
+function hasUnterminatedHtmlComment(md: string): boolean {
+  return md.lastIndexOf('<!--') > md.lastIndexOf('-->');
+}
+
 function extractSection(md: string, startRe: RegExp): string {
   const lines = md.split('\n');
   const i = lines.findIndex(l => startRe.test(l));
@@ -422,6 +426,12 @@ function checkAITConsensus(section: string): string | null {
 // ---------- runner ----------
 interface Finding { check: string; msg: string; }
 function runBrief(rawMd: string): Finding[] {
+  if (hasUnterminatedHtmlComment(rawMd)) {
+    return [{
+      check: 'HTML-comment-integrity',
+      msg: 'The brief contains an unterminated HTML comment. A renderer hides everything after it, and stripping it would leave empty sections that falsely clear all conversion checks. Close or remove the comment before grading.',
+    }];
+  }
   // IMP-131: strip the Editor/Validator commentary FIRST (the class fix), then anchor every
   // section regex to a real heading (the instance fix). Both, because either alone leaves a hole:
   // an anchor still matches a heading quoted inside a comment, and stripping still lets a bare
@@ -643,6 +653,8 @@ function selftest(): number {
       false, () => checkInnerGame(extractSection(stripHtmlComments(COMMENTED_CLEAN_INNER), /^#{1,6}\s.*INNER GAME/i))],
     ['C IMP-131 still fires through the same comment block when the section IS a truism',
       true,  () => checkInnerGame(extractSection(stripHtmlComments(COMMENTED_FIRE_INNER), /^#{1,6}\s.*INNER GAME/i))],
+    ['IMP-131 malformed unterminated comment fails instead of blanking the brief to a false CLEAN',
+      true, () => runBrief(COMMENTED_CLEAN_INNER.replace('-->', '')).find(f => f.check === 'HTML-comment-integrity')?.msg ?? null],
     ['D C&C fires on all-crypto',     true,  () => checkCC(extractSection(FIRE_CC,   /^##\s+Companies/i))],
     ['D C&C silent with corporate',   false, () => checkCC(extractSection(SILENT_CC, /^##\s+Companies/i))],
     ['E Geo fires on parallel tracks',true,  () => checkGeo(extractSection(FIRE_GEO, /^##\s+Geopolitics/i))],

@@ -112,7 +112,7 @@ export function parseGateBlock(v2: string): { gate: string; rest: string }[] {
   const out: { gate: string; rest: string }[] = [];
   for (let i = start + 1; i < lines.length; i++) {
     const line = lines[i]!;
-    if (!line.trim()) break; // the block ends at the first blank line
+    if (/^\s*-->\s*$/.test(line)) break;
     const m = GATE_LINE.exec(line);
     if (m) out.push({ gate: m[1]!, rest: m[2]! });
   }
@@ -228,6 +228,10 @@ function selftest(): number {
   // 3. The compliant shape is silent.
   const GOOD = '  fact-gate.ts        EXIT=0 ✅ PASS — 4 FLAGs, all routed.\n  novelty-gate.ts     EXIT=0 ✅ PASS\n  ceiling-lint.ts     EXIT=1 ❌ FAIL — 2 FLAGs, both routed to Editor Gate 14(e).';
   t(auditSelfReport(wrap(GOOD)).length === 0, '[IMP-128] SILENT when every verdict is transcribed from a captured EXIT= (including an honest ❌ at EXIT=1)');
+  const BLANK_SEPARATED = '  fact-gate.ts        EXIT=0 ✅ PASS\n\n  novelty-gate.ts     EXIT=1 ✅ PASS';
+  const blankFindings = auditSelfReport(wrap(BLANK_SEPARATED));
+  t(blankFindings.length === 1 && blankFindings[0]!.gate === 'novelty-gate.ts' && blankFindings[0]!.kind === 'inverted-verdict',
+    '[IMP-128] FIRES on an inverted gate line after a blank separator inside the mechanical-output block');
 
   // 4. The 08-04 line that already did it right is a positive control for the parser.
   const CONTROL = '  predraft-consumption-gate.ts  ✅ EXIT 0 — "every on-disk pre-draft is present in v1". 0 FAIL, 0 FLAG.';
@@ -283,7 +287,11 @@ function runOne(v2Path: string, rerun: boolean, quiet = false): number {
   if (!fs.existsSync(v2Path)) { console.error(`File not found: ${v2Path}`); return 2; }
   const v2 = fs.readFileSync(v2Path, 'utf8');
   const dateMatch = path.basename(v2Path).match(/(\d{4}-\d{2}-\d{2})/);
-  const briefDate = dateMatch ? dateMatch[1]! : '';
+  if (!dateMatch) {
+    if (!quiet) console.error(`Cannot determine brief date from filename: ${v2Path}. Use a YYYY-MM-DD filename so epoch enforcement cannot fail open.`);
+    return 2;
+  }
+  const briefDate = dateMatch[1]!;
   const inEpoch = briefDate >= EPOCH;
   const findings = auditSelfReport(v2, gate => liveCount(gate, v2Path));
 

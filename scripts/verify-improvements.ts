@@ -17,7 +17,6 @@
  * Wired into: pipeline-health-check (daily) and the improve-and-apply task (self-check).
  */
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
 
@@ -87,19 +86,33 @@ function ageDays(dateStr: string): number {
  * · NEVER-LANDED (full history, no commit ever added it). "I cannot tell" is a legitimate verdict
  * and is strictly better than a fabricated one.
  */
-function gitStdout(args: string[], cwd?: string): { status: number | null; out: string } {
+type GitResult = { status: number | null; out: string; err: string };
+type GitRunner = (args: string[], cwd?: string) => GitResult;
+
+function gitStdout(args: string[], cwd?: string): GitResult {
   const res = spawnSync('git', args, { encoding: 'utf8', timeout: 30000, ...(cwd ? { cwd } : {}) });
-  return { status: res.status, out: (res.stdout || '').trim() };
+  return {
+    status: res.status,
+    out: (res.stdout || '').trim(),
+    err: (res.error?.message || res.stderr || '').trim(),
+  };
 }
 
-export function anchorForensics(file: string, needle: string, cwd?: string): string {
-  const { status, out } = gitStdout(['log', '--oneline', '-S', needle, '--', file], cwd);
+export function anchorForensics(file: string, needle: string, cwd?: string, run: GitRunner = gitStdout): string {
+  const { status, out, err } = run(['log', '--oneline', '-S', needle, '--', file], cwd);
   const lines = out.split('\n').filter(Boolean);
   if (status === 0 && lines.length > 0) {
     return `\n      FORENSICS: last commit touching this string in ${file} → ${lines[0]}\n      Classify before you act: REVERT (restore the code) or SUPERSESSION (re-point the row at the enforcement that replaced it, and prove the behaviour survives with a run: leg). Re-pointing a REVERT is how a regression turns green.`;
   }
-  if (gitStdout(['rev-parse', '--is-shallow-repository'], cwd).out === 'true') {
-    const depth = gitStdout(['rev-list', '--count', 'HEAD'], cwd).out || '?';
+  if (status !== 0) {
+    return `\n      FORENSICS: GIT ERROR — \`git log -S\` could not inspect ${file} (exit ${status ?? 'unknown'}${err ? `: ${err.split('\n').slice(-1)[0]}` : ''}). This is NOT evidence of NEVER-LANDED. Restore repository/history access and re-run before classifying the missing enforcement.`;
+  }
+  const shallow = run(['rev-parse', '--is-shallow-repository'], cwd);
+  if (shallow.status !== 0) {
+    return `\n      FORENSICS: GIT ERROR — repository depth could not be determined for ${file} (exit ${shallow.status ?? 'unknown'}${shallow.err ? `: ${shallow.err.split('\n').slice(-1)[0]}` : ''}). This is NOT evidence of NEVER-LANDED. Restore repository access and re-run.`;
+  }
+  if (shallow.out === 'true') {
+    const depth = run(['rev-list', '--count', 'HEAD'], cwd).out || '?';
     return `\n      FORENSICS: HISTORY TRUNCATED — this checkout is a SHALLOW clone (${depth} commits), so \`git log -S\` cannot see whether ${file} ever contained this string. This is NOT evidence of NEVER-LANDED and must NOT be classified as one. Run \`git fetch --unshallow\` and re-run before deciding REVERT vs SUPERSESSION; until then the correct verdict is "cannot tell".`;
   }
   return `\n      FORENSICS: git log -S finds NO commit that ever added this string to ${file}, in a FULL (non-shallow) history. Either the enforcement never landed, or it lives in a gitignored path. Treat as NEVER-LANDED, not as a revert.`;
@@ -239,39 +252,6 @@ function main(): number {
 
 /** Proves the compound-check logic bites BOTH directions — non-circular (it exercises
  *  executeCheck against crafted legs, not the live ledger). IMP-110's mechanical check. */
-/**
- * IMP-130 — build two throwaway repos so the forensics assertions test the CODE, not the ambient
- * clone: `full` has a commit that ADDED an enforcement string and a later commit that DELETED it
- * (the exact IMP-125 supersession shape); `shallow` is a depth-1 clone of it, whose history cannot
- * reach the deletion. Returns null if git cannot do this, so the selftest reports an honest
- * inability rather than a silent pass.
- */
-function mkForensicsRepos(): { full: string; shallow: string } | null {
-  try {
-    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'vi-forensics-'));
-    const full = path.join(base, 'full');
-    fs.mkdirSync(full);
-    const g = (...args: string[]) => spawnSync('git', args, { cwd: full, encoding: 'utf8', timeout: 30000 });
-    g('init', '-q');
-    g('config', 'user.email', 'selftest@local');
-    g('config', 'user.name', 'selftest');
-    g('config', 'commit.gpgsign', 'false');
-    const write = (body: string) => fs.writeFileSync(path.join(full, 'gate.ts'), body);
-    write('export const A = 1;\n// SENTINEL_ENFORCEMENT_STRING — the enforcement, as landed\n');
-    g('add', 'gate.ts'); g('commit', '-q', '-m', 'gates: add the enforcement');
-    write('export const A = 1;\n// superseded by a stronger whole-brief rail\n');
-    g('add', 'gate.ts'); g('commit', '-q', '-m', 'delete the blind duplicate');
-    fs.writeFileSync(path.join(full, 'pad.txt'), 'so depth-1 lands past the deletion\n');
-    g('add', 'pad.txt'); g('commit', '-q', '-m', 'pad');
-    if (spawnSync('git', ['rev-list', '--count', 'HEAD'], { cwd: full, encoding: 'utf8' }).stdout.trim() !== '3') return null;
-    const shallow = path.join(base, 'shallow');
-    spawnSync('git', ['clone', '-q', '--depth', '1', `file://${full}`, shallow], { encoding: 'utf8', timeout: 60000 });
-    if (!fs.existsSync(path.join(shallow, '.git'))) return null;
-    if (spawnSync('git', ['rev-parse', '--is-shallow-repository'], { cwd: shallow, encoding: 'utf8' }).stdout.trim() !== 'true') return null;
-    return { full, shallow };
-  } catch { return null; }
-}
-
 function selftest(): number {
   const self = 'scripts/verify-improvements.ts';
   // Build the ABSENT needle at RUNTIME so it never appears as a source literal in this file
@@ -318,25 +298,28 @@ function selftest(): number {
     const msg = executeCheck(`grep:${self}:${absent}`, 'SELFTEST').join('');
     t2(/FORENSICS:/.test(msg), '[IMP-129] an absent anchor carries FORENSICS'); forensicAssertions++;
 
-    const repos = mkForensicsRepos();
-    if (!repos) {
-      t2(false, '[IMP-130] forensics fixture repos could not be built (git unavailable?) — cannot prove revert-vs-supersession');
-      forensicAssertions++;
-    } else {
-      const named = anchorForensics('gate.ts', 'SENTINEL_ENFORCEMENT_STRING', repos.full);
-      t2(/FORENSICS: last commit touching this string/.test(named) && /SUPERSESSION/.test(named),
-        '[IMP-129] a deleted-but-once-committed anchor NAMES the commit that removed it (the IMP-125 case, hermetic)');
-      const never = anchorForensics('gate.ts', `zz_${absent}`, repos.full);
-      t2(/Treat as NEVER-LANDED/.test(never) && !/HISTORY TRUNCATED/.test(never),
-        '[IMP-129] in FULL history, a string no commit ever added is classified NEVER-LANDED, not a revert');
-      // The verdict phrase, not the token: the TRUNCATED message names NEVER-LANDED in order to
-      // forbid it, so matching the bare token would test the warning's wording instead of the call.
-      const trunc = anchorForensics('gate.ts', 'SENTINEL_ENFORCEMENT_STRING', repos.shallow);
-      t2(/HISTORY TRUNCATED/.test(trunc) && !/Treat as NEVER-LANDED/.test(trunc),
-        '[IMP-130] in a SHALLOW clone the same string is TRUNCATED, never NEVER-LANDED (a fabricated receipt is worse than none)');
-      forensicAssertions += 3;
-      try { fs.rmSync(path.dirname(repos.full), { recursive: true, force: true }); } catch { /* temp dir; leaking it is harmless */ }
-    }
+    const scripted = (log: GitResult, shallow: GitResult, depth = '1'): GitRunner =>
+      args => args[0] === 'log'
+        ? log
+        : args[0] === 'rev-parse'
+          ? shallow
+          : { status: 0, out: depth, err: '' };
+    const ok = (out: string): GitResult => ({ status: 0, out, err: '' });
+    const named = anchorForensics('gate.ts', 'SENTINEL_ENFORCEMENT_STRING', undefined, scripted(ok('abc123 delete enforcement'), ok('false')));
+    t2(/FORENSICS: last commit touching this string/.test(named) && /SUPERSESSION/.test(named),
+      '[IMP-129] a deleted-but-once-committed anchor NAMES the commit that removed it (hermetic decision fixture)');
+    const never = anchorForensics('gate.ts', `zz_${absent}`, undefined, scripted(ok(''), ok('false')));
+    t2(/Treat as NEVER-LANDED/.test(never) && !/HISTORY TRUNCATED/.test(never),
+      '[IMP-129] in FULL history, a string no commit ever added is classified NEVER-LANDED, not a revert');
+    const trunc = anchorForensics('gate.ts', 'SENTINEL_ENFORCEMENT_STRING', undefined, scripted(ok(''), ok('true'), '13'));
+    t2(/HISTORY TRUNCATED/.test(trunc) && !/Treat as NEVER-LANDED/.test(trunc),
+      '[IMP-130] in a SHALLOW clone the same string is TRUNCATED, never NEVER-LANDED');
+    const errored = anchorForensics('gate.ts', 'SENTINEL_ENFORCEMENT_STRING', undefined, scripted(
+      { status: 128, out: '', err: 'fatal: not a git repository' }, ok('false'),
+    ));
+    t2(/FORENSICS: GIT ERROR/.test(errored) && !/Treat as NEVER-LANDED/.test(errored),
+      '[IMP-130] a git failure is reported as UNKNOWN, never fabricated into NEVER-LANDED');
+    forensicAssertions += 4;
   }
   const total = cases.length + forensicAssertions;
   console.log(`\nverify-improvements selftest — ${total - fails}/${total} assertions passed`);
