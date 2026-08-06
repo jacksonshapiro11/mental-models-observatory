@@ -1824,13 +1824,19 @@ const LIGHT_SECTION_ORDER = [
   'the-idea',          // ideas-first LEAD — the whole point opens the brief
   'also-moving',       // ideas-first secondary
   'the-update',        // selection-format LEAD — stories first, like the written brief
+  'the-line',          // two-tier breadth tier (v2, 2026-08) — every other story, one line each
   'markets-minute',    // market-state read, after the stories/ideas
+  'the-take',          // two-tier: the dated falsifiable call — pivot out of the news
   'interesting-things',
   'our-calls',         // weekly-light-only — the predictions nod (absent in daily lights)
   'the-meditation',
   'the-model',
   'the-close',
 ];
+// ⚠ Any section id missing from this list is APPENDED AFTER the ordered ones —
+// i.e. it plays at the END of the episode, after The Model. That is exactly how
+// a new written section becomes a mis-ordered cold segment. Add new ids here
+// AND to LIGHT_SECTION_TRANSITIONS in the same change.
 
 const LIGHT_SECTION_TRANSITIONS: Record<string, string> = {
   'the-idea': 'Let\'s get into today\'s biggest ideas.', // fired once before the first idea
@@ -1839,6 +1845,10 @@ const LIGHT_SECTION_TRANSITIONS: Record<string, string> = {
   // unclear. Every section gets an explicit deterministic lead-in.
   'markets-minute': 'Quick markets minute. Today\'s tape, fast.',
   'the-update': 'Alright, here\'s what\'s driving the conversation today.',
+  // Two-tier (v2): the transition SETS THE CONTRACT — the listener is told these
+  // are one-liners, so the pace reads as intentional instead of rushed.
+  'the-line': 'Now the rest of the day. One line each.',
+  'the-take': 'Alright. Here\'s our take.',
   // "A couple" shipped over five items on W27 — count-agnostic wording.
   'interesting-things': 'A few things that caught our eye outside the main stories.',
   'our-calls': 'And quickly, where our standing calls sit going forward.',
@@ -1874,10 +1884,28 @@ export function buildLightEnding(closeContent: string | undefined, isWeekly: boo
  *  daily map when PreprocessOptions.isWeekly is set. */
 const LIGHT_WEEKLY_TRANSITION_OVERRIDES: Record<string, string> = {
   'the-update': 'Alright, here\'s what drove the week.',
+  'the-line': 'Now the rest of the week. One line each.',
   'markets-minute': 'Quick markets minute. The week\'s tape, fast.',
   'the-meditation': 'OK. Let\'s take a breath. Time for this week\'s meditation.',
   'the-model': 'And finally, this week\'s mental model.',
 };
+
+// ─── THE LINE — beat between items (v2, 2026-08) ─────────────────────────────
+// THE LINE is 8-12 items of ~36 words each. Spoken with ordinary paragraph
+// pacing they blur into a list being recited — the exact failure the handoff
+// flagged as "most likely to be wrong and least likely to be caught by a test."
+// This joins the items with the same '...' beat the episode already uses
+// between sections (the TTS reads '...' as a short breath; cleanFormatting
+// leaves it alone), so every item lands as its own thought in BOTH the GPT
+// path and faithful voicing. Pure — exercised by audio-gate-regression.
+export function formatLineSectionForSpeech(content: string): string {
+  const items = content
+    .split(/\n\s*\n/)
+    .map(b => b.trim())
+    .filter(b => b.length > 0 && !/^[-*_]{3,}$/.test(b));
+  if (items.length <= 1) return content.trim();
+  return items.map(b => b.replace(/\n+/g, ' ')).join('\n\n...\n\n');
+}
 
 // Dedicated system prompt for the SUPER BRIEF. The super brief is already curated and
 // distilled, so unlike the full brief it must NOT be compressed again — deliver it nearly
@@ -1911,6 +1939,8 @@ const LIGHT_SECTION_INSTRUCTIONS: Record<string, string> = {
   'light-intro': 'Write a SHORT opening hook ONLY — two sentences max. Do NOT say welcome, the show name, the date, or the Daily Title; those are injected verbatim before your output. Use the HEADLINE to tease the top 1-2 ideas and make the listener want to stay. No "welcome back," no throat-clearing, no calendar date.',
   'The Idea': 'Deliver this as one genuine market idea: state the idea and why it matters, ground it in the news that surfaced it, and include the honest "what would change my mind." Keep the through-line tight — the idea is the point, the news is the evidence. Stay close to the source text; do not invent numbers or calls not in it.',
   'Also Moving': 'Brisk and secondary. A couple of things moving that did not rise to a full idea today. One or two sentences each. Keep it light and quick.',
+  'The Line': 'Do NOT introduce or announce this section — the transition handles it ("one line each" is the promise; keep it). These are 8-12 one-line items: each is a conclusion with its number and one implication. Read EVERY item, one at a time, as its own complete beat — a clear micro-pause between items, never two items run into one sentence stream. Do NOT expand, connect, or editorialize any item; the compression IS the product. Preserve each item\'s figure and its closing implication exactly. The "..." markers in the source are the beats — honor them. Land the last item and stop; no wrap-up.',
+  'The Take': 'Do NOT introduce or announce this section — the transition handles it. This is the brief\'s one dated, falsifiable call, in five beats: the mechanism, the evidence, the call itself, where it breaks, and the heuristic. Keep all five, in order, one sentence each — never blur them into a stream. State the call PLAINLY with its date and level, and deliver the where-it-breaks condition DELIBERATELY — slower, it is as important as the call; never drop or rush it. Do not soften, hedge, or re-direct the call. Stay close to the written text.',
   'The Update': 'Do NOT introduce or announce this section — the transition handles it. Cover every story. Each one gets its headline, the key numbers, why it matters, and the "so what." STORY BOUNDARIES (critical): each story is its own beat. Open every new story with a brief, VARIED turn signal in a few words (Meanwhile / One more / The quieter one / On a different front) so the listener always knows a new story just started. Never let two stories blur into one sentence stream, and never bridge them with a fabricated connection. Do NOT skip any story. Stay close to the source text. The specificity is the value. Get to the insight fast. No throat-clearing.',
   'Markets Minute': 'Do NOT introduce or announce this section — the transition handles it. Quick, punchy market read. What\'s the character of the session or the week? Connect the dots between equities, crypto, commodities, and rates. If divergences tell a story, say so. Round prices naturally for speech. This should feel brisk but insightful.',
   'Interesting Things': 'Do NOT introduce or announce this section — the transition handles it; start directly with the first item. Lighter energy, genuine curiosity. These are fascinating things OUTSIDE the main stories. Science, health, breakthroughs, oddities. Each item is its own clear beat: open each new item on its own turn, never run two items together into one stream. Give each one what it needs to land. If items genuinely connect, say so. No invented wrap-up moral at the end — land the last item and stop. Stay close to the written text.',
@@ -2042,7 +2072,9 @@ export async function preprocessBriefLightForTTS(
         const rewriteLabel = section.id === 'the-idea' ? 'The Idea' : section.label;
         const rewriteContent = (section.title && (section.id === 'the-idea' || section.id === 'the-model'))
           ? `**${section.title}**\n\n${section.content}`
-          : section.content;
+          : section.id === 'the-line'
+            ? formatLineSectionForSpeech(section.content) // beats between items — also survives the faithful-voicing fallback
+            : section.content;
 
         console.log(`[audio:light] Section: ${rewriteLabel}${section.title ? ` — ${section.title}` : ''}...`);
         const { script, warnings: sectionWarnings } = await rewriteSectionChecked(client, rewriteLabel, rewriteContent, context, { instructions: LIGHT_SECTION_INSTRUCTIONS, systemPrompt: LIGHT_SECTION_SYSTEM_PROMPT });
@@ -2106,11 +2138,16 @@ export async function preprocessBriefLightForTTS(
         (options.isWeekly ? LIGHT_WEEKLY_TRANSITION_OVERRIDES[section.id] : undefined) ??
         lookupSection(LIGHT_SECTION_TRANSITIONS, section.id) ??
         lookupSection(LIGHT_SECTION_TRANSITIONS, section.label);
+      // THE LINE gets a beat between items in the faithful path too — ten
+      // 36-word items with paragraph pacing sound like a list being recited.
+      const spoken = section.id === 'the-line'
+        ? formatLineSectionForSpeech(section.content)
+        : section.content;
       if (t && !used.has(section.id)) {
-        parts.push(`${t}\n\n${section.content}`);
+        parts.push(`${t}\n\n${spoken}`);
         used.add(section.id);
       } else {
-        parts.push(section.content);
+        parts.push(spoken);
       }
     }
     parts.push(buildLightEnding(ordered.find(s => s.id === 'the-close')?.content, options.isWeekly ?? false));

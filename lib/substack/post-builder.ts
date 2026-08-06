@@ -139,6 +139,8 @@ export function buildSubstackPost(
  */
 export const SECTION_STRIPS: Record<string, string> = {
   'THE UPDATE': 'substack-section-the-update.png',
+  'THE LINE': 'substack-section-the-line.png',       // two-tier breadth tier (v2, 2026-08)
+  'THE TAKE': 'substack-section-the-take.png',       // two-tier: the dated falsifiable call
   'MARKETS MINUTE': 'substack-section-markets-minute.png',
   'INTERESTING THINGS': 'substack-section-interesting-things.png',
   'OUR CALLS': 'substack-section-our-calls.png',

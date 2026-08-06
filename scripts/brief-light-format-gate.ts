@@ -8,11 +8,19 @@
  * (lib/audio/text-preprocessor.ts) — both keyed off the exact `## ▸` headers.
  * A renamed / missing / merged header SILENTLY drops that section from BOTH.
  *
- * The product supports TWO formats, both backward-compatible in the consumers:
+ * The product supports the following formats, all backward-compatible in the consumers:
  *   • SELECTION (restored 2026-06-27): `## ▸ THE UPDATE` leads (5-7 stories),
  *     then MARKETS MINUTE, INTERESTING THINGS, THE MEDITATION, THE MODEL, THE CLOSE.
+ *   • TWO-TIER (v2, effective LIGHT_V2_EPOCH): selection plus `## ▸ THE LINE`
+ *     (after THE UPDATE, 8-12 one-line items) and `## ▸ THE TAKE` (after
+ *     MARKETS MINUTE). THE UPDATE drops to 4-5 deep stories.
  *   • IDEAS-FIRST (archived): `## ▸ THE IDEAS` + `## ▸ ALSO MOVING`, then the rest.
  * This gate detects the format from the lead header and asserts the matching contract.
+ *
+ * THE STORY OF THE DAY (the italic lede under the Daily Title) is DELIBERATELY
+ * NOT REQUIRED, in any format. It is absent by design on days with no honest
+ * through-line (expected present only 40-60% of days) — a gate that requires it
+ * will manufacture one every day. Do not "fix" that here.
  *
  * WORD COUNT (added 2026-08-05, the enforcement the spec never had):
  * target 1,300-1,600 words ≈ 8-10 minutes at 160 wpm. Printed on EVERY run.
@@ -44,9 +52,26 @@ const LIGHT_LEN_HARD = 1900;
 const LIGHT_LEN_EPOCH = '2026-08-06';
 const LIGHT_WPM = 160;
 
+// First day the two-tier (THE LINE / THE TAKE) contract is REQUIRED.
+// Briefs dated before this are checked against the original selection contract.
+const LIGHT_V2_EPOCH = '2026-08-07';
+
 const SELECTION_REQUIRED: { label: string; accepts: string[] }[] = [
   { label: 'The Update',         accepts: ['THE UPDATE'] },
   { label: 'Markets Minute',     accepts: ['MARKETS MINUTE'] },
+  { label: 'Interesting Things', accepts: ['INTERESTING THINGS', 'TWO THINGS'] },
+  { label: 'The Meditation',     accepts: ['THE MEDITATION'] },
+  { label: 'The Model',          accepts: ['THE MODEL'] },
+  { label: 'The Close',          accepts: ['THE CLOSE'] },
+];
+// Two-tier (v2) adds THE LINE and THE TAKE. Order below is the written order;
+// presence is blocking (a missing header silently drops the section from site
+// + podcast), order is advisory (consumers re-order for their own layouts).
+const SELECTION_V2_REQUIRED: { label: string; accepts: string[] }[] = [
+  { label: 'The Update',         accepts: ['THE UPDATE'] },
+  { label: 'The Line',           accepts: ['THE LINE'] },
+  { label: 'Markets Minute',     accepts: ['MARKETS MINUTE'] },
+  { label: 'The Take',           accepts: ['THE TAKE'] },
   { label: 'Interesting Things', accepts: ['INTERESTING THINGS', 'TWO THINGS'] },
   { label: 'The Meditation',     accepts: ['THE MEDITATION'] },
   { label: 'The Model',          accepts: ['THE MODEL'] },
@@ -90,6 +115,7 @@ function main(): number {
   const has = (p: string) => headers.some(h => h.upper.startsWith(p));
   const isSelection = has('THE UPDATE');
   const isIdeas = has('THE IDEAS') || has('THE IDEA') || has('THE BIG IDEA');
+  const isV2Era = briefDate !== '' && briefDate >= LIGHT_V2_EPOCH;
 
   const fails: string[] = [];
   const warns: string[] = [];
@@ -97,18 +123,32 @@ function main(): number {
   if (!isSelection && !isIdeas) {
     fails.push('No lead section: expected "## ▸ THE UPDATE" (selection) or "## ▸ THE IDEAS" (ideas-first).');
   }
-  const mode = isSelection ? 'SELECTION' : 'IDEAS-FIRST';
-  const required = isSelection ? SELECTION_REQUIRED : IDEAS_REQUIRED;
+  const isTwoTier = isSelection && isV2Era;
+  const mode = isTwoTier ? 'TWO-TIER' : isSelection ? 'SELECTION' : 'IDEAS-FIRST';
+  const required = isTwoTier ? SELECTION_V2_REQUIRED : isSelection ? SELECTION_REQUIRED : IDEAS_REQUIRED;
 
   // Header block essentials.
   if (!/^#\s+BRIEF LIGHT\s*$/m.test(md)) warns.push('Missing "# BRIEF LIGHT" title line.');
   if (!lines.some(l => /^##\s+[A-Z][a-z]+day,/.test(l.trim()))) warns.push('Missing "## [Weekday, Month D, YYYY]" date line.');
   if (!lines.some(l => /^###\s+\S/.test(l.trim()))) warns.push('Missing "### [Daily Title]" line.');
+  // NOTE: THE STORY OF THE DAY (the italic lede) is deliberately NOT checked — optional by design.
 
   // Required sections present (by accepted alias).
   const matched = (accepts: string[]) => headers.find(h => accepts.some(a => h.upper.startsWith(a)));
   for (const req of required) {
     if (!matched(req.accepts)) fails.push(`Missing required section: "## ▸ ${req.accepts[0]}" (${req.label}). Site + audio will drop it.`);
+  }
+
+  // Section ORDER (advisory — consumers lay out for themselves, but the written
+  // order is part of the contract and drift here usually signals a bigger slip).
+  const orderIdx = required
+    .map(req => ({ label: req.label, at: matched(req.accepts)?.idx ?? -1 }))
+    .filter(x => x.at >= 0);
+  for (let i = 1; i < orderIdx.length; i++) {
+    if (orderIdx[i]!.at < orderIdx[i - 1]!.at) {
+      warns.push(`Section order: "${orderIdx[i]!.label}" appears before "${orderIdx[i - 1]!.label}" (expected ${required.map(r => r.label).join(' → ')}).`);
+      break;
+    }
   }
 
   // Lead section must yield cards (bold headlines, or "## ▸ THE IDEA: <title>").
@@ -122,12 +162,26 @@ function main(): number {
     const boldHeadlines = body.filter(l => /^\*\*[^*].*[^*]\*\*\s*$/.test(l.trim())).length;
     cards += titled ? 1 : boldHeadlines;
   }
-  if (isSelection) {
+  if (isTwoTier) {
+    // Two-tier: 4-5 deep stories (the Signal holds one of them, every day).
+    if (cards < 4) fails.push(`THE UPDATE has only ${cards} story headlines; two-tier format needs 4-5 deep stories. Add bold "**headline**" lines.`);
+    else if (cards > 5) warns.push(`THE UPDATE has ${cards} stories (two-tier spec calls for 4-5 deep; move the extras to THE LINE).`);
+  } else if (isSelection) {
     if (cards < 4) fails.push(`THE UPDATE has only ${cards} story headlines; selection format needs 5-7 (min 4). Add bold "**headline**" lines.`);
     else if (cards < 5 || cards > 7) warns.push(`THE UPDATE has ${cards} stories (spec calls for 5-7).`);
   } else {
     if (cards === 0) fails.push('No ideas parse: need bold "**headline**" lines under "## ▸ THE IDEAS", or "## ▸ THE IDEA: <title>" sections.');
     else if (cards < 2) warns.push(`Only ${cards} idea card parses (spec calls for 2-3).`);
+  }
+
+  // THE LINE — two-tier breadth tier: bold-led one-liner items, 8-12 on a normal day.
+  const lineH = headers.find(h => h.upper.startsWith('THE LINE'));
+  if (lineH) {
+    const end = headers.find(x => x.idx > lineH.idx)?.idx ?? lines.length;
+    const body = lines.slice(lineH.idx + 1, end);
+    const items = body.filter(l => /^\*\*[^*]/.test(l.trim())).length;
+    if (items === 0) fails.push('THE LINE parses to zero items: each item is "**Bold conclusion-first headline.** one sentence" — bold lead at line start.');
+    else if (items < 6 || items > 12) warns.push(`THE LINE has ${items} items (spec: 8-12 on a normal day; the line tier is elastic and absorbs the day).`);
   }
 
   // The Model: name + Explore link. (Use-it takeaway only expected on the ideas-first deep model.)

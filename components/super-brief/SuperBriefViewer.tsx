@@ -292,9 +292,11 @@ export default function SuperBriefViewer({
   const isWeekly = /^\d{4}-W\d{1,2}$/i.test(brief.date);
 
   // Find sections by ID
-  const updateSection = brief.sections.find(s => s.id === 'the-update');     // legacy selection format
+  const updateSection = brief.sections.find(s => s.id === 'the-update');     // selection / two-tier deep tier
   const ideaSections = brief.sections.filter(s => s.id === 'the-idea');      // ideas-first format
   const alsoMovingSection = brief.sections.find(s => s.id === 'also-moving');
+  const lineSection = brief.sections.find(s => s.id === 'the-line');         // two-tier breadth tier (v2, 2026-08)
+  const takeSection = brief.sections.find(s => s.id === 'the-take');         // two-tier: the dated falsifiable call
   const marketsMinuteSection = brief.sections.find(s => s.id === 'markets-minute');
   const interestingSection = brief.sections.find(s => s.id === 'interesting-things');
   const ourCallsSection = brief.sections.find(s => s.id === 'our-calls');   // weekly-light-only — the predictions nod
@@ -304,6 +306,7 @@ export default function SuperBriefViewer({
 
   // Parse content
   const signals = updateSection ? parseSignals(updateSection.content) : [];
+  const lineItems = lineSection ? parseInterestingThings(lineSection.content) : []; // same "**Headline.** body" item shape
   const interestingItems = interestingSection ? parseInterestingThings(interestingSection.content) : [];
   const meditation = meditationSection ? parseMeditation(meditationSection.content) : null;
   const model = modelSection ? parseModel(modelSection.content) : null;
@@ -437,6 +440,46 @@ export default function SuperBriefViewer({
           ))}
         </div>
       </section>
+      )}
+
+      {/* ── 3b. THE LINE — two-tier breadth tier: every other story, one line each ── */}
+      {lineItems.length > 0 && (
+        <section className="bg-white px-4 py-4 border-t-[3px] border-ct-dark">
+          <div className="max-w-lg mx-auto">
+            <div className="font-mono text-[10px] text-ct-pink uppercase tracking-wider font-medium mb-2">
+              The line
+            </div>
+            {lineItems.map((item, i) => (
+              <div
+                key={`ln-${i}`}
+                className="py-2 border-b border-[#eee] last:border-0"
+              >
+                <div className="text-[12.5px] text-[#3a3a3a] leading-[1.55]">
+                  <strong className="text-[#111] font-semibold">
+                    <RichText text={item.headline} />
+                  </strong>{' '}
+                  <RichText text={item.body} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── 3c. THE TAKE — the dated falsifiable call (two-tier) ────────── */}
+      {takeSection && takeSection.content.trim() && (
+        <section className="bg-ct-dark px-4 py-4 border-t-2 border-ct-green-data">
+          <div className="max-w-lg mx-auto">
+            <div className="font-mono text-[9px] text-ct-green-data uppercase tracking-wider font-medium mb-2">
+              The take
+            </div>
+            {toParagraphs(takeSection.content).map((para, i) => (
+              <p key={`tk-${i}`} className="text-[13px] text-[#ccc] leading-[1.6] mb-2 last:mb-0">
+                <RichText text={para} />
+              </p>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* ── 4. WARM CREAM — "Interesting Things" (replaces The Take) ───── */}

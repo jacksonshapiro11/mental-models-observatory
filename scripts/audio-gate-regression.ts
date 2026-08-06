@@ -35,6 +35,7 @@ import {
   buildLightEnding,
   DAILY_LIGHT_SIGN_OFF,
   WEEKLY_LIGHT_SIGN_OFF,
+  formatLineSectionForSpeech,
 } from '../lib/audio/text-preprocessor';
 import { auditAudioOutro } from '../lib/audio/audio-intro-gate';
 import { assertPlausibleChunkAudio } from '../lib/audio/tts-client';
@@ -476,6 +477,23 @@ check(
   'chunk plausibility THROWS on a near-empty chunk buffer (silent-truncation class)',
   (() => { try { assertPlausibleChunkAudio(4500, 12_000); return false; } catch { return true; } })(),
   a => a === true,
+);
+
+console.log('── 10. Two-tier THE LINE item beats ──');
+
+const lineItems =
+  '**First conclusion.** First implication.\n\n' +
+  '**Second conclusion.** Second implication.\n\n' +
+  '---\n\n' +
+  '**Third conclusion.** Third implication.';
+check(
+  'THE LINE preserves every item and inserts exactly one beat between adjacent items',
+  formatLineSectionForSpeech(lineItems),
+  a =>
+    a ===
+    '**First conclusion.** First implication.\n\n...\n\n' +
+      '**Second conclusion.** Second implication.\n\n...\n\n' +
+      '**Third conclusion.** Third implication.',
 );
 
 console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);

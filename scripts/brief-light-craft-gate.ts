@@ -11,6 +11,15 @@
  * is the mechanical safety net underneath that, mirroring the full brief's
  * scripts/validate-brief.ts.
  *
+ * TWO-TIER (v2) AWARENESS: for briefs dated on/after LIGHT_V2_EPOCH the
+ * bounds change with the format — 4-5 deep stories (+ THE LINE), the
+ * 1,300-1,600 length target (advisory HERE; enforcement lives in
+ * brief-light-format-gate.ts --enforce-length — one home per rule), "The
+ * Take" allowed in prose (the light has one now), and the Daily-Title lede
+ * segment exempt from the repetition count (it previews by design).
+ * Pre-epoch briefs keep the original bounds: the archive is read, never
+ * condemned.
+ *
  * Usage:
  *   node --experimental-strip-types scripts/brief-light-craft-gate.ts <light.md> [full-brief.md]
  * Exit: 0 pass (may warn) · 1 violation (blocks ship) · 2 usage error
@@ -20,6 +29,18 @@ import { checkRepetition, formatRepetitionFindings } from '../lib/repetition-che
 
 const BANNED = ['buckle up', "let's talk about", 'let us talk about', "here's where it gets interesting", 'dive in', 'in this piece', 'we unpack'];
 const SUPERLATIVE = /\b(record (?:high|low)|all-time (?:high|low)|new (?:high|low)|biggest ever|largest ever|first ever|highest ever)\b/gi;
+
+// TWO-TIER EPOCH (2026-08): briefs dated on/after this use the v2 contract —
+// 1,300-1,600-word target, 4-5 deep stories + THE LINE, and a real THE TAKE
+// section. Pre-epoch briefs keep the original bounds so the archive's exit
+// codes never change. Keep in sync with scripts/brief-light-format-gate.ts.
+const LIGHT_V2_EPOCH = '2026-08-07';
+
+/** Brief date from the filename (2026-08-05-light.md → "2026-08-05"; '' if undated). */
+function briefDateFromPath(file: string): string {
+  const m = /(\d{4}-\d{2}-\d{2})-light\.md$/.exec(file);
+  return m?.[1] ?? '';
+}
 
 function sentenceCount(s: string): number {
   const t = s.replace(/\s+/g, ' ').trim();
@@ -43,22 +64,39 @@ function main(): number {
   const lines = md.split('\n');
   const fails: string[] = [];
   const warns: string[] = [];
+  const briefDate = briefDateFromPath(file);
+  const isV2 = briefDate !== '' && briefDate >= LIGHT_V2_EPOCH;
 
   // 1. Em-dashes — zero tolerance.
   const em = (md.match(/—/g) || []).length;
   if (em > 0) fails.push(`${em} em-dash(es) found. Zero tolerance; replace with commas or periods.`);
 
   // 2. Word budget.
+  // v2 (two-tier): LENGTH HAS ONE HOME — scripts/brief-light-format-gate.ts
+  // (target 1,300-1,600, hard 1,900, blocking only under --enforce-length).
+  // This gate only echoes it as an advisory so the two gates can never fight,
+  // and so a compliant 1,3xx-word brief is never FAILED here (the old
+  // 1,500-2,400 hard bounds predate the two-tier spec).
+  // Pre-epoch: original bounds, unchanged — the archive is read, never condemned.
   const words = (md.match(/\S+/g) || []).length;
-  if (words < 1500 || words > 2400) fails.push(`Total words ${words} outside hard bounds 1,500-2,400.`);
-  else if (words < 1700 || words > 2200) warns.push(`Total words ${words} outside target 1,700-2,200.`);
+  if (isV2) {
+    if (words < 1300 || words > 1600) warns.push(`Total words ${words} outside two-tier target 1,300-1,600 (enforcement lives in brief-light-format-gate.ts --enforce-length; never blocking here).`);
+  } else {
+    if (words < 1500 || words > 2400) fails.push(`Total words ${words} outside hard bounds 1,500-2,400.`);
+    else if (words < 1700 || words > 2200) warns.push(`Total words ${words} outside target 1,700-2,200.`);
+  }
 
-  // 3. THE UPDATE story count (selection format).
+  // 3. THE UPDATE story count (selection format; v2 = 4-5 deep + THE LINE carries the rest).
   const updateBody = sectionBody(lines, /^##\s*▸\s*THE UPDATE/i);
   if (updateBody) {
     const stories = updateBody.split('\n').filter(l => /^\*\*[^*].*[^*]\*\*\s*$/.test(l.trim())).length;
-    if (stories < 4 || stories > 8) fails.push(`THE UPDATE has ${stories} stories; selection format needs 5-7 (hard bounds 4-8).`);
-    else if (stories < 5 || stories > 7) warns.push(`THE UPDATE has ${stories} stories (target 5-7).`);
+    if (isV2) {
+      if (stories < 4) fails.push(`THE UPDATE has ${stories} stories; two-tier needs 4-5 deep (min 4).`);
+      else if (stories > 5) warns.push(`THE UPDATE has ${stories} stories (two-tier target 4-5 deep; move the extras to THE LINE).`);
+    } else {
+      if (stories < 4 || stories > 8) fails.push(`THE UPDATE has ${stories} stories; selection format needs 5-7 (hard bounds 4-8).`);
+      else if (stories < 5 || stories > 7) warns.push(`THE UPDATE has ${stories} stories (target 5-7).`);
+    }
   }
 
   // 4. Markets Minute — exactly 4 sentences.
@@ -111,8 +149,11 @@ function main(): number {
   // light HAS no Take; the reader has no idea what that means. The light never references
   // sections that only exist in the full product. Case-sensitive on section names to
   // avoid hitting the common words take/six/signal.
+  // Since the two-tier epoch the light HAS its own THE TAKE section, so "The
+  // Take" is no longer a cross-product reference there. The Six / The Signal
+  // remain full-brief-only structures in every era.
   const CROSS_PRODUCT_REFS: Array<[RegExp, string]> = [
-    [/\bThe Take\b/, 'The Take'],
+    ...(isV2 ? [] : [[/\bThe Take\b/, 'The Take'] as [RegExp, string]]),
     [/\bThe Six\b/, 'The Six'],
     [/\bThe Signal\b/, 'The Signal'],
     [/\bThe Predictions\b/, 'The Predictions'],
@@ -145,7 +186,15 @@ function main(): number {
   // three places (the 2026-07-01 light said the yen "162" and the "$23.5 billion" bid in the
   // lede AND THE UPDATE AND MARKETS MINUTE — three times in the first three minutes of audio).
   // The lede preview + the story's home = twice, the ceiling. A third section is the failure.
-  const rep = checkRepetition(md);
+  //
+  // v2 (two-tier): THE STORY OF THE DAY restates up to four items BY DESIGN — it is written
+  // last, from the finished set, and previewing is its job. Its segment (named by the Daily
+  // Title, since splitIntoSegments names the title+lede block after the "### …" line) is
+  // EXEMPT from the count post-epoch, or every v2 brief fails and it reads as a quality
+  // problem instead of a config gap. Home story + any later section still = the ceiling.
+  const dailyTitle = lines.map(l => l.trim()).find(l => /^###\s+\S/.test(l) && !l.includes('▸'))?.replace(/^###\s+/, '').trim();
+  const repIgnore = ['THE MODEL', 'INNER GAME', 'THE MEDITATION', 'DISCOVERY', ...(isV2 && dailyTitle ? [dailyTitle] : [])];
+  const rep = checkRepetition(md, { ignoreSections: repIgnore });
   if (!rep.ok) {
     fails.push(
       `Data-point repetition — ${rep.findings.length} figure(s) appear in 3+ sections (rule: at most twice):\n${formatRepetitionFindings(rep.findings)}`,

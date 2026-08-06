@@ -141,15 +141,41 @@ function renderDailyHeader(brief: BriefLight): string {
 function renderSections(brief: BriefLight): string {
   return brief.sections
     .map((section) => {
+      // THE LINE (two-tier breadth tier) is a run of 8-12 one-line items, not
+      // paragraphs — full paragraph spacing would double the section's height
+      // and bury the rhythm. Tighter type, hairline separators.
+      const body =
+        section.id === 'the-line'
+          ? renderLineItems(section.content)
+          : markdownToHtml(section.content);
       return `
   <tr><td style="padding:24px 40px 0 40px;">
     <div style="border-top:2px solid #c9b88a;padding-top:20px;">
       <div style="font-family:Georgia,serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#8a7d64;font-weight:700;margin-bottom:16px;">
         ▸ ${escapeHtml(section.label)}
       </div>
-      ${markdownToHtml(section.content)}
+      ${body}
     </div>
   </td></tr>`;
+    })
+    .join('\n');
+}
+
+// ─── THE LINE — compact item run ────────────────────────────────────────────
+// Each item arrives as "**Bold conclusion-first headline.** one sentence" on
+// its own blank-line-separated block. Rendered as a tight list row: bold lead
+// inline with its sentence, hairline rule between items.
+
+function renderLineItems(md: string): string {
+  const items = md
+    .split(/\n\s*\n/)
+    .map((b) => b.trim())
+    .filter((b) => b && !/^---+$/.test(b));
+
+  return items
+    .map((item, i) => {
+      const borderTop = i > 0 ? 'border-top:1px solid #eee9dc;' : '';
+      return `<div style="${borderTop}padding:10px 0;font-family:Georgia,serif;font-size:14px;line-height:1.55;color:#3d3629;">${escapeInline(item.replace(/\n+/g, ' '))}</div>`;
     })
     .join('\n');
 }

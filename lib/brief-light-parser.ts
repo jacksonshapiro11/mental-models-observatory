@@ -30,11 +30,13 @@ export interface BriefLightSection {
 }
 
 // ─── Section detection (header-driven) ──────────────────────────────────────
-// Handles BOTH the legacy selection format (THE UPDATE / INTERESTING THINGS / …)
-// AND the ideas-first format (multiple "THE IDEA: <title>" headers, ALSO MOVING,
-// TWO THINGS WORTH KNOWING, THE MODEL: <name> inline, THE CLOSE). Any "## ▸ …"
-// line is a section boundary; the id is derived from the header text so renamed
-// or new sections never silently disappear again.
+// Handles the legacy selection format (THE UPDATE / INTERESTING THINGS / …),
+// the two-tier v2 format (adds THE LINE after THE UPDATE and THE TAKE after
+// MARKETS MINUTE, 2026-08), AND the ideas-first format (multiple
+// "THE IDEA: <title>" headers, ALSO MOVING, TWO THINGS WORTH KNOWING,
+// THE MODEL: <name> inline, THE CLOSE). Any "## ▸ …" line is a section
+// boundary; the id is derived from the header text so renamed or new sections
+// never silently disappear again.
 
 const SECTION_HEADER_RE = /^##\s*▸\s*(.+?)\s*$/;
 
@@ -46,6 +48,8 @@ function sectionMetaFor(rawHeader: string): { id: string; label: string; title: 
   if (u.startsWith('THE UPDATE')) return { id: 'the-update', label: 'The Update', title };
   if (u.startsWith('THE BIG IDEA') || u.startsWith('THE IDEA')) return { id: 'the-idea', label: title || 'Idea', title };
   if (u.startsWith('ALSO MOVING')) return { id: 'also-moving', label: 'Also Moving', title };
+  if (u.startsWith('THE LINE')) return { id: 'the-line', label: 'The Line', title };      // two-tier breadth tier (v2, 2026-08)
+  if (u.startsWith('THE TAKE')) return { id: 'the-take', label: 'The Take', title };      // two-tier: the dated falsifiable call (v2, 2026-08)
   if (u.startsWith('MARKETS MINUTE')) return { id: 'markets-minute', label: 'Markets Minute', title };
   if (u.startsWith('TWO THINGS') || u.startsWith('INTERESTING THINGS')) return { id: 'interesting-things', label: 'Interesting Things', title };
   if (u.startsWith('OUR CALLS')) return { id: 'our-calls', label: 'Our Calls', title };  // weekly-light-only — the predictions nod
