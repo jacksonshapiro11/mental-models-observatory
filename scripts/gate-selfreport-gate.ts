@@ -57,7 +57,52 @@ const EXIT_RE = /\bEXIT\s*[=:]?\s*(\d+)\b/i;
 const GLYPH_PASS = /✅|(?<![A-Za-z])PASS(?![A-Za-z])/;
 const GLYPH_FAIL = /❌|🔴|(?<![A-Za-z])FAIL(?![A-Za-z])/;
 
-export type Finding = { kind: 'missing-measurement' | 'inverted-verdict' | 'no-block'; gate: string; detail: string };
+export type Finding = { kind: 'missing-measurement' | 'inverted-verdict' | 'count-inversion' | 'no-block'; gate: string; detail: string };
+
+/**
+ * ── COUNT INVERSION — IMP-132 · 2026-08-06 Critic mandate #1(b) · RC2 ──────────────────────────
+ *
+ * The exit-code check above has a blind spot exactly the size of an ADVISORY gate. `six-conversion
+ * -gate.ts` exits 0 whether it finds nothing or ten things — the findings are for the Editor to
+ * act on, not a publish blocker — so its self-report can NEVER contradict its exit code. On
+ * 2026-08-06 the v2 block certified `six-conversion-gate.ts (CLEAN 0/10) EXIT=0 ✅ PASS` while the
+ * gate, re-run on that same v2, returned `1 finding(s)`. Both halves of the line were true and the
+ * sentence was false. IMP-128 was built to stop exactly this — a verdict authored rather than
+ * transcribed — and it watched this one go by, because it only knew how to read one of the two
+ * numbers on the line.
+ *
+ * ── WHY AN ALLOWLIST, AND NOT "RE-RUN EVERYTHING" ─────────────────────────────────────────────
+ * The header above rejects re-running as a verdict source, and that reasoning still holds: gates
+ * that read `{date}-truth.json`, the archive, or a premise registry measure a DIFFERENT WORLD at
+ * 10:03 than they did at 19:45, so a morning re-run of `fact-gate` is drift, not evidence. But
+ * that argument is about INPUTS, not about re-running, and it does not generalise: a gate whose
+ * only input is the brief file is a pure function of an immutable artifact, and re-running it
+ * tomorrow returns exactly what it returned last night. Those gates — and only those — can be
+ * held to their reported counts. The allowlist is the discrimination, and it is deliberately
+ * small: adding a gate to it is a claim that the gate reads nothing but the file, and that claim
+ * must be checked in the source before the name goes in.
+ */
+const DETERMINISTIC_GATES = new Set<string>([
+  // Verified 2026-08-06: single `fs.readFileSync(file)` of the brief, no truth file, no archive,
+  // no network, no env, no clock. `grep -n "readFileSync\|spawnSync\|readdirSync\|process.env"`
+  // returns exactly one line.
+  'six-conversion-gate.ts',
+]);
+
+/** Counts a gate line CLAIMS. Deliberately narrow — two shapes, both unambiguous, or null. */
+export function parseAssertedCount(rest: string): number | null {
+  const clean = /\bCLEAN\b[^)\n]*?\b0\s*\/\s*\d+/i.exec(rest) || /\bCLEAN\b\s*\(\s*0\b/i.exec(rest);
+  if (clean) return 0;
+  const n = /\b(\d+)\s+finding\(?s?\)?/i.exec(rest);
+  return n ? parseInt(n[1]!, 10) : null;
+}
+
+/** Counts a gate REPORTS when re-run. Null = the output did not state a count we recognise. */
+export function parseReportedCount(stdout: string): number | null {
+  if (/CLEAN\s*\(0 findings\)/i.test(stdout)) return 0;
+  const m = /:\s*(\d+)\s+finding\(s\)/i.exec(stdout);
+  return m ? parseInt(m[1]!, 10) : null;
+}
 
 /** Pull the gate lines out of a v2's `MECHANICAL GATE OUTPUT` block. Empty array = no block. */
 export function parseGateBlock(v2: string): { gate: string; rest: string }[] {
@@ -74,11 +119,28 @@ export function parseGateBlock(v2: string): { gate: string; rest: string }[] {
   return out;
 }
 
-export function auditSelfReport(v2: string): Finding[] {
+/**
+ * `measure` re-runs a deterministic gate against the SAME v2 and returns its findings count
+ * (null = not measurable). Injectable so the selftest can prove the comparison logic without
+ * depending on which gates happen to be clean today.
+ */
+export function auditSelfReport(v2: string, measure?: (gate: string) => number | null): Finding[] {
   const rows = parseGateBlock(v2);
   if (rows.length === 0) return [{ kind: 'no-block', gate: '(none)', detail: 'no `MECHANICAL GATE OUTPUT` block found in the Validation Report — the Validator is required to paste one' }];
   const findings: Finding[] = [];
   for (const { gate, rest } of rows) {
+    if (measure && DETERMINISTIC_GATES.has(gate)) {
+      const asserted = parseAssertedCount(rest);
+      const measured = asserted === null ? null : measure(gate);
+      if (asserted !== null && measured !== null && measured !== asserted) {
+        findings.push({
+          kind: 'count-inversion',
+          gate,
+          detail: `reports ${asserted} finding(s); re-running it against this same v2 returns ${measured}. ${gate} reads nothing but the brief file, so this is not drift — the two runs measured the same bytes and disagree. An ADVISORY gate exits 0 either way, so the exit code cannot catch this: the COUNT is the verdict. Paste what the run printed.`,
+        });
+        continue; // one finding per line; the count contradiction subsumes the glyph check
+      }
+    }
     const exit = EXIT_RE.exec(rest);
     const asserted = GLYPH_PASS.test(rest) ? 'PASS' : GLYPH_FAIL.test(rest) ? 'FAIL' : null;
     if (!asserted) continue; // a line with no verdict claims nothing; nothing to contradict
@@ -101,6 +163,14 @@ export function auditSelfReport(v2: string): Finding[] {
     }
   }
   return findings;
+}
+
+/** Re-run one DETERMINISTIC gate against this v2 and return the findings count it prints. */
+function liveCount(gate: string, v2Path: string): number | null {
+  const gp = path.join(process.cwd(), 'scripts', gate);
+  if (!fs.existsSync(gp)) return null;
+  const r = spawnSync(process.execPath, ['--experimental-strip-types', gp, v2Path], { encoding: 'utf8', timeout: 120000 });
+  return parseReportedCount((r.stdout || '') + (r.stderr || ''));
 }
 
 /** ADVISORY ONLY. Re-runs each named gate now and prints drift. Never contributes to the exit code. */
@@ -163,6 +233,37 @@ function selftest(): number {
   const CONTROL = '  predraft-consumption-gate.ts  ✅ EXIT 0 — "every on-disk pre-draft is present in v1". 0 FAIL, 0 FLAG.';
   t(auditSelfReport(wrap(CONTROL)).length === 0, '[IMP-128] SILENT on 08-04\'s own predraft-consumption line ("✅ EXIT 0") — the format is already achievable');
 
+  // 4b. IMP-132 — COUNT INVERSION. The line is VERBATIM from 2026-08-06-v2.md. Note what it does
+  // to the exit-code check: EXIT=0 and ✅ PASS agree perfectly, so IMP-128 passes it. The lie is
+  // in the third number. `measure` is injected so this proves the COMPARISON, not today's weather:
+  // with the gate returning 1 (what it actually returned on 08-06, before IMP-131 fixed the
+  // extractSection false positive) the line must FAIL; with it returning 0 (what it returns now
+  // that the gate reads the section instead of the editor's note about the section) it must PASS.
+  //
+  // HONEST NOTE ON THE ACCEPTANCE GATE: the Critic asked for "exit 1 on tonight's real v2 block."
+  // Applying mandate 1(a) in the same session makes that literally unsatisfiable — once the gate
+  // stops mis-reading the comment block, tonight's `CLEAN 0/10` becomes TRUE and the correct
+  // behaviour is silence. Chasing the letter of it would mean preserving the false positive to
+  // keep a test red. So the FIRE case is proved against the verbatim line with the count the gate
+  // actually produced last night, and the live 08-06 file is asserted SILENT below, deliberately.
+  const REAL_08_06 = '  six-conversion-gate.ts         on 2026-08-06-v2.md (CLEAN 0/10)       EXIT=0 ✅ PASS';
+  const c1 = auditSelfReport(wrap(REAL_08_06), () => 1);
+  t(c1.length === 1 && c1[0]!.kind === 'count-inversion' && /returns 1/.test(c1[0]!.detail),
+    "[IMP-132] FIRES on 08-06's verbatim line — asserted CLEAN 0/10, gate returns 1 finding, EXIT=0 ✅ agree (the ADVISORY blind spot)");
+  t(auditSelfReport(wrap(REAL_08_06), () => 0).length === 0,
+    '[IMP-132] SILENT on the same line once the count matches — a true self-report is not a finding');
+  t(auditSelfReport(wrap(REAL_08_06)).length === 0,
+    '[IMP-132] SILENT with no measurer injected — the count check is opt-in, so sweep()/archive reads never re-run gates');
+  // The allowlist is the discrimination, not decoration: a time-varying gate is never re-measured.
+  const TIMEVARY = '  fact-gate.ts        EXIT=0 ✅ PASS — CLEAN 0/10 claims, all resolved.';
+  t(auditSelfReport(wrap(TIMEVARY), () => 6).length === 0,
+    '[IMP-132] SILENT on a NON-deterministic gate (fact-gate reads {date}-truth.json) even when the re-run disagrees — drift is not a verdict');
+  // End-to-end on the live artifacts, which is the state the fix is supposed to produce.
+  const live06 = path.join(process.cwd(), 'daily-briefs', '2026-08-06-v2.md');
+  const live05 = path.join(process.cwd(), 'daily-briefs', '2026-08-05-v2.md');
+  if (fs.existsSync(live06)) t(runOne(live06, false, true) === 0, '[IMP-132] EXIT 0 on the real 2026-08-06 v2 — after IMP-131 its CLEAN 0/10 is true');
+  if (fs.existsSync(live05)) t(runOne(live05, false, true) === 0, "[IMP-132] EXIT 0 on the real 2026-08-05 v2 (the Critic's silent-case acceptance leg)");
+
   // 5. A missing block is its own finding.
   t(auditSelfReport('# ▸ THE DASHBOARD\n\nno validation report here\n')[0]!.kind === 'no-block', '[IMP-128] FLAGS a v2 with no MECHANICAL GATE OUTPUT block');
 
@@ -184,7 +285,7 @@ function runOne(v2Path: string, rerun: boolean, quiet = false): number {
   const dateMatch = path.basename(v2Path).match(/(\d{4}-\d{2}-\d{2})/);
   const briefDate = dateMatch ? dateMatch[1]! : '';
   const inEpoch = briefDate >= EPOCH;
-  const findings = auditSelfReport(v2);
+  const findings = auditSelfReport(v2, gate => liveCount(gate, v2Path));
 
   if (!quiet) {
     console.log(`gate-selfreport-gate — ${path.basename(v2Path)} (${inEpoch ? 'IN EPOCH — findings BLOCK' : `pre-${EPOCH} — reported, never condemned`})`);

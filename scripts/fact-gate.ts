@@ -2000,7 +2000,7 @@ const PRIMARY_SOURCE_RE = /https?:\/\/|primary source|verified against|per (?:Re
 // provenance-gate CHECK A finding (a zero-absence record read as four absence assertions).
 // Two gates, one night, one shape: a negated declaration read as an admission.
 // Scoped tightly — only an EXPLICIT negation of the harmonizing verb clears the line.
-const HARMONIZE_NEGATED_RE = /\b(?:did|do|does|would|will|could)\s+(?:\*{0,2}not\*{0,2}|n[o']t)\s+\w{0,12}\s?harmoni[sz]|\bnot\s+harmoni[sz]|\brefused\s+to\s+harmoni[sz]|\bdeclined\s+to\s+harmoni[sz]|\bwithout\s+harmoni[sz]|\bnever\s+harmoni[sz]/i;
+const HARMONIZE_NEGATED_RE = /\b(?:did|do|does|would|will|could)\s+(?:\*{0,2}not\*{0,2}|n[o']t)\s+\w{0,12}\s?harmoni[sz]|\bnot\s+harmoni[sz]|\brefused\s+to\s+harmoni[sz]|\bdeclined\s+to\s+harmoni[sz]|\bwithout\s+harmoni[sz]|\bnever\s+harmoni[sz]|\bharmoni[sz]\w*\s*[:=]\s*\**\s*(?:none|no|n\/a|nil)\b|\bno\s+sentence\s+was\s+moved\s+toward\s+the\s+published\s+record/i;
 
 function findQgLog(briefPath: string, briefDate: string | null): string | null {
   if (!briefDate) return null;

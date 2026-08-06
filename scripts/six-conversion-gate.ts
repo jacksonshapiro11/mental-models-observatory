@@ -47,6 +47,30 @@
 import * as fs from 'fs';
 
 // ---------- section extraction ----------
+/**
+ * IMP-131 (2026-08-06, RC2) — THE GATE MUST READ THE BRIEF, NOT THE COMMENTARY ABOUT THE BRIEF.
+ *
+ * Every v2 opens with the Editor's `<!-- BRIEF VALIDATION REPORT … -->` block, and that block
+ * TALKS ABOUT THE SECTIONS BY NAME. On 2026-08-06 it contained the line "the Inner Game inversion
+ * rewrite pushed the body 348 → 358 against a 350 ceiling" at line 41 — so `/INNER GAME/i`, which
+ * had no heading anchor, matched the EDITOR'S NOTE at line 41 instead of the real `# ▸ INNER GAME`
+ * at line 158. Check C then judged the twenty lines of editor prose that follow, found no
+ * assumption→inversion scaffold in them (of course), and fired on a brief whose Inner Game opens
+ * "You would assume…". The finding was false, it was the only finding, and the Editor certified
+ * the gate CLEAN 0/10 in the same comment block the gate had misread.
+ *
+ * Note the reflexivity: the more diligently the Editor documents a section, the more likely the
+ * gate is to grade the documentation. Anchoring the two loose regexes fixes today's instance;
+ * stripping the comments first fixes the CLASS, for all seven extractions and every future note.
+ */
+export function stripHtmlComments(md: string): string {
+  // Blank the contents, keep the newlines — line-based extraction stays byte-aligned with the file.
+  let out = md.replace(/<!--[\s\S]*?-->/g, m => m.replace(/[^\n]/g, ''));
+  const stray = out.indexOf('<!--'); // unterminated comment = commentary to EOF, as any renderer reads it
+  if (stray !== -1) out = out.slice(0, stray) + out.slice(stray).replace(/[^\n]/g, '');
+  return out;
+}
+
 function extractSection(md: string, startRe: RegExp): string {
   const lines = md.split('\n');
   const i = lines.findIndex(l => startRe.test(l));
@@ -397,11 +421,16 @@ function checkAITConsensus(section: string): string | null {
 
 // ---------- runner ----------
 interface Finding { check: string; msg: string; }
-function runBrief(md: string): Finding[] {
+function runBrief(rawMd: string): Finding[] {
+  // IMP-131: strip the Editor/Validator commentary FIRST (the class fix), then anchor every
+  // section regex to a real heading (the instance fix). Both, because either alone leaves a hole:
+  // an anchor still matches a heading quoted inside a comment, and stripping still lets a bare
+  // in-body mention of "THE TAKE" win the findIndex race.
+  const md     = stripHtmlComments(rawMd);
   const mm     = extractSection(md, /^##\s+Markets\s*&\s*Macro/i);
   const ait    = extractSection(md, /^##\s+AI\s*&\s*Tech/i);
-  const take   = extractSection(md, /THE TAKE/i);
-  const inner  = extractSection(md, /INNER GAME/i);
+  const take   = extractSection(md, /^#{1,6}\s.*THE TAKE/i);
+  const inner  = extractSection(md, /^#{1,6}\s.*INNER GAME/i);
   const cc     = extractSection(md, /^##\s+Companies\s*&\s*Crypto/i);
   const geo    = extractSection(md, /^##\s+Geopolitics/i);
   const signal = extractSection(md, /^##\s+The\s+Signal/i);
@@ -568,14 +597,52 @@ const SILENT_AITCON = `## AI & Tech
 - **Two frontier-class models launched within 24 hours, and yes, value is migrating from the model layer — but the question the consensus skips is WHERE inside the application layer it lands.** The application layer is already stratifying: developer tools capture the highest margin (Cursor, trained into the workflow), enterprise compute menus capture the volume (OpenAI's three-tier Sol/Terra/Luna), and consumer chat captures neither. The duopoly forming is tools-plus-menu, not model-plus-chat. Margin and volume are accruing to different sub-layers, so "own the application layer" is already the wrong altitude.
 ## Geopolitics`;
 
+// IMP-131 fixtures — the 2026-08-06 false positive, reproduced in shape. The comment block is the
+// real Editor `BRIEF VALIDATION REPORT` header, including the line at v2:41 that names the section
+// ("the Inner Game inversion rewrite pushed the body 348 → 358") and is what `/INNER GAME/i` matched
+// instead of the heading twenty lines further down. The body of CLEAN is the published 08-06 Inner
+// Game, which opens with an explicit assumption→inversion scaffold; FIRE swaps in a truism body and
+// keeps the identical comment block, so the pair proves accuracy rather than silence.
+const EDITOR_COMMENT_BLOCK = `<!-- BRIEF VALIDATION REPORT — 2026-08-06-v2.md (EDITOR PASS)
+
+MECHANICAL GATE OUTPUT (pasted, not asserted):
+six-conversion-gate.ts         on 2026-08-06-v2.md (CLEAN 0/10)       EXIT=0 PASS
+
+Fixes applied:
+  - the Inner Game inversion rewrite pushed the body 348 → 358 against a 350 ceiling. Trimmed to 349.
+-->`;
+const COMMENTED_CLEAN_INNER = `# MARKETS, MEDITATIONS & MENTAL MODELS
+
+${EDITOR_COMMENT_BLOCK}
+
+# ▸ INNER GAME
+
+*"..."*
+You would assume the way to do that is to vet the source: who reported this, who told them, have they been reliable. He did not throw that test away. He said it is the weaker one, and leaning on it is how careful people believe impossible things, because an honest man can hand you a number that could not have happened. The stronger test asks whether the reported thing is consistent with how that kind of thing works. The intuition is backwards: the check you can run without knowing the subject is the one that fails on the subjects you do not know.
+---`;
+const COMMENTED_FIRE_INNER = `# MARKETS, MEDITATIONS & MENTAL MODELS
+
+${EDITOR_COMMENT_BLOCK}
+
+${FIRE_INNER}`;
+
 function selftest(): number {
   const cases: Array<[string, boolean, () => string | null]> = [
     ['A M&M fires on real evasion',   true,  () => checkMM(extractSection(FIRE_MM,   /^##\s+Markets/i))],
     ['A M&M silent when ranked',      false, () => checkMM(extractSection(SILENT_MM, /^##\s+Markets/i))],
     ['B AI&T fires on Take-serving',  true,  () => checkAIT(extractSection(FIRE_AIT, /^##\s+AI/i), extractSection(TAKE_FIXTURE, /THE TAKE/i))],
     ['B AI&T silent when independent',false, () => checkAIT(extractSection(SILENT_AIT,/^##\s+AI/i), extractSection(TAKE_FIXTURE, /THE TAKE/i))],
-    ['C InnerGame fires on truism',   true,  () => checkInnerGame(extractSection(FIRE_INNER,  /INNER GAME/i))],
-    ['C InnerGame silent on inversion',false,() => checkInnerGame(extractSection(SILENT_INNER,/INNER GAME/i))],
+    ['C InnerGame fires on truism',   true,  () => checkInnerGame(extractSection(FIRE_INNER,  /^#{1,6}\s.*INNER GAME/i))],
+    ['C InnerGame silent on inversion',false,() => checkInnerGame(extractSection(SILENT_INNER,/^#{1,6}\s.*INNER GAME/i))],
+    // IMP-131 — the 2026-08-06 false positive, byte-for-byte: an Editor comment block that MENTIONS
+    // the section by name, above a section that is genuinely clean. Before the fix, `/INNER GAME/i`
+    // matched the comment at line 41 and Check C fired on editor prose. Both directions: the same
+    // brief with the same comment block, but a TRUISM Inner Game, must still FIRE — proving the
+    // strip made the gate accurate, not merely quiet.
+    ['C IMP-131 silent when only an EDITOR COMMENT names the section (real 08-06 shape)',
+      false, () => checkInnerGame(extractSection(stripHtmlComments(COMMENTED_CLEAN_INNER), /^#{1,6}\s.*INNER GAME/i))],
+    ['C IMP-131 still fires through the same comment block when the section IS a truism',
+      true,  () => checkInnerGame(extractSection(stripHtmlComments(COMMENTED_FIRE_INNER), /^#{1,6}\s.*INNER GAME/i))],
     ['D C&C fires on all-crypto',     true,  () => checkCC(extractSection(FIRE_CC,   /^##\s+Companies/i))],
     ['D C&C silent with corporate',   false, () => checkCC(extractSection(SILENT_CC, /^##\s+Companies/i))],
     ['E Geo fires on parallel tracks',true,  () => checkGeo(extractSection(FIRE_GEO, /^##\s+Geopolitics/i))],
