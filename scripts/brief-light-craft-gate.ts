@@ -35,11 +35,25 @@ const SUPERLATIVE = /\b(record (?:high|low)|all-time (?:high|low)|new (?:high|lo
 // section. Pre-epoch briefs keep the original bounds so the archive's exit
 // codes never change. Keep in sync with scripts/brief-light-format-gate.ts.
 const LIGHT_V2_EPOCH = '2026-08-07';
+// First ISO-week whose weekly light uses the two-tier contract. The weekly keeps
+// OUR CALLS as its calls home (no THE TAKE — decision D1, WORK_ORDER_WEEKLY_TWO_TIER.md),
+// so the "The Take" cross-product ban below stays ACTIVE for weekly-v2 files.
+// Keep in sync with scripts/brief-light-format-gate.ts.
+const WEEKLY_V2_EPOCH = '2026-W33';
 
 /** Brief date from the filename (2026-08-05-light.md → "2026-08-05"; '' if undated). */
 function briefDateFromPath(file: string): string {
   const m = /(\d{4}-\d{2}-\d{2})-light\.md$/.exec(file);
   return m?.[1] ?? '';
+}
+
+/** Normalized weekly key from the filename (2026-W7-light.md → "2026-W07"; '' if invalid). */
+function weeklyFromPath(file: string): string {
+  const m = /(\d{4})-W(\d{1,2})-light\.md$/.exec(file);
+  if (!m) return '';
+  const week = Number(m[2]);
+  if (week < 1 || week > 53) return '';
+  return `${m[1]}-W${String(week).padStart(2, '0')}`;
 }
 
 function sentenceCount(s: string): number {
@@ -66,6 +80,9 @@ function main(): number {
   const warns: string[] = [];
   const briefDate = briefDateFromPath(file);
   const isV2 = briefDate !== '' && briefDate >= LIGHT_V2_EPOCH;
+  const weeklyKey = weeklyFromPath(file);
+  const isWeeklyV2 = weeklyKey !== '' && weeklyKey >= WEEKLY_V2_EPOCH;
+  const isTwoTierEra = isV2 || isWeeklyV2;   // structural v2: daily or weekly
 
   // 1. Em-dashes — zero tolerance.
   const em = (md.match(/—/g) || []).length;
@@ -81,6 +98,8 @@ function main(): number {
   const words = (md.match(/\S+/g) || []).length;
   if (isV2) {
     if (words < 1300 || words > 1600) warns.push(`Total words ${words} outside two-tier target 1,300-1,600 (enforcement lives in brief-light-format-gate.ts --enforce-length; never blocking here).`);
+  } else if (isWeeklyV2) {
+    if (words < 2000 || words > 2400) warns.push(`Total words ${words} outside weekly two-tier target 2,000-2,400 (enforcement lives in brief-light-format-gate.ts --enforce-length; never blocking here).`);
   } else {
     if (words < 1500 || words > 2400) fails.push(`Total words ${words} outside hard bounds 1,500-2,400.`);
     else if (words < 1700 || words > 2200) warns.push(`Total words ${words} outside target 1,700-2,200.`);
@@ -90,7 +109,7 @@ function main(): number {
   const updateBody = sectionBody(lines, /^##\s*▸\s*THE UPDATE/i);
   if (updateBody) {
     const stories = updateBody.split('\n').filter(l => /^\*\*[^*].*[^*]\*\*\s*$/.test(l.trim())).length;
-    if (isV2) {
+    if (isTwoTierEra) {
       if (stories < 4) fails.push(`THE UPDATE has ${stories} stories; two-tier needs 4-5 deep (min 4).`);
       else if (stories > 5) warns.push(`THE UPDATE has ${stories} stories (two-tier target 4-5 deep; move the extras to THE LINE).`);
     } else {
@@ -192,9 +211,25 @@ function main(): number {
   // Title, since splitIntoSegments names the title+lede block after the "### …" line) is
   // EXEMPT from the count post-epoch, or every v2 brief fails and it reads as a quality
   // problem instead of a config gap. Home story + any later section still = the ceiling.
-  const dailyTitle = lines.map(l => l.trim()).find(l => /^###\s+\S/.test(l) && !l.includes('▸'))?.replace(/^###\s+/, '').trim();
-  const repIgnore = ['THE MODEL', 'INNER GAME', 'THE MEDITATION', 'DISCOVERY', ...(isV2 && dailyTitle ? [dailyTitle] : [])];
-  const rep = checkRepetition(md, { ignoreSections: repIgnore });
+  // v2 (daily ≥ LIGHT_V2_EPOCH; weekly ≥ WEEKLY_V2_EPOCH): the lede previews by
+  // design — exempt the title+lede block BY POSITION (the '### title' line through
+  // the line before the first '## ▸' header), NOT by title-string ignore.
+  // Name-keyed ignoring was broken two ways (2026-08-06 adversarial verification):
+  // an empty Daily Title dropped the exemption entirely (over-fire), and a short
+  // title that was a substring of a section name — a light titled "The Line" —
+  // silently exempted that whole SECTION from the at-most-twice count (under-fire).
+  // Position can do neither. Home story + one later section remains the ceiling.
+  let repSource = md;
+  if (isTwoTierEra) {
+    const trimmed = lines.map(l => l.trim());
+    const titleIdx = trimmed.findIndex(l => /^###(\s|$)/.test(l) && !l.includes('▸'));
+    const firstSecIdx = lines.findIndex(l => /^##\s*▸/.test(l));
+    if (titleIdx >= 0 && titleIdx < firstSecIdx) {
+      repSource = [...lines.slice(0, titleIdx), ...lines.slice(firstSecIdx)].join('\n');
+    }
+  }
+  const repIgnore = ['THE MODEL', 'INNER GAME', 'THE MEDITATION', 'DISCOVERY'];
+  const rep = checkRepetition(repSource, { ignoreSections: repIgnore });
   if (!rep.ok) {
     fails.push(
       `Data-point repetition — ${rep.findings.length} figure(s) appear in 3+ sections (rule: at most twice):\n${formatRepetitionFindings(rep.findings)}`,

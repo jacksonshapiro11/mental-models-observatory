@@ -56,6 +56,17 @@ const LIGHT_WPM = 160;
 // Briefs dated before this are checked against the original selection contract.
 const LIGHT_V2_EPOCH = '2026-08-07';
 
+// Weekly light (…-W##-light.md, e.g. content/daily-updates/weekly/2026-W31-light.md).
+// First ISO-week whose weekly light is REQUIRED to be two-tier. The weekly carries a
+// week's residue (more LINE items, an OUR CALLS section, longer soul sections), so its
+// bands sit above the daily's. Pre-epoch weeklies and undated scratch files are
+// measured, never failed: the archive is read, never condemned. Zero-padded string
+// compare is safe within a century. Keep in sync with brief-light-craft-gate.ts.
+const WEEKLY_V2_EPOCH = '2026-W33';
+const WEEKLY_LEN_TARGET_LO = 2000;
+const WEEKLY_LEN_TARGET_HI = 2400;
+const WEEKLY_LEN_HARD = 2700;
+
 const SELECTION_REQUIRED: { label: string; accepts: string[] }[] = [
   { label: 'The Update',         accepts: ['THE UPDATE'] },
   { label: 'Markets Minute',     accepts: ['MARKETS MINUTE'] },
@@ -72,6 +83,20 @@ const SELECTION_V2_REQUIRED: { label: string; accepts: string[] }[] = [
   { label: 'The Line',           accepts: ['THE LINE'] },
   { label: 'Markets Minute',     accepts: ['MARKETS MINUTE'] },
   { label: 'The Take',           accepts: ['THE TAKE'] },
+  { label: 'Interesting Things', accepts: ['INTERESTING THINGS', 'TWO THINGS'] },
+  { label: 'The Meditation',     accepts: ['THE MEDITATION'] },
+  { label: 'The Model',          accepts: ['THE MODEL'] },
+  { label: 'The Close',          accepts: ['THE CLOSE'] },
+];
+// Weekly two-tier (v2 weekly, effective WEEKLY_V2_EPOCH): the daily two-tier set with
+// OUR CALLS in place of THE TAKE — the weekly's calls home is OUR CALLS (grades + the
+// standing week/month/year calls); a separate Take would duplicate it (decision D1,
+// WORK_ORDER_WEEKLY_TWO_TIER.md).
+const WEEKLY_V2_REQUIRED: { label: string; accepts: string[] }[] = [
+  { label: 'The Update',         accepts: ['THE UPDATE'] },
+  { label: 'The Line',           accepts: ['THE LINE'] },
+  { label: 'Markets Minute',     accepts: ['MARKETS MINUTE'] },
+  { label: 'Our Calls',          accepts: ['OUR CALLS'] },
   { label: 'Interesting Things', accepts: ['INTERESTING THINGS', 'TWO THINGS'] },
   { label: 'The Meditation',     accepts: ['THE MEDITATION'] },
   { label: 'The Model',          accepts: ['THE MODEL'] },
@@ -95,6 +120,15 @@ function briefDateFromPath(file: string): string {
   return m?.[1] ?? '';
 }
 
+/** Normalized weekly key from the filename (2026-W7-light.md → "2026-W07"; '' if invalid). */
+function weeklyFromPath(file: string): string {
+  const m = /(\d{4})-W(\d{1,2})-light\.md$/.exec(file);
+  if (!m) return '';
+  const week = Number(m[2]);
+  if (week < 1 || week > 53) return '';
+  return `${m[1]}-W${String(week).padStart(2, '0')}`;
+}
+
 function main(): number {
   const file = process.argv[2];
   if (!file) { console.error('usage: brief-light-format-gate.ts <brief-light.md> [--enforce-length]'); return 2; }
@@ -116,6 +150,8 @@ function main(): number {
   const isSelection = has('THE UPDATE');
   const isIdeas = has('THE IDEAS') || has('THE IDEA') || has('THE BIG IDEA');
   const isV2Era = briefDate !== '' && briefDate >= LIGHT_V2_EPOCH;
+  const weeklyKey = weeklyFromPath(file);
+  const isWeeklyV2Era = weeklyKey !== '' && weeklyKey >= WEEKLY_V2_EPOCH;
 
   const fails: string[] = [];
   const warns: string[] = [];
@@ -123,13 +159,13 @@ function main(): number {
   if (!isSelection && !isIdeas) {
     fails.push('No lead section: expected "## ▸ THE UPDATE" (selection) or "## ▸ THE IDEAS" (ideas-first).');
   }
-  const isTwoTier = isSelection && isV2Era;
-  const mode = isTwoTier ? 'TWO-TIER' : isSelection ? 'SELECTION' : 'IDEAS-FIRST';
-  const required = isTwoTier ? SELECTION_V2_REQUIRED : isSelection ? SELECTION_REQUIRED : IDEAS_REQUIRED;
+  const isTwoTier = isSelection && (isV2Era || isWeeklyV2Era);
+  const mode = isTwoTier ? (isWeeklyV2Era ? 'TWO-TIER WEEKLY' : 'TWO-TIER') : isSelection ? 'SELECTION' : 'IDEAS-FIRST';
+  const required = isTwoTier ? (isWeeklyV2Era ? WEEKLY_V2_REQUIRED : SELECTION_V2_REQUIRED) : isSelection ? SELECTION_REQUIRED : IDEAS_REQUIRED;
 
   // Header block essentials.
-  if (!/^#\s+BRIEF LIGHT\s*$/m.test(md)) warns.push('Missing "# BRIEF LIGHT" title line.');
-  if (!lines.some(l => /^##\s+[A-Z][a-z]+day,/.test(l.trim()))) warns.push('Missing "## [Weekday, Month D, YYYY]" date line.');
+  if (weeklyKey ? !/^#\s+WEEKLY LIGHT\s*$/m.test(md) : !/^#\s+BRIEF LIGHT\s*$/m.test(md)) warns.push(`Missing "# ${weeklyKey ? 'WEEKLY' : 'BRIEF'} LIGHT" title line.`);
+  if (!lines.some(l => (weeklyKey ? /^##\s+Week of\s+\S/ : /^##\s+[A-Z][a-z]+day,/).test(l.trim()))) warns.push(`Missing "${weeklyKey ? '## Week of [Month D] to [D], [YYYY]' : '## [Weekday, Month D, YYYY]'}" date line.`);
   if (!lines.some(l => /^###\s+\S/.test(l.trim()))) warns.push('Missing "### [Daily Title]" line.');
   // NOTE: THE STORY OF THE DAY (the italic lede) is deliberately NOT checked — optional by design.
 
@@ -181,7 +217,9 @@ function main(): number {
     const body = lines.slice(lineH.idx + 1, end);
     const items = body.filter(l => /^\*\*[^*]/.test(l.trim())).length;
     if (items === 0) fails.push('THE LINE parses to zero items: each item is "**Bold conclusion-first headline.** one sentence" — bold lead at line start.');
-    else if (items < 6 || items > 12) warns.push(`THE LINE has ${items} items (spec: 8-12 on a normal day; the line tier is elastic and absorbs the day).`);
+    else if (isWeeklyV2Era ? (items < 9 || items > 16) : (items < 6 || items > 12)) warns.push(isWeeklyV2Era
+      ? `THE LINE has ${items} items (weekly spec: 9-16 on a normal week; the line tier absorbs the week).`
+      : `THE LINE has ${items} items (spec: 8-12 on a normal day; the line tier is elastic and absorbs the day).`);
   }
 
   // The Model: name + Explore link. (Use-it takeaway only expected on the ideas-first deep model.)
@@ -212,28 +250,34 @@ function main(): number {
   const mins = words / LIGHT_WPM;
   const enforceLength = process.argv.includes('--enforce-length');
   const lenOverride = /<!--\s*LENGTH-OVERRIDE:\s*([^>]{20,}?)\s*-->/.exec(md);
-  const inEpoch = briefDate !== '' && briefDate >= LIGHT_LEN_EPOCH;
-  const lenMark = words > LIGHT_LEN_HARD ? '🔴' : (words > LIGHT_LEN_TARGET_HI || words < LIGHT_LEN_TARGET_LO) ? '🟡' : '✅';
-  console.log(`${lenMark} LIGHT LENGTH: ${words.toLocaleString()} words ≈ ${mins.toFixed(1)} min at ${LIGHT_WPM} wpm (target ${LIGHT_LEN_TARGET_LO.toLocaleString()}-${LIGHT_LEN_TARGET_HI.toLocaleString()} ≈ 8-10 min, hard ceiling ${LIGHT_LEN_HARD.toLocaleString()})`);
-  if (words > LIGHT_LEN_HARD && inEpoch) {
+  // Per-product bands: weekly two-tier carries the week's residue and longer soul
+  // sections. For dailies (and pre-epoch weeklies) these resolve to the daily
+  // constants, so daily output is byte-identical to the pre-weekly gate.
+  const LEN_LO = isWeeklyV2Era ? WEEKLY_LEN_TARGET_LO : LIGHT_LEN_TARGET_LO;
+  const LEN_HI = isWeeklyV2Era ? WEEKLY_LEN_TARGET_HI : LIGHT_LEN_TARGET_HI;
+  const LEN_HARD = isWeeklyV2Era ? WEEKLY_LEN_HARD : LIGHT_LEN_HARD;
+  const inEpoch = (briefDate !== '' && briefDate >= LIGHT_LEN_EPOCH) || isWeeklyV2Era;
+  const lenMark = words > LEN_HARD ? '🔴' : (words > LEN_HI || words < LEN_LO) ? '🟡' : '✅';
+  console.log(`${lenMark} LIGHT LENGTH: ${words.toLocaleString()} words ≈ ${mins.toFixed(1)} min at ${LIGHT_WPM} wpm (target ${LEN_LO.toLocaleString()}-${LEN_HI.toLocaleString()} ≈ ${Math.round(LEN_LO / LIGHT_WPM)}-${Math.round(LEN_HI / LIGHT_WPM)} min, hard ceiling ${LEN_HARD.toLocaleString()})`);
+  if (words > LEN_HARD && inEpoch) {
     if (lenOverride) {
       console.log(`  ⚪ LENGTH-OVERRIDE accepted — ${lenOverride[1]!.trim()}`);
     } else if (!enforceLength) {
-      console.log(`  🔴 OVER HARD CEILING by ${(words - LIGHT_LEN_HARD).toLocaleString()} words (${mins.toFixed(1)} min vs 8-10). NOT BLOCKING — the brief always ships.`);
+      console.log(`  🔴 OVER HARD CEILING by ${(words - LEN_HARD).toLocaleString()} words (${mins.toFixed(1)} min vs ${Math.round(LEN_LO / LIGHT_WPM)}-${Math.round(LEN_HI / LIGHT_WPM)}). NOT BLOCKING — the brief always ships.`);
       console.log(`     The generating step owns this (\`brief-light-format-gate <file> --enforce-length\` inside its own`);
       console.log(`     compression loop). If you are seeing this at the publish path, the generator did not compress`);
       console.log(`     and did not declare — that is the thing to fix, not the brief.`);
     } else {
       fails.push(
-        `LIGHT LENGTH HARD FAIL: ${words.toLocaleString()} words ≈ ${mins.toFixed(1)} min against an 8-10 minute product (target ${LIGHT_LEN_TARGET_LO.toLocaleString()}-${LIGHT_LEN_TARGET_HI.toLocaleString()}, ceiling ${LIGHT_LEN_HARD.toLocaleString()}). ` +
+        `LIGHT LENGTH HARD FAIL: ${words.toLocaleString()} words ≈ ${mins.toFixed(1)} min against a ${Math.round(LEN_LO / LIGHT_WPM)}-${Math.round(LEN_HI / LIGHT_WPM)} minute product (target ${LEN_LO.toLocaleString()}-${LEN_HI.toLocaleString()}, ceiling ${LEN_HARD.toLocaleString()}). ` +
         `Cut DEPTH, never COVERAGE: shorten THE LINE items toward their ~36-word floor → shorten the already-covered sections (Meditation, Model, Markets Minute) → move a deep item down to THE LINE. ` +
         `Dropping a story is the last resort and needs a logged reason. If today genuinely needs the length, declare it: <!-- LENGTH-OVERRIDE: <reason, 20+ chars> -->`,
       );
     }
-  } else if (words > LIGHT_LEN_TARGET_HI && inEpoch) {
-    warns.push(`Length ${words.toLocaleString()} is over target ${LIGHT_LEN_TARGET_HI.toLocaleString()} (advisory band up to ${LIGHT_LEN_HARD.toLocaleString()}). Shorten lines first; never cut coverage.`);
-  } else if (words < LIGHT_LEN_TARGET_LO && inEpoch) {
-    warns.push(`Length ${words.toLocaleString()} is under target ${LIGHT_LEN_TARGET_LO.toLocaleString()}. Never blocking — but check whether coverage was dropped (every full-brief story belongs in a tier).`);
+  } else if (words > LEN_HI && inEpoch) {
+    warns.push(`Length ${words.toLocaleString()} is over target ${LEN_HI.toLocaleString()} (advisory band up to ${LEN_HARD.toLocaleString()}). Shorten lines first; never cut coverage.`);
+  } else if (words < LEN_LO && inEpoch) {
+    warns.push(`Length ${words.toLocaleString()} is under target ${LEN_LO.toLocaleString()}. Never blocking — but check whether coverage was dropped (every full-brief story belongs in a tier).`);
   }
 
   const name = file.split('/').pop();
