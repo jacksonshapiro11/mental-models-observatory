@@ -14,12 +14,35 @@
  *   • IDEAS-FIRST (archived): `## ▸ THE IDEAS` + `## ▸ ALSO MOVING`, then the rest.
  * This gate detects the format from the lead header and asserts the matching contract.
  *
- * Usage: node --experimental-strip-types scripts/brief-light-format-gate.ts content/daily-updates/2026-06-27-light.md
+ * WORD COUNT (added 2026-08-05, the enforcement the spec never had):
+ * target 1,300-1,600 words ≈ 8-10 minutes at 160 wpm. Printed on EVERY run.
+ * 🟡 advisory outside the target band · 🔴 over LIGHT_LEN_HARD (1,900) — but:
+ *
+ * ── THE BRIEF ALWAYS SHIPS ────────────────────────────────────────────────
+ * A length failure must NEVER prevent publication. Same pattern as
+ * scripts/validate-brief.ts (`brief-length`): over-hard-ceiling BLOCKS ONLY
+ * under an explicit `--enforce-length` flag, which the GENERATING step passes
+ * inside its own compression loop. At the publish path (no flag) it prints
+ * loudly and returns nothing. The failure a blocking rail would cause — no
+ * brief at all — is strictly worse than the failure it prevents.
+ * Enforcement epoch: briefs dated before LIGHT_LEN_EPOCH are measured and
+ * reported, never failed. The archive is read, never condemned.
+ * Escape hatch (same as validate-brief.ts): `<!-- LENGTH-OVERRIDE: <reason, 20+ chars> -->`
+ * turns a hard over-length into a declared, countable editorial decision.
+ *
+ * Usage: node --experimental-strip-types scripts/brief-light-format-gate.ts content/daily-updates/2026-06-27-light.md [--enforce-length]
  * Exit: 0 pass (may warn) · 1 contract violation (blocks ship) · 2 usage error
  */
 import * as fs from 'fs';
 
 const HEADER_RE = /^##\s*▸\s*(.+?)\s*$/;
+
+// Word-count rails (see header comment). LIGHT_LEN_EPOCH: never condemn the archive.
+const LIGHT_LEN_TARGET_LO = 1300;
+const LIGHT_LEN_TARGET_HI = 1600;
+const LIGHT_LEN_HARD = 1900;
+const LIGHT_LEN_EPOCH = '2026-08-06';
+const LIGHT_WPM = 160;
 
 const SELECTION_REQUIRED: { label: string; accepts: string[] }[] = [
   { label: 'The Update',         accepts: ['THE UPDATE'] },
@@ -39,12 +62,21 @@ const IDEAS_REQUIRED: { label: string; accepts: string[] }[] = [
   { label: 'The Close',                accepts: ['THE CLOSE'] },
 ];
 
+/** Brief date from the filename (2026-08-05-light.md → "2026-08-05").
+ *  Weekly lights (2026-W31-light.md) and unnamed scratch files return '' and are
+ *  treated as pre-epoch: measured, never failed. */
+function briefDateFromPath(file: string): string {
+  const m = /(\d{4}-\d{2}-\d{2})-light\.md$/.exec(file);
+  return m?.[1] ?? '';
+}
+
 function main(): number {
   const file = process.argv[2];
-  if (!file) { console.error('usage: brief-light-format-gate.ts <brief-light.md>'); return 2; }
+  if (!file) { console.error('usage: brief-light-format-gate.ts <brief-light.md> [--enforce-length]'); return 2; }
   if (!fs.existsSync(file)) { console.error(`FAIL: file not found: ${file}`); return 2; }
   const md = fs.readFileSync(file, 'utf-8');
   const lines = md.split('\n');
+  const briefDate = briefDateFromPath(file);
 
   const headers: { idx: number; raw: string; upper: string }[] = [];
   lines.forEach((ln, idx) => {
@@ -117,6 +149,37 @@ function main(): number {
     const end = headers.find(x => x.idx > medH.idx)?.idx ?? lines.length;
     const body = lines.slice(medH.idx + 1, end).map(l => l.trim()).filter(Boolean);
     if (!body.some(l => /^\*["“”].+["“”]\*/.test(l))) warns.push('The Meditation has no *"quote"* line.');
+  }
+
+  // ── WORD COUNT — printed every run; blocking ONLY under --enforce-length ──
+  // (see THE BRIEF ALWAYS SHIPS in the header comment before touching this)
+  const lenBody = md.replace(/<!--[\s\S]*?-->/g, '');
+  const words = lenBody.split(/\s+/).filter(Boolean).length;
+  const mins = words / LIGHT_WPM;
+  const enforceLength = process.argv.includes('--enforce-length');
+  const lenOverride = /<!--\s*LENGTH-OVERRIDE:\s*([^>]{20,}?)\s*-->/.exec(md);
+  const inEpoch = briefDate !== '' && briefDate >= LIGHT_LEN_EPOCH;
+  const lenMark = words > LIGHT_LEN_HARD ? '🔴' : (words > LIGHT_LEN_TARGET_HI || words < LIGHT_LEN_TARGET_LO) ? '🟡' : '✅';
+  console.log(`${lenMark} LIGHT LENGTH: ${words.toLocaleString()} words ≈ ${mins.toFixed(1)} min at ${LIGHT_WPM} wpm (target ${LIGHT_LEN_TARGET_LO.toLocaleString()}-${LIGHT_LEN_TARGET_HI.toLocaleString()} ≈ 8-10 min, hard ceiling ${LIGHT_LEN_HARD.toLocaleString()})`);
+  if (words > LIGHT_LEN_HARD && inEpoch) {
+    if (lenOverride) {
+      console.log(`  ⚪ LENGTH-OVERRIDE accepted — ${lenOverride[1]!.trim()}`);
+    } else if (!enforceLength) {
+      console.log(`  🔴 OVER HARD CEILING by ${(words - LIGHT_LEN_HARD).toLocaleString()} words (${mins.toFixed(1)} min vs 8-10). NOT BLOCKING — the brief always ships.`);
+      console.log(`     The generating step owns this (\`brief-light-format-gate <file> --enforce-length\` inside its own`);
+      console.log(`     compression loop). If you are seeing this at the publish path, the generator did not compress`);
+      console.log(`     and did not declare — that is the thing to fix, not the brief.`);
+    } else {
+      fails.push(
+        `LIGHT LENGTH HARD FAIL: ${words.toLocaleString()} words ≈ ${mins.toFixed(1)} min against an 8-10 minute product (target ${LIGHT_LEN_TARGET_LO.toLocaleString()}-${LIGHT_LEN_TARGET_HI.toLocaleString()}, ceiling ${LIGHT_LEN_HARD.toLocaleString()}). ` +
+        `Cut DEPTH, never COVERAGE: shorten THE LINE items toward their ~36-word floor → shorten the already-covered sections (Meditation, Model, Markets Minute) → move a deep item down to THE LINE. ` +
+        `Dropping a story is the last resort and needs a logged reason. If today genuinely needs the length, declare it: <!-- LENGTH-OVERRIDE: <reason, 20+ chars> -->`,
+      );
+    }
+  } else if (words > LIGHT_LEN_TARGET_HI && inEpoch) {
+    warns.push(`Length ${words.toLocaleString()} is over target ${LIGHT_LEN_TARGET_HI.toLocaleString()} (advisory band up to ${LIGHT_LEN_HARD.toLocaleString()}). Shorten lines first; never cut coverage.`);
+  } else if (words < LIGHT_LEN_TARGET_LO && inEpoch) {
+    warns.push(`Length ${words.toLocaleString()} is under target ${LIGHT_LEN_TARGET_LO.toLocaleString()}. Never blocking — but check whether coverage was dropped (every full-brief story belongs in a tier).`);
   }
 
   const name = file.split('/').pop();
