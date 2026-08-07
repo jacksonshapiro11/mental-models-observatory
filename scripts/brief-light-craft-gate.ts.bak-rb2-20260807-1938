@@ -13,7 +13,7 @@
  *
  * TWO-TIER (v2) AWARENESS: for briefs dated on/after LIGHT_V2_EPOCH the
  * bounds change with the format — 4-5 deep stories (+ THE LINE), the
- * 1,450-1,750 length target (advisory HERE; enforcement lives in
+ * 1,300-1,600 length target (advisory HERE; enforcement lives in
  * brief-light-format-gate.ts --enforce-length — one home per rule), "The
  * Take" allowed in prose (the light has one now), and the Daily-Title lede
  * segment exempt from the repetition count (it previews by design).
@@ -31,7 +31,7 @@ const BANNED = ['buckle up', "let's talk about", 'let us talk about', "here's wh
 const SUPERLATIVE = /\b(record (?:high|low)|all-time (?:high|low)|new (?:high|low)|biggest ever|largest ever|first ever|highest ever)\b/gi;
 
 // TWO-TIER EPOCH (2026-08): briefs dated on/after this use the v2 contract —
-// 1,450-1,750-word target, 4-5 deep stories + THE LINE, and a real THE TAKE
+// 1,300-1,600-word target, 4-5 deep stories + THE LINE, and a real THE TAKE
 // section. Pre-epoch briefs keep the original bounds so the archive's exit
 // codes never change. Keep in sync with scripts/brief-light-format-gate.ts.
 const LIGHT_V2_EPOCH = '2026-08-07';
@@ -90,14 +90,14 @@ function main(): number {
 
   // 2. Word budget.
   // v2 (two-tier): LENGTH HAS ONE HOME — scripts/brief-light-format-gate.ts
-  // (target 1,450-1,750, hard 1,900, blocking only under --enforce-length).
+  // (target 1,300-1,600, hard 1,900, blocking only under --enforce-length).
   // This gate only echoes it as an advisory so the two gates can never fight,
   // and so a compliant 1,3xx-word brief is never FAILED here (the old
   // 1,500-2,400 hard bounds predate the two-tier spec).
   // Pre-epoch: original bounds, unchanged — the archive is read, never condemned.
   const words = (md.match(/\S+/g) || []).length;
   if (isV2) {
-    if (words < 1300 || words > 1600) warns.push(`Total words ${words} outside two-tier target 1,450-1,750 (enforcement lives in brief-light-format-gate.ts --enforce-length; never blocking here).`);
+    if (words < 1300 || words > 1600) warns.push(`Total words ${words} outside two-tier target 1,300-1,600 (enforcement lives in brief-light-format-gate.ts --enforce-length; never blocking here).`);
   } else if (isWeeklyV2) {
     if (words < 2000 || words > 2400) warns.push(`Total words ${words} outside weekly two-tier target 2,000-2,400 (enforcement lives in brief-light-format-gate.ts --enforce-length; never blocking here).`);
   } else {
@@ -244,32 +244,9 @@ function main(): number {
     console.error('\n  Fix the blocking items, then re-run. Judgment checks: run system/Brief_Light_Critic.md.\n');
     return 1;
   }
-  // ── Style diagnostics (added 2026-08-07). PRINT ONLY. Never affects the exit code.
-  // These are the smoke detector that found the Feb→Jul regression: mean sentence length 15.4→26.5
-  // while the brief got SHORTER. They failed as targets and succeeded as instruments, so they are
-  // reported and never enforced. The bar is the read-back, not these numbers.
-  {
-    const prose = md.replace(/\[[^\]]*\]\([^)]+\)/g, ' ').replace(/^#.*$/gm, '');
-    const sents = prose.split(/(?<=[.!?])\s+/).map(x => x.trim()).filter(x => x.split(/\s+/).length > 3);
-    if (sents.length) {
-      const wl = sents.map(x => x.split(/\s+/).length);
-      const mean = wl.reduce((a, b) => a + b, 0) / wl.length;
-      const long = wl.filter(w => w > 30).length;
-      const neg = sents.filter(x => /\b(is not|are not|was not|were not|does not|do not|did not|is never|was never|not a |not the |rather than|instead of)\b/i.test(x)).length;
-      const over45 = sents.filter(x => x.split(/\s+/).length > 45);
-      console.log(`\n📊 STYLE DIAGNOSTICS (print-only, never blocking)`);
-      console.log(`   mean sentence ${mean.toFixed(1)}w · >30w ${Math.round(100 * long / wl.length)}% · negation-framed ${Math.round(100 * neg / sents.length)}% · longest ${Math.max(...wl)}w`);
-      console.log(`   reference: May lights ran 17.1 / 10% / 10%. 2026-08-07 ran 23.0 / 30% / 29%.`);
-      if (over45.length) {
-        console.log(`   ⚠ ${over45.length} sentence(s) over 45 words in a SPOKEN product (tripwire — working memory, not style):`);
-        for (const x of over45.slice(0, 3)) console.log(`     · ${x.split(/\s+/).length}w — ${x.slice(0, 90)}…`);
-      }
-    }
-  }
-
   console.log(`\n✓ CRAFT GATE PASSED — ${name}  (${words} words, 0 em-dashes)`);
   if (warns.length) { console.log('  warnings (non-blocking):'); for (const w of warns) console.log(`  ⚠ ${w}`); }
-  console.log('  Next: run the judgment pass in system/Brief_Light_Critic.md (breadth/two-tier contract, NO NEW ATOMS, title coherence — prose craft is decided by the read-back, not re-judged).');
+  console.log('  Next: run the judgment pass in system/Brief_Light_Critic.md (three tests, breadth, no-new-atoms).');
   console.log('');
   return 0;
 }

@@ -1,0 +1,23 @@
+// THE LINE - spoken cue + beat between items (v2, 2026-08).
+// A pause alone was not enough: story SECTIONS get a spoken transition AND a '...'
+// beat, but the LINE one-liners only ever got the beat, so ten items separated by
+// silence read as a list being recited. Fix: give each item after the first a short
+// ROTATING spoken cue (Next. / Also. / Then. / ...) right after the beat, so the
+// boundary is HEARD, not just paused - the treatment story sections already get.
+// Audio-only (the page and email render the items visually). Pure; exercised by
+// audio-gate-regression.
+const LINE_ITEM_CUES = ['Next.', 'Also.', 'Then.', 'Elsewhere.', 'One more.', 'On a different front.'];
+
+export function formatLineSectionForSpeech(content: string): string {
+  const items = content
+    .split(/\n\s*\n/)
+    .map(b => b.trim())
+    .filter(b => b.length > 0 && !/^[-*_]{3,}$/.test(b))
+    .map(b => b.replace(/\n+/g, ' '));
+  if (items.length <= 1) return content.trim();
+  // First item follows the section lead-in ("...One line each."); each later item
+  // gets a rotating cue + the '...' beat: a transition and a pause between every item.
+  return items
+    .map((b, i) => (i === 0 ? b : `${LINE_ITEM_CUES[(i - 1) % LINE_ITEM_CUES.length]} ${b}`))
+    .join('\n\n...\n\n');
+}

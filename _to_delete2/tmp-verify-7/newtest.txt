@@ -1,0 +1,18 @@
+console.log('-- 10. Two-tier THE LINE item beats + spoken cues --');
+
+const lineItems =
+  '**First conclusion.** First implication.\n\n' +
+  '**Second conclusion.** Second implication.\n\n' +
+  '---\n\n' +
+  '**Third conclusion.** Third implication.';
+check(
+  'THE LINE gives every item a beat AND a rotating spoken cue between them',
+  formatLineSectionForSpeech(lineItems),
+  a => {
+    const out = a as string;
+    const beats = (out.match(/\n\n\.\.\.\n\n/g) || []).length;
+    const allItems = ['First implication', 'Second implication', 'Third implication'].every(t => out.includes(t));
+    const cuedAfterEveryBeat = /\n\n\.\.\.\n\n(Next\.|Also\.|Then\.|Elsewhere\.|One more\.|On a different front\.) \*\*/.test(out);
+    return beats === 2 && allItems && cuedAfterEveryBeat && out.startsWith('**First conclusion.**');
+  },
+);

@@ -1,6 +1,6 @@
 {
   "brief": "2026-W27-jun-28-jul-04.md",
-  "generated": "2026-07-24T15:07:47.030Z",
+  "generated": "2026-08-07T11:52:46.927Z",
   "truthFile": null,
   "summary": {
     "claims": 5,
@@ -11,6 +11,9 @@
     "effectiveDates": 0,
     "aiProducts": 1,
     "earnings": 0,
+    "headlineAnchors": 0,
+    "bylines": 0,
+    "derivedPrices": 0,
     "pass": 0,
     "fail": 0,
     "unverified": 13,
@@ -22,7 +25,7 @@
       {
         "name": "entity-bindings.json",
         "state": "ok",
-        "rows": 13,
+        "rows": 14,
         "badRows": []
       },
       {
@@ -38,7 +41,7 @@
     {
       "check": "price-vs-archive",
       "severity": "FLAG",
-      "message": "Brent crude stated near 105 deviates 12% from our last-3 archive median 94.13 (2026-07-24:100, 2026-07-23:94.13, 2026-07-21:87). Possible fabrication/stale — verify vs PRIMARY source."
+      "message": "Brent crude stated near 105 deviates 33% from our last-3 archive median 79 (2026-08-06:79, 2026-08-05:79, 2026-08-03:88). Possible fabrication/stale — verify vs PRIMARY source."
     },
     {
       "check": "truth-bypass",

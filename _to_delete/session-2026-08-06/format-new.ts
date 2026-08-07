@@ -46,8 +46,8 @@ import * as fs from 'fs';
 const HEADER_RE = /^##\s*▸\s*(.+?)\s*$/;
 
 // Word-count rails (see header comment). LIGHT_LEN_EPOCH: never condemn the archive.
-const LIGHT_LEN_TARGET_LO = 1450;   // Option A, 2026-08-07: the spec's own section budgets sum to 1,635-1,999; the old 1,300-1,600 band was unsatisfiable
-const LIGHT_LEN_TARGET_HI = 1750;   // hard ceiling stays 1,900; epoch untouched
+const LIGHT_LEN_TARGET_LO = 1300;
+const LIGHT_LEN_TARGET_HI = 1600;
 const LIGHT_LEN_HARD = 1900;
 const LIGHT_LEN_EPOCH = '2026-08-06';
 const LIGHT_WPM = 160;
@@ -120,13 +120,10 @@ function briefDateFromPath(file: string): string {
   return m?.[1] ?? '';
 }
 
-/** Normalized weekly key from the filename (2026-W7-light.md → "2026-W07"; '' if invalid). */
+/** Weekly key from the filename (2026-W31-light.md → "2026-W31"; '' if not a weekly light). */
 function weeklyFromPath(file: string): string {
-  const m = /(\d{4})-W(\d{1,2})-light\.md$/.exec(file);
-  if (!m) return '';
-  const week = Number(m[2]);
-  if (week < 1 || week > 53) return '';
-  return `${m[1]}-W${String(week).padStart(2, '0')}`;
+  const m = /(\d{4}-W\d{2})-light\.md$/.exec(file);
+  return m?.[1] ?? '';
 }
 
 function main(): number {
@@ -263,7 +260,7 @@ function main(): number {
     if (lenOverride) {
       console.log(`  ⚪ LENGTH-OVERRIDE accepted — ${lenOverride[1]!.trim()}`);
     } else if (!enforceLength) {
-      console.log(`  🔴 OVER HARD CEILING by ${(words - LEN_HARD).toLocaleString()} words (${mins.toFixed(1)} min vs ${Math.round(LEN_LO / LIGHT_WPM)}-${Math.round(LEN_HI / LIGHT_WPM)}). NOT BLOCKING — the brief always ships.`);
+      console.log(`  🔴 OVER HARD CEILING by ${(words - LEN_HARD).toLocaleString()} words (${mins.toFixed(1)} min vs 8-10). NOT BLOCKING — the brief always ships.`);
       console.log(`     The generating step owns this (\`brief-light-format-gate <file> --enforce-length\` inside its own`);
       console.log(`     compression loop). If you are seeing this at the publish path, the generator did not compress`);
       console.log(`     and did not declare — that is the thing to fix, not the brief.`);

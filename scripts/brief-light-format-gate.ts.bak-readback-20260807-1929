@@ -46,8 +46,8 @@ import * as fs from 'fs';
 const HEADER_RE = /^##\s*▸\s*(.+?)\s*$/;
 
 // Word-count rails (see header comment). LIGHT_LEN_EPOCH: never condemn the archive.
-const LIGHT_LEN_TARGET_LO = 1450;   // Option A, 2026-08-07: the spec's own section budgets sum to 1,635-1,999; the old 1,300-1,600 band was unsatisfiable
-const LIGHT_LEN_TARGET_HI = 1750;   // hard ceiling stays 1,900; epoch untouched
+const LIGHT_LEN_TARGET_LO = 1300;
+const LIGHT_LEN_TARGET_HI = 1600;
 const LIGHT_LEN_HARD = 1900;
 const LIGHT_LEN_EPOCH = '2026-08-06';
 const LIGHT_WPM = 160;

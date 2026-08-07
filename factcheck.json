@@ -1,0 +1,137 @@
+{
+  "brief": "false-light-test.md",
+  "generated": "2026-07-18T01:07:59.725Z",
+  "truthFile": null,
+  "summary": {
+    "claims": 4,
+    "superlatives": 3,
+    "scheduledEvents": 0,
+    "aggregates": 0,
+    "pass": 0,
+    "fail": 0,
+    "unverified": 7,
+    "officeHolderFacts": 5,
+    "archiveAssetsKnown": 5,
+    "truthBypass": true,
+    "unresolvedCritical": 2,
+    "registries": [
+      {
+        "name": "entity-bindings.json",
+        "state": "ok",
+        "rows": 13,
+        "badRows": []
+      },
+      {
+        "name": "current-facts.json",
+        "state": "ok",
+        "rows": 5,
+        "badRows": []
+      }
+    ],
+    "registryBlind": false
+  },
+  "findings": [
+    {
+      "check": "entity-attribution",
+      "severity": "FAIL",
+      "message": "ENTITY MISATTRIBUTION — \"Best Quarter in Chip\" belongs to Nvidia (~$81.6B in a single quarter, roughly double TSMC's $40.2B record), but this sentence attributes it to \"TSMC\" and never names Nvidia (~$81.6B in a single quarter, roughly double TSMC's $40.2B record). Section: THE UPDATE. If load-bearing (the section thesis/lede), REWRITE the section on a verified premise; patch or strike only if incidental. 2026-07-17 receipt: the intro, M&M-1 and the light intro all called TSMC's Q2 ($40.2B at 67.7% margin) 'the strongest quarter in semiconductor HISTORY'. Every number was right; the SCOPE was wrong. It is TSMC's own record — Nvidia has posted $81.6B. Same shape as the 07-10 JGB transposition: a true company record inflated to an industry record by one word, which no number-only re-check can see. A company's best quarter is not the industry's best quarter unless it is the industry's largest company by revenue. WIDENED 2026-07-17 21:15 ET (COR-005/006 — the class SURVIVED this very binding on the same day it was written, in the same brief): the morning gate corrected 3 sites and the light brief's THE UPDATE kept the falsehood in two fresh phrasings — 'the Best Quarter in CHIP History' (headline) and 'the strongest quarter THE INDUSTRY HAS EVER PRINTED' (body). Neither matched the old key, which only knew the literal 'semiconductor history' string it was born from. This is the EXACT repeat of the JGB note's lesson one binding above: a key pinned to the phrasing you caught is not a guard, it is a souvenir. Key now covers best/biggest/strongest/largest/greatest/finest/record × chip|semiconductor|silicon|industry|sector × history|'has ever printed/posted/reported/seen'. Both directions tested at widen time: FIRES on all 6 known false phrasings (old key missed 3, incl. both live ones), SILENT on all 9 correctly-scoped forms in the same published brief ('best quarter in ITS history', 'the best quarter TSMC has ever posted', 'when a sector sells its own best quarter'). SECOND, DEEPER RESIDUAL — the gate never read the light file at all: fact-gate.ts:402 and validate-brief.ts:1015/1194 filter out '-light', and Morning_Updater.md:51 runs the gate on {DATE}.md only. A perfect key would still have missed this. Escalated to Jackson (IMP-062) — the light's THE UPDATE headline is the EMAIL SUBJECT LINE, the most-read string the system produces, and it sits behind zero truth enforcement. Sentence: \"**TSMC Posted the Best Quarter in Chip History and the Market Called It a Top**\" — verify against a primary source and correct the ENTITY; the number being right does not make the claim true."
+    },
+    {
+      "check": "truth-bypass",
+      "severity": "FLAG",
+      "message": "TRUTH BYPASS — no truth file loaded; 4 market claim(s) + 3 superlative(s) ride entirely unverified. The gate has verified NOTHING about this brief. Before publish, the Morning Updater must write {BRIEF_DATE}-truth.json from refreshed market data and re-run with --require-resolved. Verify the ASSET as well as the number — the 07-10 failure was a transposition (the 10Y JGB's record attributed to the 30Y), which a number-only re-check cannot catch."
+    }
+  ],
+  "claims": [
+    {
+      "key": "nasdaq",
+      "asset": "Nasdaq",
+      "tier": "critical",
+      "claimType": "market",
+      "direction": "unknown",
+      "magnitudePct": 1.5,
+      "level": null,
+      "section": "MARKETS MINUTE",
+      "sentence": "5% to 7,534 and the Nasdaq shedding 1.",
+      "status": "UNVERIFIED"
+    },
+    {
+      "key": "ust10",
+      "asset": "10-year yield",
+      "tier": "critical",
+      "claimType": "market",
+      "direction": "unknown",
+      "magnitudePct": 4.57,
+      "level": "4.57",
+      "section": "MARKETS MINUTE",
+      "sentence": "Rates barely moved, the 10-year easing to 4.",
+      "status": "UNVERIFIED"
+    },
+    {
+      "key": "wti",
+      "asset": "WTI",
+      "tier": "standard",
+      "claimType": "market",
+      "direction": "up",
+      "magnitudePct": null,
+      "level": null,
+      "section": "THE UPDATE",
+      "sentence": "Watch the oil bid against the next round of strikes; the day crude stops shrugging is the day the market has repriced the war.",
+      "status": "UNVERIFIED"
+    },
+    {
+      "key": "gold",
+      "asset": "gold",
+      "tier": "standard",
+      "claimType": "market",
+      "direction": "up",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Flawless and Falling",
+      "sentence": "The question of durability sits under the rest of the day too: the US bombing Iranian bridges rather than threatening them, 25% tariffs on Brazil under a trade-law finding aimed at its tech regulation, central banks buying gold into record highs.",
+      "status": "UNVERIFIED"
+    },
+    {
+      "key": "superlative:gold",
+      "asset": "gold",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Flawless and Falling",
+      "sentence": "The question of durability sits under the rest of the day too: the US bombing Iranian bridges rather than threatening them, 25% tariffs on Brazil under a trade-law finding aimed at its tech regulation, central banks buying gold into record highs.",
+      "status": "UNVERIFIED",
+      "superlative": "record highs",
+      "superlativeKind": "high"
+    },
+    {
+      "key": "superlative:gold",
+      "asset": "gold",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": null,
+      "section": "THE UPDATE",
+      "sentence": "**Central Banks Are Buying Gold Into Record Highs, Which Should Be Impossible**",
+      "status": "UNVERIFIED",
+      "superlative": "Record Highs",
+      "superlativeKind": "high"
+    },
+    {
+      "key": "superlative:gold",
+      "asset": "gold",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": "2025",
+      "section": "MARKETS MINUTE",
+      "sentence": "Gold broke below $4,000 to roughly $3,984 as the dollar firmed, its weakest since November 2025, while crude held near $80 between Iran supply risk and the softening demand implied by the chip decline.",
+      "status": "UNVERIFIED",
+      "superlative": "weakest since",
+      "superlativeKind": "other"
+    }
+  ]
+}
