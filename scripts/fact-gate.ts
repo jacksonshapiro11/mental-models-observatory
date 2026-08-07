@@ -1938,10 +1938,51 @@ function loadBindings(briefPath: string): Binding[] {
   return loadRegistry<Binding>('entity-bindings.json', 'entity-bindings.json', 'bindings', briefPath).rows;
 }
 
+/**
+ * SCHEMA VALIDATION — IMP-136 (2026-08-07, RC7). A row is executable only if its three
+ * pattern fields are non-empty strings. Returns the missing/blank field names.
+ *
+ * Why this exists, with the receipt: on 2026-08-07 at 05:26 the Morning Updater appended
+ * `aisi-cyber-incident-2026-07` in a PROSE shape it invented on the spot — `entity`,
+ * `wrong: ["Meta", "three frontier labs"]`, `source` — instead of the executable shape
+ * (`key`, `scope`, `correctRe`, `wrongRe`). `b.key` was therefore `undefined`, and
+ * `new RegExp(undefined, 'gi')` does not throw: it compiles to `/(?:)/gi`, the EMPTY
+ * pattern. The `try/catch` below only ever guarded against a regex that THROWS. An empty
+ * pattern matches zero-width at every position, `exec` sets `lastIndex` to the end of the
+ * match, the end equals the start, `lastIndex` never advances — and the `while` loop below
+ * spins forever. Measured, not inferred: `fact-gate` on the real published
+ * `content/daily-updates/2026-08-07.md` ran 150s of pure CPU and printed nothing.
+ *
+ * The blast radius is the reason this is Critical rather than tidy. `fact-gate --selftest`
+ * is the `run:` leg of ELEVEN ledger rows, so `verify-improvements.ts` — the system's only
+ * mechanical proof that any improvement is real — could no longer terminate, and the
+ * evening `brief-draft` would have hung on its own truth gate. One malformed data row took
+ * out the truth layer and the accountability layer at once, and it was written by the same
+ * session that reported its fact-gate run green one minute later.
+ *
+ * So: a row that cannot enforce is a LOUD registry-integrity FAIL, exactly like a row whose
+ * regex throws. Never silent, and — see the zero-width guard in the loop — never a hang.
+ */
+function bindingSchemaErrors(b: Binding): string[] {
+  const missing: string[] = [];
+  for (const f of ['key', 'correctRe', 'wrongRe'] as const) {
+    const v = (b as unknown as Record<string, unknown>)[f];
+    if (typeof v !== 'string' || v.trim() === '') missing.push(f);
+  }
+  return missing;
+}
+
 function entityAttribution(body: string, bindings: Binding[], health?: RegistryHealth): Finding[] {
   const findings: Finding[] = [];
   const seen = new Set<string>();
   for (const b of bindings) {
+    // IMP-136: schema BEFORE compilation. `new RegExp(undefined)` is legal and empty,
+    // so the try/catch below can never catch this class — it has to be rejected by shape.
+    const schemaErrs = bindingSchemaErrors(b);
+    if (schemaErrs.length) {
+      if (health) health.badRows.push(`${b.id ?? '(unnamed row)'} [missing/blank: ${schemaErrs.join(', ')}]`);
+      continue;
+    }
     let keyRe: RegExp, wrongRe: RegExp, correctRe: RegExp, scopeRe: RegExp | null;
     try {
       keyRe = new RegExp(b.key, 'gi');
@@ -1958,6 +1999,11 @@ function entityAttribution(body: string, bindings: Binding[], health?: RegistryH
     }
     let m: RegExpExecArray | null;
     while ((m = keyRe.exec(body)) !== null) {
+      // IMP-136 ZERO-WIDTH GUARD — belt-and-braces behind the schema check above. Any
+      // key that can match empty (`a*`, `x|`, `(?:)`) parks lastIndex and spins forever.
+      // The schema check stops the known cause; this stops the CLASS, so no future
+      // registry edit can hang the truth gate no matter what pattern it carries.
+      if (m.index === keyRe.lastIndex) keyRe.lastIndex++;
       const sentence = sentenceAround(body, m.index);
       if (scopeRe && !scopeRe.test(sentence)) continue;   // binding doesn't apply here
       if (!wrongRe.test(sentence)) continue;              // no confusable entity present
@@ -2206,6 +2252,48 @@ function selftest(): number {
     return h.badRows.includes('bad-row') && registryFindings([h]).some((f) => f.check === 'registry-integrity');
   })();
   fs.rmSync(regTmp, { recursive: true, force: true });
+
+  // --- IMP-136 (2026-08-07, RC7): A ROW THAT CANNOT ENFORCE IS LOUD, AND NEVER HANGS.
+  // The 05:26 Morning Updater appended a binding in a prose shape with no `key` at all.
+  // `new RegExp(undefined)` does not throw — it compiles to /(?:)/gi — so okRegBadRow's
+  // try/catch above could not see it, and the exec loop spun on a zero-width match. Proven
+  // cost: fact-gate on the real published 2026-08-07.md burned 150s of CPU and printed
+  // nothing, which also stalled the 11 ledger rows that use `--selftest` as their run leg.
+  // Both directions: the malformed shape is REPORTED, and a zero-width-capable key TERMINATES.
+  const okSchemaMissingKey = (() => {
+    // Byte-for-byte the shape the Morning Updater actually wrote (id/entity/correct/wrong[]/note).
+    const prose = { id: 'aisi-shaped-row', entity: 'X', correct: 'Y', wrong: ['Meta'], note: 'n' };
+    const h: RegistryHealth = { name: 'entity-bindings.json', path: null, state: 'ok', rows: 1, badRows: [] };
+    entityAttribution('some body text about Meta', [prose as unknown as Binding], h);
+    return h.badRows.some((r) => /aisi-shaped-row/.test(r) && /key/.test(r))
+      && registryFindings([h]).some((f) => f.check === 'registry-integrity' && f.severity === 'FAIL');
+  })();
+  const okSchemaBlankRe = (() => {
+    const blank: Binding[] = [{ id: 'blank-re', key: 'Meta', scope: null, correctRe: '', correct: 'Y', wrongRe: '  ' }];
+    const h: RegistryHealth = { name: 'entity-bindings.json', path: null, state: 'ok', rows: 1, badRows: [] };
+    entityAttribution('some body text about Meta', blank, h);
+    return h.badRows.some((r) => /blank-re/.test(r) && /correctRe/.test(r) && /wrongRe/.test(r));
+  })();
+  // The zero-width GUARD, tested directly: a key that legally matches empty must not park
+  // lastIndex. Bounded body, so a regressed guard shows up as a selftest that never returns
+  // — which is the honest signal, since that is exactly the production symptom.
+  const okZeroWidthTerminates = (() => {
+    const zw: Binding[] = [{ id: 'zero-width', key: 'q*', scope: null, correctRe: 'Nvidia', correct: 'Nvidia', wrongRe: 'TSMC' }];
+    const h: RegistryHealth = { name: 'entity-bindings.json', path: null, state: 'ok', rows: 1, badRows: [] };
+    entityAttribution('TSMC shipped a record quarter.', zw, h);
+    return h.badRows.length === 0; // schema-valid, and it RETURNED
+  })();
+  // The REPAIRED real binding does the job it was written for: fires on the false 08-07
+  // sentence, silent on the corrected one. A row that only parses is not a row that works.
+  const realBindings = loadRegistry<Binding>('entity-bindings.json', 'entity-bindings.json', 'bindings', pub11Path).rows;
+  const okAisiFire = entityAttribution(
+    '## AI & Tech\n\nThree frontier labs have now disclosed models attacking real internet targets during AISI safety evaluations, and Anthropic, OpenAI and Meta are the three.',
+    realBindings,
+  ).some((f) => f.check === 'entity-attribution' && /Meta|three/i.test(f.message));
+  const okAisiSilent = entityAttribution(
+    '## AI & Tech\n\nAISI reported 19 unsanctioned actions across one cyber challenge; 17 came from a single model, Anthropic\'s Mythos 5, with 2 from OpenAI\'s GPT-5.6-Sol.',
+    realBindings,
+  ).length === 0;
 
   // --- IMP-033: truth-harmonization guard. REAL QG logs, both directions.
   const qg11 = fs.existsSync(path.join(root, 'daily-briefs/2026-07-11-quality-gate-log.md'))
@@ -2539,6 +2627,11 @@ function selftest(): number {
   console.log(`  [IMP-064] FAIL when the premise registry is EMPTY: ${okRegEmpty ? '✓' : '✗'}`);
   console.log(`  [IMP-064] FAIL when the premise registry is MISSING: ${okRegMissing ? '✓' : '✗'}`);
   console.log(`  [IMP-064] an unusable binding row is REPORTED, not silently skipped: ${okRegBadRow ? '✓' : '✗'}`);
+  console.log(`  [IMP-136] binding-schema: the 05:26 prose-shaped row (no key) is a NAMED badRow + registry FAIL: ${okSchemaMissingKey ? '✓' : '✗'}`);
+  console.log(`  [IMP-136] binding-schema: blank correctRe/wrongRe are reported by FIELD NAME: ${okSchemaBlankRe ? '✓' : '✗'}`);
+  console.log(`  [IMP-136] zero-width guard: a key matching empty TERMINATES (was an infinite loop): ${okZeroWidthTerminates ? '✓' : '✗'}`);
+  console.log(`  [IMP-136] the REPAIRED aisi binding FIREs on "Anthropic, OpenAI and Meta are the three": ${okAisiFire ? '✓' : '✗'}`);
+  console.log(`  [IMP-136] …and is SILENT on AISI's true finding (Mythos 5, 17 of 19): ${okAisiSilent ? '✓' : '✗'}`);
   console.log(`  [IMP-064] the REAL registries on disk are healthy right now: ${okRegRealHealthy ? '✓' : '✗'}`);
 
   // ── IMP-116: HEADLINE ANCHORS — the title numeral and the watch-line price ─────────────────
@@ -2680,6 +2773,7 @@ function selftest(): number {
     okRelWorkFire && okRelPubSilentNY && okRelSynthFire && okRelSynthStable &&
     okRelSynthWatch && okRelSynthPoss && okRelSynthMarket &&
     okRegOk && okRegMalformed && okRegEmpty && okRegMissing && okRegBadRow && okRegRealHealthy &&
+    okSchemaMissingKey && okSchemaBlankRe && okZeroWidthTerminates && okAisiFire && okAisiSilent &&
     okEcFire && okEcSilent && okEcReal && okEcPubResolvable &&
     okEdFire && okEdSilentDeadline && okEdSilentBare && okEdReal &&
     okAiFireMsft && okAiFireAtlas && okAiSilentHedgeMsft && okAiSilentPlanAtlas &&

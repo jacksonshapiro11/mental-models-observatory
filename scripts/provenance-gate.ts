@@ -70,6 +70,17 @@ export interface Finding {
 // "signal-draft: IMPORTED" does NOT match; "take-draft: ABSENT. Generated inline" does.
 const ABSENCE = /\b(absent|missing|not found|none found|does not exist|no pre-?draft|was ?n[o']?t produced|generated inline|inline generation|no such draft)\b/i;
 
+// NEGATIVE-DECLARATION GUARD (added 2026-08-07 — QG false positive, E-PROVENANCE-GATE-LINEWRAP-01.
+// The 08-07 manifest header wrapped as:
+//   line 5: "PRE-DRAFT MANIFEST: … PRESENT (4/4): take-draft,"
+//   line 6: "signal-draft, discovery-draft, cc-predraft. ABSENT (0/4): (none). All four CONSUMED."
+// Line 6 carries three component tokens AND the word "ABSENT" — so CHECK A fired three 🔴
+// fabrications against a manifest that declares the OPPOSITE (0 absent, all four consumed).
+// predraft-consumption-gate passed the same v1 with 0 FAIL, which is the contradicting receipt.
+// A line that declares a ZERO/NONE absence count is the negation of an absence assertion; it must
+// never be read as one. Line-scoped matching cannot be trusted against a wrapped enumeration.
+const NEGATIVE_DECLARATION = /\b(absent|missing)\b[^.\n]{0,24}?(\(\s*0\s*\/\s*\d+\s*\)|\bnone\b|\b0\b)/i;
+
 /** Per-component disk state at gate time: does the file exist non-empty, and did it exist BEFORE v1 was written. */
 export interface DraftState { present: boolean; existedBeforeV1: boolean; }
 
@@ -85,7 +96,7 @@ export function absenceFabrications(v1: string, state: Record<Component, DraftSt
   for (const comp of COMPONENTS) {
     // A component token: "take-draft", "take draft", or a bare "no take-draft".
     const compRe = new RegExp(comp.replace('-', '[\\s-]?'), 'i');
-    const asserted = lines.some(l => compRe.test(l) && ABSENCE.test(l));
+    const asserted = lines.some(l => compRe.test(l) && ABSENCE.test(l) && !NEGATIVE_DECLARATION.test(l));
     const s = state[comp];
     if (asserted && s.present && s.existedBeforeV1) {
       out.push({
@@ -221,6 +232,21 @@ function selftest(): number {
   const aFire = absenceFabrications(v1_0724, allOn);
   t('CHECK A FIRES on real 07-24 "take-draft: ABSENT" while file present-before-v1', aFire.length === 1 && aFire[0]!.message.includes('take-draft'));
   t('CHECK A SILENT on the three IMPORTED components (only take fires)', aFire.every(f => f.message.includes('take-draft')));
+
+  // CHECK A — NEGATIVE-DECLARATION GUARD (2026-08-07). Verified to BITE on the real 08-07 wrap
+  // (three false 🔴) while staying silent-free on the real 07-24 fabrication above.
+  const v1_0807_wrap = [
+    'PRE-DRAFT MANIFEST: daily-briefs/2026-08-07-predraft-manifest.md — PRESENT (4/4): take-draft,',
+    'signal-draft, discovery-draft, cc-predraft. ABSENT (0/4): (none). All four CONSUMED.',
+  ].join('\n');
+  t('GUARD: silent on a wrapped "ABSENT (0/4): (none)" manifest line (08-07 false positive)',
+    absenceFabrications(v1_0807_wrap, allOn).length === 0);
+  t('GUARD: silent on "ABSENT: (none)" phrasing',
+    absenceFabrications('take-draft, signal-draft. ABSENT: (none).', allOn).length === 0);
+  t('GUARD does NOT swallow a real absence assertion (07-24 still fires)',
+    absenceFabrications(v1_0724, allOn).length === 1);
+  t('GUARD does NOT swallow a real absence with a nearby digit',
+    absenceFabrications('take-draft: ABSENT. Generated inline; 3 candidates tried.', allOn).length === 1);
 
   // CHECK A — silent when the claimed-absent draft is genuinely absent.
   const takeOff: Record<Component, DraftState> = { ...allOn, 'take-draft': off };
