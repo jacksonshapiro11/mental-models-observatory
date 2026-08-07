@@ -1007,6 +1007,12 @@ Return ONLY the spoken script for this section. No meta-commentary, no [brackete
  * start a new thought cold. Thread them: "Meanwhile..." / "On a completely different
  * front..." / "Speaking of infrastructure..." / "Now here's where it gets structural..."
  *
+ * ONE CLAIM PER SENTENCE. Never join two of the written sentences into one. Splitting one of
+ * them into two is always allowed and usually right. The listener cannot re-read, so a sentence
+ * carrying two claims costs them the first one. Simplify the SENTENCE, never the thinking.
+ * (Added 2026-08-07. Measured: mean sentence length across the archive went 15.4 -> 26.5 words
+ * while the brief got SHORTER. This layer is the last thing between the writing and the ear.)
+ *
  * DO NOT OVERSIMPLIFY. The listener is smart. Keep the nuance, the second-order
  * effects, the "why this matters" reasoning. Simplify the language, not the thinking.
  */
