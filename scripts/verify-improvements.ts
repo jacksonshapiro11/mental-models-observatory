@@ -47,6 +47,26 @@ function parseLedger(md: string): Row[] {
   return rows;
 }
 
+/**
+ * IS THIS ROW CLOSED? — IMP-140 (2026-08-07, RC7). The exemption predicate used to be
+ * `/CLOSED/i.test(behavior)`, a bare substring match on a free-prose cell. Two ways that
+ * silently let a row out of the acceptance gate and its 30-day code-or-close fuse:
+ *
+ *   "…flips Y when an AI&T segment figure ships as a **disCLOSED** single qualifier"  (IMP-083)
+ *   "…OPEN escalation, deliberately **not closed**; carry-forward Critical"           (ESC-013)
+ *
+ * The second one is the alarming shape: a row can declare itself OPEN in plain English and
+ * be read as CLOSED by the machine — so the louder and more honest the prose, the likelier
+ * the exemption. Found today by writing exactly that sentence and noticing the registry
+ * reported `0 warn` when it owed one.
+ *
+ * Closure is now a DECLARATION, not a word that appears somewhere: the cell must OPEN with
+ * an explicit closure token (optionally behind markdown emphasis or a `Y —` grade). Prose
+ * that merely mentions closing no longer closes anything.
+ */
+const CLOSED_RE = /^\W*(?:Y\s*[—–-]\s*)?(?:CLOSED\b|WONT-FIX-VIA-PROSE\b)/i;
+export function isClosed(behavior: string): boolean { return CLOSED_RE.test(behavior.trim()); }
+
 function ageDays(dateStr: string): number {
   const d = new Date(dateStr + 'T00:00:00Z').getTime();
   if (Number.isNaN(d)) return 0;
@@ -203,7 +223,7 @@ function main(): number {
   let verified = 0;
 
   for (const r of rows) {
-    const closed = /CLOSED/i.test(r.behavior);
+    const closed = isClosed(r.behavior);
 
     // 1. Target files exist (skip directory-ish / empty targets).
     for (const target of r.targets) {
@@ -321,7 +341,21 @@ function selftest(): number {
       '[IMP-130] a git failure is reported as UNKNOWN, never fabricated into NEVER-LANDED');
     forensicAssertions += 4;
   }
-  const total = cases.length + forensicAssertions;
+  // IMP-140 — closure is a declaration, not a substring. Both directions, verbatim cells
+  // taken from the live ledger (the two false exemptions and the three true closures).
+  const closureCases: [string, boolean, string][] = [
+    ['CLOSED-BY-CODE (IMP-007)', true, 'ESC-001 verbatim: an explicit closure token closes'],
+    ['**Y — closed by code path, not by prose.** A subsequent session…', true, 'ESC-010 verbatim: closure behind markdown + a Y grade still closes'],
+    ['pending — advisory leg + rubric verified both directions today; flips Y when an AI&T segment figure ships as a disclosed single qualifier', false, 'IMP-083 verbatim: "disCLOSED" no longer closes a row'],
+    ['pending — OPEN escalation, deliberately not closed; carry-forward Critical for the next session', false, 'ESC-013 verbatim: a row that says it is NOT closed is not closed'],
+    ['WONT-FIX-VIA-PROSE — superseded by the length rail', true, 'the second legal closure token closes'],
+  ];
+  for (const [cell, expect, label] of closureCases) {
+    const got = isClosed(cell);
+    console.log(`  ${got === expect ? 'PASS' : 'FAIL'} — [IMP-140] ${label}`);
+    if (got !== expect) fails++;
+  }
+  const total = cases.length + forensicAssertions + closureCases.length;
   console.log(`\nverify-improvements selftest — ${total - fails}/${total} assertions passed`);
   if (fails) { console.error('✗ SELFTEST FAILED — compound-check logic no longer bites both directions.'); return 1; }
   console.log('✓ compound-check (run:<selftest> && grep:<anchor> && gitshow:<anchor>) verified — a reverted enforcement now goes RED.');
