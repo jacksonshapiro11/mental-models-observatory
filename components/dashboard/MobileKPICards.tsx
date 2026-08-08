@@ -23,13 +23,41 @@ interface DashboardData {
 }
 
 const KPI_ASSETS = [
-  { key: 'SPX', label: 'S&P 500', category: 'equities' as const, pricePrefix: '', decimals: 0 },
-  { key: 'BTC', label: 'BTC', category: 'crypto' as const, pricePrefix: '$', decimals: 0 },
-  { key: 'GOLD', label: 'Gold', category: 'commodities' as const, pricePrefix: '$', decimals: 0 },
-  { key: 'BRENT', label: 'Brent', category: 'commodities' as const, pricePrefix: '$', decimals: 2 },
+  {
+    key: 'SPX',
+    label: 'S&P 500',
+    category: 'equities' as const,
+    pricePrefix: '',
+    decimals: 0,
+  },
+  {
+    key: 'BTC',
+    label: 'BTC',
+    category: 'crypto' as const,
+    pricePrefix: '$',
+    decimals: 0,
+  },
+  {
+    key: 'GOLD',
+    label: 'Gold',
+    category: 'commodities' as const,
+    pricePrefix: '$',
+    decimals: 0,
+  },
+  {
+    key: 'BRENT',
+    label: 'Brent',
+    category: 'commodities' as const,
+    pricePrefix: '$',
+    decimals: 2,
+  },
 ];
 
-function formatKPIPrice(value: number | undefined, prefix: string, decimals: number): string {
+function formatKPIPrice(
+  value: number | undefined,
+  prefix: string,
+  decimals: number
+): string {
   if (value == null) return '—';
   const formatted = value.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
@@ -51,10 +79,12 @@ export function MobileKPICards({ children }: { children: React.ReactNode }) {
   return (
     <div>
       {/* Mobile KPI cards — hidden on md+ */}
-      <div className="md:hidden">
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {KPI_ASSETS.map((asset) => {
-            const categoryData = data?.[asset.category] as Record<string, AssetData> | undefined;
+      <div className='md:hidden'>
+        <div className='grid grid-cols-2 gap-2 mb-4'>
+          {KPI_ASSETS.map(asset => {
+            const categoryData = data?.[asset.category] as
+              | Record<string, AssetData>
+              | undefined;
             const assetData = categoryData?.[asset.key];
             const price = assetData?.price;
             const change = assetData?.changes?.['1D'];
@@ -64,20 +94,25 @@ export function MobileKPICards({ children }: { children: React.ReactNode }) {
             return (
               <div
                 key={asset.key}
-                className="bg-[#141416] border border-[#222] p-3"
+                className='bg-[#141416] border border-[#222] p-3'
               >
-                <div className="text-[9px] font-mono text-[#555] uppercase tracking-[0.08em] font-semibold mb-1">
+                <div className='text-[9px] font-mono text-[#555] uppercase tracking-[0.08em] font-semibold mb-1'>
                   {asset.label}
                 </div>
-                <div className="text-lg font-mono font-semibold text-[#f0f0ec] tabular-nums">
+                <div className='text-lg font-mono font-semibold text-[#f0f0ec] tabular-nums'>
                   {formatKPIPrice(price, asset.pricePrefix, asset.decimals)}
                 </div>
                 <div
                   className={`text-[11px] font-mono font-medium tabular-nums mt-0.5 ${
-                    isPositive ? 'text-ct-green-data' : isNegative ? 'text-ct-pink' : 'text-[#555]'
+                    isPositive
+                      ? 'text-ct-green-data'
+                      : isNegative
+                        ? 'text-ct-pink'
+                        : 'text-[#555]'
                   }`}
                 >
-                  {isPositive ? '▲ ' : isNegative ? '▼ ' : ''}{formatKPIChange(change)}
+                  {isPositive ? '▲ ' : isNegative ? '▼ ' : ''}
+                  {formatKPIChange(change)}
                 </div>
               </div>
             );
@@ -87,7 +122,7 @@ export function MobileKPICards({ children }: { children: React.ReactNode }) {
         {/* Toggle to show full dashboard */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full text-center text-[10px] font-mono font-semibold text-ct-yellow uppercase tracking-[0.06em] py-2 border border-[#222] hover:bg-[#141416] transition-colors mb-4"
+          className='w-full text-center text-[10px] font-mono font-semibold text-ct-yellow uppercase tracking-[0.06em] py-2 border border-[#222] hover:bg-[#141416] transition-colors mb-4'
         >
           {expanded ? 'Hide full dashboard ▲' : 'Show full dashboard ▼'}
         </button>
@@ -97,9 +132,7 @@ export function MobileKPICards({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Desktop: always show full dashboard */}
-      <div className="hidden md:block">
-        {children}
-      </div>
+      <div className='hidden md:block'>{children}</div>
     </div>
   );
 }

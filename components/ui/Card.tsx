@@ -3,14 +3,14 @@ import { cn } from '@/lib/utils';
 
 /**
  * Card component with multiple variants and interactive states
- * 
+ *
  * @example
  * ```tsx
  * <Card variant="elevated" padding="lg">
  *   <h3>Card Title</h3>
  *   <p>Card content goes here</p>
  * </Card>
- * 
+ *
  * <Card variant="outlined" hover clickable onClick={handleClick}>
  *   Clickable card
  * </Card>
@@ -30,7 +30,8 @@ interface BaseCardProps {
 }
 
 // Non-clickable card props
-export interface CardProps extends BaseCardProps, React.HTMLAttributes<HTMLDivElement> {
+export interface CardProps
+  extends BaseCardProps, React.HTMLAttributes<HTMLDivElement> {
   /** Make card clickable */
   clickable?: false;
   /** Click handler for clickable cards */
@@ -38,7 +39,8 @@ export interface CardProps extends BaseCardProps, React.HTMLAttributes<HTMLDivEl
 }
 
 // Clickable card props
-export interface ClickableCardProps extends BaseCardProps, React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ClickableCardProps
+  extends BaseCardProps, React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Make card clickable */
   clickable: true;
   /** Click handler for clickable cards */
@@ -66,38 +68,38 @@ const Card = forwardRef<HTMLDivElement, CardComponentProps>(
       // Base styles
       'bg-neutral-0 rounded-large transition-all duration-200',
       'focus-visible:outline-none',
-      
+
       // Padding variants
       padding === 'sm' && 'p-sm',
       padding === 'md' && 'p-md',
       padding === 'lg' && 'p-lg',
-      
+
       // Variant styles
       variant === 'default' && [
         'border border-neutral-200',
-        'hover:border-neutral-300'
+        'hover:border-neutral-300',
       ],
       variant === 'elevated' && [
         'shadow-medium border border-neutral-100',
-        'hover:shadow-strong hover:border-neutral-200'
+        'hover:shadow-strong hover:border-neutral-200',
       ],
       variant === 'outlined' && [
         'border-2 border-neutral-200',
-        'hover:border-neutral-300'
+        'hover:border-neutral-300',
       ],
-      
+
       // Interactive states
       hover && [
         'hover:shadow-gentle hover:-translate-y-0.5',
-        'active:translate-y-0 active:shadow-subtle'
+        'active:translate-y-0 active:shadow-subtle',
       ],
-      
+
       clickable && [
         'cursor-pointer text-left',
         'focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2',
-        'active:scale-[0.98]'
+        'active:scale-[0.98]',
       ],
-      
+
       className
     );
 
@@ -107,7 +109,7 @@ const Card = forwardRef<HTMLDivElement, CardComponentProps>(
           ref={ref as React.Ref<HTMLButtonElement>}
           className={baseClasses}
           onClick={onClick}
-          type="button"
+          type='button'
           {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
         >
           {children}

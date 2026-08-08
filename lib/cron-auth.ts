@@ -41,12 +41,16 @@ export function getCronAuthPath(req: NextRequest): CronAuthPath {
 
   // Vercel cron — official markers (any one is sufficient; edge already authenticated).
   if (req.headers.get('x-vercel-cron') === '1') return 'x-vercel-cron';
-  if (req.headers.get('x-vercel-cron-schedule')) return 'x-vercel-cron-schedule';
+  if (req.headers.get('x-vercel-cron-schedule'))
+    return 'x-vercel-cron-schedule';
   const ua = req.headers.get('user-agent') || '';
   if (ua.includes('vercel-cron')) return 'user-agent-vercel-cron';
 
-  const secret = req.headers.get('x-snapshot-secret') || req.nextUrl.searchParams.get('secret');
-  if (secret && snapshotSecret && secret === snapshotSecret) return 'snapshot-secret';
+  const secret =
+    req.headers.get('x-snapshot-secret') ||
+    req.nextUrl.searchParams.get('secret');
+  if (secret && snapshotSecret && secret === snapshotSecret)
+    return 'snapshot-secret';
 
   const authHeader = req.headers.get('authorization');
   if (authHeader) {

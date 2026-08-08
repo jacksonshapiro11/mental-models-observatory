@@ -4,7 +4,7 @@ import ReadwiseClient from '@/lib/readwise-client';
 export async function GET(request: NextRequest) {
   try {
     const token = process.env.READWISE_API_TOKEN;
-    
+
     if (!token) {
       return NextResponse.json(
         { error: 'Readwise API token not configured' },
@@ -28,17 +28,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       query,
       count: highlights.length,
-      results: highlights
+      results: highlights,
     });
-
   } catch (error) {
     console.error('Error searching highlights:', error);
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
+
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

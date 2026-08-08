@@ -3,10 +3,22 @@
 import { useDashboardLivePolling } from '@/hooks/useDashboardLivePolling';
 
 interface MarketData {
-  equities?: Record<string, { price: number | null; changes?: Record<string, number> }>;
-  crypto?: Record<string, { price: number | null; changes?: Record<string, number> }>;
-  commodities?: Record<string, { price: number | null; changes?: Record<string, number> }>;
-  rates?: Record<string, { price: number | null; changes?: Record<string, number> }>;
+  equities?: Record<
+    string,
+    { price: number | null; changes?: Record<string, number> }
+  >;
+  crypto?: Record<
+    string,
+    { price: number | null; changes?: Record<string, number> }
+  >;
+  commodities?: Record<
+    string,
+    { price: number | null; changes?: Record<string, number> }
+  >;
+  rates?: Record<
+    string,
+    { price: number | null; changes?: Record<string, number> }
+  >;
   meta?: Record<string, unknown>;
 }
 
@@ -35,7 +47,10 @@ interface FormatPriceOptions {
   prefix?: string;
 }
 
-function formatPrice(value: number | null, opts: FormatPriceOptions = {}): string {
+function formatPrice(
+  value: number | null,
+  opts: FormatPriceOptions = {}
+): string {
   if (value == null) return '—';
   const { decimals = 2, prefix = '$' } = opts;
   const formatted = value.toLocaleString('en-US', {
@@ -53,7 +68,11 @@ function formatChange(value: number | null | undefined): string {
 
 function getChangeColor(value: number | null | undefined): string {
   if (value == null) return 'text-text-on-dark-muted';
-  return value > 0 ? 'text-ct-green-data' : value < 0 ? 'text-ct-pink' : 'text-text-on-dark-muted';
+  return value > 0
+    ? 'text-ct-green-data'
+    : value < 0
+      ? 'text-ct-pink'
+      : 'text-text-on-dark-muted';
 }
 
 export function TerminalData() {
@@ -73,64 +92,76 @@ export function TerminalData() {
   const brentChange = brent?.changes?.['1D'];
 
   return (
-    <div className="space-y-2 text-text-on-dark-muted mt-6">
-      <div className="flex justify-between items-start max-w-xs">
+    <div className='space-y-2 text-text-on-dark-muted mt-6'>
+      <div className='flex justify-between items-start max-w-xs'>
         <span>S&P 500</span>
-        <span className="text-right">
-          <span className={spx?.price ? 'text-ct-green-data' : 'text-text-on-dark-muted'}>
+        <span className='text-right'>
+          <span
+            className={
+              spx?.price ? 'text-ct-green-data' : 'text-text-on-dark-muted'
+            }
+          >
             {spx?.price ? formatPrice(spx.price, { decimals: 0 }) : '—'}
-          </span>
-          {' '}
+          </span>{' '}
           <span className={getChangeColor(spxChange)}>
             {formatChange(spxChange)}
           </span>
         </span>
       </div>
-      <div className="flex justify-between items-start max-w-xs">
+      <div className='flex justify-between items-start max-w-xs'>
         <span>BTC</span>
-        <span className="text-right">
-          <span className={btc?.price ? 'text-ct-green-data' : 'text-text-on-dark-muted'}>
+        <span className='text-right'>
+          <span
+            className={
+              btc?.price ? 'text-ct-green-data' : 'text-text-on-dark-muted'
+            }
+          >
             {btc?.price ? formatPrice(btc.price) : '—'}
-          </span>
-          {' '}
+          </span>{' '}
           <span className={getChangeColor(btcChange)}>
             {formatChange(btcChange)}
           </span>
         </span>
       </div>
-      <div className="flex justify-between items-start max-w-xs">
+      <div className='flex justify-between items-start max-w-xs'>
         <span>Gold</span>
-        <span className="text-right">
-          <span className={gold?.price ? 'text-ct-green-data' : 'text-text-on-dark-muted'}>
+        <span className='text-right'>
+          <span
+            className={
+              gold?.price ? 'text-ct-green-data' : 'text-text-on-dark-muted'
+            }
+          >
             {gold?.price ? formatPrice(gold.price, { decimals: 0 }) : '—'}
-          </span>
-          {' '}
+          </span>{' '}
           <span className={getChangeColor(goldChange)}>
             {formatChange(goldChange)}
           </span>
         </span>
       </div>
-      <div className="flex justify-between items-start max-w-xs">
+      <div className='flex justify-between items-start max-w-xs'>
         <span>Brent</span>
-        <span className="text-right">
-          <span className={brent?.price ? 'text-ct-green-data' : 'text-text-on-dark-muted'}>
+        <span className='text-right'>
+          <span
+            className={
+              brent?.price ? 'text-ct-green-data' : 'text-text-on-dark-muted'
+            }
+          >
             {brent?.price ? formatPrice(brent.price, { decimals: 0 }) : '—'}
-          </span>
-          {' '}
+          </span>{' '}
           <span className={getChangeColor(brentChange)}>
             {formatChange(brentChange)}
           </span>
         </span>
       </div>
-      <div className="flex justify-between items-start max-w-xs">
+      <div className='flex justify-between items-start max-w-xs'>
         <span>10Y</span>
-        <span className="text-right">
+        <span className='text-right'>
           {us10y?.price ? `${us10y.price.toFixed(2)}%` : '—'}
         </span>
       </div>
-      <div className="flex justify-between items-start max-w-xs">
+      <div className='flex justify-between items-start max-w-xs'>
         <span>DXY</span>
-        <span className="text-right">
+        <span className='text-right'>
           {dxyValue ? dxyValue.toFixed(2) : '—'}
         </span>
       </div>

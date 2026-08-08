@@ -24,14 +24,17 @@
 
 import * as fs from 'fs';
 
-interface Flag { check: string; message: string }
+interface Flag {
+  check: string;
+  message: string;
+}
 
 const SECTION_HEADER = /^# ▸ THE PREDICTIONS\s*$/m;
 const NEXT_TOP_HEADER = /^# ▸ /m;
 
-const TOTAL_WORD_CAP = 720;   // contract says ≤700; small buffer for connective tissue
+const TOTAL_WORD_CAP = 720; // contract says ≤700; small buffer for connective tissue
 const FRAME_WORD_CAP = 45;
-const BULLET_WORD_CAP = 80;   // contract says ≤75; buffer for the trailing ledger ID
+const BULLET_WORD_CAP = 80; // contract says ≤75; buffer for the trailing ledger ID
 const PARAGRAPH_CAP = 130;
 
 const SCOREBOARD_HEADER_RE = /^\*\*The scoreboard\.?\*\*/im;
@@ -59,9 +62,12 @@ export function extractPredictionsSection(body: string): string | null {
   if (m && m.index !== undefined) {
     const after = body.slice(m.index + m[0].length);
     const next = after.match(NEXT_TOP_HEADER);
-    section = next && next.index !== undefined ? after.slice(0, next.index) : after;
+    section =
+      next && next.index !== undefined ? after.slice(0, next.index) : after;
   } else {
-    const stop = body.search(/^## |^<!-- PREDRAFT METADATA|CHAIN OF REASONING/m);
+    const stop = body.search(
+      /^## |^<!-- PREDRAFT METADATA|CHAIN OF REASONING/m
+    );
     section = stop === -1 ? body : body.slice(0, stop);
   }
   const trimmed = section.trim();
@@ -89,7 +95,10 @@ export function lintPredictions(section: string): Flag[] {
       message: `Section must OPEN with one italic framing line (the week's record in plain speech, ≤${FRAME_WORD_CAP} words). Got: ${JSON.stringify(firstLine.slice(0, 80))}`,
     });
   } else if (words(firstLine) > FRAME_WORD_CAP) {
-    flags.push({ check: 'pred-frame', message: `Framing line runs ${words(firstLine)} words (cap ${FRAME_WORD_CAP}) — one breath, not a paragraph.` });
+    flags.push({
+      check: 'pred-frame',
+      message: `Framing line runs ${words(firstLine)} words (cap ${FRAME_WORD_CAP}) — one breath, not a paragraph.`,
+    });
   }
 
   // Required blocks.
@@ -110,7 +119,12 @@ export function lintPredictions(section: string): Flag[] {
     const line = lines[i] ?? '';
     if (/^-\s+/.test(line)) {
       let b = line;
-      while (i + 1 < lines.length && (lines[i + 1] ?? '').trim() && !/^-\s+/.test(lines[i + 1] ?? '') && !/^\*\*/.test((lines[i + 1] ?? '').trim())) {
+      while (
+        i + 1 < lines.length &&
+        (lines[i + 1] ?? '').trim() &&
+        !/^-\s+/.test(lines[i + 1] ?? '') &&
+        !/^\*\*/.test((lines[i + 1] ?? '').trim())
+      ) {
         b += ' ' + (lines[++i] ?? '').trim();
       }
       bullets.push({ text: b, inBook: bookIdx !== -1 && offset > bookIdx });
@@ -121,10 +135,14 @@ export function lintPredictions(section: string): Flag[] {
   // "New on the book" / Watching material sits AFTER the book's three bullets and is exempt
   // from the triplet (one-line registrations); the book bullets themselves are the Next-* ones.
   const bookBullets = bullets.filter(b => BOOK_LEAD_RE.test(b.text));
-  const scoreboardBullets = bullets.filter(b => !b.inBook && !BOOK_LEAD_RE.test(b.text));
+  const scoreboardBullets = bullets.filter(
+    b => !b.inBook && !BOOK_LEAD_RE.test(b.text)
+  );
 
   // The book: exactly three calls, one per horizon.
-  const horizons = new Set(bookBullets.map(b => b.text.match(BOOK_LEAD_RE)![1]!.toLowerCase()));
+  const horizons = new Set(
+    bookBullets.map(b => b.text.match(BOOK_LEAD_RE)![1]!.toLowerCase())
+  );
   if (bookBullets.length !== 3 || horizons.size !== 3) {
     flags.push({
       check: 'pred-book-count',
@@ -155,12 +173,18 @@ export function lintPredictions(section: string): Flag[] {
   // Scoreboard results carry a verdict; book results carry the Wrong-if falsifier.
   for (const b of scoreboardBullets) {
     if (RESULT_RE.test(b.text) && !VERDICT_RE.test(b.text)) {
-      flags.push({ check: 'pred-verdict', message: `Scoreboard result must open with the verdict (HIT/MISS/EARLY): "${b.text.slice(0, 55).replace(/\s+/g, ' ')}…"` });
+      flags.push({
+        check: 'pred-verdict',
+        message: `Scoreboard result must open with the verdict (HIT/MISS/EARLY): "${b.text.slice(0, 55).replace(/\s+/g, ' ')}…"`,
+      });
     }
   }
   for (const b of bookBullets) {
     if (!WRONG_IF_RE.test(b.text)) {
-      flags.push({ check: 'pred-wrong-if', message: `Book call's result must carry its "Wrong if {condition}" falsifier: "${b.text.slice(0, 55).replace(/\s+/g, ' ')}…"` });
+      flags.push({
+        check: 'pred-wrong-if',
+        message: `Book call's result must carry its "Wrong if {condition}" falsifier: "${b.text.slice(0, 55).replace(/\s+/g, ' ')}…"`,
+      });
     }
   }
 
@@ -169,7 +193,10 @@ export function lintPredictions(section: string): Flag[] {
     const p = para.trim();
     if (!p || p.startsWith('-') || p.startsWith('#')) continue;
     if (words(p) > PARAGRAPH_CAP) {
-      flags.push({ check: 'pred-paragraph-cap', message: `Paragraph runs ${words(p)} words (cap ${PARAGRAPH_CAP}): "${p.slice(0, 70).replace(/\s+/g, ' ')}…"` });
+      flags.push({
+        check: 'pred-paragraph-cap',
+        message: `Paragraph runs ${words(p)} words (cap ${PARAGRAPH_CAP}): "${p.slice(0, 70).replace(/\s+/g, ' ')}…"`,
+      });
     }
   }
 
@@ -222,18 +249,31 @@ const GOOD_FIXTURE = `# ▸ THE PREDICTIONS
 
 function selftest(): number {
   let fails = 0;
-  const expectBad = ['pred-frame', 'pred-blocks', 'pred-triplet', 'pred-book-count', 'pred-wrong-if', 'pred-bullet-cap'];
+  const expectBad = [
+    'pred-frame',
+    'pred-blocks',
+    'pred-triplet',
+    'pred-book-count',
+    'pred-wrong-if',
+    'pred-bullet-cap',
+  ];
   const badFlags = lintPredictions(extractPredictionsSection(BAD_FIXTURE)!);
   for (const c of expectBad) {
     const fired = badFlags.some(f => f.check === c);
-    console.log(`  ${fired ? 'PASS' : 'FAIL'} — ${c} fires on the W30-shaped bad fixture`);
+    console.log(
+      `  ${fired ? 'PASS' : 'FAIL'} — ${c} fires on the W30-shaped bad fixture`
+    );
     if (!fired) fails++;
   }
   const goodFlags = lintPredictions(extractPredictionsSection(GOOD_FIXTURE)!);
   const clean = goodFlags.length === 0;
-  console.log(`  ${clean ? 'PASS' : 'FAIL'} — zero flags on the triplet-form W30 (got: ${goodFlags.map(f => f.check).join(', ') || 'none'})`);
+  console.log(
+    `  ${clean ? 'PASS' : 'FAIL'} — zero flags on the triplet-form W30 (got: ${goodFlags.map(f => f.check).join(', ') || 'none'})`
+  );
   if (!clean) fails++;
-  console.log(`\nweekly-predictions-gate selftest — ${expectBad.length + 1 - fails}/${expectBad.length + 1} assertions passed`);
+  console.log(
+    `\nweekly-predictions-gate selftest — ${expectBad.length + 1 - fails}/${expectBad.length + 1} assertions passed`
+  );
   return fails ? 1 : 0;
 }
 
@@ -242,7 +282,9 @@ const arg = process.argv[2];
 if (arg === '--selftest') {
   process.exit(selftest());
 } else if (!arg) {
-  console.error('Usage: weekly-predictions-gate.ts <weekly.md | predictions-draft.md> | --selftest');
+  console.error(
+    'Usage: weekly-predictions-gate.ts <weekly.md | predictions-draft.md> | --selftest'
+  );
   process.exit(2);
 } else {
   if (!fs.existsSync(arg)) {
@@ -251,14 +293,20 @@ if (arg === '--selftest') {
   }
   const section = extractPredictionsSection(fs.readFileSync(arg, 'utf8'));
   if (!section) {
-    console.error('✗ No THE PREDICTIONS section found (and file does not read as a predictions pre-draft).');
+    console.error(
+      '✗ No THE PREDICTIONS section found (and file does not read as a predictions pre-draft).'
+    );
     process.exit(1);
   }
   const flags = lintPredictions(section);
-  console.log(`weekly-predictions-gate — ${arg} — ${flags.length} FAIL${flags.length === 1 ? '' : 'S'} (section: ${section.split(/\s+/).filter(Boolean).length} words)`);
+  console.log(
+    `weekly-predictions-gate — ${arg} — ${flags.length} FAIL${flags.length === 1 ? '' : 'S'} (section: ${section.split(/\s+/).filter(Boolean).length} words)`
+  );
   for (const f of flags) console.log(`  ✗ [${f.check}] ${f.message}`);
   if (flags.length) {
-    console.error('\n✗ THE PREDICTIONS violates the presentation contract (call → if-right → result) — restructure per system/Weekly_Generator.md before shipping.');
+    console.error(
+      '\n✗ THE PREDICTIONS violates the presentation contract (call → if-right → result) — restructure per system/Weekly_Generator.md before shipping.'
+    );
     process.exit(1);
   }
   console.log('✅ PRESENTATION CONTRACT PASS');

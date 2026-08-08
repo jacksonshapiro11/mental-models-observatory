@@ -86,7 +86,12 @@ import * as os from 'os';
 import * as path from 'path';
 
 type Severity = 'FAIL' | 'FLAG';
-interface Finding { check: string; severity: Severity; component: string; message: string; }
+interface Finding {
+  check: string;
+  severity: Severity;
+  component: string;
+  message: string;
+}
 
 // ---------- text helpers ----------
 function stripComments(md: string): string {
@@ -98,10 +103,14 @@ function bodyFrom(md: string): string {
   const stripped = stripComments(md);
   const lines = stripped.split('\n');
   const i = lines.findIndex(l => /^#{1,6}\s/.test(l));
-  return (i === -1 ? stripped : lines.slice(i).join('\n'));
+  return i === -1 ? stripped : lines.slice(i).join('\n');
 }
 
-function extractSection(md: string, startRe: RegExp, stopRe = /^#{1,2}\s|^#\s*▸/): string {
+function extractSection(
+  md: string,
+  startRe: RegExp,
+  stopRe = /^#{1,2}\s|^#\s*▸/
+): string {
   const lines = stripComments(md).split('\n');
   const i = lines.findIndex(l => startRe.test(l));
   if (i === -1) return '';
@@ -122,23 +131,229 @@ function extractSection(md: string, startRe: RegExp, stopRe = /^#{1,2}\s|^#\s*�
  * "Intel". Both were false passes in the first build of this gate.
  */
 const STOP = new Set([
-  'the','this','that','these','those','and','but','or','if','when','while','because','so','it','its',
-  'he','she','they','we','you','in','on','at','for','from','to','by','with','as','of','is','are','was','were',
-  'be','been','not','no','yes','every','each','what','which','who','why','how','there','here','one','two','three',
-  'first','second','third','read','write','watch','note','primary','framework','domain','pass','fail','both','all',
-  'monday','tuesday','wednesday','thursday','friday','saturday','sunday','january','february','march','april','may',
-  'june','july','august','september','october','november','december','usa','america','american',
-  'take','signal','discovery','companies','crypto','markets','market','macro','geopolitics','model','inner','game',
-  'dashboard','wild','card','context','today','yesterday','tomorrow','last','next','over','under',
+  'the',
+  'this',
+  'that',
+  'these',
+  'those',
+  'and',
+  'but',
+  'or',
+  'if',
+  'when',
+  'while',
+  'because',
+  'so',
+  'it',
+  'its',
+  'he',
+  'she',
+  'they',
+  'we',
+  'you',
+  'in',
+  'on',
+  'at',
+  'for',
+  'from',
+  'to',
+  'by',
+  'with',
+  'as',
+  'of',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'been',
+  'not',
+  'no',
+  'yes',
+  'every',
+  'each',
+  'what',
+  'which',
+  'who',
+  'why',
+  'how',
+  'there',
+  'here',
+  'one',
+  'two',
+  'three',
+  'first',
+  'second',
+  'third',
+  'read',
+  'write',
+  'watch',
+  'note',
+  'primary',
+  'framework',
+  'domain',
+  'pass',
+  'fail',
+  'both',
+  'all',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
+  'usa',
+  'america',
+  'american',
+  'take',
+  'signal',
+  'discovery',
+  'companies',
+  'crypto',
+  'markets',
+  'market',
+  'macro',
+  'geopolitics',
+  'model',
+  'inner',
+  'game',
+  'dashboard',
+  'wild',
+  'card',
+  'context',
+  'today',
+  'yesterday',
+  'tomorrow',
+  'last',
+  'next',
+  'over',
+  'under',
   // common English words that show up capitalized at sentence/headline start
-  'answer','answers','question','questions','price','prices','pricing','still','about','after','before','during',
-  'however','instead','another','between','without','within','through','against','across','until','since','more',
-  'most','less','best','worst','real','only','even','just','also','than','then','will','would','could','should',
-  'week','weeks','month','months','year','years','days','time','times','world','people','thing','things','value',
-  'here','their','them','have','has','had','does','done','make','made','give','given','same','other','others',
-  'much','many','some','none','never','always','again','once','twice','into','onto','upon','were','being','where',
-  'story','stories','number','numbers','point','points','case','cases','side','sides','part','parts','line','lines',
-  'move','moves','call','calls','rate','rates','data','name','names','fact','facts','idea','ideas','work','works',
+  'answer',
+  'answers',
+  'question',
+  'questions',
+  'price',
+  'prices',
+  'pricing',
+  'still',
+  'about',
+  'after',
+  'before',
+  'during',
+  'however',
+  'instead',
+  'another',
+  'between',
+  'without',
+  'within',
+  'through',
+  'against',
+  'across',
+  'until',
+  'since',
+  'more',
+  'most',
+  'less',
+  'best',
+  'worst',
+  'real',
+  'only',
+  'even',
+  'just',
+  'also',
+  'than',
+  'then',
+  'will',
+  'would',
+  'could',
+  'should',
+  'week',
+  'weeks',
+  'month',
+  'months',
+  'year',
+  'years',
+  'days',
+  'time',
+  'times',
+  'world',
+  'people',
+  'thing',
+  'things',
+  'value',
+  'here',
+  'their',
+  'them',
+  'have',
+  'has',
+  'had',
+  'does',
+  'done',
+  'make',
+  'made',
+  'give',
+  'given',
+  'same',
+  'other',
+  'others',
+  'much',
+  'many',
+  'some',
+  'none',
+  'never',
+  'always',
+  'again',
+  'once',
+  'twice',
+  'into',
+  'onto',
+  'upon',
+  'were',
+  'being',
+  'where',
+  'story',
+  'stories',
+  'number',
+  'numbers',
+  'point',
+  'points',
+  'case',
+  'cases',
+  'side',
+  'sides',
+  'part',
+  'parts',
+  'line',
+  'lines',
+  'move',
+  'moves',
+  'call',
+  'calls',
+  'rate',
+  'rates',
+  'data',
+  'name',
+  'names',
+  'fact',
+  'facts',
+  'idea',
+  'ideas',
+  'work',
+  'works',
 ]);
 
 /**
@@ -153,37 +368,49 @@ const STOP = new Set([
 function anchors(text: string): string[] {
   const out = new Set<string>();
   for (const rawLine of text.split('\n')) {
-    const line = rawLine.replace(/\*\*/g, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+    const line = rawLine
+      .replace(/\*\*/g, '')
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
     const header = line.match(/^#{1,6}\s+(.+)$/);
     if (header) {
       const title = header[1]!.replace(/[▸#*]/g, '').trim().toLowerCase();
       if (title.length >= 8) out.add(title); // whole headline as one phrase anchor
       continue;
     }
-    const runRe = /\b([A-Z][A-Za-z0-9&.'’-]{1,}(?:\s+[A-Z][A-Za-z0-9&.'’-]{1,}){0,3})\b/g;
+    const runRe =
+      /\b([A-Z][A-Za-z0-9&.'’-]{1,}(?:\s+[A-Z][A-Za-z0-9&.'’-]{1,}){0,3})\b/g;
     let m: RegExpExecArray | null;
     while ((m = runRe.exec(line))) {
       const run = m[1]!.trim();
       const toks = run.split(/\s+/);
       for (const t of toks) {
         const norm = t.replace(/[.,;:'’]+$/, '').toLowerCase();
-        if (norm.length < 4) continue;      // "LEN", "Tel", "AI" are noise, not identity
+        if (norm.length < 4) continue; // "LEN", "Tel", "AI" are noise, not identity
         if (STOP.has(norm)) continue;
         out.add(norm);
       }
       const full = run.toLowerCase();
-      if (toks.length > 1 && full.length >= 8 && !toks.every(t => STOP.has(t.toLowerCase()))) out.add(full);
+      if (
+        toks.length > 1 &&
+        full.length >= 8 &&
+        !toks.every(t => STOP.has(t.toLowerCase()))
+      )
+        out.add(full);
     }
   }
   return [...out];
 }
 
-function esc(s: string): string { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function esc(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 /** Word-boundary containment. Substring matching is how "Tel" passed for "Intel". */
 function intersect(anchorList: string[], haystack: string): string[] {
   const hay = haystack.toLowerCase();
-  return anchorList.filter(a => new RegExp(`(^|[^a-z0-9])${esc(a)}([^a-z0-9]|$)`, 'i').test(hay));
+  return anchorList.filter(a =>
+    new RegExp(`(^|[^a-z0-9])${esc(a)}([^a-z0-9]|$)`, 'i').test(hay)
+  );
 }
 
 // ---------- component specs ----------
@@ -211,9 +438,19 @@ interface Component {
  * it can only convert a false PASS into a correct FAIL, never a healthy brief into a false stop.
  */
 const TAKE_BOILERPLATE = new Set([
-  'where this breaks', 'falsified if', 'the call', 'the trade', 'the setup', 'the discriminator',
-  'what would change my mind', 'the counter-case', 'the counter case', 'where i could be wrong',
-  'the projection', 'the wager', 'the bet',
+  'where this breaks',
+  'falsified if',
+  'the call',
+  'the trade',
+  'the setup',
+  'the discriminator',
+  'what would change my mind',
+  'the counter-case',
+  'the counter case',
+  'where i could be wrong',
+  'the projection',
+  'the wager',
+  'the bet',
 ]);
 
 function takeFramework(raw: string): string[] {
@@ -221,7 +458,10 @@ function takeFramework(raw: string): string[] {
   const meta = raw.match(/^Framework:\s*(.+)$/m);
   if (meta) {
     // "Costly-Signal Collapse (Spence 1973 ...)" -> "Costly-Signal Collapse"
-    const name = meta[1]!.split('(')[0]!.trim().replace(/[.:;]$/, '');
+    const name = meta[1]!
+      .split('(')[0]!
+      .trim()
+      .replace(/[.:;]$/, '');
     if (name.length >= 4) out.push(name.toLowerCase());
   }
   const body = bodyFrom(raw);
@@ -231,7 +471,11 @@ function takeFramework(raw: string): string[] {
   // to its framework-name lead (the clause before the first colon/period), drop boilerplate, and
   // take the first real one. The cap is wide enough to reach the closing ** of a sentence-length bold.
   for (const m of body.matchAll(/\*\*([A-Z][^*]{3,400}?)\*\*/g)) {
-    const lead = m[1]!.trim().split(/[:.]/)[0]!.trim().replace(/[.:;,]$/, '');
+    const lead = m[1]!
+      .trim()
+      .split(/[:.]/)[0]!
+      .trim()
+      .replace(/[.:;,]$/, '');
     const norm = lead.toLowerCase();
     if (norm.length < 4) continue;
     if (TAKE_BOILERPLATE.has(norm)) continue; // a template sub-header is not the framework
@@ -256,37 +500,42 @@ function buildComponents(dir: string, date: string): Component[] {
       // (Israel, Korea, NVIDIA), and an incidental collision there is not evidence of consumption.
       name: 'Take',
       draftPath: p('take-draft'),
-      anchorsOf: (d) => takeFramework(d),
-      sectionOf: (v1) => extractSection(v1, /▸\s*THE TAKE/i, /^#\s*▸/),
+      anchorsOf: d => takeFramework(d),
+      sectionOf: v1 => extractSection(v1, /▸\s*THE TAKE/i, /^#\s*▸/),
     },
     {
       name: 'Signal',
       draftPath: p('signal-draft'),
-      anchorsOf: (d) => anchors(bodyFrom(d)),
-      sectionOf: (v1) => extractSection(v1, /^##\s+The Signal/i, /^#\s*▸/),
+      anchorsOf: d => anchors(bodyFrom(d)),
+      sectionOf: v1 => extractSection(v1, /^##\s+The Signal/i, /^#\s*▸/),
     },
     {
       name: 'Discovery',
       draftPath: p('discovery-draft'),
-      anchorsOf: (d) => {
+      anchorsOf: d => {
         const body = bodyFrom(d);
         const title = body.match(/^###\s+(.+)$/m);
         const a = anchors(body);
         if (title) a.push(title[1]!.trim().toLowerCase());
         return a;
       },
-      sectionOf: (v1) => extractSection(v1, /▸\s*DISCOVERY/i, /^#\s*▸/),
+      sectionOf: v1 => extractSection(v1, /▸\s*DISCOVERY/i, /^#\s*▸/),
     },
     {
       name: 'C&C',
       draftPath: p('cc-predraft'),
-      anchorsOf: (d) => {
+      anchorsOf: d => {
         // Candidate headlines are the load-bearing entities; the surrounding analysis is
         // full of comparison entities the Writer may legitimately not use.
-        const heads = [...stripComments(d).matchAll(/^##\s*Candidate\s*\d+:\s*(.+)$/gim)].map(m => m[1]!);
-        return heads.length ? [...new Set(heads.flatMap(h => anchors(h)))] : anchors(bodyFrom(d));
+        const heads = [
+          ...stripComments(d).matchAll(/^##\s*Candidate\s*\d+:\s*(.+)$/gim),
+        ].map(m => m[1]!);
+        return heads.length
+          ? [...new Set(heads.flatMap(h => anchors(h)))]
+          : anchors(bodyFrom(d));
       },
-      sectionOf: (v1) => extractSection(v1, /^##\s+Companies\s*&\s*Crypto/i, /^##\s|^#\s*▸/),
+      sectionOf: v1 =>
+        extractSection(v1, /^##\s+Companies\s*&\s*Crypto/i, /^##\s|^#\s*▸/),
     },
   ];
 }
@@ -303,13 +552,23 @@ function buildComponents(dir: string, date: string): Component[] {
  * was never dishonesty, it was FORGETTING. A declaration it must author is a declaration it must
  * think about, and the override RATE is now a trend line the improvement loop reads.
  */
-export function overrideFor(component: string, v1: string, architectLog: string | null): string | null {
+export function overrideFor(
+  component: string,
+  v1: string,
+  architectLog: string | null
+): string | null {
   const hay = v1 + '\n' + (architectLog ?? '');
-  const alias = component === 'C&C' ? '(?:C&C|CC|Companies\\s*&\\s*Crypto)' : esc(component);
+  const alias =
+    component === 'C&C'
+      ? '(?:C&C|CC|Companies\\s*&\\s*Crypto)'
+      : esc(component);
   const re = new RegExp(`PREDRAFT-OVERRIDE:\\s*${alias}\\s*::\\s*(.+)`, 'i');
   const m = hay.match(re);
   if (!m) return null;
-  const reason = m[1]!.trim().replace(/-->.*$/, '').trim();
+  const reason = m[1]!
+    .trim()
+    .replace(/-->.*$/, '')
+    .trim();
   return reason.length >= 20 ? reason : null; // a token is not a reason
 }
 
@@ -334,16 +593,23 @@ export function overrideFor(component: string, v1: string, architectLog: string 
  * the Critic grades them); three-or-more, or all-of-them, is the wholesale class that shipped
  * 07-15 -> 07-19. The guard rides ALONGSIDE the per-component findings; it never rewrites them.
  */
-export function isWholesaleBypass(notConsumed: number, present: number): boolean {
+export function isWholesaleBypass(
+  notConsumed: number,
+  present: number
+): boolean {
   if (notConsumed < 2) return false;
   return notConsumed >= 3 || (present >= 2 && notConsumed === present);
 }
 
 // ---------- Check A ----------
-export function checkPredraftConsumption(v1: string, comps: Component[], architectLog: string | null = null): Finding[] {
+export function checkPredraftConsumption(
+  v1: string,
+  comps: Component[],
+  architectLog: string | null = null
+): Finding[] {
   const findings: Finding[] = [];
-  let present = 0;       // pre-drafts the gate could actually test (section + anchors both resolved)
-  let notConsumed = 0;   // of those, how many share ZERO anchors with v1 — bypassed OR overridden
+  let present = 0; // pre-drafts the gate could actually test (section + anchors both resolved)
+  let notConsumed = 0; // of those, how many share ZERO anchors with v1 — bypassed OR overridden
   const bypassed: string[] = [];
   for (const c of comps) {
     if (!c.draftPath) continue; // no pre-draft on disk → nothing to consume
@@ -351,7 +617,9 @@ export function checkPredraftConsumption(v1: string, comps: Component[], archite
     const section = c.sectionOf(v1);
     if (!section.trim()) {
       findings.push({
-        check: 'A', severity: 'FLAG', component: c.name,
+        check: 'A',
+        severity: 'FLAG',
+        component: c.name,
         message: `pre-draft exists (${path.basename(c.draftPath)}) but no ${c.name} section found in v1 — section extraction miss or a missing section.`,
       });
       continue;
@@ -359,7 +627,9 @@ export function checkPredraftConsumption(v1: string, comps: Component[], archite
     const a = c.anchorsOf(draft);
     if (a.length === 0) {
       findings.push({
-        check: 'A', severity: 'FLAG', component: c.name,
+        check: 'A',
+        severity: 'FLAG',
+        component: c.name,
         message: `no anchors extractable from ${path.basename(c.draftPath)} — the gate cannot prove consumption either way.`,
       });
       continue;
@@ -372,7 +642,9 @@ export function checkPredraftConsumption(v1: string, comps: Component[], archite
       const override = overrideFor(c.name, v1, architectLog);
       if (override) {
         findings.push({
-          check: 'A', severity: 'FLAG', component: c.name,
+          check: 'A',
+          severity: 'FLAG',
+          component: c.name,
           message:
             `PRE-DRAFT OVERRIDDEN (declared). v1's ${c.name} does not use ${path.basename(c.draftPath)}. ` +
             `Stated reason: "${override}". Counted; the Editor and Critic grade the override.`,
@@ -380,7 +652,9 @@ export function checkPredraftConsumption(v1: string, comps: Component[], archite
         continue;
       }
       findings.push({
-        check: 'A', severity: 'FAIL', component: c.name,
+        check: 'A',
+        severity: 'FAIL',
+        component: c.name,
         message:
           `PRE-DRAFT BYPASSED. v1's ${c.name} section shares ZERO anchors with the gate-passed ` +
           `${path.basename(c.draftPath)}. The pre-draft was written, gated, and ignored. ` +
@@ -395,7 +669,9 @@ export function checkPredraftConsumption(v1: string, comps: Component[], archite
   // (which keep their own FLAG/FAIL verdicts) and is NOT downgradable.
   if (isWholesaleBypass(notConsumed, present)) {
     findings.push({
-      check: 'A-WHOLESALE', severity: 'FAIL', component: 'ALL',
+      check: 'A-WHOLESALE',
+      severity: 'FAIL',
+      component: 'ALL',
       message:
         `WHOLESALE PRE-DRAFT BYPASS. ${notConsumed} of ${present} on-disk pre-drafts share ZERO anchors with v1 ` +
         `(${bypassed.join(', ')}). A per-component PREDRAFT-OVERRIDE excuses rejecting ONE stale pre-draft; ` +
@@ -409,11 +685,21 @@ export function checkPredraftConsumption(v1: string, comps: Component[], archite
 }
 
 // ---------- Check B ----------
-const KILL_VOCAB = /\b(do not use|do not publish|must not survive|is now false|are now false|blacklist|rejected sources?|pre-kill)\b/i;
+const KILL_VOCAB =
+  /\b(do not use|do not publish|must not survive|is now false|are now false|blacklist|rejected sources?|pre-kill)\b/i;
 
-export interface KillPattern { source: string; re: RegExp; reason: string; origin: 'contract' | 'legacy'; }
+export interface KillPattern {
+  source: string;
+  re: RegExp;
+  reason: string;
+  origin: 'contract' | 'legacy';
+}
 
-export function extractKillPatterns(intel: string): { patterns: KillPattern[]; killProseLines: number; contractLines: number } {
+export function extractKillPatterns(intel: string): {
+  patterns: KillPattern[];
+  killProseLines: number;
+  contractLines: number;
+} {
   const patterns: KillPattern[] = [];
   let killProseLines = 0;
   let contractLines = 0;
@@ -427,12 +713,16 @@ export function extractKillPatterns(intel: string): { patterns: KillPattern[]; k
       contractLines++;
       const rest = contract[1]!.replace(/-->\s*$/, '').trim();
       const [patPart, ...reasonParts] = rest.split('::');
-      const reason = reasonParts.join('::').trim() || 'pre-killed by the intelligence file';
+      const reason =
+        reasonParts.join('::').trim() || 'pre-killed by the intelligence file';
       const pat = patPart!.trim();
       const slash = pat.match(/^\/(.*)\/([gimsuy]*)$/);
       try {
         const re = slash
-          ? new RegExp(slash[1]!, (slash[2] || '') + (slash[2]?.includes('i') ? '' : 'i'))
+          ? new RegExp(
+              slash[1]!,
+              (slash[2] || '') + (slash[2]?.includes('i') ? '' : 'i')
+            )
           : new RegExp(pat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
         patterns.push({ source: pat, re, reason, origin: 'contract' });
       } catch {
@@ -444,15 +734,21 @@ export function extractKillPatterns(intel: string): { patterns: KillPattern[]; k
     // 2. LEGACY: quoted literals inside a kill-vocabulary sentence.
     if (KILL_VOCAB.test(line)) {
       killProseLines++;
-      const quoted = [...line.matchAll(/[“"']([^“”"']{5,90})[”"']/g)].map(m => m[1]!.trim());
+      const quoted = [...line.matchAll(/[“"']([^“”"']{5,90})[”"']/g)].map(m =>
+        m[1]!.trim()
+      );
       for (const q of quoted) {
         // Skip meta-quotes (a quoted directive rather than a quoted claim).
         if (KILL_VOCAB.test(q)) continue;
         if (!/[a-zA-Z]/.test(q)) continue;
         patterns.push({
           source: q,
-          re: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'), 'i'),
-          reason: 'quoted claim inside a kill directive in the intelligence file',
+          re: new RegExp(
+            q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'),
+            'i'
+          ),
+          reason:
+            'quoted claim inside a kill directive in the intelligence file',
           origin: 'legacy',
         });
       }
@@ -464,14 +760,17 @@ export function extractKillPatterns(intel: string): { patterns: KillPattern[]; k
 export function checkPreKill(v1: string, intel: string | null): Finding[] {
   const findings: Finding[] = [];
   if (!intel) return findings;
-  const { patterns, killProseLines, contractLines } = extractKillPatterns(intel);
+  const { patterns, killProseLines, contractLines } =
+    extractKillPatterns(intel);
   const body = stripComments(v1);
 
   for (const p of patterns) {
     const m = body.match(p.re);
     if (m) {
       findings.push({
-        check: 'B', severity: 'FAIL', component: 'v1',
+        check: 'B',
+        severity: 'FAIL',
+        component: 'v1',
         message:
           `PRE-KILLED CLAIM SHIPPED. The intelligence file killed this before the draft existed ` +
           `[${p.origin}] "${p.source}" — reason: ${p.reason}. v1 contains: "${m[0].slice(0, 90)}". ` +
@@ -482,7 +781,9 @@ export function checkPreKill(v1: string, intel: string | null): Finding[] {
 
   if (killProseLines > 0 && contractLines === 0) {
     findings.push({
-      check: 'B', severity: 'FLAG', component: 'intel',
+      check: 'B',
+      severity: 'FLAG',
+      component: 'intel',
       message:
         `KILL-CONTRACT NOT ADOPTED: ${killProseLines} kill-directive line(s) in prose, zero KILL-PATTERN lines. ` +
         `Semantic kills (e.g. "any sentence that says the market prices cuts is now FALSE") cannot be grepped — ` +
@@ -493,13 +794,26 @@ export function checkPreKill(v1: string, intel: string | null): Finding[] {
 }
 
 // ---------- runner ----------
-function run(v1Path: string, dir: string, date: string, intelPath: string | null): Finding[] {
+function run(
+  v1Path: string,
+  dir: string,
+  date: string,
+  intelPath: string | null
+): Finding[] {
   const v1 = fs.readFileSync(v1Path, 'utf8');
   const comps = buildComponents(dir, date);
-  const intel = intelPath && fs.existsSync(intelPath) ? fs.readFileSync(intelPath, 'utf8') : null;
+  const intel =
+    intelPath && fs.existsSync(intelPath)
+      ? fs.readFileSync(intelPath, 'utf8')
+      : null;
   const logPath = path.join(dir, `${date}-architect-log.md`);
-  const architectLog = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : null;
-  return [...checkPredraftConsumption(v1, comps, architectLog), ...checkPreKill(v1, intel)];
+  const architectLog = fs.existsSync(logPath)
+    ? fs.readFileSync(logPath, 'utf8')
+    : null;
+  return [
+    ...checkPredraftConsumption(v1, comps, architectLog),
+    ...checkPreKill(v1, intel),
+  ];
 }
 
 function resolveV1(dir: string, date: string): string | null {
@@ -520,8 +834,14 @@ function resolveV1(dir: string, date: string): string | null {
  * not depend on the Writer's goodwill. Default stays v1 for back-compat.
  */
 function resolveStage(dir: string, date: string, stage: string): string | null {
-  if (stage === 'v2') { const f = path.join(dir, `${date}-v2.md`); return fs.existsSync(f) ? f : null; }
-  if (stage === 'v1.5') { const f = path.join(dir, `${date}-v1.5.md`); return fs.existsSync(f) ? f : null; }
+  if (stage === 'v2') {
+    const f = path.join(dir, `${date}-v2.md`);
+    return fs.existsSync(f) ? f : null;
+  }
+  if (stage === 'v1.5') {
+    const f = path.join(dir, `${date}-v1.5.md`);
+    return fs.existsSync(f) ? f : null;
+  }
   return resolveV1(dir, date);
 }
 
@@ -534,15 +854,23 @@ function selftest(): number {
   // and a selftest that litters the pipeline's own input directory is a landmine.
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'predraft-gate-'));
   const results: { name: string; pass: boolean; detail: string }[] = [];
-  const assert = (name: string, pass: boolean, detail = '') => results.push({ name, pass, detail });
+  const assert = (name: string, pass: boolean, detail = '') =>
+    results.push({ name, pass, detail });
 
   // --- REAL ARTIFACT 1: 07-12 v1 must FIRE on all four components (the EMERGENCY) ---
   const v1_12 = resolveV1(dir, '2026-07-12');
   if (v1_12) {
-    const f = checkPredraftConsumption(fs.readFileSync(v1_12, 'utf8'), buildComponents(dir, '2026-07-12'));
+    const f = checkPredraftConsumption(
+      fs.readFileSync(v1_12, 'utf8'),
+      buildComponents(dir, '2026-07-12')
+    );
     const failed = f.filter(x => x.severity === 'FAIL').map(x => x.component);
     for (const c of ['Take', 'Signal', 'Discovery', 'C&C']) {
-      assert(`A FIRES on REAL 07-12 ${c} (pre-draft bypassed)`, failed.includes(c), `failed=[${failed.join(',')}]`);
+      assert(
+        `A FIRES on REAL 07-12 ${c} (pre-draft bypassed)`,
+        failed.includes(c),
+        `failed=[${failed.join(',')}]`
+      );
     }
   } else {
     assert('A: 07-12 v1 present', false, 'fixture missing');
@@ -552,10 +880,16 @@ function selftest(): number {
   for (const d of ['2026-07-11', '2026-07-10']) {
     const v1h = resolveV1(dir, d);
     if (v1h) {
-      const f = checkPredraftConsumption(fs.readFileSync(v1h, 'utf8'), buildComponents(dir, d));
+      const f = checkPredraftConsumption(
+        fs.readFileSync(v1h, 'utf8'),
+        buildComponents(dir, d)
+      );
       const failed = f.filter(x => x.severity === 'FAIL');
-      assert(`A SILENT on REAL ${d.slice(5)} (healthy: all pre-drafts consumed)`, failed.length === 0,
-        failed.map(x => `${x.component}`).join(',') || 'clean');
+      assert(
+        `A SILENT on REAL ${d.slice(5)} (healthy: all pre-drafts consumed)`,
+        failed.length === 0,
+        failed.map(x => `${x.component}`).join(',') || 'clean'
+      );
     } else {
       assert(`A: ${d} v1 present`, false, 'fixture missing');
     }
@@ -569,10 +903,16 @@ function selftest(): number {
   //     silently narrows the gate to the 07-12 shape fails here. ---
   const v1_09 = resolveV1(dir, '2026-07-09');
   if (v1_09) {
-    const f = checkPredraftConsumption(fs.readFileSync(v1_09, 'utf8'), buildComponents(dir, '2026-07-09'));
+    const f = checkPredraftConsumption(
+      fs.readFileSync(v1_09, 'utf8'),
+      buildComponents(dir, '2026-07-09')
+    );
     const failed = f.filter(x => x.severity === 'FAIL').map(x => x.component);
-    assert('A FIRES on REAL 07-09 Take + Discovery (chronic bypass — these PUBLISHED)',
-      failed.includes('Take') && failed.includes('Discovery'), `failed=[${failed.join(',')}]`);
+    assert(
+      'A FIRES on REAL 07-09 Take + Discovery (chronic bypass — these PUBLISHED)',
+      failed.includes('Take') && failed.includes('Discovery'),
+      `failed=[${failed.join(',')}]`
+    );
   }
 
   // --- REAL ARTIFACT 4: 07-18 Take bypass (E-WRITER-COMPONENT-BYPASS-01 4th+ occurrence, IMP-070).
@@ -584,57 +924,116 @@ function selftest(): number {
   //     are the framework name + trigger entity (Netflix/NFLX), which the substitute does not carry. ---
   const v1_18 = resolveV1(dir, '2026-07-18');
   if (v1_18) {
-    const f = checkPredraftConsumption(fs.readFileSync(v1_18, 'utf8'), buildComponents(dir, '2026-07-18'));
-    const takeFailed = f.some(x => x.severity === 'FAIL' && x.component === 'Take');
-    assert('A FIRES on REAL 07-18 Take (boilerplate "where this breaks" no longer rescues a bypass)',
-      takeFailed, `findings=[${f.map(x => x.component + ':' + x.severity).join(',') || 'none'}]`);
+    const f = checkPredraftConsumption(
+      fs.readFileSync(v1_18, 'utf8'),
+      buildComponents(dir, '2026-07-18')
+    );
+    const takeFailed = f.some(
+      x => x.severity === 'FAIL' && x.component === 'Take'
+    );
+    assert(
+      'A FIRES on REAL 07-18 Take (boilerplate "where this breaks" no longer rescues a bypass)',
+      takeFailed,
+      `findings=[${f.map(x => x.component + ':' + x.severity).join(',') || 'none'}]`
+    );
   }
 
   // --- OVERRIDE PROTOCOL: a declared override downgrades FAIL -> FLAG; a token does not ---
   if (v1_12) {
     const raw = fs.readFileSync(v1_12, 'utf8');
-    const withOverride = `<!-- PREDRAFT-OVERRIDE: Take :: the take-draft's fertility data failed morning verification -->\n` + raw;
-    const f = checkPredraftConsumption(withOverride, buildComponents(dir, '2026-07-12'));
+    const withOverride =
+      `<!-- PREDRAFT-OVERRIDE: Take :: the take-draft's fertility data failed morning verification -->\n` +
+      raw;
+    const f = checkPredraftConsumption(
+      withOverride,
+      buildComponents(dir, '2026-07-12')
+    );
     const take = f.find(x => x.component === 'Take');
-    assert('A: declared override downgrades Take FAIL to FLAG', take?.severity === 'FLAG', take?.severity ?? 'none');
+    assert(
+      'A: declared override downgrades Take FAIL to FLAG',
+      take?.severity === 'FLAG',
+      take?.severity ?? 'none'
+    );
 
     const withToken = `<!-- PREDRAFT-OVERRIDE: Take :: n/a -->\n` + raw;
-    const f2 = checkPredraftConsumption(withToken, buildComponents(dir, '2026-07-12'));
+    const f2 = checkPredraftConsumption(
+      withToken,
+      buildComponents(dir, '2026-07-12')
+    );
     const take2 = f2.find(x => x.component === 'Take');
-    assert('A: a reasonless override does NOT suppress the FAIL', take2?.severity === 'FAIL', take2?.severity ?? 'none');
+    assert(
+      'A: a reasonless override does NOT suppress the FAIL',
+      take2?.severity === 'FAIL',
+      take2?.severity ?? 'none'
+    );
   }
 
   // --- WHOLESALE-OVERRIDE GUARD (IMP-073, 2026-07-19 — the 07-19 bypass that shipped): declaring an
   //     override for the WHOLE slate cannot buy a green light. Unit thresholds + integrated, both ways. ---
-  assert('WHOLESALE: 4 of 4 not consumed is wholesale', isWholesaleBypass(4, 4) === true);
-  assert('WHOLESALE: 3 of 4 not consumed is wholesale', isWholesaleBypass(3, 4) === true);
-  assert('WHOLESALE: all present (2 of 2) not consumed is wholesale', isWholesaleBypass(2, 2) === true);
-  assert('WHOLESALE: 2 of 4 is NOT wholesale (selective override stays per-component)', isWholesaleBypass(2, 4) === false);
-  assert('WHOLESALE: 1 of 4 is NOT wholesale', isWholesaleBypass(1, 4) === false);
-  assert('WHOLESALE: 0 of 4 (healthy) is NOT wholesale', isWholesaleBypass(0, 4) === false);
+  assert(
+    'WHOLESALE: 4 of 4 not consumed is wholesale',
+    isWholesaleBypass(4, 4) === true
+  );
+  assert(
+    'WHOLESALE: 3 of 4 not consumed is wholesale',
+    isWholesaleBypass(3, 4) === true
+  );
+  assert(
+    'WHOLESALE: all present (2 of 2) not consumed is wholesale',
+    isWholesaleBypass(2, 2) === true
+  );
+  assert(
+    'WHOLESALE: 2 of 4 is NOT wholesale (selective override stays per-component)',
+    isWholesaleBypass(2, 4) === false
+  );
+  assert(
+    'WHOLESALE: 1 of 4 is NOT wholesale',
+    isWholesaleBypass(1, 4) === false
+  );
+  assert(
+    'WHOLESALE: 0 of 4 (healthy) is NOT wholesale',
+    isWholesaleBypass(0, 4) === false
+  );
   if (v1_12) {
     const raw = fs.readFileSync(v1_12, 'utf8');
     const allOver =
       `<!-- PREDRAFT-OVERRIDE: Take :: the take-draft failed morning verification this evening -->\n` +
       `<!-- PREDRAFT-OVERRIDE: Signal :: the signal-draft's lead entity was pre-killed by the intel file -->\n` +
       `<!-- PREDRAFT-OVERRIDE: Discovery :: the discovery-draft duplicated a prior domain and was rejected -->\n` +
-      `<!-- PREDRAFT-OVERRIDE: C&C :: the cc-predraft candidates were all stale by publish tonight -->\n` + raw;
-    const fWhole = checkPredraftConsumption(allOver, buildComponents(dir, '2026-07-12'));
-    assert('WHOLESALE FIRES on 07-12 with ALL FOUR declared overrides (declarations cannot downgrade the slate)',
+      `<!-- PREDRAFT-OVERRIDE: C&C :: the cc-predraft candidates were all stale by publish tonight -->\n` +
+      raw;
+    const fWhole = checkPredraftConsumption(
+      allOver,
+      buildComponents(dir, '2026-07-12')
+    );
+    assert(
+      'WHOLESALE FIRES on 07-12 with ALL FOUR declared overrides (declarations cannot downgrade the slate)',
       fWhole.some(x => x.severity === 'FAIL' && x.component === 'ALL'),
-      `findings=[${fWhole.map(x => x.component + ':' + x.severity).join(',')}]`);
+      `findings=[${fWhole.map(x => x.component + ':' + x.severity).join(',')}]`
+    );
     // the wholesale FAIL rides ALONGSIDE the per-component verdict — the Take's own declaration still
     // downgrades ITS finding to FLAG; the guard does not rewrite it, it adds to it.
-    assert('WHOLESALE: the per-component override still downgrades its own finding to FLAG',
-      fWhole.some(x => x.component === 'Take' && x.severity === 'FLAG'), '');
+    assert(
+      'WHOLESALE: the per-component override still downgrades its own finding to FLAG',
+      fWhole.some(x => x.component === 'Take' && x.severity === 'FLAG'),
+      ''
+    );
   }
   // SILENT: a healthy brief (all four pre-drafts consumed) raises NO wholesale FAIL.
   const v1_11w = resolveV1(dir, '2026-07-11');
   if (v1_11w) {
-    const fHealthy = checkPredraftConsumption(fs.readFileSync(v1_11w, 'utf8'), buildComponents(dir, '2026-07-11'));
-    assert('WHOLESALE SILENT on healthy 07-11 (nothing bypassed → no wholesale FAIL)',
+    const fHealthy = checkPredraftConsumption(
+      fs.readFileSync(v1_11w, 'utf8'),
+      buildComponents(dir, '2026-07-11')
+    );
+    assert(
+      'WHOLESALE SILENT on healthy 07-11 (nothing bypassed → no wholesale FAIL)',
       !fHealthy.some(x => x.component === 'ALL'),
-      fHealthy.filter(x => x.component === 'ALL').map(x => x.severity).join(',') || 'clean');
+      fHealthy
+        .filter(x => x.component === 'ALL')
+        .map(x => x.severity)
+        .join(',') || 'clean'
+    );
   }
 
   // --- SHIP-STAGE (IMP-084, 2026-07-21): the gate must bite the artifacts that flow DOWNSTREAM, not
@@ -644,23 +1043,39 @@ function selftest(): number {
   //     directions proven on the REAL 07-21 artifacts. ---
   const v15_21 = path.join(dir, '2026-07-21-v1.5.md');
   if (fs.existsSync(v15_21)) {
-    const f = checkPredraftConsumption(fs.readFileSync(v15_21, 'utf8'), buildComponents(dir, '2026-07-21'));
-    assert('SHIP-STAGE: wholesale bypass SURVIVED the QG into the REAL 07-21 v1.5 (the receipt the ship-gate exists for)',
+    const f = checkPredraftConsumption(
+      fs.readFileSync(v15_21, 'utf8'),
+      buildComponents(dir, '2026-07-21')
+    );
+    assert(
+      'SHIP-STAGE: wholesale bypass SURVIVED the QG into the REAL 07-21 v1.5 (the receipt the ship-gate exists for)',
       f.some(x => x.severity === 'FAIL' && x.component === 'ALL'),
-      `findings=[${f.map(x => x.component + ':' + x.severity).join(',') || 'none'}]`);
+      `findings=[${f.map(x => x.component + ':' + x.severity).join(',') || 'none'}]`
+    );
   }
   const v2_21 = path.join(dir, '2026-07-21-v2.md');
   if (fs.existsSync(v2_21)) {
-    const f = checkPredraftConsumption(fs.readFileSync(v2_21, 'utf8'), buildComponents(dir, '2026-07-21'));
-    assert('SHIP-STAGE: the DISCOVERY bypass SURVIVED the Editor into the REAL 07-21 v2 (it shipped un-gated)',
+    const f = checkPredraftConsumption(
+      fs.readFileSync(v2_21, 'utf8'),
+      buildComponents(dir, '2026-07-21')
+    );
+    assert(
+      'SHIP-STAGE: the DISCOVERY bypass SURVIVED the Editor into the REAL 07-21 v2 (it shipped un-gated)',
       f.some(x => x.severity === 'FAIL' && x.component === 'Discovery'),
-      `findings=[${f.map(x => x.component + ':' + x.severity).join(',') || 'none'}]`);
+      `findings=[${f.map(x => x.component + ':' + x.severity).join(',') || 'none'}]`
+    );
   }
   // resolveStage maps each stage to the right artifact.
-  assert('SHIP-STAGE: resolveStage maps v2 → -v2.md',
-    (resolveStage(dir, '2026-07-21', 'v2') ?? '').endsWith('2026-07-21-v2.md'));
-  assert('SHIP-STAGE: resolveStage maps v1.5 → -v1.5.md',
-    (resolveStage(dir, '2026-07-21', 'v1.5') ?? '').endsWith('2026-07-21-v1.5.md'));
+  assert(
+    'SHIP-STAGE: resolveStage maps v2 → -v2.md',
+    (resolveStage(dir, '2026-07-21', 'v2') ?? '').endsWith('2026-07-21-v2.md')
+  );
+  assert(
+    'SHIP-STAGE: resolveStage maps v1.5 → -v1.5.md',
+    (resolveStage(dir, '2026-07-21', 'v1.5') ?? '').endsWith(
+      '2026-07-21-v1.5.md'
+    )
+  );
 
   // --- B CONTRACT: the REAL 07-12 v1 vs the KILL-PATTERN the 07-11 intel directive
   //     ("any brief sentence that says 'the market prices cuts' is now FALSE. That line
@@ -671,14 +1086,21 @@ function selftest(): number {
       'KILL-PATTERN: /two Fed cuts embedded|market prices cuts|swap markets have two Fed cuts/i :: ' +
       'the crowded side flipped from dovish to hawkish; any sentence saying the market prices cuts is FALSE\n';
     const f = checkPreKill(fs.readFileSync(v1_12, 'utf8'), intelFixture);
-    assert('B FIRES on REAL 07-12 v1 (pre-killed Fed-cut sentence, contract pattern)',
+    assert(
+      'B FIRES on REAL 07-12 v1 (pre-killed Fed-cut sentence, contract pattern)',
       f.some(x => x.severity === 'FAIL' && /Fed cuts/i.test(x.message)),
-      f.map(x => x.severity).join(',') || 'none');
+      f.map(x => x.severity).join(',') || 'none'
+    );
     // and SILENT when the pattern does not match the draft
-    const f2 = checkPreKill(fs.readFileSync(v1_12, 'utf8'),
-      'KILL-PATTERN: /the Bank of Japan has abandoned yield curve control/i :: fabricated mechanism\n');
-    assert('B SILENT on a contract pattern the draft does not contain',
-      !f2.some(x => x.severity === 'FAIL'), f2.map(x => x.message.slice(0, 30)).join('|') || 'clean');
+    const f2 = checkPreKill(
+      fs.readFileSync(v1_12, 'utf8'),
+      'KILL-PATTERN: /the Bank of Japan has abandoned yield curve control/i :: fabricated mechanism\n'
+    );
+    assert(
+      'B SILENT on a contract pattern the draft does not contain',
+      !f2.some(x => x.severity === 'FAIL'),
+      f2.map(x => x.message.slice(0, 30)).join('|') || 'clean'
+    );
   }
 
   // --- B LEGACY on the REAL 07-12 intelligence file (the rejected-source price class) ---
@@ -686,57 +1108,109 @@ function selftest(): number {
   if (fs.existsSync(intel12) && v1_12) {
     const intelText = fs.readFileSync(intel12, 'utf8');
     const { patterns } = extractKillPatterns(intelText);
-    assert('B LEGACY extracts banned literals from the REAL 07-12 intel (REJECTED SOURCES)',
-      patterns.some(p => /Brent/i.test(p.source)), patterns.slice(0, 3).map(p => p.source).join(' | ') || 'none');
+    assert(
+      'B LEGACY extracts banned literals from the REAL 07-12 intel (REJECTED SOURCES)',
+      patterns.some(p => /Brent/i.test(p.source)),
+      patterns
+        .slice(0, 3)
+        .map(p => p.source)
+        .join(' | ') || 'none'
+    );
 
     // FIRE direction: the real v1 with the rejected price injected (the fabrication we were warned about).
-    const injected = fs.readFileSync(v1_12, 'utf8').replace(
-      /## Markets & Macro/, '## Markets & Macro\n\n- **Brent $112.93 / WTI $108.21 on the Hormuz closure.**');
+    const injected = fs
+      .readFileSync(v1_12, 'utf8')
+      .replace(
+        /## Markets & Macro/,
+        '## Markets & Macro\n\n- **Brent $112.93 / WTI $108.21 on the Hormuz closure.**'
+      );
     const fFire = checkPreKill(injected, intelText);
-    assert('B FIRES on a v1 carrying a REJECTED-SOURCE price from the real intel file',
-      fFire.some(x => x.severity === 'FAIL' && /Brent/i.test(x.message)), fFire.map(x => x.severity).join(',') || 'none');
+    assert(
+      'B FIRES on a v1 carrying a REJECTED-SOURCE price from the real intel file',
+      fFire.some(x => x.severity === 'FAIL' && /Brent/i.test(x.message)),
+      fFire.map(x => x.severity).join(',') || 'none'
+    );
 
     // SILENT direction: the real v1 (the Writer did not use the rejected prices).
     const fSilent = checkPreKill(fs.readFileSync(v1_12, 'utf8'), intelText);
-    assert('B SILENT on the REAL 07-12 v1 (rejected prices correctly unused)',
+    assert(
+      'B SILENT on the REAL 07-12 v1 (rejected prices correctly unused)',
       !fSilent.some(x => x.severity === 'FAIL'),
-      fSilent.filter(x => x.severity === 'FAIL').map(x => x.message.slice(0, 60)).join('|') || 'clean');
+      fSilent
+        .filter(x => x.severity === 'FAIL')
+        .map(x => x.message.slice(0, 60))
+        .join('|') || 'clean'
+    );
 
     // ADOPTION FLAG fires (the real intel has kill prose and no KILL-PATTERN lines yet).
-    assert('B FLAGS un-mechanized kill prose (contract not yet adopted)',
-      fSilent.some(x => x.severity === 'FLAG' && /KILL-CONTRACT NOT ADOPTED/.test(x.message)), '');
+    assert(
+      'B FLAGS un-mechanized kill prose (contract not yet adopted)',
+      fSilent.some(
+        x =>
+          x.severity === 'FLAG' && /KILL-CONTRACT NOT ADOPTED/.test(x.message)
+      ),
+      ''
+    );
   }
 
   // --- A must not false-fire when a section legitimately keeps only ONE anchor ---
   // Synthetic: a v1 whose Take keeps the framework name and nothing else.
   try {
-    fs.writeFileSync(path.join(tmp, '2026-01-01-take-draft.md'),
-      '<!-- TAKE DRAFT METADATA\nFramework: Costly-Signal Collapse (Spence 1973)\nPrimary trigger entity: AI-in-education\n-->\n\n# ▸ THE TAKE\n\n**Costly-Signal Collapse.** A signal transmits information only when it is differentially costly.\n');
-    const v1min = '# ▸ THE TAKE\n\n**Costly-Signal Collapse.** Something entirely rewritten, with no other shared nouns whatsoever.\n\n# ▸ INNER GAME\n';
-    const f = checkPredraftConsumption(v1min, buildComponents(tmp, '2026-01-01'));
-    assert('A SILENT when v1 keeps only the framework name (minimum legitimate consumption)',
-      f.filter(x => x.severity === 'FAIL').length === 0, JSON.stringify(f.map(x => x.component)));
+    fs.writeFileSync(
+      path.join(tmp, '2026-01-01-take-draft.md'),
+      '<!-- TAKE DRAFT METADATA\nFramework: Costly-Signal Collapse (Spence 1973)\nPrimary trigger entity: AI-in-education\n-->\n\n# ▸ THE TAKE\n\n**Costly-Signal Collapse.** A signal transmits information only when it is differentially costly.\n'
+    );
+    const v1min =
+      '# ▸ THE TAKE\n\n**Costly-Signal Collapse.** Something entirely rewritten, with no other shared nouns whatsoever.\n\n# ▸ INNER GAME\n';
+    const f = checkPredraftConsumption(
+      v1min,
+      buildComponents(tmp, '2026-01-01')
+    );
+    assert(
+      'A SILENT when v1 keeps only the framework name (minimum legitimate consumption)',
+      f.filter(x => x.severity === 'FAIL').length === 0,
+      JSON.stringify(f.map(x => x.component))
+    );
 
-    const v1none = '# ▸ THE TAKE\n\n**The Chokepoint Premium.** Two monopolists sell complementary goods.\n\n# ▸ INNER GAME\n';
-    const f2 = checkPredraftConsumption(v1none, buildComponents(tmp, '2026-01-01'));
-    assert('A FIRES on a wholly substituted Take (synthetic control)',
-      f2.some(x => x.severity === 'FAIL' && x.component === 'Take'), '');
+    const v1none =
+      '# ▸ THE TAKE\n\n**The Chokepoint Premium.** Two monopolists sell complementary goods.\n\n# ▸ INNER GAME\n';
+    const f2 = checkPredraftConsumption(
+      v1none,
+      buildComponents(tmp, '2026-01-01')
+    );
+    assert(
+      'A FIRES on a wholly substituted Take (synthetic control)',
+      f2.some(x => x.severity === 'FAIL' && x.component === 'Take'),
+      ''
+    );
   } finally {
-    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* tmpdir cleanup is best-effort */ }
+    try {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    } catch {
+      /* tmpdir cleanup is best-effort */
+    }
   }
 
   console.log('predraft-consumption-gate --selftest');
   let failed = 0;
   for (const r of results) {
-    console.log(`  ${r.pass ? '✓' : '✗'} ${r.name}${r.detail && !r.pass ? ` — ${r.detail}` : ''}`);
+    console.log(
+      `  ${r.pass ? '✓' : '✗'} ${r.name}${r.detail && !r.pass ? ` — ${r.detail}` : ''}`
+    );
     if (!r.pass) failed++;
   }
-  console.log(`\n${results.length - failed}/${results.length} assertions passed.`);
+  console.log(
+    `\n${results.length - failed}/${results.length} assertions passed.`
+  );
   if (failed) {
-    console.error('✗ SELFTEST FAILED — the gate does not bite the real failure or false-fires on a healthy one.');
+    console.error(
+      '✗ SELFTEST FAILED — the gate does not bite the real failure or false-fires on a healthy one.'
+    );
     return 1;
   }
-  console.log('✓ Both directions proven on REAL artifacts (07-12 fires, 07-11 silent).');
+  console.log(
+    '✓ Both directions proven on REAL artifacts (07-12 fires, 07-11 silent).'
+  );
   return 0;
 }
 
@@ -747,10 +1221,15 @@ function main(): number {
 
   const advisory = args.includes('--advisory');
   const si = args.indexOf('--stage');
-  const stage = si >= 0 && ['v1', 'v1.5', 'v2'].includes(args[si + 1] ?? '') ? args[si + 1]! : 'v1';
+  const stage =
+    si >= 0 && ['v1', 'v1.5', 'v2'].includes(args[si + 1] ?? '')
+      ? args[si + 1]!
+      : 'v1';
   const dateArg = args.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a));
   if (!dateArg) {
-    console.error('Usage: predraft-consumption-gate.ts <YYYY-MM-DD> [--stage v1|v1.5|v2] [--advisory]');
+    console.error(
+      'Usage: predraft-consumption-gate.ts <YYYY-MM-DD> [--stage v1|v1.5|v2] [--advisory]'
+    );
     console.error('       predraft-consumption-gate.ts --selftest');
     return 2;
   }
@@ -758,26 +1237,45 @@ function main(): number {
   const dir = path.join(root, 'daily-briefs');
   const v1Path = resolveStage(dir, dateArg, stage);
   if (!v1Path) {
-    console.error(`No ${stage} artifact found for ${dateArg} in daily-briefs/ (v1 looks for -v1.md / -v1-pre-quality-gate.md; v1.5 → -v1.5.md; v2 → -v2.md)`);
+    console.error(
+      `No ${stage} artifact found for ${dateArg} in daily-briefs/ (v1 looks for -v1.md / -v1-pre-quality-gate.md; v1.5 → -v1.5.md; v2 → -v2.md)`
+    );
     return 2;
   }
-  const intelPath = path.join(root, 'daily-intelligence', `${dateArg}-intelligence.md`);
+  const intelPath = path.join(
+    root,
+    'daily-intelligence',
+    `${dateArg}-intelligence.md`
+  );
 
-  const findings = run(v1Path, dir, dateArg, fs.existsSync(intelPath) ? intelPath : null);
+  const findings = run(
+    v1Path,
+    dir,
+    dateArg,
+    fs.existsSync(intelPath) ? intelPath : null
+  );
   const fails = findings.filter(f => f.severity === 'FAIL');
   const flags = findings.filter(f => f.severity === 'FLAG');
 
-  console.log(`predraft-consumption-gate — ${path.basename(v1Path)} · ${fails.length} FAIL · ${flags.length} FLAG`);
+  console.log(
+    `predraft-consumption-gate — ${path.basename(v1Path)} · ${fails.length} FAIL · ${flags.length} FLAG`
+  );
   for (const f of findings) {
-    console.log(`  ${f.severity === 'FAIL' ? '✗' : '⚠'} [${f.check}] ${f.component}: ${f.message}`);
+    console.log(
+      `  ${f.severity === 'FAIL' ? '✗' : '⚠'} [${f.check}] ${f.component}: ${f.message}`
+    );
   }
-  if (!findings.length) console.log('  ✓ every on-disk pre-draft is present in v1; no pre-killed claim shipped.');
+  if (!findings.length)
+    console.log(
+      '  ✓ every on-disk pre-draft is present in v1; no pre-killed claim shipped.'
+    );
 
   if (fails.length && !advisory) {
     console.error(
       '\n✗ PRE-DRAFT / PRE-KILL GATE FAILED. The Writer did not consume its inputs.\n' +
-      '  Regenerate the offending section(s) FROM the pre-draft and re-run. One regeneration; if it still\n' +
-      '  fails, replace the section with the pre-draft body verbatim and write PREDRAFT-BYPASS to pipeline-status.');
+        '  Regenerate the offending section(s) FROM the pre-draft and re-run. One regeneration; if it still\n' +
+        '  fails, replace the section with the pre-draft body verbatim and write PREDRAFT-BYPASS to pipeline-status.'
+    );
     return 1;
   }
   return 0;

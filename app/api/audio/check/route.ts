@@ -20,7 +20,9 @@ function isAuthorized(req: NextRequest): boolean {
 
   if (!snapshotSecret && !cronSecret) return false;
 
-  const secret = req.headers.get('x-snapshot-secret') || req.nextUrl.searchParams.get('secret');
+  const secret =
+    req.headers.get('x-snapshot-secret') ||
+    req.nextUrl.searchParams.get('secret');
   if (secret && snapshotSecret && secret === snapshotSecret) return true;
 
   const authHeader = req.headers.get('authorization');
@@ -41,7 +43,10 @@ export async function GET(req: NextRequest) {
   try {
     const brief = getLatestBrief();
     if (!brief) {
-      return NextResponse.json({ status: 'no_brief', message: 'No brief found' });
+      return NextResponse.json({
+        status: 'no_brief',
+        message: 'No brief found',
+      });
     }
 
     const existing = await readEpisodeMetadata(brief.date);
@@ -54,12 +59,15 @@ export async function GET(req: NextRequest) {
     }
 
     // Audio doesn't exist — trigger generation by calling the generate endpoint internally
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000';
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : 'http://localhost:3000';
     const secret = process.env.SNAPSHOT_SECRET;
 
-    console.log(`[audio/check] No audio for ${brief.date}, triggering generation...`);
+    console.log(
+      `[audio/check] No audio for ${brief.date}, triggering generation...`
+    );
 
     const generateUrl = `${baseUrl}/api/audio/generate?date=${brief.date}&secret=${secret}`;
     const resp = await fetch(generateUrl, { method: 'POST' });

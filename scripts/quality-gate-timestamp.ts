@@ -26,7 +26,11 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-interface Verdict { stale: boolean; artifactMs: number; referenceMs: number; }
+interface Verdict {
+  stale: boolean;
+  artifactMs: number;
+  referenceMs: number;
+}
 
 function evaluate(artifactPath: string, referencePath: string): Verdict {
   const artifactMs = fs.statSync(artifactPath).mtimeMs;
@@ -39,51 +43,90 @@ function selftest(): number {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qg-ts-'));
   const art = path.join(dir, 'critic-input.md');
   const ref = path.join(dir, 'quality-gate.log');
-  fs.writeFileSync(art, 'critic input'); fs.writeFileSync(ref, 'qg log');
-  const now = Date.now() / 1000, older = now - 120, newer = now;
+  fs.writeFileSync(art, 'critic input');
+  fs.writeFileSync(ref, 'qg log');
+  const now = Date.now() / 1000,
+    older = now - 120,
+    newer = now;
 
   // HEALTHY: input newer than reference => not stale.
-  fs.utimesSync(ref, older, older); fs.utimesSync(art, newer, newer);
+  fs.utimesSync(ref, older, older);
+  fs.utimesSync(art, newer, newer);
   const healthy = evaluate(art, ref);
 
   // FAILURE (the ESC-002 bug): input older than reference => stale.
-  fs.utimesSync(ref, newer, newer); fs.utimesSync(art, older, older);
+  fs.utimesSync(ref, newer, newer);
+  fs.utimesSync(art, older, older);
   const failure = evaluate(art, ref);
 
   fs.rmSync(dir, { recursive: true, force: true });
 
   const ok = healthy.stale === false && failure.stale === true;
   console.log('quality-gate-timestamp --selftest');
-  console.log(`  healthy case (input newer): stale=${healthy.stale} (expect false) ${healthy.stale === false ? '✓' : '✗'}`);
-  console.log(`  failure case (input older): stale=${failure.stale} (expect true)  ${failure.stale === true ? '✓' : '✗'}`);
-  if (ok) { console.log('\n✅ SELFTEST PASS — gate bites on the stale case AND stays silent on the fresh case.'); return 0; }
-  console.error('\n❌ SELFTEST FAIL — the stale-artifact gate is not discriminating correctly.'); return 1;
+  console.log(
+    `  healthy case (input newer): stale=${healthy.stale} (expect false) ${healthy.stale === false ? '✓' : '✗'}`
+  );
+  console.log(
+    `  failure case (input older): stale=${failure.stale} (expect true)  ${failure.stale === true ? '✓' : '✗'}`
+  );
+  if (ok) {
+    console.log(
+      '\n✅ SELFTEST PASS — gate bites on the stale case AND stays silent on the fresh case.'
+    );
+    return 0;
+  }
+  console.error(
+    '\n❌ SELFTEST FAIL — the stale-artifact gate is not discriminating correctly.'
+  );
+  return 1;
 }
 
 function main(): number {
   const argv = process.argv.slice(2);
   if (argv.includes('--selftest')) return selftest();
   const strict = argv.includes('--strict');
-  const get = (flag: string): string | undefined => { const i = argv.indexOf(flag); return i > -1 ? argv[i + 1] : undefined; };
+  const get = (flag: string): string | undefined => {
+    const i = argv.indexOf(flag);
+    return i > -1 ? argv[i + 1] : undefined;
+  };
   const artifact = get('--artifact');
   const reference = get('--reference');
   if (!artifact || !reference) {
-    console.error('Usage: quality-gate-timestamp.ts --artifact <critic-input> --reference <qg-log> [--strict] | --selftest');
+    console.error(
+      'Usage: quality-gate-timestamp.ts --artifact <critic-input> --reference <qg-log> [--strict] | --selftest'
+    );
     return 2;
   }
   for (const p of [artifact, reference]) {
-    if (!fs.existsSync(p)) { console.error(`quality-gate-timestamp: file not found: ${p}`); return 2; }
+    if (!fs.existsSync(p)) {
+      console.error(`quality-gate-timestamp: file not found: ${p}`);
+      return 2;
+    }
   }
   const v = evaluate(artifact, reference);
   const fmt = (ms: number) => new Date(ms).toISOString();
   console.log('quality-gate-timestamp');
-  console.log(`  artifact  (critic input): ${artifact}  @ ${fmt(v.artifactMs)}`);
-  console.log(`  reference (quality gate): ${reference}  @ ${fmt(v.referenceMs)}`);
-  if (!v.stale) { console.log('\n✅ FRESH — critic input is at least as new as the latest quality-gate output.'); return 0; }
+  console.log(
+    `  artifact  (critic input): ${artifact}  @ ${fmt(v.artifactMs)}`
+  );
+  console.log(
+    `  reference (quality gate): ${reference}  @ ${fmt(v.referenceMs)}`
+  );
+  if (!v.stale) {
+    console.log(
+      '\n✅ FRESH — critic input is at least as new as the latest quality-gate output.'
+    );
+    return 0;
+  }
   const drift = Math.round((v.referenceMs - v.artifactMs) / 1000);
   const msg = `STALE ARTIFACT — critic input predates the latest quality-gate output by ${drift}s. The Critic would grade a superseded draft (E-QG-BYPASS-01). Re-point the Critic at the freshest artifact before evaluating.`;
-  if (strict) { console.error(`\n❌ ${msg}`); return 1; }
-  console.log(`\n⚠ ${msg}\n(advisory: exit 0 so the brief still ships — wire as WARN + self-heal; use --strict to fail closed.)`);
+  if (strict) {
+    console.error(`\n❌ ${msg}`);
+    return 1;
+  }
+  console.log(
+    `\n⚠ ${msg}\n(advisory: exit 0 so the brief still ships — wire as WARN + self-heal; use --strict to fail closed.)`
+  );
   return 0;
 }
 

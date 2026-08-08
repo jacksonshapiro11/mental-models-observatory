@@ -34,14 +34,17 @@ export interface RenderBriefEmailOptions {
 export function renderBriefEmail(
   brief: BriefLight,
   recipientEmail?: string,
-  options: RenderBriefEmailOptions = {},
+  options: RenderBriefEmailOptions = {}
 ): RenderedEmail {
   const subject = extractSubject(brief, options.subjectPrefix);
   const previewText = truncate(brief.lede || brief.epigraph, 140);
   const webUrl = options.webUrl ?? `${SITE_URL}/super-brief`;
   const fullBriefUrl = options.fullBriefUrl ?? `${SITE_URL}/daily-update`;
-  const audioUrl = 'https://podcasts.apple.com/us/podcast/markets-meditations-and-mental-models/id1885352035';
-  const unsubscribeUrl = recipientEmail ? buildUnsubscribeUrl(recipientEmail) : null;
+  const audioUrl =
+    'https://podcasts.apple.com/us/podcast/markets-meditations-and-mental-models/id1885352035';
+  const unsubscribeUrl = recipientEmail
+    ? buildUnsubscribeUrl(recipientEmail)
+    : null;
 
   const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -84,7 +87,7 @@ export function renderBriefEmail(
 // Format in markdown: **Thesis headline here.**  on its own line.
 
 function extractSubject(brief: BriefLight, prefix?: string): string {
-  const update = brief.sections.find((s) => s.id === 'the-update');
+  const update = brief.sections.find(s => s.id === 'the-update');
   let headline: string | undefined;
   if (update) {
     const match = update.content.match(/^\*\*(.+?)\*\*\s*$/m);
@@ -96,7 +99,13 @@ function extractSubject(brief: BriefLight, prefix?: string): string {
 
 // ─── Components ─────────────────────────────────────────────────────────────
 
-function renderMasthead(brief: BriefLight, webUrl: string, audioUrl: string, fullBriefUrl?: string, mastheadLabel?: string): string {
+function renderMasthead(
+  brief: BriefLight,
+  webUrl: string,
+  audioUrl: string,
+  fullBriefUrl?: string,
+  mastheadLabel?: string
+): string {
   const label = mastheadLabel ?? 'Markets, Meditations &amp; Mental Models';
   return `
   <tr><td style="padding:32px 40px 16px 40px;border-bottom:1px solid #e8e2d5;">
@@ -140,7 +149,7 @@ function renderDailyHeader(brief: BriefLight): string {
 
 function renderSections(brief: BriefLight): string {
   return brief.sections
-    .map((section) => {
+    .map(section => {
       // THE LINE (two-tier breadth tier) is a run of 8-12 one-line items, not
       // paragraphs — full paragraph spacing would double the section's height
       // and bury the rhythm. Tighter type, hairline separators.
@@ -169,8 +178,8 @@ function renderSections(brief: BriefLight): string {
 function renderLineItems(md: string): string {
   const items = md
     .split(/\n\s*\n/)
-    .map((b) => b.trim())
-    .filter((b) => b && !/^---+$/.test(b));
+    .map(b => b.trim())
+    .filter(b => b && !/^---+$/.test(b));
 
   return items
     .map((item, i) => {
@@ -180,12 +189,20 @@ function renderLineItems(md: string): string {
     .join('\n');
 }
 
-function renderShareBlock(brief: BriefLight, webUrl: string, subjectPrefix?: string): string {
+function renderShareBlock(
+  brief: BriefLight,
+  webUrl: string,
+  subjectPrefix?: string
+): string {
   const subject = extractSubject(brief, subjectPrefix);
-  const tweetText = encodeURIComponent(`"${subject}"\n\nFrom today's Markets, Meditations & Mental Models:`);
+  const tweetText = encodeURIComponent(
+    `"${subject}"\n\nFrom today's Markets, Meditations & Mental Models:`
+  );
   const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(webUrl)}`;
   const forwardSubject = encodeURIComponent(`Brief — ${brief.displayDate}`);
-  const forwardBody = encodeURIComponent(`Thought you'd want this:\n\n${webUrl}\n\nDaily brief for finance pros. 30 minutes of the world, every morning.`);
+  const forwardBody = encodeURIComponent(
+    `Thought you'd want this:\n\n${webUrl}\n\nDaily brief for finance pros. 30 minutes of the world, every morning.`
+  );
 
   return `
   <tr><td style="padding:32px 40px;">
@@ -231,11 +248,11 @@ function renderFooter(webUrl: string, unsubscribeUrl: string | null): string {
 function markdownToHtml(md: string): string {
   const blocks = md
     .split(/\n\s*\n/)
-    .map((b) => b.trim())
+    .map(b => b.trim())
     .filter(Boolean);
 
   return blocks
-    .map((block) => {
+    .map(block => {
       if (/^---+$/.test(block)) return '';
 
       // Blockquote (used in The Meditation for the quote)
@@ -281,7 +298,10 @@ function escapeInline(text: string): string {
   );
 
   // Bold **text**
-  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight:700;">$1</strong>');
+  out = out.replace(
+    /\*\*([^*]+)\*\*/g,
+    '<strong style="font-weight:700;">$1</strong>'
+  );
 
   // Italic *text* (but not ** already consumed)
   out = out.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');

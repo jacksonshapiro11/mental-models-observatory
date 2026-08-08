@@ -21,7 +21,7 @@ export function getLatestSignals(): string[] {
     // Split on ", and " first, then on ", " for remaining fragments
     const raw = brief.lede
       .replace(/\*\*/g, '') // strip markdown bold
-      .replace(/\*/g, '')   // strip markdown italic
+      .replace(/\*/g, '') // strip markdown italic
       .replace(/\[.*?\]\(.*?\)/g, (match: string): string => {
         // Extract link text only
         const text = match.match(/\[(.*?)\]/);

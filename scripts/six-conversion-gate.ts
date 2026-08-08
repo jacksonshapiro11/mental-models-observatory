@@ -67,7 +67,8 @@ export function stripHtmlComments(md: string): string {
   // Blank the contents, keep the newlines — line-based extraction stays byte-aligned with the file.
   let out = md.replace(/<!--[\s\S]*?-->/g, m => m.replace(/[^\n]/g, ''));
   const stray = out.indexOf('<!--'); // unterminated comment = commentary to EOF, as any renderer reads it
-  if (stray !== -1) out = out.slice(0, stray) + out.slice(stray).replace(/[^\n]/g, '');
+  if (stray !== -1)
+    out = out.slice(0, stray) + out.slice(stray).replace(/[^\n]/g, '');
   return out;
 }
 
@@ -82,8 +83,8 @@ function extractSection(md: string, startRe: RegExp): string {
   const out: string[] = [];
   for (let j = i + 1; j < lines.length; j++) {
     const l = lines[j]!;
-    if (/^#{1,6}\s/.test(l)) break;   // next header ends the section
-    if (/^---\s*$/.test(l)) break;    // section divider ends the section
+    if (/^#{1,6}\s/.test(l)) break; // next header ends the section
+    if (/^---\s*$/.test(l)) break; // section divider ends the section
     out.push(l);
   }
   return out.join('\n');
@@ -91,23 +92,56 @@ function extractSection(md: string, startRe: RegExp): string {
 
 // ---------- Check A: M&M analytical evasion ----------
 const MM_EVASION = [
-  'unreliable as a standalone', 'either report unreliable', 'make either report unreliable',
-  'both may be unreliable', 'both reports unreliable', 'both readings unreliable',
-  'neither reading is reliable', 'neither report is reliable', 'too close to call',
-  'hard to say which', 'impossible to say which', 'no way to know which',
-  'either could be right', 'take your pick', 'the jury is out',
-  "can't tell which", 'cannot tell which', 'anyone’s guess', "anyone's guess",
+  'unreliable as a standalone',
+  'either report unreliable',
+  'make either report unreliable',
+  'both may be unreliable',
+  'both reports unreliable',
+  'both readings unreliable',
+  'neither reading is reliable',
+  'neither report is reliable',
+  'too close to call',
+  'hard to say which',
+  'impossible to say which',
+  'no way to know which',
+  'either could be right',
+  'take your pick',
+  'the jury is out',
+  "can't tell which",
+  'cannot tell which',
+  'anyone’s guess',
+  "anyone's guess",
 ];
 // Ranking verdicts = the section commits to WHICH read to trust. NOTE: deferral
 // phrases ("watch X for the tie-break", "wait for") are deliberately NOT ranking —
 // the 07-07 bullet deferred to JOLTS and the Critic still ruled it evasion.
 const MM_RANKING = [
-  'more reliable', 'more trustworthy', 'more credible', 'more accurate',
-  'the better read', 'better read is', 'the reliable read is', 'the truer read',
-  'is the truer', 'trust the', 'we trust', 'believe the', 'defer to the',
-  'weight the', 'we side with', 'side with the', 'leans toward', 'lean toward',
-  'the signal to trust', 'carries more weight', 'weigh the', 'the more telling',
-  'discount the', 'we discount', 'favor the', 'the read that wins',
+  'more reliable',
+  'more trustworthy',
+  'more credible',
+  'more accurate',
+  'the better read',
+  'better read is',
+  'the reliable read is',
+  'the truer read',
+  'is the truer',
+  'trust the',
+  'we trust',
+  'believe the',
+  'defer to the',
+  'weight the',
+  'we side with',
+  'side with the',
+  'leans toward',
+  'lean toward',
+  'the signal to trust',
+  'carries more weight',
+  'weigh the',
+  'the more telling',
+  'discount the',
+  'we discount',
+  'favor the',
+  'the read that wins',
 ];
 function checkMM(section: string): string | null {
   if (!section.trim()) return null;
@@ -121,14 +155,41 @@ function checkMM(section: string): string | null {
 
 // ---------- Check B: AI&T Take-dependency ----------
 const LEAD_STOP = new Set([
-  'The','A','An','This','That','These','Those','In','On','At','When','After','Before',
-  'Two','Both','Its','Their','His','Her','As','With','For','But','And','If','While','Now',
+  'The',
+  'A',
+  'An',
+  'This',
+  'That',
+  'These',
+  'Those',
+  'In',
+  'On',
+  'At',
+  'When',
+  'After',
+  'Before',
+  'Two',
+  'Both',
+  'Its',
+  'Their',
+  'His',
+  'Her',
+  'As',
+  'With',
+  'For',
+  'But',
+  'And',
+  'If',
+  'While',
+  'Now',
 ]);
 function leadEntity(bold: string): string | null {
   // first Capitalized proper-noun token in the bolded lead, skipping leading stopwords
   const toks = bold.match(/[A-Z][a-zA-Z0-9]+/g);
   if (!toks) return null;
-  for (const t of toks) { if (!LEAD_STOP.has(t)) return t; }
+  for (const t of toks) {
+    if (!LEAD_STOP.has(t)) return t;
+  }
   return null;
 }
 function boldLeads(section: string): string[] {
@@ -154,14 +215,43 @@ function checkAIT(aitSection: string, takeSection: string): string | null {
 
 // ---------- Check C: Inner Game inversion ----------
 const INVERSION = [
-  'you would assume', "you'd assume", 'you assume', 'you would think', "you'd think",
-  'you think', 'you would expect', "you'd expect", 'you might expect', 'you expect',
-  'it seems obvious', 'seems obvious', 'the intuition', 'intuitively', 'conventional wisdom',
-  'most people believe', 'most people think', 'we assume', 'we tend to', 'you tend to',
-  'counterintuitive', 'counterintuitively', 'the opposite is true', 'the reverse is true',
-  'but in fact', 'turns out', 'is backwards', 'the surprise', 'contrary to', 'against intuition',
-  'not what you', 'the twist', 'wrong about', "you're wrong", 'you are wrong',
-  'the mistake', 'you would guess',
+  'you would assume',
+  "you'd assume",
+  'you assume',
+  'you would think',
+  "you'd think",
+  'you think',
+  'you would expect',
+  "you'd expect",
+  'you might expect',
+  'you expect',
+  'it seems obvious',
+  'seems obvious',
+  'the intuition',
+  'intuitively',
+  'conventional wisdom',
+  'most people believe',
+  'most people think',
+  'we assume',
+  'we tend to',
+  'you tend to',
+  'counterintuitive',
+  'counterintuitively',
+  'the opposite is true',
+  'the reverse is true',
+  'but in fact',
+  'turns out',
+  'is backwards',
+  'the surprise',
+  'contrary to',
+  'against intuition',
+  'not what you',
+  'the twist',
+  'wrong about',
+  "you're wrong",
+  'you are wrong',
+  'the mistake',
+  'you would guess',
 ];
 function checkInnerGame(section: string): string | null {
   if (!section.trim()) return null;
@@ -182,10 +272,32 @@ function bulletLines(section: string): string[] {
 // 07-08: all 3 C&C bullets were crypto (Coinbase FCA, UK FCA, Solana RWA) on the day
 // Samsung posted the best semiconductor quarter in 40 years. Clean mechanical count.
 const CRYPTO_TERMS = [
-  'crypto', 'bitcoin', 'btc', 'ethereum', 'defi', 'stablecoin', 'tokeniz',
-  'solana', 'coinbase', 'blockchain', 'on-chain', 'onchain', 'web3',
-  'digital asset', 'real-world asset', ' rwa', 'binance', 'staking', 'mica',
-  'ondo ', 'genius act', 'crypto-native', 'kraken', 'ripple', ' xrp', 'dogecoin',
+  'crypto',
+  'bitcoin',
+  'btc',
+  'ethereum',
+  'defi',
+  'stablecoin',
+  'tokeniz',
+  'solana',
+  'coinbase',
+  'blockchain',
+  'on-chain',
+  'onchain',
+  'web3',
+  'digital asset',
+  'real-world asset',
+  ' rwa',
+  'binance',
+  'staking',
+  'mica',
+  'ondo ',
+  'genius act',
+  'crypto-native',
+  'kraken',
+  'ripple',
+  ' xrp',
+  'dogecoin',
 ];
 function isCrypto(bullet: string): boolean {
   const lc = bullet.toLowerCase();
@@ -209,14 +321,37 @@ function checkCC(section: string): string | null {
 // co-occurrence — on 07-08 the NATO summit was the backdrop across several bullets, so
 // naive two-theater counting false-silences). This is a floor; the Critic judges truth.
 const GEO_SYNTHESIS = [
-  'two fronts of the same', 'the same fault line', 'the same fault', 'the through-line',
-  'the through line', 'the common thread', 'the connective tissue', 'the same vacuum',
-  'the same weakness', 'the same pressure', 'exploits the same', 'probing the same',
-  'testing the same', 'the same crisis', 'ties the two', 'across both theaters',
-  'across two theaters', 'links the two', 'the link between', 'connect the two',
-  'connects the two', 'the same actor', 'the same underlying', 'the same fracture',
-  'mirror image', 'the same opening', 'the same rift', 'both theaters', 'two theaters',
-  'the same story playing out', 'the same dynamic in',
+  'two fronts of the same',
+  'the same fault line',
+  'the same fault',
+  'the through-line',
+  'the through line',
+  'the common thread',
+  'the connective tissue',
+  'the same vacuum',
+  'the same weakness',
+  'the same pressure',
+  'exploits the same',
+  'probing the same',
+  'testing the same',
+  'the same crisis',
+  'ties the two',
+  'across both theaters',
+  'across two theaters',
+  'links the two',
+  'the link between',
+  'connect the two',
+  'connects the two',
+  'the same actor',
+  'the same underlying',
+  'the same fracture',
+  'mirror image',
+  'the same opening',
+  'the same rift',
+  'both theaters',
+  'two theaters',
+  'the same story playing out',
+  'the same dynamic in',
 ];
 function checkGeo(section: string): string | null {
   if (!section.trim()) return null;
@@ -235,19 +370,46 @@ function checkGeo(section: string): string | null {
 // undercoverage warrant. Non-gameable: removing the label to dodge the gate trips the
 // existing Signal_Generator 🔴 label rule.
 const UNDERCOVERAGE = [
-  'nobody has noticed', 'almost nobody', 'no one has noticed', 'has noticed', 'unnoticed',
-  'no major desk', 'no desk has', 'undercovered', 'under-covered', 'no one has assembled',
-  'has not been assembled', 'no one has connected', 'nobody is connecting', 'the market still prices',
-  'undercoverage', 'rarely assembles', 'rarely assembled', 'no desk assembles',
-  'the market has filed', 'filed under', 'investors miss', 'most investors miss', 'the market hasn',
-  'not yet priced', 'mispriced', 'overlooked', 'no one is writing', 'the trade no one',
-  'consensus misses', 'the market is not pricing', 'still prices', 'no one else has', 'few are pricing',
+  'nobody has noticed',
+  'almost nobody',
+  'no one has noticed',
+  'has noticed',
+  'unnoticed',
+  'no major desk',
+  'no desk has',
+  'undercovered',
+  'under-covered',
+  'no one has assembled',
+  'has not been assembled',
+  'no one has connected',
+  'nobody is connecting',
+  'the market still prices',
+  'undercoverage',
+  'rarely assembles',
+  'rarely assembled',
+  'no desk assembles',
+  'the market has filed',
+  'filed under',
+  'investors miss',
+  'most investors miss',
+  'the market hasn',
+  'not yet priced',
+  'mispriced',
+  'overlooked',
+  'no one is writing',
+  'the trade no one',
+  'consensus misses',
+  'the market is not pricing',
+  'still prices',
+  'no one else has',
+  'few are pricing',
 ];
 function signalBlocks(section: string): string[] {
   const blocks: string[] = [];
   let cur: string[] = [];
   for (const l of section.split('\n')) {
-    if (/^\s*(?:[-*]\s+)?\*\*/.test(l)) { // a bold-lead line (bare **… or "- **…") starts a new signal block
+    if (/^\s*(?:[-*]\s+)?\*\*/.test(l)) {
+      // a bold-lead line (bare **… or "- **…") starts a new signal block
       if (cur.length) blocks.push(cur.join('\n'));
       cur = [l];
     } else if (cur.length) {
@@ -264,7 +426,9 @@ function checkSignal(section: string): string | null {
   const contextLabeled = /context signal/i.test(section);
   const undercovered = blocks.filter(b => {
     const lc = b.toLowerCase();
-    return UNDERCOVERAGE.some(p => lc.includes(p)) && !/context signal/i.test(b);
+    return (
+      UNDERCOVERAGE.some(p => lc.includes(p)) && !/context signal/i.test(b)
+    );
   }).length;
   if (contextLabeled || undercovered < blocks.length) {
     return `Signal section: ${undercovered}/${blocks.length} signals carry an undercoverage warrant${contextLabeled ? ' (one is a labeled "Context signal" — the system\'s own admission it is well-covered)' : ''}. For Must-Read BOTH signals must be genuinely undercovered ("no desk has assembled this"). Replace the context/consensus signal from the bench with an undercovered structural thesis, or accept it ships as labeled context.`;
@@ -284,8 +448,8 @@ function extractDeep(md: string, startRe: RegExp): string {
   const out: string[] = [];
   for (let j = i + 1; j < lines.length; j++) {
     const l = lines[j]!;
-    if (/^#\s/.test(l)) break;        // next TOP-LEVEL header ends it ("###" subheads are kept)
-    if (/^---\s*$/.test(l)) break;    // section divider ends it
+    if (/^#\s/.test(l)) break; // next TOP-LEVEL header ends it ("###" subheads are kept)
+    if (/^---\s*$/.test(l)) break; // section divider ends it
     out.push(l);
   }
   return out.join('\n');
@@ -301,17 +465,62 @@ function extractDeep(md: string, startRe: RegExp): string {
 // is present. Non-destructive: advisory, and the Editor waives a genuine specialist concept
 // the list missed with a logged reason. The Critic still judges true novelty.
 const SPECIALIZED_CONCEPTS = [
-  'hysteresis', 'path dependence', 'path-dependence', 'path dependency', 'increasing returns',
-  'reflexivity', 'reflexive loop', 'mimetic', 'girard', 'schelling', 'focal point',
-  'common knowledge', 'nash equilibrium', 'minsky', 'hyperbolic discounting', 'time inconsistency',
-  'adverse selection', 'moral hazard', 'principal-agent', 'goodhart', "campbell's law",
-  'lucas critique', 'coase', 'baumol', 'cost disease', 'veblen', 'convexity',
-  "jensen's inequality", 'antifragile', 'antifragil', 'power law', 'fat tail', 'fat-tail',
-  'tail risk', 'kurtosis', 'ergodic', 'ergodicity', 'kelly criterion', 'lindy',
-  'regime shift', 'phase transition', 'self-organized criticality', 'bifurcation',
-  "gresham's law", 'gresham', 'triffin', "metcalfe's law", 'metcalfe', 'cantillon',
-  'wicksellian', 'knightian uncertainty', 'bayesian updating', 'martingale',
-  'prospect theory', 'ricardian equivalence', 'endogeneity',
+  'hysteresis',
+  'path dependence',
+  'path-dependence',
+  'path dependency',
+  'increasing returns',
+  'reflexivity',
+  'reflexive loop',
+  'mimetic',
+  'girard',
+  'schelling',
+  'focal point',
+  'common knowledge',
+  'nash equilibrium',
+  'minsky',
+  'hyperbolic discounting',
+  'time inconsistency',
+  'adverse selection',
+  'moral hazard',
+  'principal-agent',
+  'goodhart',
+  "campbell's law",
+  'lucas critique',
+  'coase',
+  'baumol',
+  'cost disease',
+  'veblen',
+  'convexity',
+  "jensen's inequality",
+  'antifragile',
+  'antifragil',
+  'power law',
+  'fat tail',
+  'fat-tail',
+  'tail risk',
+  'kurtosis',
+  'ergodic',
+  'ergodicity',
+  'kelly criterion',
+  'lindy',
+  'regime shift',
+  'phase transition',
+  'self-organized criticality',
+  'bifurcation',
+  "gresham's law",
+  'gresham',
+  'triffin',
+  "metcalfe's law",
+  'metcalfe',
+  'cantillon',
+  'wicksellian',
+  'knightian uncertainty',
+  'bayesian updating',
+  'martingale',
+  'prospect theory',
+  'ricardian equivalence',
+  'endogeneity',
 ];
 function checkTake(section: string): string | null {
   const body = section.trim();
@@ -329,25 +538,67 @@ function checkTake(section: string): string | null {
 // mainstream term WITHOUT such a warrant. Scoped: silent on non-longevity Discoveries (no
 // mainstream term present). Advisory; the Editor waives a false-fire with a logged reason.
 const MAINSTREAM_LONGEVITY = [
-  'autophagy', 'ampk', 'mtor', 'mtorc', 'nad+', ' nad ', 'sirtuin', 'sirt1', 'senolytic',
-  'senescent', 'senescence', 'rapamycin', 'metformin', 'telomere', 'telomerase',
-  'mitochondrial biogenesis', 'zone 2', 'zone two', 'vo2 max', 'vo2max', 'blue zone',
-  'caloric restriction', 'time-restricted', 'intermittent fasting', 'cold plunge',
-  'cold exposure', 'heat shock', 'hormesis', 'spermidine', 'resveratrol', 'glp-1', 'glp1',
+  'autophagy',
+  'ampk',
+  'mtor',
+  'mtorc',
+  'nad+',
+  ' nad ',
+  'sirtuin',
+  'sirt1',
+  'senolytic',
+  'senescent',
+  'senescence',
+  'rapamycin',
+  'metformin',
+  'telomere',
+  'telomerase',
+  'mitochondrial biogenesis',
+  'zone 2',
+  'zone two',
+  'vo2 max',
+  'vo2max',
+  'blue zone',
+  'caloric restriction',
+  'time-restricted',
+  'intermittent fasting',
+  'cold plunge',
+  'cold exposure',
+  'heat shock',
+  'hormesis',
+  'spermidine',
+  'resveratrol',
+  'glp-1',
+  'glp1',
 ];
 const NOVELTY_WARRANT = [
-  'unknown to', 'unfamiliar even to', 'even the longevity', 'even longevity', 'surprises even',
-  'beyond the autophagy', 'past the autophagy', 'not the autophagy story', "hasn't reached",
-  'has not reached', 'not yet in the mainstream', 'ahead of the popular', 'no popular',
-  'not in the popular', 'the popular version misses', 'the popular-science version',
-  'few in the longevity', 'no wellness', 'rarely discussed even', 'not covered even',
+  'unknown to',
+  'unfamiliar even to',
+  'even the longevity',
+  'even longevity',
+  'surprises even',
+  'beyond the autophagy',
+  'past the autophagy',
+  'not the autophagy story',
+  "hasn't reached",
+  'has not reached',
+  'not yet in the mainstream',
+  'ahead of the popular',
+  'no popular',
+  'not in the popular',
+  'the popular version misses',
+  'the popular-science version',
+  'few in the longevity',
+  'no wellness',
+  'rarely discussed even',
+  'not covered even',
 ];
 function checkDiscovery(section: string): string | null {
   const body = section.trim();
   if (body.replace(/\s+/g, ' ').length < 200) return null;
   const lc = body.toLowerCase();
   if (!MAINSTREAM_LONGEVITY.some(t => lc.includes(t))) return null; // out of scope (not a longevity topic) -> silent
-  if (NOVELTY_WARRANT.some(p => lc.includes(p))) return null;        // explicitly framed beyond mainstream -> silent
+  if (NOVELTY_WARRANT.some(p => lc.includes(p))) return null; // explicitly framed beyond mainstream -> silent
   return `Discovery leans on a mainstream-longevity mechanism (autophagy/AMPK/mTOR/etc.) the Attia/Sinclair/Huberman audience already knows, with no beyond-mainstream novelty warrant. Precision on a known pathway is not novelty. Surface a mechanism that surprises a reader who follows BOTH science and popular longevity content, or state explicitly why this one does (the warrant). The Editor waives a genuinely obscure mechanism that merely mentions a mainstream term with a logged reason.`;
 }
 
@@ -361,25 +612,57 @@ function checkDiscovery(section: string): string | null {
 // when a gold bullet carries regime-restatement language and no break-trigger. Silent when
 // gold is cut to the Dashboard (no M&M gold bullet) OR the bullet names the break-trigger.
 const GOLD_FATIGUE = [
-  'the regime call from yesterday stands', 'the regime call stands', 'the regime from yesterday',
-  'the regime holds', 'the regime stands', 'the dynamic holds', 'the framework holds',
-  'fits the same framework', 'the same framework', 'confirms the regime', 'consistent with the regime',
-  'noise within it', 'noise within the regime', 'the recovery is noise', 'within the regime',
-  'nothing new for the regime', 'the same regime as yesterday',
+  'the regime call from yesterday stands',
+  'the regime call stands',
+  'the regime from yesterday',
+  'the regime holds',
+  'the regime stands',
+  'the dynamic holds',
+  'the framework holds',
+  'fits the same framework',
+  'the same framework',
+  'confirms the regime',
+  'consistent with the regime',
+  'noise within it',
+  'noise within the regime',
+  'the recovery is noise',
+  'within the regime',
+  'nothing new for the regime',
+  'the same regime as yesterday',
 ];
 const GOLD_BREAK = [
-  'fear asset again', 'behave as a fear asset', 'behaves as a fear asset', 'act as a fear asset',
-  'acts as a fear asset', 'revert to a fear asset', 'flip gold', 'flips gold',
-  'flip back to a fear asset', 'flips back to a fear asset', 'break the regime', 'breaks the regime',
-  'would break', 'the trigger that', 'regime breaks if', 'regime breaks when', 'the regime breaks',
-  'safe-haven bid returns', 'safe haven bid returns', 'the level that flips', 'what would make gold',
-  'gold rallies as a fear', 'reassert',
+  'fear asset again',
+  'behave as a fear asset',
+  'behaves as a fear asset',
+  'act as a fear asset',
+  'acts as a fear asset',
+  'revert to a fear asset',
+  'flip gold',
+  'flips gold',
+  'flip back to a fear asset',
+  'flips back to a fear asset',
+  'break the regime',
+  'breaks the regime',
+  'would break',
+  'the trigger that',
+  'regime breaks if',
+  'regime breaks when',
+  'the regime breaks',
+  'safe-haven bid returns',
+  'safe haven bid returns',
+  'the level that flips',
+  'what would make gold',
+  'gold rallies as a fear',
+  'reassert',
 ];
 function goldBullets(section: string): string[] {
   return bulletLines(section).filter(b => {
     const m = b.match(/\*\*(.+?)\*\*/);
     const lead = m ? m[1]! : '';
-    return /\bgold\b/i.test(lead) || ((b.toLowerCase().match(/\bgold\b/g) || []).length >= 2);
+    return (
+      /\bgold\b/i.test(lead) ||
+      (b.toLowerCase().match(/\bgold\b/g) || []).length >= 2
+    );
   });
 }
 function checkGoldRegime(section: string): string | null {
@@ -402,17 +685,37 @@ function checkGoldRegime(section: string): string | null {
 // accrues (which sub-layer captures margin vs volume vs neither). Fires on the migration claim
 // with no stratification. Editor waives a genuinely non-consensus synthesis with a logged reason.
 const CONSENSUS_MIGRATION = [
-  'migrating from the model layer', 'migrates from the model layer', 'migrate from the model layer',
-  'model layer to the application layer', 'value migrates to the application',
-  'value moves to the application layer', 'value accrues to the application layer',
-  'application layer wins', 'value is migrating to the application',
+  'migrating from the model layer',
+  'migrates from the model layer',
+  'migrate from the model layer',
+  'model layer to the application layer',
+  'value migrates to the application',
+  'value moves to the application layer',
+  'value accrues to the application layer',
+  'application layer wins',
+  'value is migrating to the application',
 ];
 const STRATIFICATION = [
-  'is already stratifying', 'stratifying into', 'stratifies into', 'already stratified',
-  'captures the volume', 'capture the volume', 'captures the highest margin', 'capture the highest margin',
-  'captures neither', 'capture neither', 'duopoly forming', 'tools-plus-menu', 'tools plus menu',
-  'not model-plus-chat', 'different sub-layers', 'which sub-layer', 'the specific stratum',
-  'where inside it', 'where in the application layer', 'margin and volume are accruing',
+  'is already stratifying',
+  'stratifying into',
+  'stratifies into',
+  'already stratified',
+  'captures the volume',
+  'capture the volume',
+  'captures the highest margin',
+  'capture the highest margin',
+  'captures neither',
+  'capture neither',
+  'duopoly forming',
+  'tools-plus-menu',
+  'tools plus menu',
+  'not model-plus-chat',
+  'different sub-layers',
+  'which sub-layer',
+  'the specific stratum',
+  'where inside it',
+  'where in the application layer',
+  'margin and volume are accruing',
 ];
 function checkAITConsensus(section: string): string | null {
   if (!section.trim()) return null;
@@ -424,39 +727,54 @@ function checkAITConsensus(section: string): string | null {
 }
 
 // ---------- runner ----------
-interface Finding { check: string; msg: string; }
+interface Finding {
+  check: string;
+  msg: string;
+}
 function runBrief(rawMd: string): Finding[] {
   if (hasUnterminatedHtmlComment(rawMd)) {
-    return [{
-      check: 'HTML-comment-integrity',
-      msg: 'The brief contains an unterminated HTML comment. A renderer hides everything after it, and stripping it would leave empty sections that falsely clear all conversion checks. Close or remove the comment before grading.',
-    }];
+    return [
+      {
+        check: 'HTML-comment-integrity',
+        msg: 'The brief contains an unterminated HTML comment. A renderer hides everything after it, and stripping it would leave empty sections that falsely clear all conversion checks. Close or remove the comment before grading.',
+      },
+    ];
   }
   // IMP-131: strip the Editor/Validator commentary FIRST (the class fix), then anchor every
   // section regex to a real heading (the instance fix). Both, because either alone leaves a hole:
   // an anchor still matches a heading quoted inside a comment, and stripping still lets a bare
   // in-body mention of "THE TAKE" win the findIndex race.
-  const md     = stripHtmlComments(rawMd);
-  const mm     = extractSection(md, /^##\s+Markets\s*&\s*Macro/i);
-  const ait    = extractSection(md, /^##\s+AI\s*&\s*Tech/i);
-  const take   = extractSection(md, /^#{1,6}\s.*THE TAKE/i);
-  const inner  = extractSection(md, /^#{1,6}\s.*INNER GAME/i);
-  const cc     = extractSection(md, /^##\s+Companies\s*&\s*Crypto/i);
-  const geo    = extractSection(md, /^##\s+Geopolitics/i);
+  const md = stripHtmlComments(rawMd);
+  const mm = extractSection(md, /^##\s+Markets\s*&\s*Macro/i);
+  const ait = extractSection(md, /^##\s+AI\s*&\s*Tech/i);
+  const take = extractSection(md, /^#{1,6}\s.*THE TAKE/i);
+  const inner = extractSection(md, /^#{1,6}\s.*INNER GAME/i);
+  const cc = extractSection(md, /^##\s+Companies\s*&\s*Crypto/i);
+  const geo = extractSection(md, /^##\s+Geopolitics/i);
   const signal = extractSection(md, /^##\s+The\s+Signal/i);
-  const takeD  = extractDeep(md, /^#.*THE TAKE/i);
-  const disc   = extractDeep(md, /^#.*DISCOVERY/i);
+  const takeD = extractDeep(md, /^#.*THE TAKE/i);
+  const disc = extractDeep(md, /^#.*DISCOVERY/i);
   const out: Finding[] = [];
-  const a = checkMM(mm);             if (a) out.push({ check: 'A/M&M-ranking (RC4)', msg: a });
-  const b = checkAIT(ait, take);     if (b) out.push({ check: 'B/AI&T-independence (RC3)', msg: b });
-  const c = checkInnerGame(inner);   if (c) out.push({ check: 'C/InnerGame-inversion (RC5)', msg: c });
-  const d = checkCC(cc);             if (d) out.push({ check: 'D/C&C-domain-diversity (RC5)', msg: d });
-  const e = checkGeo(geo);           if (e) out.push({ check: 'E/Geo-cross-theater (RC4)', msg: e });
-  const f = checkSignal(signal);     if (f) out.push({ check: 'F/Signal-undercoverage (RC4)', msg: f });
-  const g = checkTake(takeD);        if (g) out.push({ check: 'G/Take-non-intro-component (RC4)', msg: g });
-  const h = checkDiscovery(disc);    if (h) out.push({ check: 'H/Discovery-mainstream-mechanism (RC4)', msg: h });
-  const i = checkGoldRegime(mm);     if (i) out.push({ check: 'I/M&M-gold-regime-fatigue (RC4)', msg: i });
-  const j = checkAITConsensus(ait);  if (j) out.push({ check: 'J/AI&T-consensus-synthesis (RC4)', msg: j });
+  const a = checkMM(mm);
+  if (a) out.push({ check: 'A/M&M-ranking (RC4)', msg: a });
+  const b = checkAIT(ait, take);
+  if (b) out.push({ check: 'B/AI&T-independence (RC3)', msg: b });
+  const c = checkInnerGame(inner);
+  if (c) out.push({ check: 'C/InnerGame-inversion (RC5)', msg: c });
+  const d = checkCC(cc);
+  if (d) out.push({ check: 'D/C&C-domain-diversity (RC5)', msg: d });
+  const e = checkGeo(geo);
+  if (e) out.push({ check: 'E/Geo-cross-theater (RC4)', msg: e });
+  const f = checkSignal(signal);
+  if (f) out.push({ check: 'F/Signal-undercoverage (RC4)', msg: f });
+  const g = checkTake(takeD);
+  if (g) out.push({ check: 'G/Take-non-intro-component (RC4)', msg: g });
+  const h = checkDiscovery(disc);
+  if (h) out.push({ check: 'H/Discovery-mainstream-mechanism (RC4)', msg: h });
+  const i = checkGoldRegime(mm);
+  if (i) out.push({ check: 'I/M&M-gold-regime-fatigue (RC4)', msg: i });
+  const j = checkAITConsensus(ait);
+  if (j) out.push({ check: 'J/AI&T-consensus-synthesis (RC4)', msg: j });
   return out;
 }
 
@@ -638,50 +956,183 @@ ${FIRE_INNER}`;
 
 function selftest(): number {
   const cases: Array<[string, boolean, () => string | null]> = [
-    ['A M&M fires on real evasion',   true,  () => checkMM(extractSection(FIRE_MM,   /^##\s+Markets/i))],
-    ['A M&M silent when ranked',      false, () => checkMM(extractSection(SILENT_MM, /^##\s+Markets/i))],
-    ['B AI&T fires on Take-serving',  true,  () => checkAIT(extractSection(FIRE_AIT, /^##\s+AI/i), extractSection(TAKE_FIXTURE, /THE TAKE/i))],
-    ['B AI&T silent when independent',false, () => checkAIT(extractSection(SILENT_AIT,/^##\s+AI/i), extractSection(TAKE_FIXTURE, /THE TAKE/i))],
-    ['C InnerGame fires on truism',   true,  () => checkInnerGame(extractSection(FIRE_INNER,  /^#{1,6}\s.*INNER GAME/i))],
-    ['C InnerGame silent on inversion',false,() => checkInnerGame(extractSection(SILENT_INNER,/^#{1,6}\s.*INNER GAME/i))],
+    [
+      'A M&M fires on real evasion',
+      true,
+      () => checkMM(extractSection(FIRE_MM, /^##\s+Markets/i)),
+    ],
+    [
+      'A M&M silent when ranked',
+      false,
+      () => checkMM(extractSection(SILENT_MM, /^##\s+Markets/i)),
+    ],
+    [
+      'B AI&T fires on Take-serving',
+      true,
+      () =>
+        checkAIT(
+          extractSection(FIRE_AIT, /^##\s+AI/i),
+          extractSection(TAKE_FIXTURE, /THE TAKE/i)
+        ),
+    ],
+    [
+      'B AI&T silent when independent',
+      false,
+      () =>
+        checkAIT(
+          extractSection(SILENT_AIT, /^##\s+AI/i),
+          extractSection(TAKE_FIXTURE, /THE TAKE/i)
+        ),
+    ],
+    [
+      'C InnerGame fires on truism',
+      true,
+      () =>
+        checkInnerGame(extractSection(FIRE_INNER, /^#{1,6}\s.*INNER GAME/i)),
+    ],
+    [
+      'C InnerGame silent on inversion',
+      false,
+      () =>
+        checkInnerGame(extractSection(SILENT_INNER, /^#{1,6}\s.*INNER GAME/i)),
+    ],
     // IMP-131 — the 2026-08-06 false positive, byte-for-byte: an Editor comment block that MENTIONS
     // the section by name, above a section that is genuinely clean. Before the fix, `/INNER GAME/i`
     // matched the comment at line 41 and Check C fired on editor prose. Both directions: the same
     // brief with the same comment block, but a TRUISM Inner Game, must still FIRE — proving the
     // strip made the gate accurate, not merely quiet.
-    ['C IMP-131 silent when only an EDITOR COMMENT names the section (real 08-06 shape)',
-      false, () => checkInnerGame(extractSection(stripHtmlComments(COMMENTED_CLEAN_INNER), /^#{1,6}\s.*INNER GAME/i))],
-    ['C IMP-131 still fires through the same comment block when the section IS a truism',
-      true,  () => checkInnerGame(extractSection(stripHtmlComments(COMMENTED_FIRE_INNER), /^#{1,6}\s.*INNER GAME/i))],
-    ['IMP-131 malformed unterminated comment fails instead of blanking the brief to a false CLEAN',
-      true, () => runBrief(COMMENTED_CLEAN_INNER.replace('-->', '')).find(f => f.check === 'HTML-comment-integrity')?.msg ?? null],
-    ['D C&C fires on all-crypto',     true,  () => checkCC(extractSection(FIRE_CC,   /^##\s+Companies/i))],
-    ['D C&C silent with corporate',   false, () => checkCC(extractSection(SILENT_CC, /^##\s+Companies/i))],
-    ['E Geo fires on parallel tracks',true,  () => checkGeo(extractSection(FIRE_GEO, /^##\s+Geopolitics/i))],
-    ['E Geo silent on synthesis',     false, () => checkGeo(extractSection(SILENT_GEO,/^##\s+Geopolitics/i))],
-    ['F Signal fires on context-label',true, () => checkSignal(extractSection(FIRE_SIGNAL,  /^##\s+The\s+Signal/i))],
-    ['F Signal silent when both undercovered',false,() => checkSignal(extractSection(SILENT_SIGNAL,/^##\s+The\s+Signal/i))],
-    ['F Signal fires on bulleted context-label (07-09)',true,() => checkSignal(extractSection(FIRE_SIGNAL_BULLET,/^##\s+The\s+Signal/i))],
-    ['G Take fires on assembled-known',        true,  () => checkTake(extractDeep(FIRE_TAKE,   /^#.*THE TAKE/i))],
-    ['G Take silent with specialist concept',  false, () => checkTake(extractDeep(SILENT_TAKE, /^#.*THE TAKE/i))],
-    ['H Discovery fires on mainstream mechanism',true,() => checkDiscovery(extractDeep(FIRE_DISC,  /^#.*DISCOVERY/i))],
-    ['H Discovery silent with novelty warrant', false,() => checkDiscovery(extractDeep(SILENT_DISC,/^#.*DISCOVERY/i))],
-    ['I gold fires on regime-restatement',      true,  () => checkGoldRegime(extractSection(FIRE_GOLD,   /^##\s+Markets/i))],
-    ['I gold silent when break-trigger named',  false, () => checkGoldRegime(extractSection(SILENT_GOLD, /^##\s+Markets/i))],
-    ['J AI&T fires on consensus migration',     true,  () => checkAITConsensus(extractSection(FIRE_AITCON,  /^##\s+AI/i))],
-    ['J AI&T silent when stratified',           false, () => checkAITConsensus(extractSection(SILENT_AITCON,/^##\s+AI/i))],
+    [
+      'C IMP-131 silent when only an EDITOR COMMENT names the section (real 08-06 shape)',
+      false,
+      () =>
+        checkInnerGame(
+          extractSection(
+            stripHtmlComments(COMMENTED_CLEAN_INNER),
+            /^#{1,6}\s.*INNER GAME/i
+          )
+        ),
+    ],
+    [
+      'C IMP-131 still fires through the same comment block when the section IS a truism',
+      true,
+      () =>
+        checkInnerGame(
+          extractSection(
+            stripHtmlComments(COMMENTED_FIRE_INNER),
+            /^#{1,6}\s.*INNER GAME/i
+          )
+        ),
+    ],
+    [
+      'IMP-131 malformed unterminated comment fails instead of blanking the brief to a false CLEAN',
+      true,
+      () =>
+        runBrief(COMMENTED_CLEAN_INNER.replace('-->', '')).find(
+          f => f.check === 'HTML-comment-integrity'
+        )?.msg ?? null,
+    ],
+    [
+      'D C&C fires on all-crypto',
+      true,
+      () => checkCC(extractSection(FIRE_CC, /^##\s+Companies/i)),
+    ],
+    [
+      'D C&C silent with corporate',
+      false,
+      () => checkCC(extractSection(SILENT_CC, /^##\s+Companies/i)),
+    ],
+    [
+      'E Geo fires on parallel tracks',
+      true,
+      () => checkGeo(extractSection(FIRE_GEO, /^##\s+Geopolitics/i)),
+    ],
+    [
+      'E Geo silent on synthesis',
+      false,
+      () => checkGeo(extractSection(SILENT_GEO, /^##\s+Geopolitics/i)),
+    ],
+    [
+      'F Signal fires on context-label',
+      true,
+      () => checkSignal(extractSection(FIRE_SIGNAL, /^##\s+The\s+Signal/i)),
+    ],
+    [
+      'F Signal silent when both undercovered',
+      false,
+      () => checkSignal(extractSection(SILENT_SIGNAL, /^##\s+The\s+Signal/i)),
+    ],
+    [
+      'F Signal fires on bulleted context-label (07-09)',
+      true,
+      () =>
+        checkSignal(extractSection(FIRE_SIGNAL_BULLET, /^##\s+The\s+Signal/i)),
+    ],
+    [
+      'G Take fires on assembled-known',
+      true,
+      () => checkTake(extractDeep(FIRE_TAKE, /^#.*THE TAKE/i)),
+    ],
+    [
+      'G Take silent with specialist concept',
+      false,
+      () => checkTake(extractDeep(SILENT_TAKE, /^#.*THE TAKE/i)),
+    ],
+    [
+      'H Discovery fires on mainstream mechanism',
+      true,
+      () => checkDiscovery(extractDeep(FIRE_DISC, /^#.*DISCOVERY/i)),
+    ],
+    [
+      'H Discovery silent with novelty warrant',
+      false,
+      () => checkDiscovery(extractDeep(SILENT_DISC, /^#.*DISCOVERY/i)),
+    ],
+    [
+      'I gold fires on regime-restatement',
+      true,
+      () => checkGoldRegime(extractSection(FIRE_GOLD, /^##\s+Markets/i)),
+    ],
+    [
+      'I gold silent when break-trigger named',
+      false,
+      () => checkGoldRegime(extractSection(SILENT_GOLD, /^##\s+Markets/i)),
+    ],
+    [
+      'J AI&T fires on consensus migration',
+      true,
+      () => checkAITConsensus(extractSection(FIRE_AITCON, /^##\s+AI/i)),
+    ],
+    [
+      'J AI&T silent when stratified',
+      false,
+      () => checkAITConsensus(extractSection(SILENT_AITCON, /^##\s+AI/i)),
+    ],
   ];
   let fails = 0;
   for (const [name, shouldFire, fn] of cases) {
     const res = fn();
     const fired = res !== null;
     const ok = fired === shouldFire;
-    console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${name} (expected ${shouldFire ? 'FIRE' : 'SILENT'}, got ${fired ? 'FIRE' : 'SILENT'})`);
-    if (!ok) { fails++; if (res) console.log(`         detector said: ${res}`); }
+    console.log(
+      `  ${ok ? 'PASS' : 'FAIL'} — ${name} (expected ${shouldFire ? 'FIRE' : 'SILENT'}, got ${fired ? 'FIRE' : 'SILENT'})`
+    );
+    if (!ok) {
+      fails++;
+      if (res) console.log(`         detector said: ${res}`);
+    }
   }
-  console.log(`\nsix-conversion-gate selftest — ${cases.length - fails}/${cases.length} assertions passed`);
-  if (fails) { console.error('✗ SELFTEST FAILED — a detector no longer bites both directions.'); return 1; }
-  console.log('✓ All detectors verified in both directions (fires on the real failure, silent on healthy).');
+  console.log(
+    `\nsix-conversion-gate selftest — ${cases.length - fails}/${cases.length} assertions passed`
+  );
+  if (fails) {
+    console.error(
+      '✗ SELFTEST FAILED — a detector no longer bites both directions.'
+    );
+    return 1;
+  }
+  console.log(
+    '✓ All detectors verified in both directions (fires on the real failure, silent on healthy).'
+  );
   return 0;
 }
 
@@ -689,17 +1140,33 @@ function main(): number {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
   const file = args.find(a => !a.startsWith('--'));
-  if (!file) { console.error('usage: six-conversion-gate.ts <brief.md> [--strict] | --selftest'); return 2; }
-  if (!fs.existsSync(file)) { console.error(`FAIL: brief not found: ${file}`); return 2; }
+  if (!file) {
+    console.error(
+      'usage: six-conversion-gate.ts <brief.md> [--strict] | --selftest'
+    );
+    return 2;
+  }
+  if (!fs.existsSync(file)) {
+    console.error(`FAIL: brief not found: ${file}`);
+    return 2;
+  }
   const findings = runBrief(fs.readFileSync(file, 'utf8'));
   const strict = args.includes('--strict');
   if (findings.length === 0) {
-    console.log(`six-conversion-gate — ${file}: CLEAN (0 findings). All ten conversion checks (A-J) cleared.`);
+    console.log(
+      `six-conversion-gate — ${file}: CLEAN (0 findings). All ten conversion checks (A-J) cleared.`
+    );
     return 0;
   }
-  console.log(`six-conversion-gate — ${file}: ${findings.length} finding(s) [${strict ? 'STRICT' : 'ADVISORY'}]`);
+  console.log(
+    `six-conversion-gate — ${file}: ${findings.length} finding(s) [${strict ? 'STRICT' : 'ADVISORY'}]`
+  );
   for (const f of findings) console.log(`  ▸ ${f.check}: ${f.msg}`);
-  console.log(strict ? '\n✗ STRICT: conversion findings present.' : '\nADVISORY: Editor must REJECT-and-replace each finding before v2 (brief still ships).');
+  console.log(
+    strict
+      ? '\n✗ STRICT: conversion findings present.'
+      : '\nADVISORY: Editor must REJECT-and-replace each finding before v2 (brief still ships).'
+  );
   return strict ? 1 : 0;
 }
 process.exit(main());

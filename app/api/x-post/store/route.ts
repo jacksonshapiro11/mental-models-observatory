@@ -62,7 +62,9 @@ export async function POST(req: NextRequest) {
   // Store with 7-day TTL (no need to keep old posts forever)
   await redis.set(key, JSON.stringify(value), { ex: 7 * 24 * 60 * 60 });
 
-  console.log(`[x-post/store] Stored x-post for ${date} (${mainPost.length} chars)`);
+  console.log(
+    `[x-post/store] Stored x-post for ${date} (${mainPost.length} chars)`
+  );
 
   return NextResponse.json({ success: true, date, key });
 }

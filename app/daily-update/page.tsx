@@ -11,11 +11,13 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: "Today's Daily Brief",
-  description: 'Daily market intelligence brief — macro, crypto, AI, geopolitics, and the mental models that connect them. Every morning from Cosmic Trex.',
+  description:
+    'Daily market intelligence brief — macro, crypto, AI, geopolitics, and the mental models that connect them. Every morning from Cosmic Trex.',
   alternates: { canonical: '/daily-update' },
   openGraph: {
     title: "Today's Daily Brief — Cosmic Trex",
-    description: 'Daily market intelligence brief. Markets, geopolitics, AI, crypto, and macro — filtered through mental models.',
+    description:
+      'Daily market intelligence brief. Markets, geopolitics, AI, crypto, and macro — filtered through mental models.',
     url: '/daily-update',
   },
 };
@@ -32,12 +34,19 @@ export default function DailyUpdatePage() {
 
   if (!brief) {
     return (
-      <div className="min-h-screen bg-[var(--espresso-bg-dark)] flex items-center justify-center">
-        <div className="text-center">
-          <Newspaper className="w-12 h-12 text-neutral-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-[var(--espresso-h1)] mb-2">No briefs yet</h1>
-          <p className="text-[var(--espresso-body)]/70">Check back soon for the first daily update.</p>
-          <Link href="/" className="inline-block mt-6 text-[var(--espresso-accent)] hover:underline">
+      <div className='min-h-screen bg-[var(--espresso-bg-dark)] flex items-center justify-center'>
+        <div className='text-center'>
+          <Newspaper className='w-12 h-12 text-neutral-500 mx-auto mb-4' />
+          <h1 className='text-2xl font-bold text-[var(--espresso-h1)] mb-2'>
+            No briefs yet
+          </h1>
+          <p className='text-[var(--espresso-body)]/70'>
+            Check back soon for the first daily update.
+          </p>
+          <Link
+            href='/'
+            className='inline-block mt-6 text-[var(--espresso-accent)] hover:underline'
+          >
             ← Back to home
           </Link>
         </div>

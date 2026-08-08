@@ -11,25 +11,31 @@ const TwitterClient = require('./platforms/twitter-client');
 
 async function postTestThread() {
   // Check for OAuth 2.0 credentials
-  if (!process.env.TWITTER_OAUTH2_ACCESS_TOKEN && !process.env.TWITTER_ACCESS_TOKEN) {
+  if (
+    !process.env.TWITTER_OAUTH2_ACCESS_TOKEN &&
+    !process.env.TWITTER_ACCESS_TOKEN
+  ) {
     console.error('❌ Twitter OAuth 2.0 credentials not found in .env.local');
     console.log('\nRequired environment variables:');
-    console.log('  - TWITTER_OAUTH2_ACCESS_TOKEN (or TWITTER_ACCESS_TOKEN for OAuth 2.0)');
+    console.log(
+      '  - TWITTER_OAUTH2_ACCESS_TOKEN (or TWITTER_ACCESS_TOKEN for OAuth 2.0)'
+    );
     console.log('\nRun: npm run twitter:authorize');
     process.exit(1);
   }
 
   // Use OAuth 2.0 token with refresh capability
-  const oauth2Token = process.env.TWITTER_OAUTH2_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN;
+  const oauth2Token =
+    process.env.TWITTER_OAUTH2_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN;
   const refreshToken = process.env.TWITTER_OAUTH2_REFRESH_TOKEN;
   const clientId = process.env.TWITTER_CLIENT_ID;
   const clientSecret = process.env.TWITTER_CLIENT_SECRET;
-  
+
   const client = new TwitterClient({
     oauth2AccessToken: oauth2Token,
     refreshToken: refreshToken,
     clientId: clientId,
-    clientSecret: clientSecret
+    clientSecret: clientSecret,
   });
 
   // Test tweet thread about Competitive Advantage
@@ -53,31 +59,31 @@ This is why some businesses build lasting moats.`,
     // Tweet 3: The Mission (178 chars)
     `I read a lot. Wanted to remember what mattered. Built this to help me think clearer. Maybe it helps you.
 
-https://cosmictrex.xyz/models/competitive-advantage-sustainable-moats`
+https://cosmictrex.xyz/models/competitive-advantage-sustainable-moats`,
   ];
 
   console.log('📱 Posting test thread to Twitter...\n');
-  
+
   let previousTweetId = null;
   const results = [];
 
   for (let i = 0; i < thread.length; i++) {
     const tweetText = thread[i];
     const tweetNum = i + 1;
-    
+
     console.log(`Tweet ${tweetNum}/${thread.length}:`);
     console.log(`  Text: ${tweetText.substring(0, 50)}...`);
     console.log(`  Length: ${tweetText.length} chars`);
-    
+
     try {
       const result = await client.postTweet(tweetText, previousTweetId);
-      
+
       if (result.success) {
         console.log(`  ✅ Posted successfully!`);
         console.log(`  Tweet ID: ${result.tweetId}\n`);
         previousTweetId = result.tweetId;
         results.push(result);
-        
+
         // Wait 5 seconds between tweets
         if (i < thread.length - 1) {
           console.log('  ⏳ Waiting 5 seconds before next tweet...\n');
@@ -97,7 +103,9 @@ https://cosmictrex.xyz/models/competitive-advantage-sustainable-moats`
   }
 
   console.log('\n✅ Thread posted successfully!');
-  console.log(`\nThread URL: https://twitter.com/user/status/${results[0].tweetId}`);
+  console.log(
+    `\nThread URL: https://twitter.com/user/status/${results[0].tweetId}`
+  );
   console.log(`\nPosted ${results.length} tweets`);
 }
 
@@ -108,4 +116,3 @@ postTestThread()
     console.error('❌ Fatal error:', error);
     process.exit(1);
   });
-

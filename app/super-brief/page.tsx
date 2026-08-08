@@ -12,7 +12,8 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata(): Promise<Metadata> {
   const brief = getLatestBriefLight();
   const title = "Today's Super Brief — Cosmic Trex";
-  const description = 'The compressed daily intelligence brief. Essential market signals in about ten minutes.';
+  const description =
+    'The compressed daily intelligence brief. Essential market signals in about ten minutes.';
 
   return {
     title: "Today's Super Brief",
@@ -45,18 +46,19 @@ export default function SuperBriefPage() {
 
   if (!brief) {
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-ct-dark flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="text-4xl mb-4">⚡</div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-ct-text-on-dark mb-3">
+      <div className='min-h-screen bg-neutral-50 dark:bg-ct-dark flex items-center justify-center'>
+        <div className='text-center max-w-md mx-auto px-4'>
+          <div className='text-4xl mb-4'>⚡</div>
+          <h1 className='text-2xl font-bold text-neutral-900 dark:text-ct-text-on-dark mb-3'>
             Super Brief coming soon
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 mb-6">
-            The compressed daily intelligence brief isn&apos;t available yet. Check back soon.
+          <p className='text-neutral-500 dark:text-neutral-400 mb-6'>
+            The compressed daily intelligence brief isn&apos;t available yet.
+            Check back soon.
           </p>
           <Link
-            href="/daily-update"
-            className="text-amber-600 dark:text-ct-yellow hover:underline"
+            href='/daily-update'
+            className='text-amber-600 dark:text-ct-yellow hover:underline'
           >
             Read the full brief &rarr;
           </Link>

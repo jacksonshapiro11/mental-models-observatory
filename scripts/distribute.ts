@@ -61,7 +61,8 @@ function parseArgs(): Args {
     else if (arg === '--email-only') args.emailOnly = true;
     else if (arg === '--x-only') args.xOnly = true;
     else if (arg.startsWith('--date=')) args.date = arg.slice('--date='.length);
-    else if (arg.startsWith('--test=')) args.testEmail = arg.slice('--test='.length);
+    else if (arg.startsWith('--test='))
+      args.testEmail = arg.slice('--test='.length);
   }
   return args;
 }
@@ -74,11 +75,16 @@ function todaySlug(): string {
 
 // ─── Email distribution ────────────────────────────────────────────────────
 
-async function distributeEmail(args: Args): Promise<{ success: boolean; details: string }> {
+async function distributeEmail(
+  args: Args
+): Promise<{ success: boolean; details: string }> {
   try {
     // Check for required env vars
     if (!process.env.RESEND_API_KEY) {
-      return { success: false, details: 'RESEND_API_KEY not set — skipping email' };
+      return {
+        success: false,
+        details: 'RESEND_API_KEY not set — skipping email',
+      };
     }
 
     // Auto path targets TODAY and skips if missing; --date= is a manual backfill.
@@ -88,7 +94,10 @@ async function distributeEmail(args: Args): Promise<{ success: boolean; details:
     if (!brief) {
       return manual
         ? { success: false, details: `No brief light found for ${dateSlug}` }
-        : { success: true, details: `skipped — no brief for ${dateSlug} (today), not falling back to stale` };
+        : {
+            success: true,
+            details: `skipped — no brief for ${dateSlug} (today), not falling back to stale`,
+          };
     }
 
     const rendered = renderBriefEmail(brief);
@@ -113,7 +122,10 @@ async function distributeEmail(args: Args): Promise<{ success: boolean; details:
     }
 
     if (args.dryRun) {
-      return { success: true, details: `Would send to ${recipients.length} subscriber(s)` };
+      return {
+        success: true,
+        details: `Would send to ${recipients.length} subscriber(s)`,
+      };
     }
 
     if (args.testEmail) {
@@ -131,37 +143,51 @@ async function distributeEmail(args: Args): Promise<{ success: boolean; details:
         : { success: false, details: `Send failed: ${result.error}` };
     }
 
-    const result = await sendBatch(recipients, rendered.subject, rendered.html, {
-      tags: [
-        { name: 'type', value: 'daily-brief' },
-        { name: 'date', value: brief.date },
-      ],
-    });
+    const result = await sendBatch(
+      recipients,
+      rendered.subject,
+      rendered.html,
+      {
+        tags: [
+          { name: 'type', value: 'daily-brief' },
+          { name: 'date', value: brief.date },
+        ],
+      }
+    );
 
     return {
       success: result.failed.length === 0,
       details: `Sent ${result.sent}/${result.total}${result.failed.length > 0 ? `, ${result.failed.length} failed` : ''}`,
     };
   } catch (err) {
-    return { success: false, details: `Email error: ${err instanceof Error ? err.message : String(err)}` };
+    return {
+      success: false,
+      details: `Email error: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
 }
 
 // ─── X/Twitter distribution ───────────────────────────────────────────────
 
-async function distributeX(args: Args): Promise<{ success: boolean; details: string }> {
+async function distributeX(
+  args: Args
+): Promise<{ success: boolean; details: string }> {
   try {
     if (!(await hasXPostingCredentials())) {
       return {
         success: false,
-        details: 'Twitter OAuth 2.0 not configured — set TWITTER_CLIENT_ID + tokens (env or /api/x-auth)',
+        details:
+          'Twitter OAuth 2.0 not configured — set TWITTER_CLIENT_ID + tokens (env or /api/x-auth)',
       };
     }
 
     const dateSlug = args.date || todaySlug();
     const content = await resolveXPostContent(dateSlug);
     if (!content) {
-      return { success: false, details: `No brief/post content found for ${dateSlug}` };
+      return {
+        success: false,
+        details: `No brief/post content found for ${dateSlug}`,
+      };
     }
 
     console.log(`🐦 X posts: ${content.posts.length} from ${content.source}`);
@@ -170,7 +196,10 @@ async function distributeX(args: Args): Promise<{ success: boolean; details: str
       content.posts.forEach((text, i) => {
         console.log(`   [${i + 1}] (${text.length}c) ${text.slice(0, 80)}...`);
       });
-      return { success: true, details: `Would post ${content.posts.length} tweet(s)` };
+      return {
+        success: true,
+        details: `Would post ${content.posts.length} tweet(s)`,
+      };
     }
 
     const { tokens, source } = await loadXOAuthTokens();
@@ -187,8 +216,10 @@ async function distributeX(args: Args): Promise<{ success: boolean; details: str
       } catch (refreshErr) {
         console.warn(
           `   Token refresh failed, using existing token: ${
-            refreshErr instanceof Error ? refreshErr.message : String(refreshErr)
-          }`,
+            refreshErr instanceof Error
+              ? refreshErr.message
+              : String(refreshErr)
+          }`
         );
       }
     }
@@ -210,13 +241,18 @@ async function distributeX(args: Args): Promise<{ success: boolean; details: str
       };
     }
 
-    const posted = result.results?.filter((r: { success: boolean }) => r.success).length || 0;
+    const posted =
+      result.results?.filter((r: { success: boolean }) => r.success).length ||
+      0;
     return {
       success: false,
       details: `Thread failed after ${posted}/${content.posts.length} tweets: ${result.error}`,
     };
   } catch (err) {
-    return { success: false, details: `X error: ${err instanceof Error ? err.message : String(err)}` };
+    return {
+      success: false,
+      details: `X error: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
 }
 
@@ -234,14 +270,17 @@ async function main() {
     console.log('🏃 DRY RUN MODE — nothing will be sent\n');
   }
 
-  const results: Array<{ channel: string; success: boolean; details: string }> = [];
+  const results: Array<{ channel: string; success: boolean; details: string }> =
+    [];
 
   // 1. Email
   if (!args.xOnly) {
     console.log('─── EMAIL ───');
     const emailResult = await distributeEmail(args);
     results.push({ channel: 'Email', ...emailResult });
-    console.log(`   ${emailResult.success ? '✅' : '❌'} ${emailResult.details}\n`);
+    console.log(
+      `   ${emailResult.success ? '✅' : '❌'} ${emailResult.details}\n`
+    );
   }
 
   // 2. X/Twitter
@@ -256,19 +295,21 @@ async function main() {
   console.log('═'.repeat(60));
   console.log('  SUMMARY');
   console.log('═'.repeat(60));
-  results.forEach((r) => {
+  results.forEach(r => {
     console.log(`  ${r.success ? '✅' : '❌'} ${r.channel}: ${r.details}`);
   });
 
-  const allSuccess = results.every((r) => r.success);
-  console.log(`\n  ${allSuccess ? '🎉 All channels distributed' : '⚠️  Some channels failed'}\n`);
+  const allSuccess = results.every(r => r.success);
+  console.log(
+    `\n  ${allSuccess ? '🎉 All channels distributed' : '⚠️  Some channels failed'}\n`
+  );
 
   if (!allSuccess) {
     process.exit(1);
   }
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error('❌ Distribution failed:', err);
   process.exit(1);
 });

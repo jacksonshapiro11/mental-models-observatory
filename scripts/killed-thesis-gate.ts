@@ -46,9 +46,42 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const EPOCH = '2026-08-07';
-const STOP = new Set(['a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'not', 'no', 'and', 'or', 'but', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from', 'as', 'it', 'its', 'this', 'that', 'these', 'those', 'you', 'your']);
-const MIN_NGRAM = 4;      // consecutive words
-const MIN_CONTENT = 3;    // of which at least this many are not stopwords
+const STOP = new Set([
+  'a',
+  'an',
+  'the',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'been',
+  'not',
+  'no',
+  'and',
+  'or',
+  'but',
+  'of',
+  'to',
+  'in',
+  'on',
+  'at',
+  'by',
+  'for',
+  'with',
+  'from',
+  'as',
+  'it',
+  'its',
+  'this',
+  'that',
+  'these',
+  'those',
+  'you',
+  'your',
+]);
+const MIN_NGRAM = 4; // consecutive words
+const MIN_CONTENT = 3; // of which at least this many are not stopwords
 
 export type Kill = { n: number; thesis: string; reason: string };
 
@@ -78,9 +111,13 @@ export function parseKills(takeDraft: string): Kill[] {
     const m = /^\s*(\d+)\.\s*(.+)$/.exec(line);
     if (!m) continue;
     const body = m[2]!;
-    const thesis = body.split(/\s+[—–-]\s+|\s*\(/)[0]!.trim().replace(/^["“]|["”]$/g, '');
+    const thesis = body
+      .split(/\s+[—–-]\s+|\s*\(/)[0]!
+      .trim()
+      .replace(/^["“]|["”]$/g, '');
     const reason = (/\bKILLED[^:]*:\s*(.+)$/.exec(body)?.[1] ?? '').trim();
-    if (thesis.length >= 12) out.push({ n: parseInt(m[1]!, 10), thesis, reason });
+    if (thesis.length >= 12)
+      out.push({ n: parseInt(m[1]!, 10), thesis, reason });
   }
   return out;
 }
@@ -92,7 +129,9 @@ function sectionAt(draft: string, needle: string): string {
   const i = draft.toLowerCase().indexOf(needle.toLowerCase());
   if (i === -1) return '(unknown section)';
   const before = draft.slice(0, i).split('\n');
-  for (let j = before.length - 1; j >= 0; j--) if (/^#{1,6}\s/.test(before[j]!)) return before[j]!.replace(/^#+\s*/, '').trim();
+  for (let j = before.length - 1; j >= 0; j--)
+    if (/^#{1,6}\s/.test(before[j]!))
+      return before[j]!.replace(/^#+\s*/, '').trim();
   return '(unknown section)';
 }
 
@@ -107,58 +146,99 @@ export function findReuse(draft: string, kills: Kill[]): Reuse[] {
       for (let i = 0; i + len <= words.length; i++) {
         const gram = words.slice(i, i + len);
         if (gram.filter(w => !STOP.has(w)).length < MIN_CONTENT) continue;
-        if (hay.includes(` ${gram.join(' ')} `)) { hit = gram.join(' '); break; }
+        if (hay.includes(` ${gram.join(' ')} `)) {
+          hit = gram.join(' ');
+          break;
+        }
       }
     }
-    if (hit) out.push({ thesis: k.thesis, phrase: hit, section: sectionAt(visibleDraft, hit) });
+    if (hit)
+      out.push({
+        thesis: k.thesis,
+        phrase: hit,
+        section: sectionAt(visibleDraft, hit),
+      });
   }
   return out;
 }
 
 function readFirst(...paths: string[]): { body: string; path: string } | null {
-  for (const p of paths) if (fs.existsSync(p)) return { body: fs.readFileSync(p, 'utf8'), path: p };
+  for (const p of paths)
+    if (fs.existsSync(p)) return { body: fs.readFileSync(p, 'utf8'), path: p };
   return null;
 }
 
-function runOne(date: string, stage: string, emit: boolean, quiet = false): number {
+function runOne(
+  date: string,
+  stage: string,
+  emit: boolean,
+  quiet = false
+): number {
   const dir = path.join(process.cwd(), 'daily-briefs');
   const missing = (detail: string): number => {
     const blocks = date >= EPOCH;
-    if (!quiet) console.log(`killed-thesis-gate — ${date}: ${detail}. ${blocks ? 'IN EPOCH — cannot enforce, blocking.' : `Pre-${EPOCH} — reported only.`}`);
+    if (!quiet)
+      console.log(
+        `killed-thesis-gate — ${date}: ${detail}. ${blocks ? 'IN EPOCH — cannot enforce, blocking.' : `Pre-${EPOCH} — reported only.`}`
+      );
     return blocks ? 1 : 0;
   };
   const td = readFirst(path.join(dir, `${date}-take-draft.md`));
   if (!td) return missing('take-draft is missing');
   const kills = parseKills(td.body);
-  if (kills.length === 0) return missing('take-draft parsed to zero killed candidates (format drift or an incomplete tournament)');
+  if (kills.length === 0)
+    return missing(
+      'take-draft parsed to zero killed candidates (format drift or an incomplete tournament)'
+    );
 
   if (emit) {
     const outPath = path.join(dir, `${date}-killed-theses.json`);
-    fs.writeFileSync(outPath, JSON.stringify({ date, source: path.basename(td.path), kills }, null, 2) + '\n');
-    if (!quiet) console.log(`  emitted ${path.basename(outPath)} — ${kills.length} killed candidate(s) now machine-readable`);
+    fs.writeFileSync(
+      outPath,
+      JSON.stringify({ date, source: path.basename(td.path), kills }, null, 2) +
+        '\n'
+    );
+    if (!quiet)
+      console.log(
+        `  emitted ${path.basename(outPath)} — ${kills.length} killed candidate(s) now machine-readable`
+      );
   }
 
-  const draft = stage === 'v2'
-    ? readFirst(path.join(dir, `${date}-v2.md`))
-    : readFirst(path.join(dir, `${date}-v1.md`), path.join(dir, `${date}-v1-pre-quality-gate.md`));
+  const draft =
+    stage === 'v2'
+      ? readFirst(path.join(dir, `${date}-v2.md`))
+      : readFirst(
+          path.join(dir, `${date}-v1.md`),
+          path.join(dir, `${date}-v1-pre-quality-gate.md`)
+        );
   if (!draft) return missing(`${stage} draft is missing`);
 
   const reuse = findReuse(draft.body, kills);
   if (!quiet) {
-    console.log(`killed-thesis-gate — ${date} ${stage} (${kills.length} killed candidate(s) in ${path.basename(td.path)})`);
+    console.log(
+      `killed-thesis-gate — ${date} ${stage} (${kills.length} killed candidate(s) in ${path.basename(td.path)})`
+    );
     for (const r of reuse) {
-      console.log(`  🔴 [killed-thesis-reuse] "${r.thesis}" was killed at selection and its conclusion shipped in ${r.section}.`);
+      console.log(
+        `  🔴 [killed-thesis-reuse] "${r.thesis}" was killed at selection and its conclusion shipped in ${r.section}.`
+      );
       console.log(`      reproduced phrase: "${r.phrase}"`);
-      console.log('      The tournament already did this research and already said no. Replace the conclusion, or overturn the kill in writing — do not let it in through another door.');
+      console.log(
+        '      The tournament already did this research and already said no. Replace the conclusion, or overturn the kill in writing — do not let it in through another door.'
+      );
     }
-    if (!reuse.length) console.log('  ✅ no killed thesis reproduced in the draft.');
+    if (!reuse.length)
+      console.log('  ✅ no killed thesis reproduced in the draft.');
   }
   return reuse.length ? 1 : 0;
 }
 
 function selftest(): number {
   let fails = 0;
-  const t = (ok: boolean, label: string) => { console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`); if (!ok) fails++; };
+  const t = (ok: boolean, label: string) => {
+    console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`);
+    if (!ok) fails++;
+  };
 
   // VERBATIM from daily-briefs/2026-08-06-take-draft.md (TOURNAMENT block).
   const TD = `TOURNAMENT
@@ -166,38 +246,75 @@ function selftest(): number {
   3. Rerouting is not risk reduction (Houthis re-targeting the diversion route; Iran having struck both Hormuz bypasses) — 2/4. KILLED ON GREP: this is the Apr 11 2026 Take (Redundancy Elimination Framework), same mechanism.
   5. The Enumerability Condition — 4/4. SELECTED.`;
   const kills = parseKills(TD);
-  t(kills.length === 2 && kills[1]!.thesis === 'Rerouting is not risk reduction',
-    '[IMP-134] parses the kill list out of the tournament prose (2 kills, thesis extracted without its evidence parenthetical)');
-  t(!kills.some(k => /Enumerability/.test(k.thesis)), '[IMP-134] does NOT treat the SELECTED candidate as killed');
+  t(
+    kills.length === 2 &&
+      kills[1]!.thesis === 'Rerouting is not risk reduction',
+    '[IMP-134] parses the kill list out of the tournament prose (2 kills, thesis extracted without its evidence parenthetical)'
+  );
+  t(
+    !kills.some(k => /Enumerability/.test(k.thesis)),
+    '[IMP-134] does NOT treat the SELECTED candidate as killed'
+  );
 
   // VERBATIM from daily-briefs/2026-08-06-v1-pre-quality-gate.md, Geo-1's closer.
   const GEO = `## Geopolitics\n**A second chokepoint escalated to a sunk vessel on Wednesday.** Houthi spokesman Yahya Saree said the Saudi product tanker Wafa was struck off Yanbu, the eighth tanker targeted since the movement declared a maritime blockade on July 22. Rerouting is not risk reduction when the adversary re-targets the route you rerouted to.`;
   const r = findReuse(GEO, kills);
-  t(r.length === 1 && /rerouting is not risk reduction/.test(r[0]!.phrase) && /Geopolitics/.test(r[0]!.section),
-    '[IMP-134] FIRES on the real 08-06 Geo-1 closer — a thesis killed on grep, shipped in another section');
+  t(
+    r.length === 1 &&
+      /rerouting is not risk reduction/.test(r[0]!.phrase) &&
+      /Geopolitics/.test(r[0]!.section),
+    '[IMP-134] FIRES on the real 08-06 Geo-1 closer — a thesis killed on grep, shipped in another section'
+  );
 
   // THE FALSE-POSITIVE CASE, and the reason the check is an n-gram: the same topic, same actors,
   // same news — WITHOUT the killed conclusion — is exactly what Geo-1 is supposed to contain.
   const TOPIC_ONLY = `## Geopolitics\n**A second chokepoint escalated to a sunk vessel.** The Houthis struck the Wafa off Yanbu after the kingdom diverted ships away from Bab el-Mandeb, and Brent gave back its gain the same afternoon. The shipowner's question is what a war-risk premium is worth when the underwriter cannot name the safe route.`;
-  t(findReuse(TOPIC_ONLY, kills).length === 0,
-    '[IMP-134] SILENT on the same topic, actors and evidence without the killed conclusion — the kill was of a thesis, not a subject');
-  t(findReuse('## Markets & Macro\nThe risk is not reduction of supply but of the route.', kills).length === 0,
-    '[IMP-134] SILENT on scattered shared words that are not a contiguous phrase');
-  t(findReuse('## Geopolitics\n<!-- Rerouting is not risk reduction when the route moves. -->\nVisible prose reaches a different conclusion.', kills).length === 0,
-    '[IMP-134] SILENT when the killed thesis appears only inside an HTML comment');
-  t(findReuse('## Geopolitics\nRe-routing is not risk reduction when the adversary follows the diversion.', kills).length === 1,
-    '[IMP-134] FIRES through the visible re-routing/rerouting hyphen variant');
+  t(
+    findReuse(TOPIC_ONLY, kills).length === 0,
+    '[IMP-134] SILENT on the same topic, actors and evidence without the killed conclusion — the kill was of a thesis, not a subject'
+  );
+  t(
+    findReuse(
+      '## Markets & Macro\nThe risk is not reduction of supply but of the route.',
+      kills
+    ).length === 0,
+    '[IMP-134] SILENT on scattered shared words that are not a contiguous phrase'
+  );
+  t(
+    findReuse(
+      '## Geopolitics\n<!-- Rerouting is not risk reduction when the route moves. -->\nVisible prose reaches a different conclusion.',
+      kills
+    ).length === 0,
+    '[IMP-134] SILENT when the killed thesis appears only inside an HTML comment'
+  );
+  t(
+    findReuse(
+      '## Geopolitics\nRe-routing is not risk reduction when the adversary follows the diversion.',
+      kills
+    ).length === 1,
+    '[IMP-134] FIRES through the visible re-routing/rerouting hyphen variant'
+  );
 
   // Live acceptance legs: the Critic asked for SILENT on 08-05 and 08-04.
   for (const d of ['2026-08-05', '2026-08-04']) {
-    t(runOne(d, 'v1', false, true) === 0, `[IMP-134] EXIT 0 on the real ${d} v1 (the Critic's silent-case acceptance leg)`);
+    t(
+      runOne(d, 'v1', false, true) === 0,
+      `[IMP-134] EXIT 0 on the real ${d} v1 (the Critic's silent-case acceptance leg)`
+    );
   }
   const live = runOne('2026-08-06', 'v1', false, true);
-  t(live === 1, '[IMP-134] EXIT 1 on the real 2026-08-06 v1 — the acceptance case, end to end on disk');
-  t(runOne('2099-01-01', 'v1', false, true) === 1,
-    '[IMP-134] FAILS CLOSED in epoch when the take-draft is missing');
+  t(
+    live === 1,
+    '[IMP-134] EXIT 1 on the real 2026-08-06 v1 — the acceptance case, end to end on disk'
+  );
+  t(
+    runOne('2099-01-01', 'v1', false, true) === 1,
+    '[IMP-134] FAILS CLOSED in epoch when the take-draft is missing'
+  );
 
-  console.log(`\nkilled-thesis-gate selftest — ${fails ? 'FAILED' : 'PASS'} (parse + reuse + topic-only silence verified both directions)`);
+  console.log(
+    `\nkilled-thesis-gate selftest — ${fails ? 'FAILED' : 'PASS'} (parse + reuse + topic-only silence verified both directions)`
+  );
   return fails ? 1 : 0;
 }
 
@@ -205,12 +322,22 @@ function main(): number {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
   const date = args.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a));
-  if (!date) { console.error('Usage: killed-thesis-gate.ts <YYYY-MM-DD> [--stage v1|v2] [--emit] | --selftest'); return 2; }
+  if (!date) {
+    console.error(
+      'Usage: killed-thesis-gate.ts <YYYY-MM-DD> [--stage v1|v2] [--emit] | --selftest'
+    );
+    return 2;
+  }
   const si = args.indexOf('--stage');
-  const stage = si === -1 ? 'v1' : (args[si + 1] || '');
-  if (!['v1', 'v2'].includes(stage)) { console.error('--stage must be v1 or v2'); return 2; }
+  const stage = si === -1 ? 'v1' : args[si + 1] || '';
+  if (!['v1', 'v2'].includes(stage)) {
+    console.error('--stage must be v1 or v2');
+    return 2;
+  }
   return runOne(date, stage, args.includes('--emit'));
 }
 
-const invokedDirectly = !!process.argv[1] && path.resolve(process.argv[1]).endsWith('killed-thesis-gate.ts');
+const invokedDirectly =
+  !!process.argv[1] &&
+  path.resolve(process.argv[1]).endsWith('killed-thesis-gate.ts');
 if (invokedDirectly) process.exit(main());

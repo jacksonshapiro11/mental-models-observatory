@@ -1,14 +1,14 @@
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import {
-    ArrowLeft,
-    Bookmark,
-    BookOpen,
-    ChevronRight,
-    Clock,
-    Share2,
-    TrendingUp,
-    Users
+  ArrowLeft,
+  Bookmark,
+  BookOpen,
+  ChevronRight,
+  Clock,
+  Share2,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
@@ -49,25 +49,25 @@ const getTierColors = (tier?: number) => {
       return {
         bg: 'bg-gradient-to-br from-foundational-50 via-foundational-100 to-foundational-200',
         text: 'text-foundational-800',
-        accent: 'text-foundational-600'
+        accent: 'text-foundational-600',
       };
     case 2:
       return {
         bg: 'bg-gradient-to-br from-practical-50 via-practical-100 to-practical-200',
         text: 'text-practical-800',
-        accent: 'text-practical-600'
+        accent: 'text-practical-600',
       };
     case 3:
       return {
         bg: 'bg-gradient-to-br from-specialized-50 via-specialized-100 to-specialized-200',
         text: 'text-specialized-800',
-        accent: 'text-specialized-600'
+        accent: 'text-specialized-600',
       };
     default:
       return {
         bg: 'bg-gradient-to-br from-neutral-50 via-neutral-100 to-neutral-200',
         text: 'text-neutral-800',
-        accent: 'text-neutral-600'
+        accent: 'text-neutral-600',
       };
   }
 };
@@ -93,7 +93,7 @@ export function PageHeader({
   actions = [],
   breadcrumbs = [],
   stats,
-  backLink
+  backLink,
 }: PageHeaderProps) {
   const tierColors = getTierColors(stats?.tier);
 
@@ -103,7 +103,7 @@ export function PageHeader({
         await navigator.share({
           title: title,
           text: description || subtitle || '',
-          url: window.location.href
+          url: window.location.href,
         });
       } catch (err) {
         console.error('Error sharing:', err);
@@ -124,25 +124,25 @@ export function PageHeader({
       {/* Background image overlay */}
       {backgroundImage && (
         <>
-          <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
+          <div
+            className='absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20'
             style={{ backgroundImage: `url(${backgroundImage})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent" />
+          <div className='absolute inset-0 bg-gradient-to-r from-black/20 to-transparent' />
         </>
       )}
 
       {/* Content */}
-      <div className="relative">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-16">
+      <div className='relative'>
+        <div className='container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-16'>
           {/* Back link */}
           {backLink && (
-            <div className="mb-6">
-              <Link 
+            <div className='mb-6'>
+              <Link
                 href={backLink.href}
-                className="inline-flex items-center space-x-2 text-sm text-neutral-600 hover:text-neutral-800 transition-colors"
+                className='inline-flex items-center space-x-2 text-sm text-neutral-600 hover:text-neutral-800 transition-colors'
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className='w-4 h-4' />
                 <span>{backLink.label}</span>
               </Link>
             </div>
@@ -150,23 +150,23 @@ export function PageHeader({
 
           {/* Breadcrumbs */}
           {breadcrumbs.length > 0 && (
-            <nav className="mb-6" aria-label="Breadcrumb">
-              <ol className="flex items-center space-x-2 text-sm">
+            <nav className='mb-6' aria-label='Breadcrumb'>
+              <ol className='flex items-center space-x-2 text-sm'>
                 {breadcrumbs.map((item, index) => (
-                  <li key={index} className="flex items-center">
+                  <li key={index} className='flex items-center'>
                     {index > 0 && (
-                      <ChevronRight className="w-3 h-3 text-neutral-400 mx-2" />
+                      <ChevronRight className='w-3 h-3 text-neutral-400 mx-2' />
                     )}
                     {item.current ? (
                       <span className={`font-medium ${tierColors.text}`}>
                         {item.label}
                       </span>
                     ) : (
-                      <Link 
+                      <Link
                         href={item.href}
                         className={`hover:${tierColors.accent} transition-colors ${
-                          item.tier 
-                            ? getTierColors(item.tier).accent 
+                          item.tier
+                            ? getTierColors(item.tier).accent
                             : 'text-neutral-600'
                         }`}
                       >
@@ -174,10 +174,7 @@ export function PageHeader({
                       </Link>
                     )}
                     {item.tier && (
-                      <Badge 
-                        variant="outline" 
-                        className="ml-2 text-xs"
-                      >
+                      <Badge variant='outline' className='ml-2 text-xs'>
                         T{item.tier}
                       </Badge>
                     )}
@@ -187,22 +184,22 @@ export function PageHeader({
             </nav>
           )}
 
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between">
+          <div className='flex flex-col lg:flex-row lg:items-start lg:justify-between'>
             {/* Title and description */}
-            <div className="flex-1 max-w-4xl">
+            <div className='flex-1 max-w-4xl'>
               {/* Tier and difficulty badges */}
-              <div className="flex items-center space-x-2 mb-4">
+              <div className='flex items-center space-x-2 mb-4'>
                 {stats?.tier && (
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant='outline'
                     className={`${tierColors.text} border-current`}
                   >
                     Tier {stats.tier}
                   </Badge>
                 )}
                 {stats?.difficulty && (
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant='outline'
                     className={getDifficultyColor(stats.difficulty)}
                   >
                     {stats.difficulty}
@@ -211,70 +208,80 @@ export function PageHeader({
               </div>
 
               {/* Main title */}
-              <h1 className={`text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight ${tierColors.text} mb-3 sm:mb-4`}>
+              <h1
+                className={`text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight ${tierColors.text} mb-3 sm:mb-4`}
+              >
                 {title}
               </h1>
 
               {/* Subtitle */}
               {subtitle && (
-                <p className={`text-base sm:text-xl lg:text-2xl ${tierColors.accent} mb-4 sm:mb-6 font-medium`}>
+                <p
+                  className={`text-base sm:text-xl lg:text-2xl ${tierColors.accent} mb-4 sm:mb-6 font-medium`}
+                >
                   {subtitle}
                 </p>
               )}
 
               {/* Description */}
               {description && (
-                <p className="text-base sm:text-lg text-neutral-700 leading-relaxed max-w-3xl mb-6 sm:mb-8">
+                <p className='text-base sm:text-lg text-neutral-700 leading-relaxed max-w-3xl mb-6 sm:mb-8'>
                   {description}
                 </p>
               )}
 
               {/* Statistics */}
               {stats && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+                <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8'>
                   {stats.totalModels !== undefined && (
-                    <div className="text-center sm:text-left">
-                      <div className={`text-xl sm:text-2xl lg:text-3xl font-bold ${tierColors.text}`}>
+                    <div className='text-center sm:text-left'>
+                      <div
+                        className={`text-xl sm:text-2xl lg:text-3xl font-bold ${tierColors.text}`}
+                      >
                         {stats.totalModels}
                       </div>
-                      <div className="text-sm text-neutral-600 flex items-center justify-center sm:justify-start">
-                        <BookOpen className="w-3 h-3 mr-1" />
+                      <div className='text-sm text-neutral-600 flex items-center justify-center sm:justify-start'>
+                        <BookOpen className='w-3 h-3 mr-1' />
                         Mental Models
                       </div>
                     </div>
                   )}
 
                   {stats.totalHighlights !== undefined && (
-                    <div className="text-center sm:text-left">
-                      <div className={`text-xl sm:text-2xl lg:text-3xl font-bold ${tierColors.text}`}>
+                    <div className='text-center sm:text-left'>
+                      <div
+                        className={`text-xl sm:text-2xl lg:text-3xl font-bold ${tierColors.text}`}
+                      >
                         {stats.totalHighlights}
                       </div>
-                      <div className="text-sm text-neutral-600 flex items-center justify-center sm:justify-start">
-                        <TrendingUp className="w-3 h-3 mr-1" />
+                      <div className='text-sm text-neutral-600 flex items-center justify-center sm:justify-start'>
+                        <TrendingUp className='w-3 h-3 mr-1' />
                         Highlights
                       </div>
                     </div>
                   )}
 
                   {stats.totalSources !== undefined && (
-                    <div className="text-center sm:text-left">
-                      <div className={`text-xl sm:text-2xl lg:text-3xl font-bold ${tierColors.text}`}>
+                    <div className='text-center sm:text-left'>
+                      <div
+                        className={`text-xl sm:text-2xl lg:text-3xl font-bold ${tierColors.text}`}
+                      >
                         {stats.totalSources}
                       </div>
-                      <div className="text-sm text-neutral-600 flex items-center justify-center sm:justify-start">
-                        <Users className="w-3 h-3 mr-1" />
+                      <div className='text-sm text-neutral-600 flex items-center justify-center sm:justify-start'>
+                        <Users className='w-3 h-3 mr-1' />
                         Sources
                       </div>
                     </div>
                   )}
 
                   {stats.lastUpdated && (
-                    <div className="text-center sm:text-left">
+                    <div className='text-center sm:text-left'>
                       <div className={`text-sm font-medium ${tierColors.text}`}>
                         Updated
                       </div>
-                      <div className="text-sm text-neutral-600 flex items-center justify-center sm:justify-start">
-                        <Clock className="w-3 h-3 mr-1" />
+                      <div className='text-sm text-neutral-600 flex items-center justify-center sm:justify-start'>
+                        <Clock className='w-3 h-3 mr-1' />
                         {new Date(stats.lastUpdated).toLocaleDateString()}
                       </div>
                     </div>
@@ -284,24 +291,24 @@ export function PageHeader({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center space-x-2 sm:space-x-3 mt-4 sm:mt-6 lg:mt-0 lg:ml-8">
+            <div className='flex items-center space-x-2 sm:space-x-3 mt-4 sm:mt-6 lg:mt-0 lg:ml-8'>
               {/* Default actions */}
               <Button
-                variant="outline"
-                size="sm"
+                variant='outline'
+                size='sm'
                 onClick={handleShare}
-                className="bg-white/80 backdrop-blur-sm"
+                className='bg-white/80 backdrop-blur-sm'
               >
-                <Share2 className="w-4 h-4 mr-2" />
+                <Share2 className='w-4 h-4 mr-2' />
                 Share
               </Button>
 
               <Button
-                variant="outline"
-                size="sm"
-                className="bg-white/80 backdrop-blur-sm"
+                variant='outline'
+                size='sm'
+                className='bg-white/80 backdrop-blur-sm'
               >
-                <Bookmark className="w-4 h-4 mr-2" />
+                <Bookmark className='w-4 h-4 mr-2' />
                 Bookmark
               </Button>
 
@@ -314,7 +321,7 @@ export function PageHeader({
         </div>
 
         {/* Bottom gradient fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent" />
+        <div className='absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent' />
       </div>
     </header>
   );

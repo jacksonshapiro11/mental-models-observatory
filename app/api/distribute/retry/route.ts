@@ -20,7 +20,10 @@ import { generateFullBriefAudio } from '@/lib/audio/full-generate';
 import { readEpisodeMetadata } from '@/lib/audio/podcast-feed';
 import { runDistributeIfNeeded } from '@/lib/distribute/run-if-needed';
 import { generateDailyPack } from '@/lib/marketing/generate-daily-pack';
-import { audioNeedsRetry, stepNeedsRetry } from '@/lib/marketing/pipeline-status';
+import {
+  audioNeedsRetry,
+  stepNeedsRetry,
+} from '@/lib/marketing/pipeline-status';
 import {
   readAudioLog,
   readDistributeLog,
@@ -43,12 +46,13 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const [audioLog, distributeLog, marketingPack, fullEpisode] = await Promise.all([
-    readAudioLog(dateSlug),
-    readDistributeLog(dateSlug),
-    readMarketingPack(dateSlug),
-    readEpisodeMetadata(dateSlug),
-  ]);
+  const [audioLog, distributeLog, marketingPack, fullEpisode] =
+    await Promise.all([
+      readAudioLog(dateSlug),
+      readDistributeLog(dateSlug),
+      readMarketingPack(dateSlug),
+      readEpisodeMetadata(dateSlug),
+    ]);
 
   const retries: string[] = [];
   const results: Record<string, unknown> = { date: dateSlug };
@@ -60,16 +64,16 @@ export async function POST(req: NextRequest) {
   if (needsFullPodcast) {
     retries.push('fullAudio');
     retryTasks.push(
-      generateFullBriefAudio({ date: dateSlug }).then((audio) => {
+      generateFullBriefAudio({ date: dateSlug }).then(audio => {
         results.fullAudio = audio;
-      }),
+      })
     );
   }
 
   if (audioNeedsRetry(audioLog)) {
     retries.push('lightAudio');
     retryTasks.push(
-      generateLightAudio({ date: dateSlug }).then(async (audio) => {
+      generateLightAudio({ date: dateSlug }).then(async audio => {
         const audioOk = audio.status === 'success' || audio.status === 'exists';
         if (audio.status === 'skipped') {
           results.lightAudio = audio;
@@ -84,7 +88,7 @@ export async function POST(req: NextRequest) {
         if (audio.error) entry.error = audio.error;
         await writeAudioLog(dateSlug, entry);
         results.lightAudio = audio;
-      }),
+      })
     );
   }
 
@@ -96,18 +100,18 @@ export async function POST(req: NextRequest) {
     if (retryX) retries.push('x');
     const channel = retryEmail && retryX ? null : retryEmail ? 'email' : 'x';
     retryTasks.push(
-      runDistributeIfNeeded({ dateSlug, channel }).then((dist) => {
+      runDistributeIfNeeded({ dateSlug, channel }).then(dist => {
         results.distribute = dist;
-      }),
+      })
     );
   }
 
   if (!marketingPack) {
     retries.push('marketing');
     retryTasks.push(
-      generateDailyPack(dateSlug).then((pack) => {
+      generateDailyPack(dateSlug).then(pack => {
         results.marketing = pack;
-      }),
+      })
     );
   }
 
@@ -122,7 +126,9 @@ export async function POST(req: NextRequest) {
   const settled = await Promise.allSettled(retryTasks);
   const errors = settled
     .filter((s): s is PromiseRejectedResult => s.status === 'rejected')
-    .map((s) => (s.reason instanceof Error ? s.reason.message : String(s.reason)));
+    .map(s =>
+      s.reason instanceof Error ? s.reason.message : String(s.reason)
+    );
 
   return NextResponse.json({
     date: dateSlug,

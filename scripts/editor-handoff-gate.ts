@@ -77,7 +77,11 @@ export const MIN_PLAUSIBLE_BRIEF_BYTES = 4000;
 type Violation = { check: string; message: string };
 const DB = (root: string) => path.join(root, 'daily-briefs');
 
-interface EditorLine { ts: Date | null; kind: 'CANARY' | 'SUCCESS' | 'FAIL' | 'SELF-HEAL' | 'OTHER'; raw: string }
+interface EditorLine {
+  ts: Date | null;
+  kind: 'CANARY' | 'SUCCESS' | 'FAIL' | 'SELF-HEAL' | 'OTHER';
+  raw: string;
+}
 
 const statusLines = (root: string, date: string): string[] => {
   const p = path.join(DB(root), `${date}-pipeline-status.md`);
@@ -93,14 +97,17 @@ function editorLines(root: string, date: string): EditorLine[] {
     if (!/brief-editor/i.test(raw)) continue;
     const tsm = raw.match(/(\d{4}-\d{2}-\d{2}T[\d:]+Z)/);
     const ts = tsm ? new Date(tsm[1]) : null;
-    const fields = raw.split('|').map((f) => f.trim());
-    const has = (re: RegExp) => fields.some((f) => re.test(f));
-    const kind: EditorLine['kind'] =
-      has(/^SUCCESS$/i) ? 'SUCCESS'
-      : has(/^FAIL/i) ? 'FAIL'
-      : has(/^SELF-HEAL/i) ? 'SELF-HEAL'
-      : has(/^CANARY$/i) || has(/^CANARY\b/i) ? 'CANARY'
-      : 'OTHER';
+    const fields = raw.split('|').map(f => f.trim());
+    const has = (re: RegExp) => fields.some(f => re.test(f));
+    const kind: EditorLine['kind'] = has(/^SUCCESS$/i)
+      ? 'SUCCESS'
+      : has(/^FAIL/i)
+        ? 'FAIL'
+        : has(/^SELF-HEAL/i)
+          ? 'SELF-HEAL'
+          : has(/^CANARY$/i) || has(/^CANARY\b/i)
+            ? 'CANARY'
+            : 'OTHER';
     out.push({ ts, kind, raw: raw.trim() });
   }
   return out;
@@ -109,23 +116,33 @@ function editorLines(root: string, date: string): EditorLine[] {
 export type LivenessState = 'ALIVE' | 'QUIET' | 'ABSENT';
 export interface Liveness {
   state: LivenessState;
-  quietMin: number | null;   // minutes since the working file was last written
+  quietMin: number | null; // minutes since the working file was last written
   canaryAgeMin: number | null;
   workingPath: string;
   reason: string;
-  bytes: number | null;      // IMP-141: null = nothing on disk. 0 = a truncated scratch file.
+  bytes: number | null; // IMP-141: null = nothing on disk. 0 = a truncated scratch file.
 }
 
 /** THE LOAD-BEARING FUNCTION. Liveness is mtime, not a stopwatch. */
-export function liveness(root: string, date: string, now = new Date()): Liveness {
+export function liveness(
+  root: string,
+  date: string,
+  now = new Date()
+): Liveness {
   const working = path.join(DB(root), `${date}-v2.working.md`);
   const lines = editorLines(root, date);
-  const canary = lines.find((l) => l.kind === 'CANARY');
-  const canaryAgeMin = canary?.ts ? (now.getTime() - canary.ts.getTime()) / 60000 : null;
+  const canary = lines.find(l => l.kind === 'CANARY');
+  const canaryAgeMin = canary?.ts
+    ? (now.getTime() - canary.ts.getTime()) / 60000
+    : null;
 
   if (!fs.existsSync(working)) {
     return {
-      state: 'ABSENT', quietMin: null, canaryAgeMin, workingPath: working, bytes: null,
+      state: 'ABSENT',
+      quietMin: null,
+      canaryAgeMin,
+      workingPath: working,
+      bytes: null,
       reason: `no ${date}-v2.working.md on disk${canaryAgeMin !== null ? ` (CANARY ${canaryAgeMin.toFixed(0)} min old)` : ''}`,
     };
   }
@@ -141,25 +158,37 @@ export function liveness(root: string, date: string, now = new Date()): Liveness
   // NO_ARTIFACT_WAIT_MIN — so an Editor that has genuinely only just started is still protected.
   if (bytes < MIN_PLAUSIBLE_BRIEF_BYTES) {
     return {
-      state: 'ABSENT', quietMin, canaryAgeMin, workingPath: working, bytes,
+      state: 'ABSENT',
+      quietMin,
+      canaryAgeMin,
+      workingPath: working,
+      bytes,
       reason: `${date}-v2.working.md exists but is ${bytes} byte(s) — below the ${MIN_PLAUSIBLE_BRIEF_BYTES}-byte floor, so it is a truncated or empty scratch file, NOT an Editor artifact (last written ${quietMin.toFixed(1)} min ago). 2026-08-08 receipt: this exact file sat at 0 bytes and the gate called it ALIVE.`,
     };
   }
   return {
     state: quietMin < QUIET_MIN ? 'ALIVE' : 'QUIET',
-    quietMin, canaryAgeMin, workingPath: working, bytes,
-    reason: quietMin < QUIET_MIN
-      ? `${date}-v2.working.md was written ${quietMin.toFixed(1)} min ago (< ${QUIET_MIN} min) — the Editor is STILL WRITING IT`
-      : `${date}-v2.working.md has not changed for ${quietMin.toFixed(0)} min (≥ ${QUIET_MIN}) — the Editor has stopped`,
+    quietMin,
+    canaryAgeMin,
+    workingPath: working,
+    bytes,
+    reason:
+      quietMin < QUIET_MIN
+        ? `${date}-v2.working.md was written ${quietMin.toFixed(1)} min ago (< ${QUIET_MIN} min) — the Editor is STILL WRITING IT`
+        : `${date}-v2.working.md has not changed for ${quietMin.toFixed(0)} min (≥ ${QUIET_MIN}) — the Editor has stopped`,
   };
 }
 
 /** May the Critic promote {date}-v2.working.md → v2.md? (07-14's exact question.) */
-export function canPromote(root: string, date: string, now = new Date()): Violation[] {
+export function canPromote(
+  root: string,
+  date: string,
+  now = new Date()
+): Violation[] {
   const v: Violation[] = [];
   const l = liveness(root, date, now);
   const lines = editorLines(root, date);
-  const failed = lines.some((x) => x.kind === 'FAIL');
+  const failed = lines.some(x => x.kind === 'FAIL');
   const forced = l.canaryAgeMin !== null && l.canaryAgeMin >= HARD_CEILING_MIN;
 
   // IMP-141 — FIRST, AND IT OUTRANKS `forced`. Every other refusal below can be overridden by the
@@ -176,7 +205,10 @@ export function canPromote(root: string, date: string, now = new Date()): Violat
   }
 
   if (l.state === 'ABSENT') {
-    v.push({ check: 'promote-nothing', message: `PROMOTION IMPOSSIBLE — ${l.reason}. There is no Editor artifact to promote.` });
+    v.push({
+      check: 'promote-nothing',
+      message: `PROMOTION IMPOSSIBLE — ${l.reason}. There is no Editor artifact to promote.`,
+    });
     return v;
   }
   if (l.state === 'ALIVE' && !failed && !forced) {
@@ -186,7 +218,12 @@ export function canPromote(root: string, date: string, now = new Date()): Violat
     });
     return v;
   }
-  if (l.state === 'QUIET' && !failed && !forced && (l.canaryAgeMin === null || l.canaryAgeMin < MIN_WAIT_MIN)) {
+  if (
+    l.state === 'QUIET' &&
+    !failed &&
+    !forced &&
+    (l.canaryAgeMin === null || l.canaryAgeMin < MIN_WAIT_MIN)
+  ) {
     v.push({
       check: 'promote-inside-min-wait',
       message: `PROMOTION FORBIDDEN — the working file is quiet (${l.quietMin?.toFixed(0)} min) but the Editor CANARY is only ${l.canaryAgeMin?.toFixed(0) ?? '?'} min old (floor ${MIN_WAIT_MIN} min). Quiescence is necessary, not sufficient: give the pass its floor before you call it dead.`,
@@ -203,11 +240,15 @@ export function canPromote(root: string, date: string, now = new Date()): Violat
 }
 
 /** May the Critic rebuild v2 from a v1.5 copy? Strictly narrower than promotion. */
-export function canSelfHeal(root: string, date: string, now = new Date()): Violation[] {
+export function canSelfHeal(
+  root: string,
+  date: string,
+  now = new Date()
+): Violation[] {
   const v: Violation[] = [];
   const lines = editorLines(root, date);
-  const terminal = lines.find((l) => l.kind === 'SUCCESS' || l.kind === 'FAIL');
-  const canary = lines.find((l) => l.kind === 'CANARY');
+  const terminal = lines.find(l => l.kind === 'SUCCESS' || l.kind === 'FAIL');
+  const canary = lines.find(l => l.kind === 'CANARY');
   const l = liveness(root, date, now);
   const elog = path.join(DB(root), `${date}-editor-log.md`);
 
@@ -280,7 +321,9 @@ function qgLines(root: string, date: string): EditorLine[] {
   const out: EditorLine[] = [];
   for (const raw of statusLines(root, date)) {
     if (!/brief-quality-gate|\|\s*quality-gate\s*\|/i.test(raw)) continue;
-    const tsm = raw.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2}))/);
+    const tsm = raw.match(
+      /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2}))/
+    );
     // The board carries BOTH `…Z` and `…-0400` (no colon) forms; Date parses only the latter with
     // a colon. Normalising here is why the runtime distribution above is 90 min and not 75.
     let ts: Date | null = null;
@@ -290,14 +333,17 @@ function qgLines(root: string, date: string): EditorLine[] {
       const d = new Date(s);
       ts = isNaN(d.getTime()) ? null : d;
     }
-    const fields = raw.split('|').map((f) => f.trim());
-    const has = (re: RegExp) => fields.some((f) => re.test(f));
-    const kind: EditorLine['kind'] =
-      has(/^SUCCESS$/i) ? 'SUCCESS'
-      : has(/^FAIL/i) ? 'FAIL'
-      : has(/^SKIPPED/i) ? 'SUCCESS'
-      : has(/^CANARY\b/i) ? 'CANARY'
-      : 'OTHER';
+    const fields = raw.split('|').map(f => f.trim());
+    const has = (re: RegExp) => fields.some(f => re.test(f));
+    const kind: EditorLine['kind'] = has(/^SUCCESS$/i)
+      ? 'SUCCESS'
+      : has(/^FAIL/i)
+        ? 'FAIL'
+        : has(/^SKIPPED/i)
+          ? 'SUCCESS'
+          : has(/^CANARY\b/i)
+            ? 'CANARY'
+            : 'OTHER';
     out.push({ ts, kind, raw: raw.trim() });
   }
   return out;
@@ -305,51 +351,79 @@ function qgLines(root: string, date: string): EditorLine[] {
 
 /** THE LOAD-BEARING FUNCTION, one stage upstream. exit 1 = ALIVE = do not inline-QG, do not seed
  *  a passthrough v1.5. Mirrors `liveness()` deliberately: same primitive, same failure it prevents. */
-export function qgLiveness(root: string, date: string, now = new Date()): Liveness {
+export function qgLiveness(
+  root: string,
+  date: string,
+  now = new Date()
+): Liveness {
   const lines = qgLines(root, date);
-  const canary = lines.find((l) => l.kind === 'CANARY');
-  const terminal = lines.find((l) => l.kind === 'SUCCESS' || l.kind === 'FAIL');
-  const canaryAgeMin = canary?.ts ? (now.getTime() - canary.ts.getTime()) / 60000 : null;
-  const paths = QG_ARTIFACTS(date).map((f) => path.join(DB(root), f));
-  const present = paths.filter((p) => fs.existsSync(p));
+  const canary = lines.find(l => l.kind === 'CANARY');
+  const terminal = lines.find(l => l.kind === 'SUCCESS' || l.kind === 'FAIL');
+  const canaryAgeMin = canary?.ts
+    ? (now.getTime() - canary.ts.getTime()) / 60000
+    : null;
+  const paths = QG_ARTIFACTS(date).map(f => path.join(DB(root), f));
+  const present = paths.filter(p => fs.existsSync(p));
   const freshestMin = present.length
-    ? Math.min(...present.map((p) => (now.getTime() - fs.statSync(p).mtimeMs) / 60000))
+    ? Math.min(
+        ...present.map(p => (now.getTime() - fs.statSync(p).mtimeMs) / 60000)
+      )
     : null;
   const label = present.length ? path.basename(present[0]!) : `${date}-v1.5.md`;
 
   // A terminal line ENDS the question — the QG announced it is done. QUIET, whatever the mtimes say.
   if (terminal) {
     return {
-      state: 'QUIET', quietMin: freshestMin, canaryAgeMin, workingPath: label,
+      state: 'QUIET',
+      quietMin: freshestMin,
+      canaryAgeMin,
+      workingPath: label,
       reason: `brief-quality-gate posted a ${terminal.kind} line for ${date} — the QG has finished`,
     };
   }
   if (!canary) {
     return {
-      state: 'ABSENT', quietMin: freshestMin, canaryAgeMin, workingPath: label,
+      state: 'ABSENT',
+      quietMin: freshestMin,
+      canaryAgeMin,
+      workingPath: label,
       reason: `no brief-quality-gate CANARY line on the ${date} board — the QG has not started`,
     };
   }
   // CANARY with no terminal line. Proof of life is an ARTIFACT THAT MOVED, never a countdown.
   if (freshestMin !== null && freshestMin < QG_QUIET_MIN) {
     return {
-      state: 'ALIVE', quietMin: freshestMin, canaryAgeMin, workingPath: label,
+      state: 'ALIVE',
+      quietMin: freshestMin,
+      canaryAgeMin,
+      workingPath: label,
       reason: `${label} was written ${freshestMin.toFixed(1)} min ago (< ${QG_QUIET_MIN}) — the QG is STILL RUNNING. Do NOT inline-QG and do NOT seed a passthrough v1.5.`,
     };
   }
   // Nothing on disk yet: the QG writes nothing for the first stretch of a long pass. Wait out the
   // budget derived from the observed distribution — this is the 08-03 branch exactly.
-  if (freshestMin === null && canaryAgeMin !== null && canaryAgeMin < QG_NO_ARTIFACT_WAIT_MIN) {
+  if (
+    freshestMin === null &&
+    canaryAgeMin !== null &&
+    canaryAgeMin < QG_NO_ARTIFACT_WAIT_MIN
+  ) {
     return {
-      state: 'ALIVE', quietMin: null, canaryAgeMin, workingPath: label,
+      state: 'ALIVE',
+      quietMin: null,
+      canaryAgeMin,
+      workingPath: label,
       reason: `brief-quality-gate CANARY is ${canaryAgeMin.toFixed(0)} min old with no artifact yet (budget ${QG_NO_ARTIFACT_WAIT_MIN} min, observed runtimes reach 90) — a SLOW QG IS NOT A CRASHED QG. Do NOT seed a passthrough v1.5; this is the 2026-08-03 failure.`,
     };
   }
   return {
-    state: 'QUIET', quietMin: freshestMin, canaryAgeMin, workingPath: label,
-    reason: freshestMin !== null
-      ? `no QG artifact has changed for ${freshestMin.toFixed(0)} min (≥ ${QG_QUIET_MIN}) and no terminal line — the QG has stopped`
-      : `nothing on disk ${canaryAgeMin?.toFixed(0)} min after the CANARY (≥ ${QG_NO_ARTIFACT_WAIT_MIN}) — the QG died before writing`,
+    state: 'QUIET',
+    quietMin: freshestMin,
+    canaryAgeMin,
+    workingPath: label,
+    reason:
+      freshestMin !== null
+        ? `no QG artifact has changed for ${freshestMin.toFixed(0)} min (≥ ${QG_QUIET_MIN}) and no terminal line — the QG has stopped`
+        : `nothing on disk ${canaryAgeMin?.toFixed(0)} min after the CANARY (≥ ${QG_NO_ARTIFACT_WAIT_MIN}) — the QG died before writing`,
   };
 }
 
@@ -372,7 +446,11 @@ export function editorCompletedByLog(root: string, date: string): boolean {
   if (!fs.existsSync(elog) || !fs.existsSync(v2)) return false;
   const v15 = path.join(DB(root), `${date}-v1.5.md`);
   if (fs.existsSync(v15)) {
-    try { if (fs.statSync(v2).mtimeMs < fs.statSync(v15).mtimeMs) return false; } catch { /* stat race — treat as complete */ }
+    try {
+      if (fs.statSync(v2).mtimeMs < fs.statSync(v15).mtimeMs) return false;
+    } catch {
+      /* stat race — treat as complete */
+    }
   }
   return true;
 }
@@ -385,9 +463,13 @@ export function auditHandoff(root: string, date: string): Violation[] {
   // A self-heal is recorded inconsistently across nights — as a brief-editor SELF-HEAL-CRITIC line
   // (07-13) or only inside the brief-critic line's prose (07-11). Both count. Agent-written
   // timestamps are unreliable, so ORDERING is not evidence; CO-OCCURRENCE is.
-  const selfHealLine = raw.find((l) => /self-heal/i.test(l) && !/supersede/i.test(l));
-  const editorRan = lines.some((l) => l.kind === 'CANARY' || l.kind === 'SUCCESS');
-  const editorSuccess = lines.find((l) => l.kind === 'SUCCESS');
+  const selfHealLine = raw.find(
+    l => /self-heal/i.test(l) && !/supersede/i.test(l)
+  );
+  const editorRan = lines.some(
+    l => l.kind === 'CANARY' || l.kind === 'SUCCESS'
+  );
+  const editorSuccess = lines.find(l => l.kind === 'SUCCESS');
 
   if (selfHealLine && editorRan) {
     v.push({
@@ -399,8 +481,18 @@ export function auditHandoff(root: string, date: string): Violation[] {
   // 07-14: not a self-heal — a PREMATURE PROMOTION. The Critic promoted the Editor's own scratch
   // file mid-pass, and the Editor's real SUCCESS superseded it ~10 minutes later. Fingerprint:
   // a CRITIC-PROMOTED / budget-expired promotion line AND a later editor line that supersedes it.
-  const promoted = raw.find((l) => /brief-editor/i.test(l) && /critic-promoted|budget expired|promoted by critic/i.test(l));
-  const superseding = raw.find((l) => /brief-editor/i.test(l) && /supersedes (the )?critic|supersedes critic emergency|editor pass completed/i.test(l));
+  const promoted = raw.find(
+    l =>
+      /brief-editor/i.test(l) &&
+      /critic-promoted|budget expired|promoted by critic/i.test(l)
+  );
+  const superseding = raw.find(
+    l =>
+      /brief-editor/i.test(l) &&
+      /supersedes (the )?critic|supersedes critic emergency|editor pass completed/i.test(
+        l
+      )
+  );
   if (promoted && superseding) {
     v.push({
       check: 'premature-promotion',
@@ -442,14 +534,26 @@ export function auditHandoff(root: string, date: string): Violation[] {
  *  reason. A guard whose own fixtures trip it teaches nothing. */
 const PLAUSIBLE_BODY = `# Daily Update — fixture\n\n## Markets & Macro\n\n${'- **A bullet with a hook.** Body sentence carrying a number, 4.1 percent, and a source.\n'.repeat(60)}`;
 
-function fixture(name: string, opts: { canaryMinAgo: number; workingQuietMin: number | null; hold?: string; workingBody?: string }): string {
+function fixture(
+  name: string,
+  opts: {
+    canaryMinAgo: number;
+    workingQuietMin: number | null;
+    hold?: string;
+    workingBody?: string;
+  }
+): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), `ehg-${name}-`));
   fs.mkdirSync(path.join(root, 'daily-briefs'), { recursive: true });
   const date = '2026-01-01';
   const now = Date.now();
-  const canaryTs = new Date(now - opts.canaryMinAgo * 60000).toISOString().replace(/\.\d+Z$/, 'Z');
-  fs.writeFileSync(path.join(root, 'daily-briefs', `${date}-pipeline-status.md`),
-    `${canaryTs} | brief-editor | CANARY | WRITE-OK\n`);
+  const canaryTs = new Date(now - opts.canaryMinAgo * 60000)
+    .toISOString()
+    .replace(/\.\d+Z$/, 'Z');
+  fs.writeFileSync(
+    path.join(root, 'daily-briefs', `${date}-pipeline-status.md`),
+    `${canaryTs} | brief-editor | CANARY | WRITE-OK\n`
+  );
   if (opts.workingQuietMin !== null) {
     const w = path.join(root, 'daily-briefs', `${date}-v2.working.md`);
     fs.writeFileSync(w, opts.workingBody ?? PLAUSIBLE_BODY);
@@ -457,7 +561,10 @@ function fixture(name: string, opts: { canaryMinAgo: number; workingQuietMin: nu
     fs.utimesSync(w, t, t);
   }
   if (opts.hold) {
-    fs.writeFileSync(path.join(root, 'daily-briefs', `${date}-editor-log.md`), `EDITOR-HOLD: ${opts.hold}\n`);
+    fs.writeFileSync(
+      path.join(root, 'daily-briefs', `${date}-editor-log.md`),
+      `EDITOR-HOLD: ${opts.hold}\n`
+    );
   }
   return root;
 }
@@ -473,10 +580,10 @@ function selftest(): number {
   const silent10 = auditHandoff(root, '2026-07-10');
   const silent12 = auditHandoff(root, '2026-07-12');
 
-  const ok14 = fire14.some((x) => x.check === 'premature-promotion');
-  const ok13 = fire13.some((x) => x.check === 'self-heal-over-live-editor');
-  const ok13Recon = fire13.some((x) => x.check === 'critic-reconciliation-owed');
-  const ok11 = fire11.some((x) => x.check === 'self-heal-over-live-editor');
+  const ok14 = fire14.some(x => x.check === 'premature-promotion');
+  const ok13 = fire13.some(x => x.check === 'self-heal-over-live-editor');
+  const ok13Recon = fire13.some(x => x.check === 'critic-reconciliation-owed');
+  const ok11 = fire11.some(x => x.check === 'self-heal-over-live-editor');
   const ok10 = silent10.length === 0;
   const ok12 = silent12.length === 0;
 
@@ -485,7 +592,9 @@ function selftest(): number {
   //     The old gate promoted here. The new one must FORBID.
   const alive = fixture('alive', { canaryMinAgo: 46, workingQuietMin: 0.5 });
   const okAliveState = liveness(alive, D).state === 'ALIVE';
-  const okAliveForbid = canPromote(alive, D).some((x) => x.check === 'promote-over-live-editor');
+  const okAliveForbid = canPromote(alive, D).some(
+    x => x.check === 'promote-over-live-editor'
+  );
   const okAliveNoSelfHeal = canSelfHeal(alive, D).length > 0;
 
   // (b) A REAL CRASH: canary 50 min old, the file has not moved in 25 min. Promote — the brief ships.
@@ -495,14 +604,25 @@ function selftest(): number {
 
   // (c) QUIESCENCE IS NOT SUFFICIENT: quiet, but only 20 min into the pass. Hold the floor.
   const early = fixture('early', { canaryMinAgo: 20, workingQuietMin: 21 });
-  const okEarly = canPromote(early, D).some((x) => x.check === 'promote-inside-min-wait');
+  const okEarly = canPromote(early, D).some(
+    x => x.check === 'promote-inside-min-wait'
+  );
 
   // (d) A HOLD IS A DECISION: quiet + past the floor, but the Editor declared a hold. Never promote.
-  const held = fixture('held', { canaryMinAgo: 60, workingQuietMin: 30, hold: 'Inner Game :: quote unverifiable' });
-  const okHeld = canPromote(held, D).some((x) => x.check === 'promote-over-editor-hold');
+  const held = fixture('held', {
+    canaryMinAgo: 60,
+    workingQuietMin: 30,
+    hold: 'Inner Game :: quote unverifiable',
+  });
+  const okHeld = canPromote(held, D).some(
+    x => x.check === 'promote-over-editor-hold'
+  );
 
   // (e) NEVER DEADLOCK: past the hard ceiling, promotion is allowed even if the file is still moving.
-  const ceiling = fixture('ceiling', { canaryMinAgo: HARD_CEILING_MIN + 5, workingQuietMin: 1 });
+  const ceiling = fixture('ceiling', {
+    canaryMinAgo: HARD_CEILING_MIN + 5,
+    workingQuietMin: 1,
+  });
   const okCeiling = canPromote(ceiling, D).length === 0;
 
   // (f) A GENUINELY DEAD EDITOR (nothing on disk, past the wait) may still be self-healed.
@@ -514,15 +634,35 @@ function selftest(): number {
   const unlogged = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-unlogged-'));
   fs.mkdirSync(path.join(unlogged, 'daily-briefs'), { recursive: true });
   const ud = '2026-01-02';
-  const uStatus = path.join(unlogged, 'daily-briefs', `${ud}-pipeline-status.md`);
-  fs.writeFileSync(uStatus, 'brief-draft | START\nbrief-quality-gate | SUCCESS\n'); // NO brief-editor line
-  fs.writeFileSync(path.join(unlogged, 'daily-briefs', `${ud}-editor-log.md`), '# editor log\nGate 1..15 all pass\n');
-  const uV15 = path.join(unlogged, 'daily-briefs', `${ud}-v1.5.md`); fs.writeFileSync(uV15, '# v1.5\n');
-  const uV2 = path.join(unlogged, 'daily-briefs', `${ud}-v2.md`); fs.writeFileSync(uV2, '# v2\n');
-  const uOld = new Date(Date.now() - 5 * 60000); fs.utimesSync(uV15, uOld, uOld); // v2 fresher than v1.5
-  const okUnlogged = auditHandoff(unlogged, ud).some((x) => x.check === 'editor-status-unlogged');
-  fs.appendFileSync(uStatus, '2026-01-02T20:00:00Z | brief-editor | SUCCESS | done\n');
-  const okLoggedSilent = !auditHandoff(unlogged, ud).some((x) => x.check === 'editor-status-unlogged');
+  const uStatus = path.join(
+    unlogged,
+    'daily-briefs',
+    `${ud}-pipeline-status.md`
+  );
+  fs.writeFileSync(
+    uStatus,
+    'brief-draft | START\nbrief-quality-gate | SUCCESS\n'
+  ); // NO brief-editor line
+  fs.writeFileSync(
+    path.join(unlogged, 'daily-briefs', `${ud}-editor-log.md`),
+    '# editor log\nGate 1..15 all pass\n'
+  );
+  const uV15 = path.join(unlogged, 'daily-briefs', `${ud}-v1.5.md`);
+  fs.writeFileSync(uV15, '# v1.5\n');
+  const uV2 = path.join(unlogged, 'daily-briefs', `${ud}-v2.md`);
+  fs.writeFileSync(uV2, '# v2\n');
+  const uOld = new Date(Date.now() - 5 * 60000);
+  fs.utimesSync(uV15, uOld, uOld); // v2 fresher than v1.5
+  const okUnlogged = auditHandoff(unlogged, ud).some(
+    x => x.check === 'editor-status-unlogged'
+  );
+  fs.appendFileSync(
+    uStatus,
+    '2026-01-02T20:00:00Z | brief-editor | SUCCESS | done\n'
+  );
+  const okLoggedSilent = !auditHandoff(unlogged, ud).some(
+    x => x.check === 'editor-status-unlogged'
+  );
   fs.rmSync(unlogged, { recursive: true, force: true });
 
   // --- IMP-121: QG LIVENESS. The acceptance gate is stated against the REAL 08-03 timestamps, so
@@ -530,42 +670,69 @@ function selftest(): number {
   const qgRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-qg-'));
   fs.mkdirSync(path.join(qgRoot, 'daily-briefs'), { recursive: true });
   const QD = '2026-08-03';
-  const qgStatus = path.join(qgRoot, 'daily-briefs', `${QD}-pipeline-status.md`);
+  const qgStatus = path.join(
+    qgRoot,
+    'daily-briefs',
+    `${QD}-pipeline-status.md`
+  );
   // Verbatim from the real 08-03 board — including the `-0400` offset form that a naive parser drops.
-  fs.writeFileSync(qgStatus, '2026-08-02T22:42:31Z | brief-quality-gate | CANARY | WRITE-OK\n');
+  fs.writeFileSync(
+    qgStatus,
+    '2026-08-02T22:42:31Z | brief-quality-gate | CANARY | WRITE-OK\n'
+  );
   const decisionMoment = new Date('2026-08-02T23:57:43Z'); // the instant the Editor computed EXPIRED
   const qgAtDecision = qgLiveness(qgRoot, QD, decisionMoment);
   // (a) THE FAILURE ITSELF: 75 min in, nothing on disk yet, no terminal line → ALIVE, exit 1.
   const okQgAlive = qgAtDecision.state === 'ALIVE';
   // (b) …and it becomes QUIET only once the QG posts its real SUCCESS line at 00:12:33Z.
-  fs.appendFileSync(qgStatus, '2026-08-02T20:12:33-0400 | brief-quality-gate | daily-briefs/2026-08-03-v1.5.md | SUCCESS\n');
-  const okQgQuietAfter = qgLiveness(qgRoot, QD, new Date('2026-08-03T00:15:00Z')).state === 'QUIET';
+  fs.appendFileSync(
+    qgStatus,
+    '2026-08-02T20:12:33-0400 | brief-quality-gate | daily-briefs/2026-08-03-v1.5.md | SUCCESS\n'
+  );
+  const okQgQuietAfter =
+    qgLiveness(qgRoot, QD, new Date('2026-08-03T00:15:00Z')).state === 'QUIET';
   // (c) THE `-0400` FORM MUST PARSE. If it does not, the SUCCESS line is invisible and the guard
   //     stays ALIVE forever — the mirror-image deadlock. (This is the bug that made the observed
   //     runtime read 75 min instead of 90 during calibration.)
-  const okQgOffsetParsed = qgLines(qgRoot, QD).some((l) => l.kind === 'SUCCESS' && l.ts !== null);
+  const okQgOffsetParsed = qgLines(qgRoot, QD).some(
+    l => l.kind === 'SUCCESS' && l.ts !== null
+  );
   // (d) A REAL CRASH still ends the wait: past the budget with nothing on disk → QUIET, never a deadlock.
   const crashRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-qgcrash-'));
   fs.mkdirSync(path.join(crashRoot, 'daily-briefs'), { recursive: true });
-  fs.writeFileSync(path.join(crashRoot, 'daily-briefs', `${QD}-pipeline-status.md`),
-    `${new Date(Date.now() - (QG_NO_ARTIFACT_WAIT_MIN + 10) * 60000).toISOString().replace(/\.\d+Z$/, 'Z')} | brief-quality-gate | CANARY | WRITE-OK\n`);
+  fs.writeFileSync(
+    path.join(crashRoot, 'daily-briefs', `${QD}-pipeline-status.md`),
+    `${new Date(Date.now() - (QG_NO_ARTIFACT_WAIT_MIN + 10) * 60000).toISOString().replace(/\.\d+Z$/, 'Z')} | brief-quality-gate | CANARY | WRITE-OK\n`
+  );
   const okQgCrash = qgLiveness(crashRoot, QD).state === 'QUIET';
   // (e) SILENT on a night the QG finished BEFORE the Editor's canary — the real 08-01 board:
   //     QG CANARY 22:41:38Z, SUCCESS 22:58:40Z, brief-editor CANARY 23:09:44Z.
-  const okQg0801 = qgLiveness(root, '2026-08-01', new Date('2026-07-31T23:09:44Z')).state === 'QUIET';
-  const okQg0802 = qgLiveness(root, '2026-08-02', new Date('2026-08-01T23:09:43Z')).state === 'QUIET';
+  const okQg0801 =
+    qgLiveness(root, '2026-08-01', new Date('2026-07-31T23:09:44Z')).state ===
+    'QUIET';
+  const okQg0802 =
+    qgLiveness(root, '2026-08-02', new Date('2026-08-01T23:09:43Z')).state ===
+    'QUIET';
   // (f) THE CONSTANT IS EVIDENCED, NOT CHOSEN. Re-derive the QG runtime distribution from the REAL
   //     trailing status boards and fail if QG_NO_ARTIFACT_WAIT_MIN has fallen to or below the max.
   //     This is what the Editor's 21/45 lacked: a number that cannot quietly go stale.
   const runtimes: number[] = [];
   const dbDir = path.join(root, 'daily-briefs');
   if (fs.existsSync(dbDir)) {
-    const boards = fs.readdirSync(dbDir).filter((f) => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(f)).sort().slice(-30);
+    const boards = fs
+      .readdirSync(dbDir)
+      .filter(f => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(f))
+      .sort()
+      .slice(-30);
     for (const b of boards) {
       const d = b.slice(0, 10);
       const ls = qgLines(root, d);
-      const c = ls.filter((l) => l.kind === 'CANARY' && l.ts).map((l) => l.ts!.getTime());
-      const t = ls.filter((l) => (l.kind === 'SUCCESS' || l.kind === 'FAIL') && l.ts).map((l) => l.ts!.getTime());
+      const c = ls
+        .filter(l => l.kind === 'CANARY' && l.ts)
+        .map(l => l.ts!.getTime());
+      const t = ls
+        .filter(l => (l.kind === 'SUCCESS' || l.kind === 'FAIL') && l.ts)
+        .map(l => l.ts!.getTime());
       if (c.length && t.length) {
         const mins = (Math.max(...t) - Math.min(...c)) / 60000;
         if (mins > 0) runtimes.push(mins);
@@ -574,85 +741,181 @@ function selftest(): number {
   }
   const observedMax = runtimes.length ? Math.max(...runtimes) : 0;
   const okQgCalibrated = QG_NO_ARTIFACT_WAIT_MIN > observedMax;
-  console.log(`  [IMP-121] observed QG runtimes (trailing 30 boards, n=${runtimes.length}): ${runtimes.map((m) => m.toFixed(1)).join(' · ')} min → max ${observedMax.toFixed(1)}, budget ${QG_NO_ARTIFACT_WAIT_MIN}`);
+  console.log(
+    `  [IMP-121] observed QG runtimes (trailing 30 boards, n=${runtimes.length}): ${runtimes.map(m => m.toFixed(1)).join(' · ')} min → max ${observedMax.toFixed(1)}, budget ${QG_NO_ARTIFACT_WAIT_MIN}`
+  );
   fs.rmSync(qgRoot, { recursive: true, force: true });
   fs.rmSync(crashRoot, { recursive: true, force: true });
 
   // --- IMP-141 (2026-08-08 Critic mandate #3, RC2): AN EMPTY WORKING FILE IS NOT A LIVE EDITOR.
   //     Leg (a) is asserted against the REAL artifact the Critic found on disk, not a fixture.
   const realEmpty = path.join(root, 'daily-briefs', '2026-08-08-v2.working.md');
-  const realEmptyExists = fs.existsSync(realEmpty) && fs.statSync(realEmpty).size < MIN_PLAUSIBLE_BRIEF_BYTES;
+  const realEmptyExists =
+    fs.existsSync(realEmpty) &&
+    fs.statSync(realEmpty).size < MIN_PLAUSIBLE_BRIEF_BYTES;
   //     Evaluated at the REAL decision moment the Critic quoted: 9.4 min after the file's mtime, the
   //     instant the old gate answered "ALIVE — the Editor is STILL WRITING IT".
   const realMoment = realEmptyExists
     ? new Date(fs.statSync(realEmpty).mtimeMs + 9.4 * 60000)
     : new Date();
-  const okRealAbsent = realEmptyExists && liveness(root, '2026-08-08', realMoment).state === 'ABSENT';
+  const okRealAbsent =
+    realEmptyExists &&
+    liveness(root, '2026-08-08', realMoment).state === 'ABSENT';
   //     …and --can-promote must refuse it WITH THE CEILING ACTIVE. The real 08-08 canary is hours
   //     old, so `forced` is already true against the live board — the strongest form of the test.
   const realPromo = realEmptyExists ? canPromote(root, '2026-08-08') : [];
-  const okRealRefused = realPromo.some((x) => x.check === 'promote-empty-artifact');
+  const okRealRefused = realPromo.some(
+    x => x.check === 'promote-empty-artifact'
+  );
 
   // (b) SYNTHETIC MINIMAL PAIR — same mtime, same canary, differing ONLY in content.
-  const husk = fixture('husk', { canaryMinAgo: HARD_CEILING_MIN + 30, workingQuietMin: 0.5, workingBody: '' });
+  const husk = fixture('husk', {
+    canaryMinAgo: HARD_CEILING_MIN + 30,
+    workingQuietMin: 0.5,
+    workingBody: '',
+  });
   const okHuskAbsent = liveness(husk, D).state === 'ABSENT';
-  const okHuskRefusedPastCeiling = canPromote(husk, D).some((x) => x.check === 'promote-empty-artifact');
-  const full = fixture('full', { canaryMinAgo: HARD_CEILING_MIN + 30, workingQuietMin: 0.5 });
+  const okHuskRefusedPastCeiling = canPromote(husk, D).some(
+    x => x.check === 'promote-empty-artifact'
+  );
+  const full = fixture('full', {
+    canaryMinAgo: HARD_CEILING_MIN + 30,
+    workingQuietMin: 0.5,
+  });
   const okFullAlive = liveness(full, D).state === 'ALIVE';
-  const okFullPromotable = canPromote(full, D).length === 0;   // never-deadlock still works
+  const okFullPromotable = canPromote(full, D).length === 0; // never-deadlock still works
 
   // (c) THE GUARD MUST NOT OPEN THE 07-13 HOLE. An empty file now reads ABSENT, which is the state
   //     that permits a self-heal — so prove the CANARY guard independently holds it shut while a
   //     just-started Editor could still be writing.
-  const huskEarly = fixture('husk-early', { canaryMinAgo: 5, workingQuietMin: 0.2, workingBody: '' });
-  const okHuskEarlyNoSelfHeal = canSelfHeal(huskEarly, D).some((x) => x.check === 'self-heal-over-live-editor');
+  const huskEarly = fixture('husk-early', {
+    canaryMinAgo: 5,
+    workingQuietMin: 0.2,
+    workingBody: '',
+  });
+  const okHuskEarlyNoSelfHeal = canSelfHeal(huskEarly, D).some(
+    x => x.check === 'self-heal-over-live-editor'
+  );
 
   // (d) THE FLOOR IS CALIBRATED, NOT CHOSEN (the IMP-121 discipline): re-derive the smallest REAL v2
   //     on disk and fail if the floor has crept up toward it. A floor that eats real briefs is worse
   //     than no floor — it would refuse to promote a short but genuine Editor pass.
   const v2Sizes = fs.existsSync(dbDir)
-    ? fs.readdirSync(dbDir).filter((f) => /^\d{4}-\d{2}-\d{2}-v2\.md$/.test(f))
-        .map((f) => fs.statSync(path.join(dbDir, f)).size).filter((s) => s > 0)
+    ? fs
+        .readdirSync(dbDir)
+        .filter(f => /^\d{4}-\d{2}-\d{2}-v2\.md$/.test(f))
+        .map(f => fs.statSync(path.join(dbDir, f)).size)
+        .filter(s => s > 0)
     : [];
   const smallestRealV2 = v2Sizes.length ? Math.min(...v2Sizes) : 0;
-  const okFloorCalibrated = smallestRealV2 > 0 && MIN_PLAUSIBLE_BRIEF_BYTES < smallestRealV2 / 2;
-  console.log(`  [IMP-141] real v2 sizes on disk: n=${v2Sizes.length}, smallest ${smallestRealV2}B → floor ${MIN_PLAUSIBLE_BRIEF_BYTES}B is ${(smallestRealV2 / (MIN_PLAUSIBLE_BRIEF_BYTES || 1)).toFixed(1)}× below it`);
+  const okFloorCalibrated =
+    smallestRealV2 > 0 && MIN_PLAUSIBLE_BRIEF_BYTES < smallestRealV2 / 2;
+  console.log(
+    `  [IMP-141] real v2 sizes on disk: n=${v2Sizes.length}, smallest ${smallestRealV2}B → floor ${MIN_PLAUSIBLE_BRIEF_BYTES}B is ${(smallestRealV2 / (MIN_PLAUSIBLE_BRIEF_BYTES || 1)).toFixed(1)}× below it`
+  );
 
-  for (const d of [alive, dead, early, held, ceiling, husk, full, huskEarly]) fs.rmSync(d, { recursive: true, force: true });
+  for (const d of [alive, dead, early, held, ceiling, husk, full, huskEarly])
+    fs.rmSync(d, { recursive: true, force: true });
 
   const rows: [string, boolean][] = [
-    ['IMP-141 the REAL 0-byte 2026-08-08-v2.working.md reads ABSENT at the moment it read ALIVE', okRealAbsent],
-    ['IMP-141 --can-promote REFUSES that real husk with the 120-min ceiling already active', okRealRefused],
-    ['IMP-141 an empty working file reads ABSENT, never ALIVE (synthetic minimal pair)', okHuskAbsent],
-    ['IMP-141 …and promotion is refused PAST the hard ceiling (never-deadlock ≠ never-sanity-check)', okHuskRefusedPastCeiling],
-    ['IMP-141 SILENT on the same fixture with a plausible body: still ALIVE', okFullAlive],
-    ['IMP-141 …and still promotable past the ceiling — the never-deadlock path survives the guard', okFullPromotable],
-    ['IMP-141 an empty file at minute 5 still FORBIDS a self-heal (the 07-13 hole stays shut)', okHuskEarlyNoSelfHeal],
-    [`IMP-141 the ${MIN_PLAUSIBLE_BRIEF_BYTES}B floor stays far under the smallest real v2 (${smallestRealV2}B)`, okFloorCalibrated],
-    ['IMP-121 QG ALIVE at 23:57:43Z on the REAL 08-03 board (the moment the guard said EXPIRED)', okQgAlive],
-    ['IMP-121 QG QUIET only after the real 00:12:33Z SUCCESS line', okQgQuietAfter],
-    ['IMP-121 the board\'s `-0400` timestamp form parses (else the guard deadlocks ALIVE)', okQgOffsetParsed],
-    ['IMP-121 a genuinely crashed QG goes QUIET past the budget (never deadlock)', okQgCrash],
-    ['IMP-121 SILENT on real 08-01 — QG finished before the Editor\'s canary', okQg0801],
+    [
+      'IMP-141 the REAL 0-byte 2026-08-08-v2.working.md reads ABSENT at the moment it read ALIVE',
+      okRealAbsent,
+    ],
+    [
+      'IMP-141 --can-promote REFUSES that real husk with the 120-min ceiling already active',
+      okRealRefused,
+    ],
+    [
+      'IMP-141 an empty working file reads ABSENT, never ALIVE (synthetic minimal pair)',
+      okHuskAbsent,
+    ],
+    [
+      'IMP-141 …and promotion is refused PAST the hard ceiling (never-deadlock ≠ never-sanity-check)',
+      okHuskRefusedPastCeiling,
+    ],
+    [
+      'IMP-141 SILENT on the same fixture with a plausible body: still ALIVE',
+      okFullAlive,
+    ],
+    [
+      'IMP-141 …and still promotable past the ceiling — the never-deadlock path survives the guard',
+      okFullPromotable,
+    ],
+    [
+      'IMP-141 an empty file at minute 5 still FORBIDS a self-heal (the 07-13 hole stays shut)',
+      okHuskEarlyNoSelfHeal,
+    ],
+    [
+      `IMP-141 the ${MIN_PLAUSIBLE_BRIEF_BYTES}B floor stays far under the smallest real v2 (${smallestRealV2}B)`,
+      okFloorCalibrated,
+    ],
+    [
+      'IMP-121 QG ALIVE at 23:57:43Z on the REAL 08-03 board (the moment the guard said EXPIRED)',
+      okQgAlive,
+    ],
+    [
+      'IMP-121 QG QUIET only after the real 00:12:33Z SUCCESS line',
+      okQgQuietAfter,
+    ],
+    [
+      "IMP-121 the board's `-0400` timestamp form parses (else the guard deadlocks ALIVE)",
+      okQgOffsetParsed,
+    ],
+    [
+      'IMP-121 a genuinely crashed QG goes QUIET past the budget (never deadlock)',
+      okQgCrash,
+    ],
+    [
+      "IMP-121 SILENT on real 08-01 — QG finished before the Editor's canary",
+      okQg0801,
+    ],
     ['IMP-121 SILENT on real 08-02 — same clean ordering', okQg0802],
-    [`IMP-121 the ${QG_NO_ARTIFACT_WAIT_MIN}-min budget still exceeds the observed max (${observedMax.toFixed(1)})`, okQgCalibrated],
+    [
+      `IMP-121 the ${QG_NO_ARTIFACT_WAIT_MIN}-min budget still exceeds the observed max (${observedMax.toFixed(1)})`,
+      okQgCalibrated,
+    ],
     ['FIRES on real 07-14 (mid-pass snapshot promoted, then superseded)', ok14],
     ['FIRES on real 07-13 (self-heal over a live Editor)', ok13],
-    ['FIRES on real 07-13 (Critic PROVISIONAL, later Editor SUCCESS)', ok13Recon],
+    [
+      'FIRES on real 07-13 (Critic PROVISIONAL, later Editor SUCCESS)',
+      ok13Recon,
+    ],
     ['FIRES on real 07-11 (same fingerprint — not day one)', ok11],
     ['SILENT on real 07-10 (clean handoff)', ok10],
     ['SILENT on real 07-12 (clean handoff)', ok12],
-    ['LIVENESS: working file touched 30s ago at minute 46 = ALIVE', okAliveState],
-    ['FORBIDS promotion of a file that is still being written (THE 07-14 FIX)', okAliveForbid],
+    [
+      'LIVENESS: working file touched 30s ago at minute 46 = ALIVE',
+      okAliveState,
+    ],
+    [
+      'FORBIDS promotion of a file that is still being written (THE 07-14 FIX)',
+      okAliveForbid,
+    ],
     ['FORBIDS a self-heal over a live Editor', okAliveNoSelfHeal],
-    ['LIVENESS: no write for 25 min = QUIET (a crash is the artifact stopping)', okDeadState],
-    ['ALLOWS promotion of a genuinely crashed Editor (the brief always ships)', okDeadPromote],
+    [
+      'LIVENESS: no write for 25 min = QUIET (a crash is the artifact stopping)',
+      okDeadState,
+    ],
+    [
+      'ALLOWS promotion of a genuinely crashed Editor (the brief always ships)',
+      okDeadPromote,
+    ],
     ['FORBIDS promotion inside the 45-min floor even when quiet', okEarly],
     ['FORBIDS promotion over an EDITOR-HOLD (a hold is a decision)', okHeld],
-    ['ALLOWS a forced promotion past the 120-min hard ceiling (never deadlock)', okCeiling],
+    [
+      'ALLOWS a forced promotion past the 120-min hard ceiling (never deadlock)',
+      okCeiling,
+    ],
     ['ALLOWS a self-heal when the Editor is genuinely absent', okAllowed],
-    ['IMP-072 FIRES on a completed-but-unlogged Editor (07-18 observability gap)', okUnlogged],
-    ['IMP-072 SILENT once the brief-editor SUCCESS line is present', okLoggedSilent],
+    [
+      'IMP-072 FIRES on a completed-but-unlogged Editor (07-18 observability gap)',
+      okUnlogged,
+    ],
+    [
+      'IMP-072 SILENT once the brief-editor SUCCESS line is present',
+      okLoggedSilent,
+    ],
   ];
 
   console.log('editor-handoff-gate --selftest');
@@ -660,11 +923,16 @@ function selftest(): number {
 
   const ok = rows.every(([, x]) => x);
   if (ok) {
-    console.log('\n✅ SELFTEST PASS — liveness is read from the artifact, not from a stopwatch: the gate bites 07-14/07-13/07-11, stays silent on 07-10/07-12, and never deadlocks a dead Editor.');
+    console.log(
+      '\n✅ SELFTEST PASS — liveness is read from the artifact, not from a stopwatch: the gate bites 07-14/07-13/07-11, stays silent on 07-10/07-12, and never deadlocks a dead Editor.'
+    );
     return 0;
   }
   console.error('\n❌ SELFTEST FAIL');
-  for (const x of [...silent10, ...silent12]) console.error(`  unexpected on a clean night: ${x.check} — ${x.message.slice(0, 120)}`);
+  for (const x of [...silent10, ...silent12])
+    console.error(
+      `  unexpected on a clean night: ${x.check} — ${x.message.slice(0, 120)}`
+    );
   return 1;
 }
 
@@ -673,10 +941,18 @@ function main() {
   if (argv.includes('--selftest')) process.exit(selftest());
 
   const root = process.cwd();
-  const modes = ['--can-self-heal', '--can-promote', '--audit', '--liveness', '--qg-liveness'];
-  const i = argv.findIndex((a) => modes.includes(a));
+  const modes = [
+    '--can-self-heal',
+    '--can-promote',
+    '--audit',
+    '--liveness',
+    '--qg-liveness',
+  ];
+  const i = argv.findIndex(a => modes.includes(a));
   if (i < 0 || !argv[i + 1]) {
-    console.error(`usage: editor-handoff-gate.ts (${modes.join(' | ')}) <DATE> | --selftest`);
+    console.error(
+      `usage: editor-handoff-gate.ts (${modes.join(' | ')}) <DATE> | --selftest`
+    );
     process.exit(2);
   }
   const mode = argv[i]!;
@@ -687,14 +963,22 @@ function main() {
     console.log(`editor-handoff-gate --qg-liveness ${date}`);
     console.log(`   state: ${l.state} — ${l.reason}`);
     if (l.state === 'ALIVE') {
-      console.log('\n⏳ QUALITY GATE ALIVE — WAIT. Do NOT inline-QG. Do NOT seed a passthrough v1.5.');
-      console.log('   (2026-08-03: the guard called EXPIRED on a QG with 14 minutes left to run and');
-      console.log('    seeded a v1.5 byte-identical to v1. A slow QG is not a crashed QG.)');
+      console.log(
+        '\n⏳ QUALITY GATE ALIVE — WAIT. Do NOT inline-QG. Do NOT seed a passthrough v1.5.'
+      );
+      console.log(
+        '   (2026-08-03: the guard called EXPIRED on a QG with 14 minutes left to run and'
+      );
+      console.log(
+        '    seeded a v1.5 byte-identical to v1. A slow QG is not a crashed QG.)'
+      );
       process.exit(1);
     }
-    console.log(l.state === 'QUIET'
-      ? '\n✅ QG QUIET — it finished or stopped. Proceed; if you seed a v1.5, declare INLINE-QG SEEDED: in the status line.'
-      : '\n✅ NO QG CANARY — the QG has not started.');
+    console.log(
+      l.state === 'QUIET'
+        ? '\n✅ QG QUIET — it finished or stopped. Proceed; if you seed a v1.5, declare INLINE-QG SEEDED: in the status line.'
+        : '\n✅ NO QG CANARY — the QG has not started.'
+    );
     process.exit(0);
   }
 
@@ -703,25 +987,35 @@ function main() {
     console.log(`editor-handoff-gate --liveness ${date}`);
     console.log(`   state: ${l.state} — ${l.reason}`);
     if (l.state === 'ALIVE') {
-      console.log('\n⏳ EDITOR ALIVE — WAIT. Do not promote, do not self-heal. Re-poll in 3 minutes.');
+      console.log(
+        '\n⏳ EDITOR ALIVE — WAIT. Do not promote, do not self-heal. Re-poll in 3 minutes.'
+      );
       process.exit(1);
     }
-    console.log(l.state === 'QUIET'
-      ? '\n✅ EDITOR QUIET — the artifact has stopped changing. Check --can-promote.'
-      : '\n✅ NO EDITOR ARTIFACT — check --can-self-heal.');
+    console.log(
+      l.state === 'QUIET'
+        ? '\n✅ EDITOR QUIET — the artifact has stopped changing. Check --can-promote.'
+        : '\n✅ NO EDITOR ARTIFACT — check --can-self-heal.'
+    );
     process.exit(0);
   }
 
-  const v = mode === '--can-self-heal' ? canSelfHeal(root, date)
-    : mode === '--can-promote' ? canPromote(root, date)
-    : auditHandoff(root, date);
+  const v =
+    mode === '--can-self-heal'
+      ? canSelfHeal(root, date)
+      : mode === '--can-promote'
+        ? canPromote(root, date)
+        : auditHandoff(root, date);
 
   console.log(`editor-handoff-gate ${mode} ${date}`);
   if (!v.length) {
     console.log(
-      mode === '--can-self-heal' ? '✅ SELF-HEAL ALLOWED — no live Editor, no Editor artifact on disk.'
-      : mode === '--can-promote' ? '✅ PROMOTION ALLOWED — the Editor has stopped writing, past the floor, no hold.'
-      : '✅ HANDOFF CLEAN.');
+      mode === '--can-self-heal'
+        ? '✅ SELF-HEAL ALLOWED — no live Editor, no Editor artifact on disk.'
+        : mode === '--can-promote'
+          ? '✅ PROMOTION ALLOWED — the Editor has stopped writing, past the floor, no hold.'
+          : '✅ HANDOFF CLEAN.'
+    );
     process.exit(0);
   }
   for (const x of v) console.log(`   ✗ [${x.check}] ${x.message}`);

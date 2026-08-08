@@ -62,6 +62,11 @@
   "exclude": [
     "node_modules",
     "scripts",
-    "zz_Old"
+    "zz_Old",
+    "_to_delete",
+    "_to_delete2",
+    ".worktrees",
+    ".next-old",
+    ".readback"
   ]
 }

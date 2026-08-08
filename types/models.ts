@@ -93,8 +93,15 @@ export interface FrameworkStats {
 }
 
 export interface CoverageStats {
-  domainCoverage: Array<{ domain: string; coverage: number; highlights: number }>;
-  tierCoverage: Record<number, { domains: number; models: number; highlights: number }>;
+  domainCoverage: Array<{
+    domain: string;
+    coverage: number;
+    highlights: number;
+  }>;
+  tierCoverage: Record<
+    number,
+    { domains: number; models: number; highlights: number }
+  >;
   gaps: string[]; // Areas that need more highlights
   strengths: string[]; // Well-covered areas
 }

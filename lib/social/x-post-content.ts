@@ -8,14 +8,19 @@
 
 import { Redis } from '@upstash/redis';
 import { parseRedisJson } from '@/lib/social/x-oauth';
-import { generateThreadFromDate, generateThreadForLatest } from '@/lib/social/thread-generator';
+import {
+  generateThreadFromDate,
+  generateThreadForLatest,
+} from '@/lib/social/thread-generator';
 
 export interface XPostContent {
   posts: string[];
   source: 'redis (AI-generated)' | 'thread-generator (code-based fallback)';
 }
 
-async function readXPostFromRedis(dateSlug: string): Promise<{ mainPost: string; reply?: string } | null> {
+async function readXPostFromRedis(
+  dateSlug: string
+): Promise<{ mainPost: string; reply?: string } | null> {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) return null;
@@ -32,7 +37,10 @@ async function readXPostFromRedis(dateSlug: string): Promise<{ mainPost: string;
   };
 }
 
-function buildPostsFromRedis(post: { mainPost: string; reply?: string }): string[] {
+function buildPostsFromRedis(post: {
+  mainPost: string;
+  reply?: string;
+}): string[] {
   const posts = [post.mainPost];
   if (post.reply?.trim()) {
     posts.push(post.reply.trim());
@@ -40,7 +48,9 @@ function buildPostsFromRedis(post: { mainPost: string; reply?: string }): string
   return posts;
 }
 
-export async function resolveXPostContent(dateSlug: string): Promise<XPostContent | null> {
+export async function resolveXPostContent(
+  dateSlug: string
+): Promise<XPostContent | null> {
   const redisPost = await readXPostFromRedis(dateSlug);
 
   if (redisPost) {
@@ -50,11 +60,12 @@ export async function resolveXPostContent(dateSlug: string): Promise<XPostConten
     };
   }
 
-  const threadFallback = generateThreadFromDate(dateSlug) || generateThreadForLatest();
+  const threadFallback =
+    generateThreadFromDate(dateSlug) || generateThreadForLatest();
   if (!threadFallback) return null;
 
   return {
-    posts: threadFallback.tweets.map((tweet) => tweet.text),
+    posts: threadFallback.tweets.map(tweet => tweet.text),
     source: 'thread-generator (code-based fallback)',
   };
 }

@@ -120,7 +120,7 @@ export function SectionVote({ briefDate, sectionId }: SectionVoteProps) {
         console.error('Failed to vote:', error);
       }
     },
-    [briefDate, sectionId, userVote, upCount, downCount, storageKey],
+    [briefDate, sectionId, userVote, upCount, downCount, storageKey]
   );
 
   if (isLoading) {
@@ -132,7 +132,7 @@ export function SectionVote({ briefDate, sectionId }: SectionVoteProps) {
   const downActive = userVote === 'down';
 
   return (
-    <div className="inline-flex items-center gap-1 ml-2">
+    <div className='inline-flex items-center gap-1 ml-2'>
       <button
         onClick={() => handleVote('up')}
         className={`inline-flex items-center justify-center w-6 h-6 min-h-[44px] min-w-[44px] border rounded-sm transition-colors duration-150 ${
@@ -140,14 +140,15 @@ export function SectionVote({ briefDate, sectionId }: SectionVoteProps) {
             ? 'text-ct-green-data border-ct-green-data'
             : 'text-text-muted border-text-muted/20 hover:border-text-muted/40'
         }`}
-        title="Vote up"
-        aria-label="Vote up"
+        title='Vote up'
+        aria-label='Vote up'
       >
-        <span className="text-sm font-semibold">▲</span>
+        <span className='text-sm font-semibold'>▲</span>
       </button>
 
-      <span className="font-mono text-xs text-text-muted w-6 text-center">
-        {netCount > 0 ? '+' : ''}{netCount}
+      <span className='font-mono text-xs text-text-muted w-6 text-center'>
+        {netCount > 0 ? '+' : ''}
+        {netCount}
       </span>
 
       <button
@@ -157,10 +158,10 @@ export function SectionVote({ briefDate, sectionId }: SectionVoteProps) {
             ? 'text-ct-pink border-ct-pink'
             : 'text-text-muted border-text-muted/20 hover:border-text-muted/40'
         }`}
-        title="Vote down"
-        aria-label="Vote down"
+        title='Vote down'
+        aria-label='Vote down'
       >
-        <span className="text-sm font-semibold">▼</span>
+        <span className='text-sm font-semibold'>▼</span>
       </button>
     </div>
   );

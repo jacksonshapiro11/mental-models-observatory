@@ -4,15 +4,15 @@ import React, { forwardRef, memo } from 'react';
 
 /**
  * Feedback components for user interaction and status communication
- * 
+ *
  * @example
  * ```tsx
  * <LoadingSpinner size="lg" />
- * 
+ *
  * <Alert type="success" title="Success!" onClose={handleClose}>
  *   Your changes have been saved.
  * </Alert>
- * 
+ *
  * <Badge variant="primary" difficulty="intermediate">
  *   Intermediate
  * </Badge>
@@ -30,27 +30,19 @@ export interface LoadingSpinnerProps extends React.HTMLAttributes<HTMLDivElement
 }
 
 export const LoadingSpinner = forwardRef<HTMLDivElement, LoadingSpinnerProps>(
-  (
-    {
-      size = 'md',
-      color = 'foundational',
-      className,
-      ...props
-    },
-    ref
-  ) => {
+  ({ size = 'md', color = 'foundational', className, ...props }, ref) => {
     const sizeClasses = {
-      'sm': 'h-4 w-4',
-      'md': 'h-6 w-6',
-      'lg': 'h-8 w-8',
-      'xl': 'h-12 w-12'
+      sm: 'h-4 w-4',
+      md: 'h-6 w-6',
+      lg: 'h-8 w-8',
+      xl: 'h-12 w-12',
     };
 
     const colorClasses = {
-      'neutral': 'border-neutral-300 border-t-neutral-600',
-      'foundational': 'border-foundational-300 border-t-foundational-600',
-      'practical': 'border-practical-300 border-t-practical-600',
-      'specialized': 'border-specialized-300 border-t-specialized-600'
+      neutral: 'border-neutral-300 border-t-neutral-600',
+      foundational: 'border-foundational-300 border-t-foundational-600',
+      practical: 'border-practical-300 border-t-practical-600',
+      specialized: 'border-specialized-300 border-t-specialized-600',
     };
 
     return (
@@ -62,8 +54,8 @@ export const LoadingSpinner = forwardRef<HTMLDivElement, LoadingSpinnerProps>(
           colorClasses[color],
           className
         )}
-        role="status"
-        aria-label="Loading"
+        role='status'
+        aria-label='Loading'
         {...props}
       />
     );
@@ -102,23 +94,23 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(
       info: {
         icon: Info,
         classes: 'bg-info-50 border-info-200 text-info-800',
-        iconClasses: 'text-info-600'
+        iconClasses: 'text-info-600',
       },
       success: {
         icon: CheckCircle,
         classes: 'bg-success-50 border-success-200 text-success-800',
-        iconClasses: 'text-success-600'
+        iconClasses: 'text-success-600',
       },
       warning: {
         icon: AlertCircle,
         classes: 'bg-warning-50 border-warning-200 text-warning-800',
-        iconClasses: 'text-warning-600'
+        iconClasses: 'text-warning-600',
       },
       error: {
         icon: XCircle,
         classes: 'bg-error-50 border-error-200 text-error-800',
-        iconClasses: 'text-error-600'
-      }
+        iconClasses: 'text-error-600',
+      },
     };
 
     const config = typeConfig[type];
@@ -132,31 +124,27 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(
           config.classes,
           className
         )}
-        role="alert"
-        aria-live="polite"
+        role='alert'
+        aria-live='polite'
         {...props}
       >
-        <Icon className={cn('h-5 w-5 flex-shrink-0 mt-0.5', config.iconClasses)} />
-        
-        <div className="flex-1 min-w-0">
-          {title && (
-            <h4 className="text-body font-medium mb-xs">
-              {title}
-            </h4>
-          )}
-          <div className="text-body-small">
-            {children}
-          </div>
+        <Icon
+          className={cn('h-5 w-5 flex-shrink-0 mt-0.5', config.iconClasses)}
+        />
+
+        <div className='flex-1 min-w-0'>
+          {title && <h4 className='text-body font-medium mb-xs'>{title}</h4>}
+          <div className='text-body-small'>{children}</div>
         </div>
-        
+
         {closable && onClose && (
           <button
-            type="button"
+            type='button'
             onClick={onClose}
-            className="flex-shrink-0 p-xs rounded-small hover:bg-black/5 transition-colors"
-            aria-label="Close alert"
+            className='flex-shrink-0 p-xs rounded-small hover:bg-black/5 transition-colors'
+            aria-label='Close alert'
           >
-            <X className="h-4 w-4" />
+            <X className='h-4 w-4' />
           </button>
         )}
       </div>
@@ -190,21 +178,22 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
     ref
   ) => {
     const sizeClasses = {
-      'sm': 'px-xs py-px text-caption',
-      'md': 'px-sm py-xs text-body-small',
-      'lg': 'px-md py-sm text-body'
+      sm: 'px-xs py-px text-caption',
+      md: 'px-sm py-xs text-body-small',
+      lg: 'px-md py-sm text-body',
     };
 
     const variantClasses = {
-      'primary': 'bg-foundational-100 text-foundational-800 border-foundational-200',
-      'secondary': 'bg-neutral-100 text-neutral-700 border-neutral-200',
-      'outline': 'bg-transparent text-neutral-600 border-neutral-300'
+      primary:
+        'bg-foundational-100 text-foundational-800 border-foundational-200',
+      secondary: 'bg-neutral-100 text-neutral-700 border-neutral-200',
+      outline: 'bg-transparent text-neutral-600 border-neutral-300',
     };
 
     const difficultyClasses = {
-      'beginner': 'bg-success-100 text-success-800 border-success-200',
-      'intermediate': 'bg-warning-100 text-warning-800 border-warning-200',
-      'advanced': 'bg-error-100 text-error-800 border-error-200'
+      beginner: 'bg-success-100 text-success-800 border-success-200',
+      intermediate: 'bg-warning-100 text-warning-800 border-warning-200',
+      advanced: 'bg-error-100 text-error-800 border-error-200',
     };
 
     return (
@@ -234,7 +223,14 @@ export interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Size variant */
   size?: 'sm' | 'md' | 'lg';
   /** Color variant */
-  color?: 'neutral' | 'foundational' | 'practical' | 'specialized' | 'success' | 'warning' | 'error';
+  color?:
+    | 'neutral'
+    | 'foundational'
+    | 'practical'
+    | 'specialized'
+    | 'success'
+    | 'warning'
+    | 'error';
   /** Show percentage label */
   showLabel?: boolean;
   /** Additional CSS classes */
@@ -255,35 +251,35 @@ export const Progress = forwardRef<HTMLDivElement, ProgressProps>(
     ref
   ) => {
     const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
-    
+
     const sizeClasses = {
-      'sm': 'h-1',
-      'md': 'h-2',
-      'lg': 'h-3'
+      sm: 'h-1',
+      md: 'h-2',
+      lg: 'h-3',
     };
 
     const colorClasses = {
-      'neutral': 'bg-neutral-200',
-      'foundational': 'bg-foundational-200',
-      'practical': 'bg-practical-200',
-      'specialized': 'bg-specialized-200',
-      'success': 'bg-success-200',
-      'warning': 'bg-warning-200',
-      'error': 'bg-error-200'
+      neutral: 'bg-neutral-200',
+      foundational: 'bg-foundational-200',
+      practical: 'bg-practical-200',
+      specialized: 'bg-specialized-200',
+      success: 'bg-success-200',
+      warning: 'bg-warning-200',
+      error: 'bg-error-200',
     };
 
     const fillColorClasses = {
-      'neutral': 'bg-neutral-600',
-      'foundational': 'bg-foundational-600',
-      'practical': 'bg-practical-600',
-      'specialized': 'bg-specialized-600',
-      'success': 'bg-success-600',
-      'warning': 'bg-warning-600',
-      'error': 'bg-error-600'
+      neutral: 'bg-neutral-600',
+      foundational: 'bg-foundational-600',
+      practical: 'bg-practical-600',
+      specialized: 'bg-specialized-600',
+      success: 'bg-success-600',
+      warning: 'bg-warning-600',
+      error: 'bg-error-600',
     };
 
     return (
-      <div className="space-y-xs">
+      <div className='space-y-xs'>
         <div
           ref={ref}
           className={cn(
@@ -291,7 +287,7 @@ export const Progress = forwardRef<HTMLDivElement, ProgressProps>(
             sizeClasses[size],
             className
           )}
-          role="progressbar"
+          role='progressbar'
           aria-valuenow={value}
           aria-valuemin={0}
           aria-valuemax={max}
@@ -306,9 +302,9 @@ export const Progress = forwardRef<HTMLDivElement, ProgressProps>(
             style={{ width: `${percentage}%` }}
           />
         </div>
-        
+
         {showLabel && (
-          <div className="text-body-small text-neutral-600 text-center">
+          <div className='text-body-small text-neutral-600 text-center'>
             {Math.round(percentage)}%
           </div>
         )}
@@ -331,26 +327,17 @@ export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
-  (
-    {
-      width,
-      height,
-      variant = 'text',
-      className,
-      ...props
-    },
-    ref
-  ) => {
+  ({ width, height, variant = 'text', className, ...props }, ref) => {
     const variantClasses = {
-      'text': 'h-4 rounded-medium',
-      'circular': 'rounded-full',
-      'rectangular': 'rounded-medium'
+      text: 'h-4 rounded-medium',
+      circular: 'rounded-full',
+      rectangular: 'rounded-medium',
     };
 
     const style = {
       width: width,
       height: height,
-      ...props.style
+      ...props.style,
     };
 
     return (
@@ -362,7 +349,7 @@ export const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
           className
         )}
         style={style}
-        aria-hidden="true"
+        aria-hidden='true'
         {...props}
       />
     );
@@ -376,5 +363,5 @@ export default {
   Alert: memo(Alert),
   Badge: memo(Badge),
   Progress: memo(Progress),
-  Skeleton: memo(Skeleton)
+  Skeleton: memo(Skeleton),
 };

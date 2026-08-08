@@ -10,10 +10,12 @@ interface PageProps {
 
 export async function generateStaticParams() {
   const slugs = getAllWeeklySlugs();
-  return slugs.map((slug) => ({ slug }));
+  return slugs.map(slug => ({ slug }));
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const brief = getWeeklyBySlug(slug);
   const title = brief?.dailyTitle

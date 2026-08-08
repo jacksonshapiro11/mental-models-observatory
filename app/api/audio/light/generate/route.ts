@@ -36,13 +36,17 @@ export async function POST(req: NextRequest) {
   const result = await generateLightAudio({ date: targetDate, force, manual });
 
   if (result.status === 'skipped') {
-    return NextResponse.json({ status: 'skipped', reason: result.details, date: result.date });
+    return NextResponse.json({
+      status: 'skipped',
+      reason: result.details,
+      date: result.date,
+    });
   }
 
   if (result.status === 'error' && manual) {
     return NextResponse.json(
       { error: 'Brief Light not found', date: result.date },
-      { status: 404 },
+      { status: 404 }
     );
   }
 
@@ -55,7 +59,7 @@ export async function POST(req: NextRequest) {
     await writeAudioLog(targetDate, audioLog);
     return NextResponse.json(
       { error: 'Super Brief audio generation failed', detail: result.error },
-      { status: 500 },
+      { status: 500 }
     );
   }
 
@@ -76,7 +80,8 @@ export async function POST(req: NextRequest) {
   let feedVerified = false;
   try {
     const storedEpisode = await readLightEpisodeMetadata(result.date);
-    feedVerified = !!storedEpisode && storedEpisode.audioUrl === result.episode?.audioUrl;
+    feedVerified =
+      !!storedEpisode && storedEpisode.audioUrl === result.episode?.audioUrl;
   } catch (verifyErr) {
     console.warn(`[audio:light] Verification error: ${verifyErr}`);
   }

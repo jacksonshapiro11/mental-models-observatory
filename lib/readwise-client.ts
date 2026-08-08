@@ -6,7 +6,7 @@ import {
   GetBooksParams,
   ReadwiseError,
   CacheEntry,
-  RequestOptions
+  RequestOptions,
 } from '@/types/readwise';
 
 class ReadwiseClient {
@@ -28,15 +28,17 @@ class ReadwiseClient {
   /**
    * Get highlights with pagination and filtering
    */
-  async getHighlights(params?: GetHighlightsParams): Promise<ReadwiseResponse<ReadwiseHighlight>> {
+  async getHighlights(
+    params?: GetHighlightsParams
+  ): Promise<ReadwiseResponse<ReadwiseHighlight>> {
     const cacheKey = `highlights:${JSON.stringify(params)}`;
-    const cached = this.getFromCache<ReadwiseResponse<ReadwiseHighlight>>(cacheKey);
+    const cached =
+      this.getFromCache<ReadwiseResponse<ReadwiseHighlight>>(cacheKey);
     if (cached) return cached;
 
-    const response = await this.makeRequest<ReadwiseResponse<ReadwiseHighlight>>(
-      '/highlights/',
-      params
-    );
+    const response = await this.makeRequest<
+      ReadwiseResponse<ReadwiseHighlight>
+    >('/highlights/', params);
 
     this.setCache(cacheKey, response);
     return response;
@@ -45,7 +47,9 @@ class ReadwiseClient {
   /**
    * Get books with pagination and filtering
    */
-  async getBooks(params?: GetBooksParams): Promise<ReadwiseResponse<ReadwiseBook>> {
+  async getBooks(
+    params?: GetBooksParams
+  ): Promise<ReadwiseResponse<ReadwiseBook>> {
     const cacheKey = `books:${JSON.stringify(params)}`;
     const cached = this.getFromCache<ReadwiseResponse<ReadwiseBook>>(cacheKey);
     if (cached) return cached;
@@ -62,7 +66,9 @@ class ReadwiseClient {
   /**
    * Get highlights by book ID
    */
-  async getHighlightsByBook(bookId: number): Promise<ReadwiseResponse<ReadwiseHighlight>> {
+  async getHighlightsByBook(
+    bookId: number
+  ): Promise<ReadwiseResponse<ReadwiseHighlight>> {
     return this.getHighlights({ book_id: bookId });
   }
 
@@ -87,10 +93,9 @@ class ReadwiseClient {
     const cached = this.getFromCache<ReadwiseHighlight[]>(cacheKey);
     if (cached) return cached;
 
-    const response = await this.makeRequest<ReadwiseResponse<ReadwiseHighlight>>(
-      '/highlights/',
-      { search: query }
-    );
+    const response = await this.makeRequest<
+      ReadwiseResponse<ReadwiseHighlight>
+    >('/highlights/', { search: query });
 
     this.setCache(cacheKey, response.results);
     return response.results;
@@ -99,7 +104,9 @@ class ReadwiseClient {
   /**
    * Get recent highlights (updated after a specific date)
    */
-  async getRecentHighlights(sinceDate: string): Promise<ReadwiseResponse<ReadwiseHighlight>> {
+  async getRecentHighlights(
+    sinceDate: string
+  ): Promise<ReadwiseResponse<ReadwiseHighlight>> {
     return this.getHighlights({ updated__gt: sinceDate });
   }
 
@@ -113,9 +120,9 @@ class ReadwiseClient {
     do {
       const response = await this.getHighlights({
         page_size: 1000,
-        ...(nextCursor && { page_cursor: nextCursor })
+        ...(nextCursor && { page_cursor: nextCursor }),
       });
-      
+
       allHighlights.push(...response.results);
       nextCursor = response.next;
     } while (nextCursor);
@@ -133,9 +140,9 @@ class ReadwiseClient {
     do {
       const response = await this.getBooks({
         page_size: 1000,
-        ...(nextCursor && { page_cursor: nextCursor })
+        ...(nextCursor && { page_cursor: nextCursor }),
       });
-      
+
       allBooks.push(...response.results);
       nextCursor = response.next;
     } while (nextCursor);
@@ -156,7 +163,7 @@ class ReadwiseClient {
   getCacheStats(): { size: number; keys: string[] } {
     return {
       size: this.cache.size,
-      keys: Array.from(this.cache.keys())
+      keys: Array.from(this.cache.keys()),
     };
   }
 
@@ -171,7 +178,7 @@ class ReadwiseClient {
     const {
       timeout = this.DEFAULT_TIMEOUT,
       retries = this.DEFAULT_RETRIES,
-      retryDelay = this.DEFAULT_RETRY_DELAY
+      retryDelay = this.DEFAULT_RETRY_DELAY,
     } = options;
 
     // Rate limiting
@@ -195,7 +202,7 @@ class ReadwiseClient {
       try {
         const response = await fetch(url.toString(), {
           headers: {
-            'Authorization': `Token ${this.token}`,
+            Authorization: `Token ${this.token}`,
             'Content-Type': 'application/json',
           },
           signal: controller.signal,
@@ -213,7 +220,6 @@ class ReadwiseClient {
         const data = await response.json();
         this.logRequest('success', endpoint, response.status);
         return data as T;
-
       } catch (error) {
         lastError = error as Error;
         this.logRequest('error', endpoint, 0, error as Error);
@@ -238,12 +244,12 @@ class ReadwiseClient {
   private async enforceRateLimit(): Promise<void> {
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
-    
+
     if (timeSinceLastRequest < this.RATE_LIMIT_DELAY) {
       const delay = this.RATE_LIMIT_DELAY - timeSinceLastRequest;
       await this.sleep(delay);
     }
-    
+
     this.lastRequestTime = Date.now();
   }
 
@@ -252,14 +258,14 @@ class ReadwiseClient {
    */
   private getFromCache<T>(key: string): T | null {
     const entry = this.cache.get(key) as CacheEntry<T> | undefined;
-    
+
     if (!entry) {
       this.logCache('miss', key);
       return null;
     }
 
     const isExpired = Date.now() - entry.timestamp > entry.ttl;
-    
+
     if (isExpired) {
       this.cache.delete(key);
       this.logCache('expired', key);
@@ -277,9 +283,9 @@ class ReadwiseClient {
     const entry: CacheEntry<T> = {
       data,
       timestamp: Date.now(),
-      ttl: this.CACHE_TTL
+      ttl: this.CACHE_TTL,
     };
-    
+
     this.cache.set(key, entry);
     this.logCache('set', key);
   }
@@ -294,14 +300,19 @@ class ReadwiseClient {
   /**
    * Log request information
    */
-  private logRequest(type: 'success' | 'error', endpoint: string, status: number, error?: Error): void {
+  private logRequest(
+    type: 'success' | 'error',
+    endpoint: string,
+    status: number,
+    error?: Error
+  ): void {
     const timestamp = new Date().toISOString();
     const logData = {
       timestamp,
       type,
       endpoint,
       status,
-      error: error?.message
+      error: error?.message,
     };
 
     if (process.env.NODE_ENV === 'development') {
@@ -312,7 +323,10 @@ class ReadwiseClient {
   /**
    * Log cache operations
    */
-  private logCache(operation: 'hit' | 'miss' | 'set' | 'expired', key: string): void {
+  private logCache(
+    operation: 'hit' | 'miss' | 'set' | 'expired',
+    key: string
+  ): void {
     if (process.env.NODE_ENV === 'development') {
       console.log(`[ReadwiseClient Cache] ${operation}: ${key}`);
     }

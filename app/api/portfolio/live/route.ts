@@ -88,14 +88,19 @@ async function fetchAllPrices(): Promise<Record<string, PriceResult>> {
         results[ticker] = data;
       }
     } catch (err) {
-      console.warn(`[portfolio] ${ticker} (${yahoo}) failed:`, err instanceof Error ? err.message : err);
+      console.warn(
+        `[portfolio] ${ticker} (${yahoo}) failed:`,
+        err instanceof Error ? err.message : err
+      );
     }
   });
 
   await Promise.allSettled(fetches);
 
   const loaded = Object.keys(results).length;
-  console.log(`[portfolio] Yahoo Finance: ${loaded}/${PORTFOLIO_TICKERS.length} positions loaded`);
+  console.log(
+    `[portfolio] Yahoo Finance: ${loaded}/${PORTFOLIO_TICKERS.length} positions loaded`
+  );
 
   return results;
 }

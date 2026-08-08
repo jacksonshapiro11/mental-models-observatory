@@ -35,7 +35,10 @@ export interface ModelHighlights {
   curatedHighlights: CuratedHighlight[];
 }
 
-import { getModelHighlightsFromAllDomains, parseAllDomainFiles } from './parse-all-domains';
+import {
+  getModelHighlightsFromAllDomains,
+  parseAllDomainFiles,
+} from './parse-all-domains';
 
 // Parse all domain files to extract highlights
 export function parseAllDomainsHighlights(): ModelHighlights[] {
@@ -45,22 +48,27 @@ export function parseAllDomainsHighlights(): ModelHighlights[] {
 import { getCachedHighlight } from './readwise-cache';
 
 // Fetch actual highlight text from Readwise API (with caching)
-export async function fetchReadwiseHighlight(highlightId: number): Promise<ReadwiseHighlight | null> {
-  return getCachedHighlight(highlightId, async (id) => {
+export async function fetchReadwiseHighlight(
+  highlightId: number
+): Promise<ReadwiseHighlight | null> {
+  return getCachedHighlight(highlightId, async id => {
     const apiToken = process.env.READWISE_API_TOKEN;
-    
+
     if (!apiToken) {
       console.warn('READWISE_API_TOKEN not found');
       return null;
     }
 
     try {
-      const response = await fetch(`https://readwise.io/api/v2/highlights/${id}`, {
-        headers: {
-          'Authorization': `Token ${apiToken}`,
-          'Content-Type': 'application/json'
+      const response = await fetch(
+        `https://readwise.io/api/v2/highlights/${id}`,
+        {
+          headers: {
+            Authorization: `Token ${apiToken}`,
+            'Content-Type': 'application/json',
+          },
         }
-      });
+      );
 
       if (!response.ok) {
         console.error(`Failed to fetch highlight ${id}:`, response.status);
@@ -82,14 +90,14 @@ export async function getModelHighlights(modelSlug: string): Promise<{
   actualHighlights: ReadwiseHighlight[];
 }> {
   const modelHighlights = getModelHighlightsFromAllDomains(modelSlug);
-  
+
   if (!modelHighlights) {
     return { curatedHighlights: [], actualHighlights: [] };
   }
 
   // Fetch actual highlight text for each curated highlight
   const actualHighlights: ReadwiseHighlight[] = [];
-  
+
   for (const curated of modelHighlights.curatedHighlights) {
     const highlight = await fetchReadwiseHighlight(curated.readwiseId);
     if (highlight) {
@@ -99,6 +107,6 @@ export async function getModelHighlights(modelSlug: string): Promise<{
 
   return {
     curatedHighlights: modelHighlights.curatedHighlights,
-    actualHighlights
+    actualHighlights,
   };
 }

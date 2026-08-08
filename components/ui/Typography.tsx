@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * Typography components for consistent text styling
- * 
+ *
  * @example
  * ```tsx
  * <H1>Main Heading</H1>
@@ -82,10 +82,10 @@ export interface TextProps extends React.HTMLAttributes<HTMLParagraphElement> {
 export const Text = forwardRef<HTMLParagraphElement, TextProps>(
   ({ variant = 'body', className, children, ...props }, ref) => {
     const variantClasses = {
-      'body': 'text-body text-neutral-700',
+      body: 'text-body text-neutral-700',
       'body-large': 'text-body-large text-neutral-700',
       'body-small': 'text-body-small text-neutral-600',
-      'caption': 'text-caption text-neutral-500'
+      caption: 'text-caption text-neutral-500',
     };
 
     return (
@@ -166,11 +166,11 @@ export const Quote = forwardRef<HTMLQuoteElement, QuoteProps>(
       )}
       {...props}
     >
-      <div className="mb-sm">"{children}"</div>
+      <div className='mb-sm'>"{children}"</div>
       {(author || source) && (
-        <footer className="text-body-small text-neutral-600 not-italic">
-          {author && <cite className="font-medium">{author}</cite>}
-          {author && source && <span className="mx-xs">•</span>}
+        <footer className='text-body-small text-neutral-600 not-italic'>
+          {author && <cite className='font-medium'>{author}</cite>}
+          {author && source && <span className='mx-xs'>•</span>}
           {source && <span>{source}</span>}
         </footer>
       )}
@@ -187,5 +187,5 @@ export default {
   H4: memo(H4),
   Text: memo(Text),
   Code: memo(Code),
-  Quote: memo(Quote)
+  Quote: memo(Quote),
 };

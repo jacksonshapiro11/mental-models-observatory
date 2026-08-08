@@ -9,7 +9,11 @@ const fs = require('fs');
 const path = require('path');
 
 // Import the parsing functions
-const { parseAllDomainFiles, getModelHighlightsFromAllDomains, getAllAvailableModelIds } = require('../lib/parse-all-domains');
+const {
+  parseAllDomainFiles,
+  getModelHighlightsFromAllDomains,
+  getAllAvailableModelIds,
+} = require('../lib/parse-all-domains');
 const { READWISE_MODELS } = require('../lib/readwise-data');
 
 // Parse all highlights from files
@@ -19,7 +23,9 @@ console.log(`✅ Parsed ${allParsedHighlights.length} models with highlights\n`)
 
 // Get all available model IDs from highlight files
 const availableModelIds = getAllAvailableModelIds();
-console.log(`📋 Found ${availableModelIds.length} unique model IDs in highlight files\n`);
+console.log(
+  `📋 Found ${availableModelIds.length} unique model IDs in highlight files\n`
+);
 
 // Get all models from readwise-data.ts
 const allModels = READWISE_MODELS;
@@ -35,25 +41,25 @@ const results = {
   modelsWithManyHighlights: [], // 5+ highlights
   mappingIssues: [],
   highlightFileModels: new Set(),
-  modelSlugMismatches: []
+  modelSlugMismatches: [],
 };
 
 // Check each model
 for (const model of allModels) {
   const modelSlug = model.slug;
   const highlights = getModelHighlightsFromAllDomains(modelSlug);
-  
+
   if (highlights) {
     const count = highlights.curatedHighlights.length;
     results.highlightFileModels.add(highlights.modelId);
-    
+
     if (count === 0) {
       results.modelsWithNoHighlights.push({
         slug: modelSlug,
         id: model.id,
         name: model.name,
         modelIdInFile: highlights.modelId,
-        highlights: []
+        highlights: [],
       });
     } else if (count === 1) {
       results.modelsWithOneHighlight.push({
@@ -62,7 +68,7 @@ for (const model of allModels) {
         name: model.name,
         modelIdInFile: highlights.modelId,
         highlightCount: count,
-        highlight: highlights.curatedHighlights[0]
+        highlight: highlights.curatedHighlights[0],
       });
     } else if (count >= 2 && count <= 4) {
       results.modelsWithFewHighlights.push({
@@ -70,7 +76,7 @@ for (const model of allModels) {
         id: model.id,
         name: model.name,
         modelIdInFile: highlights.modelId,
-        highlightCount: count
+        highlightCount: count,
       });
     } else {
       results.modelsWithManyHighlights.push({
@@ -78,10 +84,10 @@ for (const model of allModels) {
         id: model.id,
         name: model.name,
         modelIdInFile: highlights.modelId,
-        highlightCount: count
+        highlightCount: count,
       });
     }
-    
+
     // Check if modelId matches slug (potential mapping issue)
     if (highlights.modelId !== modelSlug && highlights.modelId !== model.id) {
       results.modelSlugMismatches.push({
@@ -89,40 +95,52 @@ for (const model of allModels) {
         id: model.id,
         name: model.name,
         modelIdInFile: highlights.modelId,
-        highlightCount: count
+        highlightCount: count,
       });
     }
-    
+
     results.modelsWithHighlights++;
   } else {
     // No highlights found - check if modelId exists in files but with different slug
-    const foundInFiles = availableModelIds.find(id => 
-      id === modelSlug || 
-      id === model.id ||
-      id.toLowerCase().replace(/-/g, '') === modelSlug.toLowerCase().replace(/-/g, '')
+    const foundInFiles = availableModelIds.find(
+      id =>
+        id === modelSlug ||
+        id === model.id ||
+        id.toLowerCase().replace(/-/g, '') ===
+          modelSlug.toLowerCase().replace(/-/g, '')
     );
-    
+
     results.modelsWithNoHighlights.push({
       slug: modelSlug,
       id: model.id,
       name: model.name,
       potentialMatch: foundInFiles || null,
-      highlights: []
+      highlights: [],
     });
   }
 }
 
 // Summary
-console.log('=' .repeat(80));
+console.log('='.repeat(80));
 console.log('📊 HIGHLIGHT AUDIT SUMMARY');
-console.log('=' .repeat(80));
+console.log('='.repeat(80));
 console.log(`\nTotal Models: ${results.totalModels}`);
 console.log(`Models with Highlights: ${results.modelsWithHighlights}`);
-console.log(`Models with NO Highlights: ${results.modelsWithNoHighlights.length}`);
-console.log(`Models with 1 Highlight: ${results.modelsWithOneHighlight.length}`);
-console.log(`Models with 2-4 Highlights: ${results.modelsWithFewHighlights.length}`);
-console.log(`Models with 5+ Highlights: ${results.modelsWithManyHighlights.length}`);
-console.log(`\nUnique Model IDs in Highlight Files: ${results.highlightFileModels.size}`);
+console.log(
+  `Models with NO Highlights: ${results.modelsWithNoHighlights.length}`
+);
+console.log(
+  `Models with 1 Highlight: ${results.modelsWithOneHighlight.length}`
+);
+console.log(
+  `Models with 2-4 Highlights: ${results.modelsWithFewHighlights.length}`
+);
+console.log(
+  `Models with 5+ Highlights: ${results.modelsWithManyHighlights.length}`
+);
+console.log(
+  `\nUnique Model IDs in Highlight Files: ${results.highlightFileModels.size}`
+);
 console.log(`Potential Slug Mismatches: ${results.modelSlugMismatches.length}`);
 
 // Detailed reports
@@ -135,7 +153,9 @@ if (results.modelsWithNoHighlights.length > 0) {
     console.log(`    Slug: ${model.slug}`);
     console.log(`    ID: ${model.id}`);
     if (model.potentialMatch) {
-      console.log(`    ⚠️  Potential match found in files: ${model.potentialMatch}`);
+      console.log(
+        `    ⚠️  Potential match found in files: ${model.potentialMatch}`
+      );
     } else {
       console.log(`    ❌ No match found in highlight files`);
     }
@@ -151,7 +171,9 @@ if (results.modelsWithOneHighlight.length > 0) {
     console.log(`    Slug: ${model.slug}`);
     console.log(`    Model ID in file: ${model.modelIdInFile}`);
     console.log(`    Highlight ID: ${model.highlight.readwiseId}`);
-    console.log(`    Book: ${model.highlight.book.title} by ${model.highlight.book.author}`);
+    console.log(
+      `    Book: ${model.highlight.book.title} by ${model.highlight.book.author}`
+    );
   });
 }
 
@@ -183,18 +205,26 @@ if (results.modelSlugMismatches.length > 0) {
 console.log('\n' + '='.repeat(80));
 console.log('🔍 MODEL IDs IN HIGHLIGHT FILES BUT NOT IN READWISE_DATA.TS');
 console.log('='.repeat(80));
-const modelIdsInData = new Set(allModels.map(m => m.id).concat(allModels.map(m => m.slug)));
-const orphanedModelIds = availableModelIds.filter(id => !modelIdsInData.has(id));
+const modelIdsInData = new Set(
+  allModels.map(m => m.id).concat(allModels.map(m => m.slug))
+);
+const orphanedModelIds = availableModelIds.filter(
+  id => !modelIdsInData.has(id)
+);
 if (orphanedModelIds.length > 0) {
   orphanedModelIds.forEach(id => {
     const highlights = allParsedHighlights.find(h => h.modelId === id);
     if (highlights) {
-      console.log(`\n  • ${id} (${highlights.curatedHighlights.length} highlights)`);
+      console.log(
+        `\n  • ${id} (${highlights.curatedHighlights.length} highlights)`
+      );
       console.log(`    Title: ${highlights.modelTitle}`);
     }
   });
 } else {
-  console.log('\n  ✅ All model IDs in highlight files are matched to models in readwise-data.ts');
+  console.log(
+    '\n  ✅ All model IDs in highlight files are matched to models in readwise-data.ts'
+  );
 }
 
 // Save detailed report to file
@@ -203,26 +233,31 @@ fs.writeFileSync(reportPath, JSON.stringify(results, null, 2));
 console.log(`\n📄 Detailed report saved to: ${reportPath}`);
 
 // Generate mapping suggestions
-if (results.modelsWithNoHighlights.length > 0 || results.modelSlugMismatches.length > 0) {
+if (
+  results.modelsWithNoHighlights.length > 0 ||
+  results.modelSlugMismatches.length > 0
+) {
   console.log('\n' + '='.repeat(80));
   console.log('💡 SUGGESTED MAPPING FIXES');
   console.log('='.repeat(80));
-  console.log('\nAdd these to MODEL_SLUG_MAPPINGS in lib/parse-all-domains.ts:\n');
-  
+  console.log(
+    '\nAdd these to MODEL_SLUG_MAPPINGS in lib/parse-all-domains.ts:\n'
+  );
+
   const suggestions = [];
-  
+
   // Models with no highlights that have potential matches
   results.modelsWithNoHighlights.forEach(model => {
     if (model.potentialMatch) {
       suggestions.push(`  '${model.slug}': '${model.potentialMatch}',`);
     }
   });
-  
+
   // Models with slug mismatches
   results.modelSlugMismatches.forEach(model => {
     suggestions.push(`  '${model.slug}': '${model.modelIdInFile}',`);
   });
-  
+
   if (suggestions.length > 0) {
     console.log(suggestions.join('\n'));
   } else {
@@ -233,4 +268,3 @@ if (results.modelsWithNoHighlights.length > 0 || results.modelSlugMismatches.len
 console.log('\n' + '='.repeat(80));
 console.log('✅ Audit complete!');
 console.log('='.repeat(80) + '\n');
-

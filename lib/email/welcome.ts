@@ -6,7 +6,9 @@ import { sendEmail } from '@/lib/email/resend-client';
 
 const SITE_URL = 'https://cosmictrex.com';
 
-export async function sendWelcomeEmail(email: string): Promise<{ success: boolean; error?: string }> {
+export async function sendWelcomeEmail(
+  email: string
+): Promise<{ success: boolean; error?: string }> {
   const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>

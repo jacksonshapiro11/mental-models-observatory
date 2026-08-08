@@ -3,28 +3,71 @@
  */
 
 const WEEKDAYS = [
-  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
 ] as const;
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ] as const;
 
 const DISPLAY_DATE_RE =
   /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s+(\d{4})$/;
 
 /** Weekly header line, e.g. "Week of July 12 to 18, 2026" (en-dash / hyphen variants OK). */
-const WEEK_OF_DATE_RE =
-  /^Week of\s+.+\d{4}$/i;
+const WEEK_OF_DATE_RE = /^Week of\s+.+\d{4}$/i;
 
 const ONES = [
-  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
-  'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
-  'seventeen', 'eighteen', 'nineteen',
+  'zero',
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+  'ten',
+  'eleven',
+  'twelve',
+  'thirteen',
+  'fourteen',
+  'fifteen',
+  'sixteen',
+  'seventeen',
+  'eighteen',
+  'nineteen',
 ];
 
-const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+const TENS = [
+  '',
+  '',
+  'twenty',
+  'thirty',
+  'forty',
+  'fifty',
+  'sixty',
+  'seventy',
+  'eighty',
+  'ninety',
+];
 
 /** Whether a header line is a human display date (bold or ##), not a title/section. */
 export function isDisplayDateLine(line: string): boolean {
@@ -94,7 +137,7 @@ export function formatDisplayDateFromSlug(dateSlug: string): string {
   const d = new Date(`${calendar}T12:00:00`);
   if (Number.isNaN(d.getTime())) {
     throw new Error(
-      `Cannot format display date from slug "${dateSlug}" (resolved calendar "${calendar}")`,
+      `Cannot format display date from slug "${dateSlug}" (resolved calendar "${calendar}")`
     );
   }
   return d.toLocaleDateString('en-US', {
@@ -118,27 +161,57 @@ export function parseSlugDate(dateSlug: string): SlugDateParts {
   const d = new Date(`${calendar}T12:00:00`);
   if (Number.isNaN(d.getTime())) {
     throw new Error(
-      `Cannot parse slug date "${dateSlug}" (resolved calendar "${calendar}")`,
+      `Cannot parse slug date "${dateSlug}" (resolved calendar "${calendar}")`
     );
   }
   return {
     year: d.getUTCFullYear(),
     month: d.getUTCMonth() + 1,
     day: d.getUTCDate(),
-    weekday: d.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }),
-    monthName: d.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' }),
+    weekday: d.toLocaleDateString('en-US', {
+      weekday: 'long',
+      timeZone: 'UTC',
+    }),
+    monthName: d.toLocaleDateString('en-US', {
+      month: 'long',
+      timeZone: 'UTC',
+    }),
   };
 }
 
 function dayToSpokenOrdinal(day: number): string {
   const spoken: Record<number, string> = {
-    1: 'first', 2: 'second', 3: 'third', 4: 'fourth', 5: 'fifth',
-    6: 'sixth', 7: 'seventh', 8: 'eighth', 9: 'ninth', 10: 'tenth',
-    11: 'eleventh', 12: 'twelfth', 13: 'thirteenth', 14: 'fourteenth', 15: 'fifteenth',
-    16: 'sixteenth', 17: 'seventeenth', 18: 'eighteenth', 19: 'nineteenth', 20: 'twentieth',
-    21: 'twenty-first', 22: 'twenty-second', 23: 'twenty-third', 24: 'twenty-fourth',
-    25: 'twenty-fifth', 26: 'twenty-sixth', 27: 'twenty-seventh', 28: 'twenty-eighth',
-    29: 'twenty-ninth', 30: 'thirtieth', 31: 'thirty-first',
+    1: 'first',
+    2: 'second',
+    3: 'third',
+    4: 'fourth',
+    5: 'fifth',
+    6: 'sixth',
+    7: 'seventh',
+    8: 'eighth',
+    9: 'ninth',
+    10: 'tenth',
+    11: 'eleventh',
+    12: 'twelfth',
+    13: 'thirteenth',
+    14: 'fourteenth',
+    15: 'fifteenth',
+    16: 'sixteenth',
+    17: 'seventeenth',
+    18: 'eighteenth',
+    19: 'nineteenth',
+    20: 'twentieth',
+    21: 'twenty-first',
+    22: 'twenty-second',
+    23: 'twenty-third',
+    24: 'twenty-fourth',
+    25: 'twenty-fifth',
+    26: 'twenty-sixth',
+    27: 'twenty-seventh',
+    28: 'twenty-eighth',
+    29: 'twenty-ninth',
+    30: 'thirtieth',
+    31: 'thirty-first',
   };
   return spoken[day] ?? String(day);
 }
@@ -173,7 +246,7 @@ export function formatSpokenDateFromSlug(dateSlug: string): string {
 export function parseDisplayDate(displayDate: string): SlugDateParts | null {
   const m = displayDate.trim().match(DISPLAY_DATE_RE);
   if (!m) return null;
-  const monthIdx = MONTHS.indexOf(m[2] as typeof MONTHS[number]);
+  const monthIdx = MONTHS.indexOf(m[2] as (typeof MONTHS)[number]);
   if (monthIdx === -1) return null;
   return {
     weekday: m[1]!,
@@ -186,7 +259,7 @@ export function parseDisplayDate(displayDate: string): SlugDateParts | null {
 
 export function displayDateLooksLikeHeadline(displayDate: string): boolean {
   if (!displayDate.trim()) return true;
-  if (!WEEKDAYS.some((w) => displayDate.startsWith(w))) return true;
+  if (!WEEKDAYS.some(w => displayDate.startsWith(w))) return true;
   return !DISPLAY_DATE_RE.test(displayDate.trim());
 }
 
@@ -198,7 +271,7 @@ export interface DateValidationResult {
 /** Assert parsed displayDate matches the filename slug (weekday + calendar date). */
 export function validateDisplayDateMatchesSlug(
   displayDate: string,
-  dateSlug: string,
+  dateSlug: string
 ): DateValidationResult {
   if (displayDateLooksLikeHeadline(displayDate)) {
     return {
@@ -216,7 +289,11 @@ export function validateDisplayDateMatchesSlug(
     };
   }
 
-  if (parsed.year !== expected.year || parsed.month !== expected.month || parsed.day !== expected.day) {
+  if (
+    parsed.year !== expected.year ||
+    parsed.month !== expected.month ||
+    parsed.day !== expected.day
+  ) {
     return {
       ok: false,
       message: `displayDate "${displayDate}" does not match brief slug ${dateSlug} (expected ${formatDisplayDateFromSlug(dateSlug)}).`,
@@ -234,20 +311,48 @@ export function validateDisplayDateMatchesSlug(
 }
 
 const MONTH_NAME_TO_NUM: Record<string, number> = Object.fromEntries(
-  MONTHS.map((m, i) => [m.toLowerCase(), i + 1]),
+  MONTHS.map((m, i) => [m.toLowerCase(), i + 1])
 );
 
-const SPOKEN_ONES: Record<string, number> = Object.fromEntries(ONES.map((w, i) => [w, i]));
+const SPOKEN_ONES: Record<string, number> = Object.fromEntries(
+  ONES.map((w, i) => [w, i])
+);
 const SPOKEN_TENS: Record<string, number> = Object.fromEntries(
-  TENS.map((w, i) => [w, i * 10]).filter(([w]) => w),
+  TENS.map((w, i) => [w, i * 10]).filter(([w]) => w)
 );
 
 const SPOKEN_ORDINALS: Record<string, number> = {
-  first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10,
-  eleventh: 11, twelfth: 12, thirteenth: 13, fourteenth: 14, fifteenth: 15, sixteenth: 16, seventeenth: 17,
-  eighteenth: 18, nineteenth: 19, twentieth: 20, 'twenty-first': 21, 'twenty-second': 22, 'twenty-third': 23,
-  'twenty-fourth': 24, 'twenty-fifth': 25, 'twenty-sixth': 26, 'twenty-seventh': 27, 'twenty-eighth': 28,
-  'twenty-ninth': 29, thirtieth: 30, 'thirty-first': 31,
+  first: 1,
+  second: 2,
+  third: 3,
+  fourth: 4,
+  fifth: 5,
+  sixth: 6,
+  seventh: 7,
+  eighth: 8,
+  ninth: 9,
+  tenth: 10,
+  eleventh: 11,
+  twelfth: 12,
+  thirteenth: 13,
+  fourteenth: 14,
+  fifteenth: 15,
+  sixteenth: 16,
+  seventeenth: 17,
+  eighteenth: 18,
+  nineteenth: 19,
+  twentieth: 20,
+  'twenty-first': 21,
+  'twenty-second': 22,
+  'twenty-third': 23,
+  'twenty-fourth': 24,
+  'twenty-fifth': 25,
+  'twenty-sixth': 26,
+  'twenty-seventh': 27,
+  'twenty-eighth': 28,
+  'twenty-ninth': 29,
+  thirtieth: 30,
+  'thirty-first': 31,
 };
 
 function parseSpokenTwoDigits(text: string): number | null {
@@ -265,7 +370,8 @@ function parseSpokenTwoDigits(text: string): number | null {
   if (parts.length === 2) {
     const tensVal = SPOKEN_TENS[parts[0]!];
     const onesVal = SPOKEN_ONES[parts[1]!];
-    if (tensVal !== undefined && onesVal !== undefined) return tensVal + onesVal;
+    if (tensVal !== undefined && onesVal !== undefined)
+      return tensVal + onesVal;
   }
   return null;
 }
@@ -316,7 +422,8 @@ export function extractDatesFromIntroText(text: string): ExtractedIntroDate[] {
     const month = MONTH_NAME_TO_NUM[m[1]!];
     const day = parseInt(m[2]!, 10);
     let year = m[3] ? parseSpokenYear(m[3]) : null;
-    if (m[3] && year === null && /^20\d{2}$/.test(m[3])) year = parseInt(m[3], 10);
+    if (m[3] && year === null && /^20\d{2}$/.test(m[3]))
+      year = parseInt(m[3], 10);
     if (month && day) found.push({ month, day, year: year ?? 0 });
   }
 
@@ -334,18 +441,28 @@ export function extractDatesFromIntroText(text: string): ExtractedIntroDate[] {
 }
 
 /** Validate intro script mentions the correct brief date (blocking gate). */
-export function validateIntroDate(introScript: string, dateSlug: string): DateValidationResult {
+export function validateIntroDate(
+  introScript: string,
+  dateSlug: string
+): DateValidationResult {
   const expected = parseSlugDate(dateSlug);
   const intro = introScript.slice(0, 1200);
   const dates = extractDatesFromIntroText(intro);
 
   const matching = dates.filter(
-    (d) => d.month === expected.month && d.day === expected.day && d.year === expected.year,
+    d =>
+      d.month === expected.month &&
+      d.day === expected.day &&
+      d.year === expected.year
   );
   if (matching.length > 0) return { ok: true };
 
   const wrongYear = dates.filter(
-    (d) => d.year > 0 && d.year !== expected.year && d.month === expected.month && d.day === expected.day,
+    d =>
+      d.year > 0 &&
+      d.year !== expected.year &&
+      d.month === expected.month &&
+      d.day === expected.day
   );
   if (wrongYear.length > 0) {
     return {
@@ -363,14 +480,15 @@ export function validateIntroDate(introScript: string, dateSlug: string): DateVa
 
   return {
     ok: false,
-    message: `Intro date(s) [${dates.map((d) => `${MONTHS[d.month - 1]} ${d.day}, ${d.year || '?'}`).join('; ')}] do not match brief slug ${dateSlug}.`,
+    message: `Intro date(s) [${dates.map(d => `${MONTHS[d.month - 1]} ${d.day}, ${d.year || '?'}`).join('; ')}] do not match brief slug ${dateSlug}.`,
   };
 }
 
 /** Extract the intro portion from a full stitched script (before first section pause/transition). */
 export function extractIntroFromFullScript(fullScript: string): string {
   const pauseIdx = fullScript.indexOf('\n\n...\n\n');
-  const chunk = pauseIdx === -1 ? fullScript.slice(0, 1500) : fullScript.slice(0, pauseIdx);
+  const chunk =
+    pauseIdx === -1 ? fullScript.slice(0, 1500) : fullScript.slice(0, pauseIdx);
   // Trim at first major section transition if present
   const transitionMarkers = [
     "OK, let's get started with today's brief",
@@ -385,22 +503,35 @@ export function extractIntroFromFullScript(fullScript: string): string {
   return chunk.slice(0, end);
 }
 
-export function buildDeterministicIntroPrefix(dateSlug: string, dailyTitle?: string): string {
+export function buildDeterministicIntroPrefix(
+  dateSlug: string,
+  dailyTitle?: string
+): string {
   const spokenDate = formatSpokenDateFromSlug(dateSlug);
-  const titlePart = dailyTitle?.trim() ? ` Today's episode: ${dailyTitle.trim()}.` : '';
+  const titlePart = dailyTitle?.trim()
+    ? ` Today's episode: ${dailyTitle.trim()}.`
+    : '';
   return `Welcome to Markets, Meditations, and Mental Models. It's ${spokenDate}.${titlePart}`;
 }
 
 /** Super Brief welcome + date + title — GPT must not speak the date on the light path. */
-export function buildDeterministicLightIntroPrefix(dateSlug: string, dailyTitle?: string): string {
+export function buildDeterministicLightIntroPrefix(
+  dateSlug: string,
+  dailyTitle?: string
+): string {
   const spokenDate = formatSpokenDateFromSlug(dateSlug);
-  const titlePart = dailyTitle?.trim() ? ` Today's Super Brief: ${dailyTitle.trim()}.` : '';
+  const titlePart = dailyTitle?.trim()
+    ? ` Today's Super Brief: ${dailyTitle.trim()}.`
+    : '';
   return `Welcome to the Super Brief. It's ${spokenDate}.${titlePart}`;
 }
 
 /** Assert the spoken script still contains the unambiguous century-year phrase
  *  (e.g. "twenty twenty-six"), not a collapsed decade-only form. */
-export function assertAudibleYearIntact(script: string, dateSlug: string): DateValidationResult {
+export function assertAudibleYearIntact(
+  script: string,
+  dateSlug: string
+): DateValidationResult {
   const expectedYear = yearToSpoken(parseSlugDate(dateSlug).year);
   const lower = script.toLowerCase().slice(0, 1500);
   if (lower.includes(expectedYear.toLowerCase())) return { ok: true };
@@ -411,7 +542,10 @@ export function assertAudibleYearIntact(script: string, dateSlug: string): DateV
 }
 
 /** Resolve displayDate from parser output with slug fallback. */
-export function resolveDisplayDate(displayDate: string, dateSlug: string): string {
+export function resolveDisplayDate(
+  displayDate: string,
+  dateSlug: string
+): string {
   const check = validateDisplayDateMatchesSlug(displayDate, dateSlug);
   if (check.ok) return displayDate.trim();
   return formatDisplayDateFromSlug(dateSlug);

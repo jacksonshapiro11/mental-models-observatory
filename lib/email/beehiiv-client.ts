@@ -44,11 +44,11 @@ async function request<T>(
 // ─── Posts (emails) ─────────────────────────────────────────────────────────
 
 export interface CreatePostInput {
-  title: string;            // used as subject line
-  subtitle?: string;        // preview text
-  body_content: string;     // HTML
-  status: 'draft' | 'confirmed';  // 'confirmed' = scheduled/sent
-  scheduled_at?: string;    // ISO 8601, required if status=confirmed
+  title: string; // used as subject line
+  subtitle?: string; // preview text
+  body_content: string; // HTML
+  status: 'draft' | 'confirmed'; // 'confirmed' = scheduled/sent
+  scheduled_at?: string; // ISO 8601, required if status=confirmed
   content_tags?: string[];
   thumbnail_url?: string;
   // Recipients (Scale tier+)
@@ -70,9 +70,15 @@ export interface PostResponse {
   };
 }
 
-export async function createPost(input: CreatePostInput): Promise<PostResponse> {
+export async function createPost(
+  input: CreatePostInput
+): Promise<PostResponse> {
   const { publicationId } = getCreds();
-  return request<PostResponse>('POST', `/publications/${publicationId}/posts`, input);
+  return request<PostResponse>(
+    'POST',
+    `/publications/${publicationId}/posts`,
+    input
+  );
 }
 
 // ─── Subscriptions ──────────────────────────────────────────────────────────
@@ -111,7 +117,10 @@ export async function createSubscription(
 
 export async function createSubscriptionsBulk(
   emails: Array<{ email: string; subscribedAt?: string; source?: string }>
-): Promise<{ succeeded: number; failed: Array<{ email: string; error: string }> }> {
+): Promise<{
+  succeeded: number;
+  failed: Array<{ email: string; error: string }>;
+}> {
   const failed: Array<{ email: string; error: string }> = [];
   let succeeded = 0;
 
@@ -139,5 +148,5 @@ export async function createSubscriptionsBulk(
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }

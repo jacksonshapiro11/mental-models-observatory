@@ -40,9 +40,10 @@ export function getRecentArchiveTakes(count = 3): ArchiveTake[] {
         !trimmed.startsWith('---') &&
         !trimmed.startsWith('>')
       ) {
-        excerpt = trimmed.length > 160
-          ? trimmed.slice(0, 157).replace(/\s+\S*$/, '') + '…'
-          : trimmed;
+        excerpt =
+          trimmed.length > 160
+            ? trimmed.slice(0, 157).replace(/\s+\S*$/, '') + '…'
+            : trimmed;
         break;
       }
     }
@@ -84,7 +85,9 @@ export function getLatestInnerGame(): InnerGameData | null {
     if (quoteMatch && quoteMatch[1]) {
       quote = quoteMatch[1].trim();
       // Attribution often follows on same or next line
-      const afterQuote = content.slice(content.indexOf(quoteMatch[0]) + quoteMatch[0].length);
+      const afterQuote = content.slice(
+        content.indexOf(quoteMatch[0]) + quoteMatch[0].length
+      );
       const attrMatch = afterQuote.match(/[—–-]\s*(.+?)(?:\n|$)/);
       if (attrMatch && attrMatch[1]) {
         attribution = attrMatch[1].replace(/\*/g, '').trim();
@@ -99,13 +102,16 @@ export function getLatestInnerGame(): InnerGameData | null {
 
     // Extract action — look for "Today's practice:" or "Action:" or bold text
     let action = '';
-    const actionMatch = content.match(/\*\*Today's practice:\*\*\s*(.+?)(\n\n|$)/)
-      || content.match(/\*\*Action:\*\*\s*(.+?)(\n\n|$)/);
+    const actionMatch =
+      content.match(/\*\*Today's practice:\*\*\s*(.+?)(\n\n|$)/) ||
+      content.match(/\*\*Action:\*\*\s*(.+?)(\n\n|$)/);
     if (actionMatch && actionMatch[1]) {
       action = actionMatch[1].trim();
     } else {
       // Use last substantial paragraph as action
-      const paragraphs = content.split('\n\n').filter(p => p.trim().length > 30);
+      const paragraphs = content
+        .split('\n\n')
+        .filter(p => p.trim().length > 30);
       if (paragraphs.length > 1) {
         action = paragraphs[paragraphs.length - 1]?.trim() ?? '';
       }
@@ -130,12 +136,15 @@ export function getLatestDiscovery(): DiscoveryData | null {
     const brief = getBriefByDate(dateSlug);
     if (!brief) continue;
 
-    const section = brief.sections.find(s => s.type === 'the-model' || s.type === 'discovery');
+    const section = brief.sections.find(
+      s => s.type === 'the-model' || s.type === 'discovery'
+    );
     if (!section?.content) continue;
 
     // Extract name from ### heading
     const nameMatch = section.content.match(/^###\s+(.+)$/m);
-    const name = nameMatch && nameMatch[1] ? nameMatch[1].trim() : 'Today\'s Model';
+    const name =
+      nameMatch && nameMatch[1] ? nameMatch[1].trim() : "Today's Model";
 
     // Extract first substantial paragraph as preview
     const lines = section.content.split('\n');
@@ -147,9 +156,10 @@ export function getLatestDiscovery(): DiscoveryData | null {
         !trimmed.startsWith('#') &&
         !trimmed.startsWith('---')
       ) {
-        preview = trimmed.length > 200
-          ? trimmed.slice(0, 197).replace(/\s+\S*$/, '') + '…'
-          : trimmed;
+        preview =
+          trimmed.length > 200
+            ? trimmed.slice(0, 197).replace(/\s+\S*$/, '') + '…'
+            : trimmed;
         break;
       }
     }

@@ -4,13 +4,13 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import {
-    ArrowRight,
-    Clock,
-    Filter,
-    Search,
-    Sparkles,
-    TrendingUp,
-    X
+  ArrowRight,
+  Clock,
+  Filter,
+  Search,
+  Sparkles,
+  TrendingUp,
+  X,
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -37,64 +37,75 @@ const mockSuggestions: SearchSuggestion[] = [
   { text: 'Systems Thinking', type: 'model', count: 34, tier: 2 },
   { text: 'Cognitive Biases', type: 'domain', count: 67, tier: 3 },
   { text: 'First Principles', type: 'model', count: 23, tier: 1 },
-  { text: 'Psychology', type: 'domain', count: 45, tier: 2 }
+  { text: 'Psychology', type: 'domain', count: 45, tier: 2 },
 ];
 
 const mockRecentSearches: SearchSuggestion[] = [
   { text: 'confirmation bias', type: 'recent' },
   { text: 'sunk cost fallacy', type: 'recent' },
   { text: 'circle of competence', type: 'recent' },
-  { text: 'opportunity cost', type: 'recent' }
+  { text: 'opportunity cost', type: 'recent' },
 ];
 
 const getSuggestionIcon = (type: string) => {
   switch (type) {
     case 'recent':
-      return <Clock className="w-3 h-3" />;
+      return <Clock className='w-3 h-3' />;
     case 'model':
-      return <Sparkles className="w-3 h-3" />;
+      return <Sparkles className='w-3 h-3' />;
     case 'domain':
-      return <TrendingUp className="w-3 h-3" />;
+      return <TrendingUp className='w-3 h-3' />;
     case 'tag':
-      return <Filter className="w-3 h-3" />;
+      return <Filter className='w-3 h-3' />;
     default:
-      return <Search className="w-3 h-3" />;
+      return <Search className='w-3 h-3' />;
   }
 };
 
 const getSuggestionTypeLabel = (type: string) => {
   switch (type) {
-    case 'recent': return 'Recent';
-    case 'model': return 'Model';
-    case 'domain': return 'Domain';
-    case 'tag': return 'Tag';
-    default: return '';
+    case 'recent':
+      return 'Recent';
+    case 'model':
+      return 'Model';
+    case 'domain':
+      return 'Domain';
+    case 'tag':
+      return 'Tag';
+    default:
+      return '';
   }
 };
 
 const getTierColor = (tier?: number) => {
   switch (tier) {
-    case 1: return 'bg-foundational-50 text-foundational-700 border-foundational-200';
-    case 2: return 'bg-practical-50 text-practical-700 border-practical-200';
-    case 3: return 'bg-specialized-50 text-specialized-700 border-specialized-200';
-    default: return 'bg-neutral-50 text-neutral-700 border-neutral-200';
+    case 1:
+      return 'bg-foundational-50 text-foundational-700 border-foundational-200';
+    case 2:
+      return 'bg-practical-50 text-practical-700 border-practical-200';
+    case 3:
+      return 'bg-specialized-50 text-specialized-700 border-specialized-200';
+    default:
+      return 'bg-neutral-50 text-neutral-700 border-neutral-200';
   }
 };
 
 export function SearchInterface({
-  placeholder = "Search mental models, domains, highlights...",
+  placeholder = 'Search mental models, domains, highlights...',
   suggestions = mockSuggestions,
   onSearch,
   onSuggestionClick,
   showFilters = false,
   autoFocus = false,
-  size = 'md'
+  size = 'md',
 }: SearchInterfaceProps) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const [filteredSuggestions, setFilteredSuggestions] = useState<SearchSuggestion[]>([]);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<
+    SearchSuggestion[]
+  >([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  
+
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -114,7 +125,10 @@ export function SearchInterface({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -128,11 +142,11 @@ export function SearchInterface({
     if (query.trim()) {
       onSearch?.(query.trim());
       setIsOpen(false);
-      
+
       // Add to recent searches
       const recentSearch: SearchSuggestion = {
         text: query.trim(),
-        type: 'recent'
+        type: 'recent',
       };
       mockRecentSearches.unshift(recentSearch);
       if (mockRecentSearches.length > 5) {
@@ -153,13 +167,13 @@ export function SearchInterface({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setSelectedIndex(prev => 
+        setSelectedIndex(prev =>
           prev < filteredSuggestions.length - 1 ? prev + 1 : prev
         );
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
+        setSelectedIndex(prev => (prev > 0 ? prev - 1 : -1));
         break;
       case 'Enter':
         e.preventDefault();
@@ -179,22 +193,24 @@ export function SearchInterface({
   const sizeClasses = {
     sm: 'text-sm',
     md: 'text-base',
-    lg: 'text-lg'
+    lg: 'text-lg',
   };
 
   return (
-    <div ref={containerRef} className="relative w-full">
-      <form onSubmit={handleSubmit} className="relative">
-        <div className="relative">
-          <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 ${
-            size === 'sm' ? 'w-3 h-3' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4'
-          }`} />
-          
+    <div ref={containerRef} className='relative w-full'>
+      <form onSubmit={handleSubmit} className='relative'>
+        <div className='relative'>
+          <Search
+            className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 ${
+              size === 'sm' ? 'w-3 h-3' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4'
+            }`}
+          />
+
           <input
             ref={inputRef}
-            type="text"
+            type='text'
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={e => setQuery(e.target.value)}
             onFocus={() => setIsOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
@@ -208,39 +224,49 @@ export function SearchInterface({
               ${size === 'sm' ? 'py-2' : size === 'lg' ? 'py-4' : 'py-3'}
             `}
           />
-          
+
           {query && (
             <button
-              type="button"
+              type='button'
               onClick={() => {
                 setQuery('');
                 inputRef.current?.focus();
               }}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+              className='absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors'
             >
-              <X className={size === 'sm' ? 'w-3 h-3' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4'} />
+              <X
+                className={
+                  size === 'sm'
+                    ? 'w-3 h-3'
+                    : size === 'lg'
+                      ? 'w-5 h-5'
+                      : 'w-4 h-4'
+                }
+              />
             </button>
           )}
         </div>
 
         {/* Submit button (hidden, for form submission) */}
-        <button type="submit" className="sr-only">Search</button>
+        <button type='submit' className='sr-only'>
+          Search
+        </button>
       </form>
 
       {/* Suggestions dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50 max-h-96 overflow-y-auto">
+        <div className='absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50 max-h-96 overflow-y-auto'>
           {filteredSuggestions.length > 0 ? (
             <>
               {/* Header */}
-              <div className="px-4 py-2 border-b border-neutral-100">
-                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
+              <div className='px-4 py-2 border-b border-neutral-100'>
+                <p className='text-xs font-medium text-neutral-500 uppercase tracking-wide'>
                   {query.trim() === '' ? 'Recent Searches' : 'Suggestions'}
                 </p>
               </div>
 
               {/* Suggestions */}
-              <div className="py-1">
+              <div className='py-1'>
                 {filteredSuggestions.map((suggestion, index) => (
                   <button
                     key={`${suggestion.type}-${suggestion.text}-${index}`}
@@ -249,21 +275,21 @@ export function SearchInterface({
                       index === selectedIndex ? 'bg-foundational-50' : ''
                     }`}
                   >
-                    <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      <div className="text-neutral-400 flex-shrink-0">
+                    <div className='flex items-center space-x-3 flex-1 min-w-0'>
+                      <div className='text-neutral-400 flex-shrink-0'>
                         {getSuggestionIcon(suggestion.type)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-neutral-800 block truncate">
+                      <div className='flex-1 min-w-0'>
+                        <span className='text-neutral-800 block truncate'>
                           {suggestion.text}
                         </span>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
+                        <div className='flex items-center space-x-2 mt-1'>
+                          <Badge variant='outline' className='text-xs'>
                             {getSuggestionTypeLabel(suggestion.type)}
                           </Badge>
                           {suggestion.tier && (
-                            <Badge 
-                              variant="outline" 
+                            <Badge
+                              variant='outline'
                               className={`text-xs ${getTierColor(suggestion.tier)}`}
                             >
                               Tier {suggestion.tier}
@@ -272,14 +298,14 @@ export function SearchInterface({
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center space-x-2 flex-shrink-0">
+
+                    <div className='flex items-center space-x-2 flex-shrink-0'>
                       {suggestion.count && (
-                        <span className="text-xs text-neutral-500">
+                        <span className='text-xs text-neutral-500'>
                           {suggestion.count}
                         </span>
                       )}
-                      <ArrowRight className="w-3 h-3 text-neutral-400" />
+                      <ArrowRight className='w-3 h-3 text-neutral-400' />
                     </div>
                   </button>
                 ))}
@@ -287,13 +313,13 @@ export function SearchInterface({
 
               {/* Quick actions */}
               {query.trim() && (
-                <div className="border-t border-neutral-100 pt-2">
+                <div className='border-t border-neutral-100 pt-2'>
                   <button
                     onClick={handleSubmit}
-                    className="w-full px-4 py-2 text-left flex items-center space-x-3 hover:bg-foundational-50 transition-colors text-foundational-600"
+                    className='w-full px-4 py-2 text-left flex items-center space-x-3 hover:bg-foundational-50 transition-colors text-foundational-600'
                   >
-                    <Search className="w-3 h-3" />
-                    <span className="text-sm">
+                    <Search className='w-3 h-3' />
+                    <span className='text-sm'>
                       Search for "<strong>{query}</strong>"
                     </span>
                   </button>
@@ -301,11 +327,9 @@ export function SearchInterface({
               )}
             </>
           ) : (
-            <div className="px-4 py-6 text-center">
-              <Search className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
-              <p className="text-sm text-neutral-500">
-                No suggestions found
-              </p>
+            <div className='px-4 py-6 text-center'>
+              <Search className='w-8 h-8 text-neutral-300 mx-auto mb-2' />
+              <p className='text-sm text-neutral-500'>No suggestions found</p>
             </div>
           )}
         </div>

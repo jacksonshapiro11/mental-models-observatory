@@ -15,12 +15,14 @@ export class PathMatcher {
     completedPathIds: string[] = []
   ): CuratedPath[] {
     // Filter out completed paths
-    const availablePaths = CURATED_PATHS.filter(p => !completedPathIds.includes(p.id));
+    const availablePaths = CURATED_PATHS.filter(
+      p => !completedPathIds.includes(p.id)
+    );
 
     // Score each path based on relevance
     const scoredPaths = availablePaths.map(path => ({
       path,
-      score: this.scorePathRelevance(path, profile, viewedModelSlugs)
+      score: this.scorePathRelevance(path, profile, viewedModelSlugs),
     }));
 
     // Sort by score and return top 2-3
@@ -43,11 +45,18 @@ export class PathMatcher {
     let score = 0;
 
     // 1. Match experience level (30 points)
-    const experienceLevel = profile.experience === 'new' ? 'beginner' :
-                           profile.experience === 'some' ? 'intermediate' : 'advanced';
+    const experienceLevel =
+      profile.experience === 'new'
+        ? 'beginner'
+        : profile.experience === 'some'
+          ? 'intermediate'
+          : 'advanced';
     if (experienceLevel === 'beginner' && path.level === 'beginner') {
       score += 30;
-    } else if (experienceLevel === 'intermediate' && path.level === 'intermediate') {
+    } else if (
+      experienceLevel === 'intermediate' &&
+      path.level === 'intermediate'
+    ) {
       score += 30;
     } else if (experienceLevel === 'advanced' && path.level === 'advanced') {
       score += 30;
@@ -68,18 +77,26 @@ export class PathMatcher {
     }
 
     // 3. Match specific challenge (20 points)
-    const challenge = profile.personalContext?.specificChallenge?.toLowerCase() || '';
+    const challenge =
+      profile.personalContext?.specificChallenge?.toLowerCase() || '';
     if (challenge) {
-      const challengeWords = challenge.split(' ').filter((w: string) => w.length > 4);
+      const challengeWords = challenge
+        .split(' ')
+        .filter((w: string) => w.length > 4);
       challengeWords.forEach((word: string) => {
-        if (pathTitle.includes(word) || path.description.toLowerCase().includes(word)) {
+        if (
+          pathTitle.includes(word) ||
+          path.description.toLowerCase().includes(word)
+        ) {
           score += 5;
         }
       });
     }
 
     // 4. Freshness - prefer paths with unseen models (15 points)
-    const unseenModels = path.modelSlugs.filter(slug => !viewedModelSlugs.includes(slug)).length;
+    const unseenModels = path.modelSlugs.filter(
+      slug => !viewedModelSlugs.includes(slug)
+    ).length;
     const freshnessRatio = unseenModels / path.modelSlugs.length;
     score += freshnessRatio * 15;
 
@@ -89,7 +106,11 @@ export class PathMatcher {
 
     if (timeAvailable === '5min' && pathLength <= 4) {
       score += 10;
-    } else if (timeAvailable === '15min' && pathLength >= 4 && pathLength <= 7) {
+    } else if (
+      timeAvailable === '15min' &&
+      pathLength >= 4 &&
+      pathLength <= 7
+    ) {
       score += 10;
     } else if (timeAvailable === '30min' || timeAvailable === '60min') {
       score += 10;
@@ -108,5 +129,3 @@ export class PathMatcher {
     return score;
   }
 }
-
-

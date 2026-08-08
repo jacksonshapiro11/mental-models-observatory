@@ -54,7 +54,7 @@ async function safeRedisSet(key: string, value: unknown): Promise<void> {
 export async function writeStepLog(
   date: string,
   step: 'email' | 'x',
-  result: StepLogEntry,
+  result: StepLogEntry
 ): Promise<void> {
   const key = `distribute:log:${date}`;
   const existing = (await safeRedisGet<DistributeLog>(key)) || {};
@@ -62,11 +62,16 @@ export async function writeStepLog(
   await safeRedisSet(key, updated);
 }
 
-export async function writeAudioLog(date: string, result: AudioLog): Promise<void> {
+export async function writeAudioLog(
+  date: string,
+  result: AudioLog
+): Promise<void> {
   await safeRedisSet(`audio:log:${date}`, result);
 }
 
-export async function readDistributeLog(date: string): Promise<DistributeLog | null> {
+export async function readDistributeLog(
+  date: string
+): Promise<DistributeLog | null> {
   return safeRedisGet<DistributeLog>(`distribute:log:${date}`);
 }
 
@@ -74,6 +79,8 @@ export async function readAudioLog(date: string): Promise<AudioLog | null> {
   return safeRedisGet<AudioLog>(`audio:log:${date}`);
 }
 
-export async function readMarketingPack<T = Record<string, unknown>>(date: string): Promise<T | null> {
+export async function readMarketingPack<T = Record<string, unknown>>(
+  date: string
+): Promise<T | null> {
   return safeRedisGet<T>(`marketing:pack:${date}`);
 }

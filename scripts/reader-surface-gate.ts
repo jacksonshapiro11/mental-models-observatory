@@ -66,9 +66,15 @@ function selftest(): number {
   const clean = `# ▸ INNER GAME\n\nMusonius argued...\n`;
   const editor = `# ▸ THE TAKE\n\n[EDITOR: tighten this]\n\nBody.\n`;
 
-  assert('FAILS on FIGURE-FIRST HTML comment (07-21 class)', checkReaderSurface(leak).some((f) => f.check === 'residual-html-comment'));
+  assert(
+    'FAILS on FIGURE-FIRST HTML comment (07-21 class)',
+    checkReaderSurface(leak).some(f => f.check === 'residual-html-comment')
+  );
   assert('SILENT on clean Inner Game', checkReaderSurface(clean).length === 0);
-  assert('FAILS on [EDITOR:] tag', checkReaderSurface(editor).some((f) => f.check === 'residual-internal-tag'));
+  assert(
+    'FAILS on [EDITOR:] tag',
+    checkReaderSurface(editor).some(f => f.check === 'residual-internal-tag')
+  );
 
   // Real artifact if present
   const real = path.join(process.cwd(), 'content/daily-updates/2026-07-21.md');
@@ -77,18 +83,34 @@ function selftest(): number {
     const findings = checkReaderSurface(body);
     const hasComment = /<!--/.test(body);
     if (hasComment) {
-      assert('FAILS on real 2026-07-21 while comment present', findings.some((f) => f.check === 'residual-html-comment'));
+      assert(
+        'FAILS on real 2026-07-21 while comment present',
+        findings.some(f => f.check === 'residual-html-comment')
+      );
     } else {
-      assert('SILENT on real 2026-07-21 after comment stripped', findings.length === 0);
+      assert(
+        'SILENT on real 2026-07-21 after comment stripped',
+        findings.length === 0
+      );
     }
   }
 
-  const healthy = path.join(process.cwd(), 'content/daily-updates/2026-07-22.md');
+  const healthy = path.join(
+    process.cwd(),
+    'content/daily-updates/2026-07-22.md'
+  );
   if (fs.existsSync(healthy)) {
-    assert('SILENT on real 2026-07-22', checkReaderSurface(fs.readFileSync(healthy, 'utf8')).length === 0);
+    assert(
+      'SILENT on real 2026-07-22',
+      checkReaderSurface(fs.readFileSync(healthy, 'utf8')).length === 0
+    );
   }
 
-  console.log(fail === 0 ? '\n✅ reader-surface-gate selftest PASS' : `\n❌ reader-surface-gate selftest FAIL (${fail})`);
+  console.log(
+    fail === 0
+      ? '\n✅ reader-surface-gate selftest PASS'
+      : `\n❌ reader-surface-gate selftest FAIL (${fail})`
+  );
   return fail === 0 ? 0 : 1;
 }
 
@@ -115,7 +137,11 @@ if (findings.length === 0) {
   process.exit(0);
 }
 
-console.log(`❌ READER-SURFACE FAIL — ${path.basename(abs)} — ${findings.length} issue(s):`);
+console.log(
+  `❌ READER-SURFACE FAIL — ${path.basename(abs)} — ${findings.length} issue(s):`
+);
 for (const f of findings) console.log(`  [${f.check}] ${f.message}`);
-console.log('\nStrip residual meta (HTML comments / internal tags) before publishing to content/daily-updates/. Gate declarations belong on daily-briefs/*-v2.md only.');
+console.log(
+  '\nStrip residual meta (HTML comments / internal tags) before publishing to content/daily-updates/. Gate declarations belong on daily-briefs/*-v2.md only.'
+);
 process.exit(1);

@@ -31,8 +31,17 @@ export const metadata: Metadata = {
     default: 'Cosmic Trex — Markets, Meditations & Mental Models',
     template: '%s | Cosmic Trex',
   },
-  description: 'Daily financial intelligence brief. Trading floor credibility meets editorial edge.',
-  keywords: ['mental models', 'thinking frameworks', 'markets', 'daily brief', 'investing', 'meditation', 'decision making'],
+  description:
+    'Daily financial intelligence brief. Trading floor credibility meets editorial edge.',
+  keywords: [
+    'mental models',
+    'thinking frameworks',
+    'markets',
+    'daily brief',
+    'investing',
+    'meditation',
+    'decision making',
+  ],
   authors: [{ name: 'Cosmic Trex' }],
   creator: 'Cosmic Trex',
   publisher: 'Cosmic Trex',
@@ -41,7 +50,9 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  ),
   alternates: {
     canonical: '/',
     types: {
@@ -56,7 +67,8 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: '/',
     title: 'Cosmic Trex — Markets, Meditations & Mental Models',
-    description: 'Daily financial intelligence brief. Trading floor credibility meets editorial edge.',
+    description:
+      'Daily financial intelligence brief. Trading floor credibility meets editorial edge.',
     siteName: 'Cosmic Trex',
     images: [
       {
@@ -70,7 +82,8 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Cosmic Trex — Markets, Meditations & Mental Models',
-    description: 'Daily financial intelligence brief. Trading floor credibility meets editorial edge.',
+    description:
+      'Daily financial intelligence brief. Trading floor credibility meets editorial edge.',
   },
   robots: {
     index: true,
@@ -92,12 +105,12 @@ export default function RootLayout({
 }) {
   return (
     <html
-      lang="en"
+      lang='en'
       className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable}`}
     >
-      <body className="antialiased">
+      <body className='antialiased'>
         <WebsiteJsonLd />
-        <Navigation variant="light" className="sticky top-0 z-50" />
+        <Navigation variant='light' className='sticky top-0 z-50' />
         {children}
         <Analytics />
       </body>

@@ -31,17 +31,21 @@ export async function POST(req: NextRequest) {
         error: 'Wrong endpoint',
         detail: `Date "${dateParam}" is a Brief Light date. Call /api/audio/light/generate?date=${dateParam.replace(/-light$/i, '')} instead.`,
       },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
   const { date: targetDate, manual } = resolvePublishDate(dateParam);
-  const result = await generateFullBriefAudio({ date: targetDate, force, manual });
+  const result = await generateFullBriefAudio({
+    date: targetDate,
+    force,
+    manual,
+  });
 
   if (result.status === 'error') {
     return NextResponse.json(
       { error: result.error || 'Audio generation failed', date: targetDate },
-      { status: manual ? 404 : 500 },
+      { status: manual ? 404 : 500 }
     );
   }
 

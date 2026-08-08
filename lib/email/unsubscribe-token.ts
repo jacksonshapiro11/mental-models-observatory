@@ -9,7 +9,9 @@ function getSecret(): string | null {
 export function generateUnsubscribeToken(email: string): string | null {
   const secret = getSecret();
   if (!secret) return null;
-  return createHmac('sha256', secret).update(email.trim().toLowerCase()).digest('base64url');
+  return createHmac('sha256', secret)
+    .update(email.trim().toLowerCase())
+    .digest('base64url');
 }
 
 export function verifyUnsubscribeToken(email: string, token: string): boolean {

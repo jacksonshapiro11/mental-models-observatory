@@ -35,9 +35,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const MONEY = /\$\s?\d[\d,]*(?:\.\d+)?\s?(?:million|billion|trillion|bn|m)\b/gi;
-const COST_CUE = /(each|per\s+\w+|apiece|a\s+piece|expenditure|costs?\b|priced)/i;
+const COST_CUE =
+  /(each|per\s+\w+|apiece|a\s+piece|expenditure|costs?\b|priced)/i;
 
-export interface PricedClaim { token: string; window: string; entities: string[]; }
+export interface PricedClaim {
+  token: string;
+  window: string;
+  entities: string[];
+}
 
 /** Priced-specificity claims = a money magnitude with a unit-cost cue within ~120 chars. */
 export function pricedClaims(text: string): PricedClaim[] {
@@ -48,40 +53,70 @@ export function pricedClaims(text: string): PricedClaim[] {
     const window = t.slice(Math.max(0, i - 120), Math.min(t.length, i + 120));
     if (!COST_CUE.test(window)) continue;
     const entities = [...window.matchAll(/\b[A-Z][a-zA-Z]{4,}\b/g)]
-      .map((e) => e[0])
-      .filter((w) => !/^(Each|Russia|Every|These|Their|While|Where|About|Under|After|Which)$/.test(w));
-    out.push({ token: m[0].replace(/\s+/g, ' ').trim(), window: window.trim(), entities });
+      .map(e => e[0])
+      .filter(
+        w =>
+          !/^(Each|Russia|Every|These|Their|While|Where|About|Under|After|Which)$/.test(
+            w
+          )
+      );
+    out.push({
+      token: m[0].replace(/\s+/g, ' ').trim(),
+      window: window.trim(),
+      entities,
+    });
   }
   return out;
 }
 
 /** UNRESOLVED-FACT text from a Critic report (only the flag lines, not the whole report). */
 function unresolvedFactText(criticMd: string): string {
-  return criticMd.split('\n').filter((l) => /UNRESOLVED-FACT/i.test(l)).join('\n');
+  return criticMd
+    .split('\n')
+    .filter(l => /UNRESOLVED-FACT/i.test(l))
+    .join('\n');
 }
 
 function moneyTokensIn(text: string): Set<string> {
-  return new Set([...text.replace(/\s+/g, ' ').matchAll(MONEY)].map((m) => m[0].replace(/\s+/g, ' ').trim().toLowerCase()));
+  return new Set(
+    [...text.replace(/\s+/g, ' ').matchAll(MONEY)].map(m =>
+      m[0].replace(/\s+/g, ' ').trim().toLowerCase()
+    )
+  );
 }
 
-export interface Finding { token: string; window: string; reason: string; }
+export interface Finding {
+  token: string;
+  window: string;
+  reason: string;
+}
 
 /**
  * A new priced specific FAILs when it is in v2, absent from v1.5, and NEITHER
  * resolved in truth NOR named in a Critic UNRESOLVED-FACT line.
  */
-export function unverifiedNewPricedClaims(v15: string, v2: string, criticMd: string, truthJson: string): Finding[] {
+export function unverifiedNewPricedClaims(
+  v15: string,
+  v2: string,
+  criticMd: string,
+  truthJson: string
+): Finding[] {
   const v15Money = moneyTokensIn(v15);
   const uf = unresolvedFactText(criticMd);
   const ufLower = uf.toLowerCase();
-  const ufFlagsCostClass = /each costs|unit cost|costs an estimated|per (?:unit|missile|weapon)|apiece/i.test(uf);
+  const ufFlagsCostClass =
+    /each costs|unit cost|costs an estimated|per (?:unit|missile|weapon)|apiece/i.test(
+      uf
+    );
   const truth = truthJson.toLowerCase();
   const findings: Finding[] = [];
   for (const claim of pricedClaims(v2)) {
     const tok = claim.token.toLowerCase();
     if (v15Money.has(tok)) continue; // carried from v1.5 — not introduced by the pass
     const verified = truth.includes(tok);
-    const flaggedByEntity = claim.entities.some((e) => ufLower.includes(e.toLowerCase()));
+    const flaggedByEntity = claim.entities.some(e =>
+      ufLower.includes(e.toLowerCase())
+    );
     const flagged = ufFlagsCostClass || flaggedByEntity;
     if (!verified && !flagged) {
       findings.push({
@@ -103,11 +138,22 @@ function runOnDate(root: string, date: string): number {
   const v2 = readOr(path.join(root, `daily-briefs/${date}-v2.md`));
   const critic = readOr(path.join(root, `daily-briefs/${date}-critic.md`));
   const truth = readOr(path.join(root, `daily-briefs/${date}-truth.json`));
-  if (!v2) { console.error(`FAIL: no v2 on disk for ${date}`); return 2; }
-  if (!v15) { console.log(`selfheal-verification-gate — ${date}: no v1.5 (not a self-heal/two-stage night); nothing to diff.`); return 0; }
+  if (!v2) {
+    console.error(`FAIL: no v2 on disk for ${date}`);
+    return 2;
+  }
+  if (!v15) {
+    console.log(
+      `selfheal-verification-gate — ${date}: no v1.5 (not a self-heal/two-stage night); nothing to diff.`
+    );
+    return 0;
+  }
   const findings = unverifiedNewPricedClaims(v15, v2, critic, truth);
-  console.log(`selfheal-verification-gate — ${date}: ${findings.length} unverified new priced specific(s)`);
-  for (const f of findings) console.error(`  ✗ ${f.reason}\n     context: …${f.window}…`);
+  console.log(
+    `selfheal-verification-gate — ${date}: ${findings.length} unverified new priced specific(s)`
+  );
+  for (const f of findings)
+    console.error(`  ✗ ${f.reason}\n     context: …${f.window}…`);
   return findings.length ? 1 : 0;
 }
 
@@ -115,30 +161,47 @@ function selftest(): number {
   const root = process.cwd();
 
   // (1) Synthetic FIRES: a self-heal invents a unit cost nobody flagged or verified.
-  const synV15 = 'Geopolitics. The Sarmat is Russia\'s heaviest ICBM, deployed in small numbers.';
-  const synV2 = 'Geopolitics. The Sarmat is Russia\'s heaviest ICBM. Each costs an estimated $9 million apiece, so a six-strike night is a $54 million expenditure.';
-  const synCriticNoFlag = '## Phase 2\nSection ratings look fine. No unresolved items.';
+  const synV15 =
+    "Geopolitics. The Sarmat is Russia's heaviest ICBM, deployed in small numbers.";
+  const synV2 =
+    "Geopolitics. The Sarmat is Russia's heaviest ICBM. Each costs an estimated $9 million apiece, so a six-strike night is a $54 million expenditure.";
+  const synCriticNoFlag =
+    '## Phase 2\nSection ratings look fine. No unresolved items.';
   const fires = unverifiedNewPricedClaims(synV15, synV2, synCriticNoFlag, '{}');
-  const okFires = fires.some((f) => /\$9 million/i.test(f.token)) ;
+  const okFires = fires.some(f => /\$9 million/i.test(f.token));
 
   // (2) Same claim, but the Critic FLAGGED it -> gate SILENT (the safety net worked).
-  const synCriticFlag = 'UNRESOLVED-FACT: Geo-1: "Each costs an estimated $9 million" — Sarmat unit cost added during self-heal without source verification.';
-  const okSilentWhenFlagged = unverifiedNewPricedClaims(synV15, synV2, synCriticFlag, '{}').length === 0;
+  const synCriticFlag =
+    'UNRESOLVED-FACT: Geo-1: "Each costs an estimated $9 million" — Sarmat unit cost added during self-heal without source verification.';
+  const okSilentWhenFlagged =
+    unverifiedNewPricedClaims(synV15, synV2, synCriticFlag, '{}').length === 0;
 
   // (3) A single new priced specific RESOLVED in truth.json -> gate SILENT.
   //     (synV2 above carries TWO magnitudes; isolate the truth-verified path with one so the test
   //      proves the truth leg, not the second-magnitude catch that (1) already proves.)
-  const synV2one = 'Geopolitics. The Sarmat is Russia\'s heaviest ICBM. Each costs an estimated $9 million apiece.';
-  const okSilentWhenVerified = unverifiedNewPricedClaims(synV15, synV2one, synCriticNoFlag, '{"claims":[{"text":"$9 million Sarmat unit cost","status":"resolved"}]}').length === 0;
+  const synV2one =
+    "Geopolitics. The Sarmat is Russia's heaviest ICBM. Each costs an estimated $9 million apiece.";
+  const okSilentWhenVerified =
+    unverifiedNewPricedClaims(
+      synV15,
+      synV2one,
+      synCriticNoFlag,
+      '{"claims":[{"text":"$9 million Sarmat unit cost","status":"resolved"}]}'
+    ).length === 0;
 
   // (4) A carried figure (present in BOTH v1.5 and v2) is never "introduced" -> SILENT, no noise.
-  const carriedV15 = 'AI. Anthropic is on track for roughly $47 billion in revenue.';
-  const carriedV2 = 'AI. Anthropic is on track for roughly $47 billion in revenue, its listing bid underway.';
-  const okNoNoiseCarried = unverifiedNewPricedClaims(carriedV15, carriedV2, '', '{}').length === 0;
+  const carriedV15 =
+    'AI. Anthropic is on track for roughly $47 billion in revenue.';
+  const carriedV2 =
+    'AI. Anthropic is on track for roughly $47 billion in revenue, its listing bid underway.';
+  const okNoNoiseCarried =
+    unverifiedNewPricedClaims(carriedV15, carriedV2, '', '{}').length === 0;
 
   // (5) A new magnitude with NO cost cue (e.g., a valuation) is out of scope -> SILENT.
   const valV2 = 'AI. The round valued the venue at about $20 billion.';
-  const okNoNoiseValuation = unverifiedNewPricedClaims('AI. A funding round closed.', valV2, '', '{}').length === 0;
+  const okNoNoiseValuation =
+    unverifiedNewPricedClaims('AI. A funding round closed.', valV2, '', '{}')
+      .length === 0;
 
   // (6) THE REAL 07-20 ARTIFACTS: the self-heal invented the Zircon unit cost, and the Critic
   // FLAGGED it (UNRESOLVED-FACT) / the morning gate resolved it -> the gate must be SILENT on the
@@ -150,38 +213,84 @@ function selftest(): number {
   const trp = path.join(root, 'daily-briefs/2026-07-20-truth.json');
   if (fs.existsSync(v15p) && fs.existsSync(v2p)) {
     const real = unverifiedNewPricedClaims(
-      fs.readFileSync(v15p, 'utf8'), fs.readFileSync(v2p, 'utf8'), readOr(crp), readOr(trp));
+      fs.readFileSync(v15p, 'utf8'),
+      fs.readFileSync(v2p, 'utf8'),
+      readOr(crp),
+      readOr(trp)
+    );
     okReal = real.length === 0; // Zircon $5M/$50M were flagged by the Critic + resolved by morning
     // And prove the fingerprint IS detected in the real v2 (so silence is "flagged", not "blind"):
-    const detected = pricedClaims(fs.readFileSync(v2p, 'utf8')).some((c) => /\$5 million|\$50 million/i.test(c.token));
+    const detected = pricedClaims(fs.readFileSync(v2p, 'utf8')).some(c =>
+      /\$5 million|\$50 million/i.test(c.token)
+    );
     okReal = okReal && detected;
   }
 
   console.log('selfheal-verification-gate --selftest');
-  console.log(`  FIRES on a self-heal that invents an unflagged, unverified unit cost: ${okFires ? '✓' : '✗'}`);
-  console.log(`  SILENT when the Critic flagged it UNRESOLVED-FACT: ${okSilentWhenFlagged ? '✓' : '✗'}`);
-  console.log(`  SILENT when truth.json resolved it: ${okSilentWhenVerified ? '✓' : '✗'}`);
-  console.log(`  no noise on a figure carried from v1.5: ${okNoNoiseCarried ? '✓' : '✗'}`);
-  console.log(`  out of scope: a magnitude with no cost cue (valuation): ${okNoNoiseValuation ? '✓' : '✗'}`);
-  console.log(`  real 07-20: fingerprint detected AND silent (Critic-flagged + morning-resolved): ${okReal ? '✓' : '✗'}`);
+  console.log(
+    `  FIRES on a self-heal that invents an unflagged, unverified unit cost: ${okFires ? '✓' : '✗'}`
+  );
+  console.log(
+    `  SILENT when the Critic flagged it UNRESOLVED-FACT: ${okSilentWhenFlagged ? '✓' : '✗'}`
+  );
+  console.log(
+    `  SILENT when truth.json resolved it: ${okSilentWhenVerified ? '✓' : '✗'}`
+  );
+  console.log(
+    `  no noise on a figure carried from v1.5: ${okNoNoiseCarried ? '✓' : '✗'}`
+  );
+  console.log(
+    `  out of scope: a magnitude with no cost cue (valuation): ${okNoNoiseValuation ? '✓' : '✗'}`
+  );
+  console.log(
+    `  real 07-20: fingerprint detected AND silent (Critic-flagged + morning-resolved): ${okReal ? '✓' : '✗'}`
+  );
 
-  const ok = okFires && okSilentWhenFlagged && okSilentWhenVerified && okNoNoiseCarried && okNoNoiseValuation && okReal;
-  if (ok) { console.log('\n✅ SELFTEST PASS — a self-heal that invents a priced fact now FAILs unless it is verified or flagged for the morning gate.'); return 0; }
-  console.error('\n❌ SELFTEST FAIL'); return 1;
+  const ok =
+    okFires &&
+    okSilentWhenFlagged &&
+    okSilentWhenVerified &&
+    okNoNoiseCarried &&
+    okNoNoiseValuation &&
+    okReal;
+  if (ok) {
+    console.log(
+      '\n✅ SELFTEST PASS — a self-heal that invents a priced fact now FAILs unless it is verified or flagged for the morning gate.'
+    );
+    return 0;
+  }
+  console.error('\n❌ SELFTEST FAIL');
+  return 1;
 }
 
 function main(): number {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
-  const flag = (n: string) => { const i = args.indexOf(n); return i > -1 ? args[i + 1] : undefined; };
+  const flag = (n: string) => {
+    const i = args.indexOf(n);
+    return i > -1 ? args[i + 1] : undefined;
+  };
   if (flag('--v2')) {
-    const findings = unverifiedNewPricedClaims(readOr(flag('--v15')), readOr(flag('--v2')), readOr(flag('--critic')), readOr(flag('--truth')));
-    console.log(`selfheal-verification-gate — ${findings.length} unverified new priced specific(s)`);
-    for (const f of findings) console.error(`  ✗ ${f.reason}\n     context: …${f.window}…`);
+    const findings = unverifiedNewPricedClaims(
+      readOr(flag('--v15')),
+      readOr(flag('--v2')),
+      readOr(flag('--critic')),
+      readOr(flag('--truth'))
+    );
+    console.log(
+      `selfheal-verification-gate — ${findings.length} unverified new priced specific(s)`
+    );
+    for (const f of findings)
+      console.error(`  ✗ ${f.reason}\n     context: …${f.window}…`);
     return findings.length ? 1 : 0;
   }
-  const date = args.find((a) => /^\d{4}-\d{2}-\d{2}$/.test(a));
-  if (!date) { console.error('usage: selfheal-verification-gate.ts <DATE> | --v15 a --v2 b --critic c --truth t | --selftest'); return 2; }
+  const date = args.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a));
+  if (!date) {
+    console.error(
+      'usage: selfheal-verification-gate.ts <DATE> | --v15 a --v2 b --critic c --truth t | --selftest'
+    );
+    return 2;
+  }
   return runOnDate(process.cwd(), date);
 }
 

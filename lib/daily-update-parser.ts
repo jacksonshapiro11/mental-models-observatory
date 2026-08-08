@@ -11,46 +11,164 @@ export { isDisplayDateLine } from './brief-date';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface DailyBrief {
-  date: string;           // "2026-02-23"
-  displayDate: string;    // "Monday, February 23, 2026"
-  dailyTitle: string;     // "The Bypass That Wasn't" — editorial headline
-  epigraph: string;       // Italic line after title
-  lede: string;           // Italic summary paragraph
-  orientation: string;    // "New here?" guide paragraph (optional)
+  date: string; // "2026-02-23"
+  displayDate: string; // "Monday, February 23, 2026"
+  dailyTitle: string; // "The Bypass That Wasn't" — editorial headline
+  epigraph: string; // Italic line after title
+  lede: string; // Italic summary paragraph
+  orientation: string; // "New here?" guide paragraph (optional)
   sections: BriefSection[];
-  raw: string;            // Full markdown for fallback
+  raw: string; // Full markdown for fallback
 }
 
 export interface BriefSection {
   id: string;
-  type: 'overnight' | 'dashboard' | 'the-six' | 'the-signal' | 'deep-read' | 'the-take' | 'the-predictions' | 'inner-game' | 'the-model' | 'discovery' | 'big-stories' | 'tomorrows-headlines' | 'watchlist' | 'worldview' | 'ref-big-stories' | 'ref-tomorrows';
+  type:
+    | 'overnight'
+    | 'dashboard'
+    | 'the-six'
+    | 'the-signal'
+    | 'deep-read'
+    | 'the-take'
+    | 'the-predictions'
+    | 'inner-game'
+    | 'the-model'
+    | 'discovery'
+    | 'big-stories'
+    | 'tomorrows-headlines'
+    | 'watchlist'
+    | 'worldview'
+    | 'ref-big-stories'
+    | 'ref-tomorrows';
   label: string;
   shortLabel: string;
-  content: string;        // Raw markdown content of this section
+  content: string; // Raw markdown content of this section
 }
 
 // ─── Section definitions (order matters) ─────────────────────────────────────
 
-const SECTION_DEFS: { marker: string; id: string; type: BriefSection['type']; label: string; shortLabel: string }[] = [
-  { marker: '## ▸ OVERNIGHT', id: 'overnight', type: 'overnight', label: 'Overnight', shortLabel: 'ON' },
-  { marker: '# ▸ THE DASHBOARD', id: 'dashboard', type: 'dashboard', label: 'Dashboard', shortLabel: 'Dash' },
-  { marker: '# ▸ THE SIX', id: 'the-six', type: 'the-six', label: 'The Six', shortLabel: 'Six' },
+const SECTION_DEFS: {
+  marker: string;
+  id: string;
+  type: BriefSection['type'];
+  label: string;
+  shortLabel: string;
+}[] = [
+  {
+    marker: '## ▸ OVERNIGHT',
+    id: 'overnight',
+    type: 'overnight',
+    label: 'Overnight',
+    shortLabel: 'ON',
+  },
+  {
+    marker: '# ▸ THE DASHBOARD',
+    id: 'dashboard',
+    type: 'dashboard',
+    label: 'Dashboard',
+    shortLabel: 'Dash',
+  },
+  {
+    marker: '# ▸ THE SIX',
+    id: 'the-six',
+    type: 'the-six',
+    label: 'The Six',
+    shortLabel: 'Six',
+  },
   // Weekly-only — does not appear in daily briefs (harmless: skipped when absent)
-  { marker: '# ▸ THE SIGNAL', id: 'the-signal', type: 'the-signal', label: 'The Signal', shortLabel: 'Signal' },
-  { marker: '## Deep Read', id: 'deep-read', type: 'deep-read', label: 'Deep Read', shortLabel: 'Read' },
-  { marker: '# ▸ THE TAKE', id: 'the-take', type: 'the-take', label: 'The Take', shortLabel: 'Take' },
+  {
+    marker: '# ▸ THE SIGNAL',
+    id: 'the-signal',
+    type: 'the-signal',
+    label: 'The Signal',
+    shortLabel: 'Signal',
+  },
+  {
+    marker: '## Deep Read',
+    id: 'deep-read',
+    type: 'deep-read',
+    label: 'Deep Read',
+    shortLabel: 'Read',
+  },
+  {
+    marker: '# ▸ THE TAKE',
+    id: 'the-take',
+    type: 'the-take',
+    label: 'The Take',
+    shortLabel: 'Take',
+  },
   // Weekly-only — does not appear in daily briefs (harmless: skipped when absent)
-  { marker: '# ▸ THE PREDICTIONS', id: 'the-predictions', type: 'the-predictions', label: 'The Predictions', shortLabel: 'Predict' },
-  { marker: '# ▸ INNER GAME', id: 'inner-game', type: 'inner-game', label: 'Inner Game', shortLabel: 'Inner' },
-  { marker: '# ▸ THE MODEL', id: 'the-model', type: 'the-model', label: 'The Model', shortLabel: 'Model' },
-  { marker: '# ▸ DISCOVERY', id: 'discovery', type: 'discovery', label: 'Discovery', shortLabel: 'Discovery' },
+  {
+    marker: '# ▸ THE PREDICTIONS',
+    id: 'the-predictions',
+    type: 'the-predictions',
+    label: 'The Predictions',
+    shortLabel: 'Predict',
+  },
+  {
+    marker: '# ▸ INNER GAME',
+    id: 'inner-game',
+    type: 'inner-game',
+    label: 'Inner Game',
+    shortLabel: 'Inner',
+  },
+  {
+    marker: '# ▸ THE MODEL',
+    id: 'the-model',
+    type: 'the-model',
+    label: 'The Model',
+    shortLabel: 'Model',
+  },
+  {
+    marker: '# ▸ DISCOVERY',
+    id: 'discovery',
+    type: 'discovery',
+    label: 'Discovery',
+    shortLabel: 'Discovery',
+  },
   // Legacy sections — kept for backward compatibility with older briefs
-  { marker: '# ▸ THE BIG STORIES', id: 'big-stories', type: 'big-stories', label: 'Big Stories', shortLabel: 'Stories' },
-  { marker: "# ▸ TOMORROW'S HEADLINES", id: 'tomorrows-headlines', type: 'tomorrows-headlines', label: 'Tomorrow', shortLabel: 'Tomorrow' },
-  { marker: '# ▸ THE WATCHLIST', id: 'watchlist', type: 'watchlist', label: 'Watchlist', shortLabel: 'Watch' },
-  { marker: '# ▸ WORLDVIEW UPDATES', id: 'worldview', type: 'worldview', label: 'Worldview', shortLabel: 'Worldview' },
-  { marker: '# ▸ FULL REFERENCE: BIG STORIES', id: 'ref-big-stories', type: 'ref-big-stories', label: 'Ref: Stories', shortLabel: 'Ref:Stories' },
-  { marker: "# ▸ FULL REFERENCE: TOMORROW'S HEADLINES", id: 'ref-tomorrows', type: 'ref-tomorrows', label: 'Ref: Tomorrow', shortLabel: 'Ref:Tmrw' },
+  {
+    marker: '# ▸ THE BIG STORIES',
+    id: 'big-stories',
+    type: 'big-stories',
+    label: 'Big Stories',
+    shortLabel: 'Stories',
+  },
+  {
+    marker: "# ▸ TOMORROW'S HEADLINES",
+    id: 'tomorrows-headlines',
+    type: 'tomorrows-headlines',
+    label: 'Tomorrow',
+    shortLabel: 'Tomorrow',
+  },
+  {
+    marker: '# ▸ THE WATCHLIST',
+    id: 'watchlist',
+    type: 'watchlist',
+    label: 'Watchlist',
+    shortLabel: 'Watch',
+  },
+  {
+    marker: '# ▸ WORLDVIEW UPDATES',
+    id: 'worldview',
+    type: 'worldview',
+    label: 'Worldview',
+    shortLabel: 'Worldview',
+  },
+  {
+    marker: '# ▸ FULL REFERENCE: BIG STORIES',
+    id: 'ref-big-stories',
+    type: 'ref-big-stories',
+    label: 'Ref: Stories',
+    shortLabel: 'Ref:Stories',
+  },
+  {
+    marker: "# ▸ FULL REFERENCE: TOMORROW'S HEADLINES",
+    id: 'ref-tomorrows',
+    type: 'ref-tomorrows',
+    label: 'Ref: Tomorrow',
+    shortLabel: 'Ref:Tmrw',
+  },
 ];
 
 // ─── Flexible section marker matching ─────────────────────────────────────────
@@ -76,7 +194,10 @@ function findSectionStart(markdown: string, marker: string): number {
   let charIdx = 0;
   for (const line of lines) {
     const trimmed = line.trim();
-    if (/^#{1,3}\s/.test(trimmed) && trimmed.toUpperCase().includes(sectionName.toUpperCase())) {
+    if (
+      /^#{1,3}\s/.test(trimmed) &&
+      trimmed.toUpperCase().includes(sectionName.toUpperCase())
+    ) {
       return charIdx + (line.length - line.trimStart().length);
     }
     charIdx += line.length + 1;
@@ -87,7 +208,10 @@ function findSectionStart(markdown: string, marker: string): number {
 
 // ─── Parser ──────────────────────────────────────────────────────────────────
 
-export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief {
+export function parseDailyBrief(
+  markdown: string,
+  dateSlug: string
+): DailyBrief {
   const lines = markdown.split('\n');
 
   // Extract epigraph (first italic line after brief title)
@@ -98,22 +222,40 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
   let orientation = '';
   let headerEndIndex = 0;
   const italicLinesAfterDate: string[] = [];
-  let plainRecap = '';  // Plain-text daily recap paragraph (not bold, not italic)
+  let plainRecap = ''; // Plain-text daily recap paragraph (not bold, not italic)
 
   for (let i = 0; i < Math.min(lines.length, 20); i++) {
     const line = (lines[i] ?? '').trim();
-    if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && i < 5) {
+    if (
+      line.startsWith('*') &&
+      line.endsWith('*') &&
+      !line.startsWith('**') &&
+      i < 5
+    ) {
       epigraph = line.slice(1, -1);
       // Strip leading/trailing quotes — the renderer adds its own typographic quotes
-      epigraph = epigraph.replace(/^[""\u201C\u201D]+/, '').replace(/[""\u201C\u201D]+$/, '').trim();
+      epigraph = epigraph
+        .replace(/^[""\u201C\u201D]+/, '')
+        .replace(/[""\u201C\u201D]+$/, '')
+        .trim();
     }
     // New format: **Tuesday, July 7, 2026** (bold date line)
-    if (!displayDate && line.startsWith('**') && line.endsWith('**') && isDisplayDateLine(line)) {
+    if (
+      !displayDate &&
+      line.startsWith('**') &&
+      line.endsWith('**') &&
+      isDisplayDateLine(line)
+    ) {
       displayDate = extractDisplayDateFromLine(line);
       headerEndIndex = i + 1;
     }
     // Old format: ## Monday, February 23, 2026
-    if (!displayDate && line.startsWith('## ') && !line.includes('▸') && isDisplayDateLine(line)) {
+    if (
+      !displayDate &&
+      line.startsWith('## ') &&
+      !line.includes('▸') &&
+      isDisplayDateLine(line)
+    ) {
       displayDate = extractDisplayDateFromLine(line);
       headerEndIndex = i + 1;
     }
@@ -132,17 +274,35 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
       dailyTitle = line.replace(/^###\s+/, '');
     }
     // Capture bold TLDR line (e.g. "**News TLDR:** ...")
-    if (headerEndIndex > 0 && i > headerEndIndex && line.startsWith('**') && !lede) {
+    if (
+      headerEndIndex > 0 &&
+      i > headerEndIndex &&
+      line.startsWith('**') &&
+      !lede
+    ) {
       lede = line;
     }
     // Capture plain-text recap paragraph (not italic, not bold, not heading, not empty)
-    if (headerEndIndex > 0 && i > headerEndIndex && !plainRecap &&
-        line.length > 30 && !line.startsWith('*') && !line.startsWith('#') && !line.startsWith('---')) {
+    if (
+      headerEndIndex > 0 &&
+      i > headerEndIndex &&
+      !plainRecap &&
+      line.length > 30 &&
+      !line.startsWith('*') &&
+      !line.startsWith('#') &&
+      !line.startsWith('---')
+    ) {
       plainRecap = line;
     }
     // Collect italic paragraphs after the date, before first ---
     // Skip the "Most publications" boilerplate orientation text
-    if (headerEndIndex > 0 && i > headerEndIndex && line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
+    if (
+      headerEndIndex > 0 &&
+      i > headerEndIndex &&
+      line.startsWith('*') &&
+      line.endsWith('*') &&
+      !line.startsWith('**')
+    ) {
       const inner = line.slice(1, -1);
       if (!inner.startsWith('Most publications')) {
         italicLinesAfterDate.push(inner);
@@ -174,7 +334,8 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
   // The dashboard component fetches its own data from the API —
   // it doesn't need markdown content. This ensures the dashboard
   // renders even when the brief markdown doesn't include a dashboard section.
-  const hasDashboardInMarkdown = findSectionStart(markdown, '# ▸ THE DASHBOARD') !== -1;
+  const hasDashboardInMarkdown =
+    findSectionStart(markdown, '# ▸ THE DASHBOARD') !== -1;
   if (!hasDashboardInMarkdown) {
     sections.push({
       id: 'dashboard',
@@ -220,7 +381,10 @@ export function parseDailyBrief(markdown: string, dateSlug: string): DailyBrief 
     // gate-required declaration so validate-brief can see FIGURE-FIRST — the
     // comment ships in content/daily-updates and renders as visible body text
     // (worked failure: 2026-07-21 Inner Game). Light parser already skips them.
-    content = content.replace(/<!--[\s\S]*?-->/g, '').replace(/\n{3,}/g, '\n\n').trim();
+    content = content
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
 
     sections.push({
       id: def.id,
@@ -255,7 +419,8 @@ export function getLatestBrief(): DailyBrief | null {
   // and getLatestBrief returns the light file, which then misroutes into
   // the full-brief audio pipeline (see getAllBriefDates below, which already
   // has this filter).
-  const files = fs.readdirSync(CONTENT_DIR)
+  const files = fs
+    .readdirSync(CONTENT_DIR)
     .filter(f => f.endsWith('.md') && !f.includes('-light'))
     .sort()
     .reverse();
@@ -279,7 +444,8 @@ export function getBriefByDate(dateSlug: string): DailyBrief | null {
 export function getAllBriefDates(): string[] {
   if (!fs.existsSync(CONTENT_DIR)) return [];
 
-  return fs.readdirSync(CONTENT_DIR)
+  return fs
+    .readdirSync(CONTENT_DIR)
     .filter(f => f.endsWith('.md') && !f.includes('-light'))
     .map(f => f.replace('.md', ''))
     .sort()
@@ -292,12 +458,16 @@ export function getAllBriefDates(): string[] {
 // plus the weekly-only THE SIGNAL and THE PREDICTIONS markers added above). The URL
 // slug is just the week id ("2026-W26"); the file is resolved by filename prefix.
 
-const WEEKLY_CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates/weekly');
+const WEEKLY_CONTENT_DIR = path.join(
+  process.cwd(),
+  'content/daily-updates/weekly'
+);
 
 /** Resolve a week slug (e.g. "2026-W26") to its full-weekly file name, excluding -light. */
 function resolveWeeklyFile(slug: string): string | null {
   if (!fs.existsSync(WEEKLY_CONTENT_DIR)) return null;
-  const match = fs.readdirSync(WEEKLY_CONTENT_DIR)
+  const match = fs
+    .readdirSync(WEEKLY_CONTENT_DIR)
     .filter(f => f.endsWith('.md') && !f.includes('-light'))
     .find(f => f.startsWith(`${slug}-`) || f === `${slug}.md`);
   return match ?? null;
@@ -307,21 +477,26 @@ export function getWeeklyBySlug(slug: string): DailyBrief | null {
   const fileName = resolveWeeklyFile(slug);
   if (!fileName) return null;
 
-  const content = fs.readFileSync(path.join(WEEKLY_CONTENT_DIR, fileName), 'utf-8');
+  const content = fs.readFileSync(
+    path.join(WEEKLY_CONTENT_DIR, fileName),
+    'utf-8'
+  );
   return parseDailyBrief(content, slug);
 }
 
 /** All published full-weekly slugs (week ids), newest first. */
 export function getAllWeeklySlugs(): string[] {
   if (!fs.existsSync(WEEKLY_CONTENT_DIR)) return [];
-  return fs.readdirSync(WEEKLY_CONTENT_DIR)
-    .filter(f => f.endsWith('.md') && !f.includes('-light'))
-    // Filename is {YYYY-Www}-{mon-dd-dd}.md → slug is the leading YYYY-Www token
-    .map(f => {
-      const m = f.match(/^(\d{4}-W\d{1,2})/i);
-      return m ? m[1]! : f.replace('.md', '');
-    })
-    .sort()
-    .reverse();
+  return (
+    fs
+      .readdirSync(WEEKLY_CONTENT_DIR)
+      .filter(f => f.endsWith('.md') && !f.includes('-light'))
+      // Filename is {YYYY-Www}-{mon-dd-dd}.md → slug is the leading YYYY-Www token
+      .map(f => {
+        const m = f.match(/^(\d{4}-W\d{1,2})/i);
+        return m ? m[1]! : f.replace('.md', '');
+      })
+      .sort()
+      .reverse()
+  );
 }
-

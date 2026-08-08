@@ -14,18 +14,18 @@ const TwitterClient = require('./platforms/twitter-client');
 async function postFromQueue() {
   const queueFile = path.join(process.cwd(), 'tweets', 'queue', 'pending.json');
   const postedDir = path.join(process.cwd(), 'tweets', 'posted');
-  
+
   if (!fs.existsSync(queueFile)) {
     console.log('📭 No queue file found');
     return;
   }
-  
+
   if (!fs.existsSync(postedDir)) {
     fs.mkdirSync(postedDir, { recursive: true });
   }
-  
+
   const queue = JSON.parse(fs.readFileSync(queueFile, 'utf8'));
-  
+
   // Get current time in EST
   const now = new Date();
   const formatter = new Intl.DateTimeFormat('en-US', {
@@ -36,49 +36,53 @@ async function postFromQueue() {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: false
+    hour12: false,
   });
-  
+
   const parts = formatter.formatToParts(now);
   const estDate = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
   const estTime = `${parts.find(p => p.type === 'hour').value}:${parts.find(p => p.type === 'minute').value}`;
-  
+
   console.log(`\n📅 Current time: ${estDate} ${estTime} EST\n`);
-  
+
   // Find tweets that should be posted
   const toPost = queue.filter(item => {
     if (item.status === 'posted') return false;
-    
+
     const scheduledDateTime = new Date(item.scheduledDateTime);
     const nowUTC = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
-    
+
     return scheduledDateTime <= nowUTC;
   });
-  
+
   if (toPost.length === 0) {
     console.log('⏰ No tweets due yet');
     const next = queue.find(item => item.status === 'pending');
     if (next) {
       console.log(`\n📋 Next: ${next.modelName}`);
-      console.log(`   Scheduled: ${next.scheduledDate} ${next.scheduledTime} EST\n`);
+      console.log(
+        `   Scheduled: ${next.scheduledDate} ${next.scheduledTime} EST\n`
+      );
     }
     return;
   }
-  
+
   // Post first due tweet
   const thread = toPost[0];
-  
+
   console.log(`🐦 Posting: ${thread.modelName}`);
-  console.log(`   Scheduled: ${thread.scheduledDate} ${thread.scheduledTime} EST\n`);
-  
+  console.log(
+    `   Scheduled: ${thread.scheduledDate} ${thread.scheduledTime} EST\n`
+  );
+
   // Initialize TwitterClient
   const client = new TwitterClient({
     oauth2AccessToken: process.env.TWITTER_OAUTH2_ACCESS_TOKEN,
     refreshToken: process.env.TWITTER_OAUTH2_REFRESH_TOKEN,
     clientId: process.env.TWITTER_CLIENT_ID,
-    clientSecret: process.env.TWITTER_CLIENT_SECRET
+    clientSecret: process.env.TWITTER_CLIENT_SECRET,
   });
-  
+
   // CRITICAL: Always refresh token at start of each run to guarantee fresh token
   // Access tokens expire after ~2 hours, and we run 3x/day with 3-5 hour gaps
   // This ensures we NEVER have an expired token during posting
@@ -88,9 +92,14 @@ async function postFromQueue() {
     try {
       const refreshResult = await client.refreshAccessToken();
       // Twitter may rotate the refresh token - capture it if provided
-      if (refreshResult.refreshToken && refreshResult.refreshToken !== client.config.refreshToken) {
+      if (
+        refreshResult.refreshToken &&
+        refreshResult.refreshToken !== client.config.refreshToken
+      ) {
         newRefreshToken = refreshResult.refreshToken;
-        console.log('⚠️  Refresh token was rotated - will update GitHub Secrets\n');
+        console.log(
+          '⚠️  Refresh token was rotated - will update GitHub Secrets\n'
+        );
       }
       console.log('✅ Token refreshed successfully - ready to post\n');
     } catch (refreshError) {
@@ -98,28 +107,32 @@ async function postFromQueue() {
       console.error(`   Error: ${refreshError.message}`);
       console.error('\n💡 This usually means:');
       console.error('   1. Refresh token has expired (~60 days)');
-      console.error('   2. Need to re-authorize: node scripts/quick-twitter-auth.js');
+      console.error(
+        '   2. Need to re-authorize: node scripts/quick-twitter-auth.js'
+      );
       console.error('   3. Update GitHub Secrets with new tokens\n');
       process.exit(1);
     }
   } else {
     console.error('❌ CRITICAL: Missing OAuth2 refresh token configuration!');
-    console.error('   Cannot guarantee token freshness without refresh token\n');
+    console.error(
+      '   Cannot guarantee token freshness without refresh token\n'
+    );
     process.exit(1);
   }
-  
+
   // Post thread (SAME logic as test-tweet-now)
   let previousTweetId = null;
   const results = [];
-  
+
   for (let i = 0; i < thread.tweets.length; i++) {
     const tweet = thread.tweets[i];
     console.log(`Tweet ${i + 1}/${thread.tweets.length}:`);
     console.log(`  ${tweet.substring(0, 50)}...`);
     console.log(`  Length: ${tweet.length} chars`);
-    
+
     const result = await client.postTweet(tweet, previousTweetId);
-    
+
     if (!result.success) {
       console.error(`  ❌ Failed: ${result.error}`);
       if (result.details) {
@@ -127,53 +140,60 @@ async function postFromQueue() {
       }
       process.exit(1);
     }
-    
+
     console.log(`  ✅ Posted! ID: ${result.tweetId}\n`);
     previousTweetId = result.tweetId;
     results.push(result);
-    
+
     // Wait 5 seconds between tweets
     if (i < thread.tweets.length - 1) {
       await new Promise(resolve => setTimeout(resolve, 5000));
     }
   }
-  
+
   // Mark as posted
   thread.status = 'posted';
   thread.postedAt = new Date().toISOString();
   thread.tweetIds = results.map(r => r.tweetId);
   thread.threadUrl = `https://twitter.com/Cosmic_t_rex/status/${results[0].tweetId}`;
-  
+
   // Save to posted history
   const today = new Date().toISOString().split('T')[0];
   const postedFile = path.join(postedDir, `${today}.json`);
-  
+
   let posted = [];
   if (fs.existsSync(postedFile)) {
     posted = JSON.parse(fs.readFileSync(postedFile, 'utf8'));
   }
   posted.push(thread);
   fs.writeFileSync(postedFile, JSON.stringify(posted, null, 2));
-  
+
   // Update queue
   const updated = queue.map(item =>
     item.scheduledDateTime === thread.scheduledDateTime ? thread : item
   );
   fs.writeFileSync(queueFile, JSON.stringify(updated, null, 2));
-  
+
   console.log('✅ Thread posted successfully!');
   console.log(`🔗 ${thread.threadUrl}\n`);
-  
+
   const remaining = updated.filter(item => item.status === 'pending').length;
   console.log(`📊 Remaining: ${remaining} threads\n`);
-  
+
   // If refresh token was rotated, save it for GitHub Secrets update
   if (newRefreshToken) {
     const tokenUpdateFile = path.join(process.cwd(), '.token-update.json');
-    fs.writeFileSync(tokenUpdateFile, JSON.stringify({
-      refreshToken: newRefreshToken,
-      updatedAt: new Date().toISOString()
-    }, null, 2));
+    fs.writeFileSync(
+      tokenUpdateFile,
+      JSON.stringify(
+        {
+          refreshToken: newRefreshToken,
+          updatedAt: new Date().toISOString(),
+        },
+        null,
+        2
+      )
+    );
     console.log('💾 New refresh token saved for GitHub Secrets update\n');
   }
 }
@@ -184,4 +204,3 @@ postFromQueue()
     console.error('❌ Error:', error);
     process.exit(1);
   });
-

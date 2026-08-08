@@ -53,7 +53,7 @@ export function ArticleJsonLd({
 
   return (
     <script
-      type="application/ld+json"
+      type='application/ld+json'
       dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
     />
   );
@@ -65,7 +65,8 @@ export function WebsiteJsonLd() {
     '@type': 'WebSite',
     name: 'Cosmic Trex',
     url: SITE_URL,
-    description: 'Daily financial intelligence brief. Markets, geopolitics, AI, crypto, and macro — filtered through mental models.',
+    description:
+      'Daily financial intelligence brief. Markets, geopolitics, AI, crypto, and macro — filtered through mental models.',
     publisher: {
       '@type': 'Organization',
       name: 'Cosmic Trex',
@@ -75,7 +76,7 @@ export function WebsiteJsonLd() {
 
   return (
     <script
-      type="application/ld+json"
+      type='application/ld+json'
       dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
     />
   );

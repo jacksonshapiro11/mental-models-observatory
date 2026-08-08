@@ -32,7 +32,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-interface Finding { severity: 'FLAG'; message: string }
+interface Finding {
+  severity: 'FLAG';
+  message: string;
+}
 
 // ---------- 1. Leftover throughline marker (retired grammar) ----------
 function checkLeftoverMarker(brief: string): string | null {
@@ -47,19 +50,36 @@ function checkPayoffClass(qg: string): string[] {
   if (!qg.trim()) return out;
   // Legacy drift: retired synthesis designation executed.
   if (qg.includes('SYNTHESIS DESIGNATION:') && !qg.includes('not triggered')) {
-    out.push(`QG log contains an executed SYNTHESIS DESIGNATION — the body-threading gate was retired 2026-07-10. The QG ran a stale spec; reload system/Novelty_Audit.md (PASS 1g PAYOFF CHECK).`);
+    out.push(
+      `QG log contains an executed SYNTHESIS DESIGNATION — the body-threading gate was retired 2026-07-10. The QG ran a stale spec; reload system/Novelty_Audit.md (PASS 1g PAYOFF CHECK).`
+    );
   }
   const payoffLine = qg.match(/PAYOFF CLASS:\s*([^\n]*)/i);
   if (!payoffLine) return out; // old-format or absent log — validate-brief owns presence rules
   const line = payoffLine[1];
-  const cls = /MECHANISM/i.test(line) ? 'MECHANISM' : /TENSION/i.test(line) ? 'TENSION'
-    : /THEME/i.test(line) ? 'THEME' : /INVENTORY/i.test(line) ? 'INVENTORY' : 'UNKNOWN';
-  const noRewrite = /action\s*=\s*\[?\s*(none-needed|already payoff-grade)/i.test(line);
+  const cls = /MECHANISM/i.test(line)
+    ? 'MECHANISM'
+    : /TENSION/i.test(line)
+      ? 'TENSION'
+      : /THEME/i.test(line)
+        ? 'THEME'
+        : /INVENTORY/i.test(line)
+          ? 'INVENTORY'
+          : 'UNKNOWN';
+  const noRewrite =
+    /action\s*=\s*\[?\s*(none-needed|already payoff-grade)/i.test(line);
   if ((cls === 'THEME' || cls === 'INVENTORY') && noRewrite) {
-    out.push(`PAYOFF CLASS is ${cls} with action=none-needed/already-payoff-grade — PASS 1g step 4 requires the rewrite. A label or inventory may not stand as the intro's conclusion; rewrite to the sweep's MECHANISM/TENSION candidate or the parallel-tracks lead.`);
+    out.push(
+      `PAYOFF CLASS is ${cls} with action=none-needed/already-payoff-grade — PASS 1g step 4 requires the rewrite. A label or inventory may not stand as the intro's conclusion; rewrite to the sweep's MECHANISM/TENSION candidate or the parallel-tracks lead.`
+    );
   }
-  if ((cls === 'MECHANISM' || cls === 'TENSION') && !/PAYOFF EXECUTION:/i.test(qg)) {
-    out.push(`PAYOFF CLASS is ${cls} but no 'PAYOFF EXECUTION:' line exists — identified, not executed (classify → rewrite-if-owed → verify watch → log).`);
+  if (
+    (cls === 'MECHANISM' || cls === 'TENSION') &&
+    !/PAYOFF EXECUTION:/i.test(qg)
+  ) {
+    out.push(
+      `PAYOFF CLASS is ${cls} but no 'PAYOFF EXECUTION:' line exists — identified, not executed (classify → rewrite-if-owed → verify watch → log).`
+    );
   }
   return out;
 }
@@ -75,16 +95,16 @@ function checkPayoffClass(qg: string): string[] {
 // Editor acts on it and the Critic judges whether a real mechanism exists.
 function freshFrameScanBlock(qg: string): string | null {
   const lines = qg.split('\n');
-  const i = lines.findIndex((l) => /FRESH-FRAME SCAN/i.test(l));
+  const i = lines.findIndex(l => /FRESH-FRAME SCAN/i.test(l));
   if (i === -1) return null;
   const out: string[] = [lines[i]];
   for (let j = i + 1; j < lines.length; j++) {
     const l = lines[j];
-    if (/^#{1,6}\s/.test(l)) break;              // next header ends the block
+    if (/^#{1,6}\s/.test(l)) break; // next header ends the block
     if (/^\s*-\s+\*\*CONVERGENCE\b/i.test(l)) break; // next labelled QG line ends it
-    if (/^\s*-\s+\*\*PAYOFF\b/i.test(l)) break;      // new-grammar labelled line ends it too
+    if (/^\s*-\s+\*\*PAYOFF\b/i.test(l)) break; // new-grammar labelled line ends it too
     out.push(l);
-    if (out.join('\n').length > 2500) break;     // scan blocks are short; cap runaway
+    if (out.join('\n').length > 2500) break; // scan blocks are short; cap runaway
   }
   return out.join('\n');
 }
@@ -96,7 +116,12 @@ function checkFreshFrameSweep(qg: string): string | null {
   const sweepsSignal = /\bsignal/.test(lc);
   const sweepsTake = /\btake\b/.test(lc);
   if (sweepsSignal && sweepsTake) return null; // full-brief sweep evident -> silent
-  const missing = [!sweepsSignal ? 'the Signals' : null, !sweepsTake ? 'the Take' : null].filter(Boolean).join(' and ');
+  const missing = [
+    !sweepsSignal ? 'the Signals' : null,
+    !sweepsTake ? 'the Take' : null,
+  ]
+    .filter(Boolean)
+    .join(' and ');
   return `FRESH-FRAME SCAN under-swept: its candidate accounting never references ${missing}. A mechanism candidate (especially "concentration/saturation") must be tested across the FULL brief — the Six + both Signals + the Take — before it is rejected for insufficient span. On 07-10 concentration was scoped to the C&C cluster and the Signal-1 (revenue) and Signal-2 (grid) instances were missed — the 2nd miss of the concentration frame (June 30 was the 1st). Sweep the Signals and the Take, then re-classify.`;
 }
 
@@ -120,33 +145,76 @@ Body text.`;
 
 function selftest(): number {
   const cases: Array<[string, boolean, () => boolean]> = [
-    ['fresh-frame-sweep fires when Signals+Take not swept', true,  () => checkFreshFrameSweep(FIRE_FF) !== null],
-    ['fresh-frame-sweep silent on a full-brief sweep',      false, () => checkFreshFrameSweep(SILENT_FF) !== null],
-    ['payoff-class fires on THEME shipped un-rewritten',    true,  () => checkPayoffClass(FIRE_PAYOFF_THEME).length > 0],
-    ['payoff-class silent on executed TENSION payoff',      false, () => checkPayoffClass(SILENT_PAYOFF).length > 0],
-    ['leftover marker fires on retired throughline marker', true,  () => checkLeftoverMarker(FIRE_MARKER) !== null],
-    ['leftover marker silent on a clean brief',             false, () => checkLeftoverMarker(SILENT_MARKER) !== null],
+    [
+      'fresh-frame-sweep fires when Signals+Take not swept',
+      true,
+      () => checkFreshFrameSweep(FIRE_FF) !== null,
+    ],
+    [
+      'fresh-frame-sweep silent on a full-brief sweep',
+      false,
+      () => checkFreshFrameSweep(SILENT_FF) !== null,
+    ],
+    [
+      'payoff-class fires on THEME shipped un-rewritten',
+      true,
+      () => checkPayoffClass(FIRE_PAYOFF_THEME).length > 0,
+    ],
+    [
+      'payoff-class silent on executed TENSION payoff',
+      false,
+      () => checkPayoffClass(SILENT_PAYOFF).length > 0,
+    ],
+    [
+      'leftover marker fires on retired throughline marker',
+      true,
+      () => checkLeftoverMarker(FIRE_MARKER) !== null,
+    ],
+    [
+      'leftover marker silent on a clean brief',
+      false,
+      () => checkLeftoverMarker(SILENT_MARKER) !== null,
+    ],
   ];
   let fails = 0;
   for (const [name, shouldFire, fn] of cases) {
     const fired = fn();
     const ok = fired === shouldFire;
-    console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${name} (expected ${shouldFire ? 'FIRE' : 'SILENT'}, got ${fired ? 'FIRE' : 'SILENT'})`);
+    console.log(
+      `  ${ok ? 'PASS' : 'FAIL'} — ${name} (expected ${shouldFire ? 'FIRE' : 'SILENT'}, got ${fired ? 'FIRE' : 'SILENT'})`
+    );
     if (!ok) fails++;
   }
-  console.log(`\nassembly-gate selftest — ${cases.length - fails}/${cases.length} assertions passed`);
-  if (fails) { console.error('✗ SELFTEST FAILED — a detector no longer bites both directions.'); return 1; }
-  console.log('✓ All detectors verified in both directions (fresh-frame sweep, payoff class, leftover marker).');
+  console.log(
+    `\nassembly-gate selftest — ${cases.length - fails}/${cases.length} assertions passed`
+  );
+  if (fails) {
+    console.error(
+      '✗ SELFTEST FAILED — a detector no longer bites both directions.'
+    );
+    return 1;
+  }
+  console.log(
+    '✓ All detectors verified in both directions (fresh-frame sweep, payoff class, leftover marker).'
+  );
   return 0;
 }
 
 function main() {
   if (process.argv.slice(2).includes('--selftest')) process.exit(selftest());
   const args = process.argv.slice(2);
-  const briefArg = args.find((a) => !a.startsWith('--'));
-  if (!briefArg) { console.error('Usage: assembly-gate.ts <brief.md> [--selftest]'); process.exit(2); }
-  const briefPath = path.isAbsolute(briefArg) ? briefArg : path.join(process.cwd(), briefArg);
-  if (!fs.existsSync(briefPath)) { console.error(`File not found: ${briefPath}`); process.exit(2); }
+  const briefArg = args.find(a => !a.startsWith('--'));
+  if (!briefArg) {
+    console.error('Usage: assembly-gate.ts <brief.md> [--selftest]');
+    process.exit(2);
+  }
+  const briefPath = path.isAbsolute(briefArg)
+    ? briefArg
+    : path.join(process.cwd(), briefArg);
+  if (!fs.existsSync(briefPath)) {
+    console.error(`File not found: ${briefPath}`);
+    process.exit(2);
+  }
   const brief = fs.readFileSync(briefPath, 'utf8');
 
   const findings: Finding[] = [];
@@ -157,10 +225,14 @@ function main() {
   // QG-log-coupled checks (payoff class + fresh-frame sweep).
   const dateM = path.basename(briefPath).match(/(\d{4}-\d{2}-\d{2})/);
   if (dateM) {
-    const qgPath = path.join(path.dirname(briefPath), `${dateM[1]}-quality-gate-log.md`);
+    const qgPath = path.join(
+      path.dirname(briefPath),
+      `${dateM[1]}-quality-gate-log.md`
+    );
     if (fs.existsSync(qgPath)) {
       const qg = fs.readFileSync(qgPath, 'utf8');
-      for (const msg of checkPayoffClass(qg)) findings.push({ severity: 'FLAG', message: msg });
+      for (const msg of checkPayoffClass(qg))
+        findings.push({ severity: 'FLAG', message: msg });
       const sweep = checkFreshFrameSweep(qg);
       if (sweep) findings.push({ severity: 'FLAG', message: sweep });
     }
@@ -168,10 +240,14 @@ function main() {
 
   console.log(`assembly-gate (payoff) — ${path.basename(briefPath)}`);
   if (findings.length) {
-    console.log(`\n  ${findings.length} FLAG (advisory — Editor Gate 14 + Critic must act):`);
+    console.log(
+      `\n  ${findings.length} FLAG (advisory — Editor Gate 14 + Critic must act):`
+    );
     for (const f of findings) console.log(`   ⚠ ${f.message}`);
   }
-  console.log(`\n✅ ASSEMBLY-GATE PASS${findings.length ? ' (flags advisory; the brief always ships)' : ''}`);
+  console.log(
+    `\n✅ ASSEMBLY-GATE PASS${findings.length ? ' (flags advisory; the brief always ships)' : ''}`
+  );
   process.exit(0);
 }
 

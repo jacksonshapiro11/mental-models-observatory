@@ -57,86 +57,108 @@ import { _test as preprocessorTest } from '../lib/audio/text-preprocessor';
 const { regexNormalize } = preprocessorTest;
 
 let failures = 0;
-function check(name: string, actual: unknown, predicate: (a: unknown) => boolean, detail?: string) {
+function check(
+  name: string,
+  actual: unknown,
+  predicate: (a: unknown) => boolean,
+  detail?: string
+) {
   const ok = predicate(actual);
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `\n      got: ${JSON.stringify(actual)}${detail ? `\n      want: ${detail}` : ''}`}`);
+  console.log(
+    `${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `\n      got: ${JSON.stringify(actual)}${detail ? `\n      want: ${detail}` : ''}`}`
+  );
   if (!ok) failures++;
 }
 
-console.log('── 1. Doubled words / article collisions (verbatim from shipped scripts) ──');
+console.log(
+  '── 1. Doubled words / article collisions (verbatim from shipped scripts) ──'
+);
 
 check(
   'W27 full: "at the the E.C.B.\'s Sintra forum"',
-  collapseDoubledWords('as the new Fed chair downplayed forward guidance at the the E.C.B.’s Sintra forum'),
-  a => a === 'as the new Fed chair downplayed forward guidance at the E.C.B.’s Sintra forum',
+  collapseDoubledWords(
+    'as the new Fed chair downplayed forward guidance at the the E.C.B.’s Sintra forum'
+  ),
+  a =>
+    a ===
+    'as the new Fed chair downplayed forward guidance at the E.C.B.’s Sintra forum'
 );
 check(
   'W27 light: "WTI crude crude oil eased"',
-  collapseDoubledWords('Meanwhile, WTI crude crude oil eased from 70 dollars toward 68'),
-  a => a === 'Meanwhile, WTI crude oil eased from 70 dollars toward 68',
+  collapseDoubledWords(
+    'Meanwhile, WTI crude crude oil eased from 70 dollars toward 68'
+  ),
+  a => a === 'Meanwhile, WTI crude oil eased from 70 dollars toward 68'
 );
 check(
   'W27 full: "a the Bank of Japan hike" (expansion of "a BOJ hike")',
-  collapseDoubledWords('We thought a the Bank of Japan hike would strengthen the yen'),
-  a => a === 'We thought the Bank of Japan hike would strengthen the yen',
+  collapseDoubledWords(
+    'We thought a the Bank of Japan hike would strengthen the yen'
+  ),
+  a => a === 'We thought the Bank of Japan hike would strengthen the yen'
 );
 check(
   'W27 light: "the the Bank of Japan-yen pair"',
-  collapseDoubledWords('On the other hand, the the Bank of Japan-yen pair was a miss'),
-  a => a === 'On the other hand, the Bank of Japan-yen pair was a miss',
+  collapseDoubledWords(
+    'On the other hand, the the Bank of Japan-yen pair was a miss'
+  ),
+  a => a === 'On the other hand, the Bank of Japan-yen pair was a miss'
 );
 check(
   'negative control: legit "had had" preserved',
   collapseDoubledWords('If we had had the data sooner, the call changes'),
-  a => a === 'If we had had the data sooner, the call changes',
+  a => a === 'If we had had the data sooner, the call changes'
 );
 check(
   'negative control: clean sentence untouched',
   collapseDoubledWords('The ten-year yield ran 4.39 to 4.47 and back.'),
-  a => a === 'The ten-year yield ran 4.39 to 4.47 and back.',
+  a => a === 'The ten-year yield ran 4.39 to 4.47 and back.'
 );
 check(
   'Jul 8 audible-year: "twenty twenty-six" must NOT collapse to "twenty-six"',
-  collapseDoubledWords('It\'s Wednesday, July eighth, twenty twenty-six.'),
-  a => a === 'It\'s Wednesday, July eighth, twenty twenty-six.',
+  collapseDoubledWords("It's Wednesday, July eighth, twenty twenty-six."),
+  a => a === "It's Wednesday, July eighth, twenty twenty-six."
 );
 check(
   'Jul 8 audible-year: full deterministic prefix survives collapse',
-  collapseDoubledWords(buildDeterministicIntroPrefix('2026-07-08', 'Test Title')),
+  collapseDoubledWords(
+    buildDeterministicIntroPrefix('2026-07-08', 'Test Title')
+  ),
   a => {
     const s = a as string;
     // Must keep the century form; reject decade-only mangling ("..., twenty-six.")
     return s.includes('twenty twenty-six') && !/,\s*twenty-six\./.test(s);
-  },
+  }
 );
 check(
   'year double still collapses when NOT a hyphenated decade (the the stays fixed)',
   collapseDoubledWords('the the market'),
-  a => a === 'the market',
+  a => a === 'the market'
 );
 
 console.log('── 2. Section-name drift (the silent Wild Card cold start) ──');
 
 check(
   'canonical: "The Six: The Wild Card" === "The Six: Wild Card"',
-  canonicalSectionKey('The Six: The Wild Card') === canonicalSectionKey('The Six: Wild Card'),
-  a => a === true,
+  canonicalSectionKey('The Six: The Wild Card') ===
+    canonicalSectionKey('The Six: Wild Card'),
+  a => a === true
 );
 check(
   'transition resolves for the REAL W27/07-04 name "The Six: The Wild Card"',
   lookupSection(SECTION_TRANSITIONS, 'The Six: The Wild Card'),
   a => typeof a === 'string' && (a as string).includes('Wild Card'),
-  'the Wild Cards transition string',
+  'the Wild Cards transition string'
 );
 check(
   'transition still resolves for the original key form "The Six: Wild Card"',
   lookupSection(SECTION_TRANSITIONS, 'The Six: Wild Card'),
-  a => typeof a === 'string' && (a as string).includes('Wild Card'),
+  a => typeof a === 'string' && (a as string).includes('Wild Card')
 );
 check(
   'unknown section resolves to undefined (so the cold-start warning fires)',
   lookupSection(SECTION_TRANSITIONS, 'The Six: Completely New Section'),
-  a => a === undefined,
+  a => a === undefined
 );
 
 console.log('── 3. Weekly framing (no daily voice on the Sunday product) ──');
@@ -144,30 +166,37 @@ console.log('── 3. Weekly framing (no daily voice on the Sunday product) ─
 check(
   'weekly override exists for Wild Card and says "week", not "today"',
   lookupSection(WEEKLY_TRANSITION_OVERRIDES, 'The Six: The Wild Card'),
-  a => typeof a === 'string' && /week/i.test(a as string) && !/today/i.test(a as string),
+  a =>
+    typeof a === 'string' &&
+    /week/i.test(a as string) &&
+    !/today/i.test(a as string)
 );
 check(
   'weekly override for Inner Game replaces "today\'s markets"',
   lookupSection(WEEKLY_TRANSITION_OVERRIDES, 'Inner Game'),
-  a => typeof a === 'string' && !/today/i.test(a as string),
+  a => typeof a === 'string' && !/today/i.test(a as string)
 );
 check(
   'WEEKLY_SIGN_OFF has no "today\'s brief" and no "back tomorrow with more"',
   WEEKLY_SIGN_OFF,
-  a => !/today's brief/i.test(a as string) && !/back tomorrow with more/i.test(a as string),
+  a =>
+    !/today's brief/i.test(a as string) &&
+    !/back tomorrow with more/i.test(a as string)
 );
 check(
   'WEEKLY_SIGN_OFF opens with a bridge (never lands cold)',
   WEEKLY_SIGN_OFF,
-  a => /^And that closes out the week\./.test(a as string),
+  a => /^And that closes out the week\./.test(a as string)
 );
 check(
   'DAILY_SIGN_OFF unchanged (daily voice preserved)',
   DAILY_SIGN_OFF,
-  a => /today's brief/i.test(a as string) && /back tomorrow/i.test(a as string),
+  a => /today's brief/i.test(a as string) && /back tomorrow/i.test(a as string)
 );
 
-console.log('── 4. Script gate: banned leads, filler endings, substance floor ──');
+console.log(
+  '── 4. Script gate: banned leads, filler endings, substance floor ──'
+);
 
 const w27LightLead =
   'Let’s dive into some fascinating stories from this week that are worth remembering. ' +
@@ -176,47 +205,72 @@ const leadResult = enforceScriptRules('Interesting Things', w27LightLead, '');
 check(
   'W27 light banned lead (curly-apostrophe "Let’s dive into...") is stripped, content survives',
   leadResult.script,
-  a => (a as string).startsWith('First up, Strategy') && !/dive into/i.test(a as string),
-  'script starting at "First up, Strategy" with the lead sentence gone',
+  a =>
+    (a as string).startsWith('First up, Strategy') &&
+    !/dive into/i.test(a as string),
+  'script starting at "First up, Strategy" with the lead sentence gone'
 );
 
 const w27LightEnding =
   'And the senior-housing shortage of 2028 locked itself in: starts fell to about one thousand seventy-six units. ' +
   'These stories highlight the complex and interconnected nature of today’s global landscape.';
-const endingResult = enforceScriptRules('Interesting Things', w27LightEnding, '');
+const endingResult = enforceScriptRules(
+  'Interesting Things',
+  w27LightEnding,
+  ''
+);
 check(
   'W27 light filler-moral ending ("These stories highlight...") is stripped',
   endingResult.script,
-  a => !(a as string).includes('These stories highlight') && (a as string).includes('senior-housing shortage'),
+  a =>
+    !(a as string).includes('These stories highlight') &&
+    (a as string).includes('senior-housing shortage')
 );
 
 const genericIntroLead =
   'Here are some fascinating stories from this week worth remembering. ' +
   'First up, Strategy’s stabilizer ran in reverse.';
-const introLeadResult = enforceScriptRules('Interesting Things', genericIntroLead, '');
+const introLeadResult = enforceScriptRules(
+  'Interesting Things',
+  genericIntroLead,
+  ''
+);
 check(
   'generic double-intro lead (not on the banned list) is stripped too',
   introLeadResult.script,
   a => (a as string).startsWith('First up, Strategy'),
-  'script starting at "First up" — announce-y lead gone even without a banned phrase',
+  'script starting at "First up" — announce-y lead gone even without a banned phrase'
 );
 
-const guttedSource = Array.from({ length: 300 }, (_, i) => `word${i}`).join(' ');
+const guttedSource = Array.from({ length: 300 }, (_, i) => `word${i}`).join(
+  ' '
+);
 const guttedScript = Array.from({ length: 60 }, (_, i) => `word${i}`).join(' ');
 check(
   'substance floor trips on a gutted teaching section (The Model, 20% of source)',
   enforceScriptRules('The Model', guttedScript, guttedSource).needsRetry,
-  a => a === true,
+  a => a === true
 );
 check(
   'substance floor does NOT trip on healthy compression (The Model, 70% of source)',
-  enforceScriptRules('The Model', Array.from({ length: 210 }, (_, i) => `word${i}`).join(' '), guttedSource).needsRetry,
-  a => a === false,
+  enforceScriptRules(
+    'The Model',
+    Array.from({ length: 210 }, (_, i) => `word${i}`).join(' '),
+    guttedSource
+  ).needsRetry,
+  a => a === false
 );
 check(
   'banned phrase mid-body is warned, not silently ignored',
-  enforceScriptRules('The Take', 'The setup matters here. But here’s where it gets interesting: the appeal.', ''),
-  a => (a as { warnings: string[] }).warnings.some(w => w.includes('banned phrase')),
+  enforceScriptRules(
+    'The Take',
+    'The setup matters here. But here’s where it gets interesting: the appeal.',
+    ''
+  ),
+  a =>
+    (a as { warnings: string[] }).warnings.some(w =>
+      w.includes('banned phrase')
+    )
 );
 
 console.log('── 5. Intro date gate (July 7 displayDate/audio bug) ──');
@@ -224,70 +278,77 @@ console.log('── 5. Intro date gate (July 7 displayDate/audio bug) ──');
 check(
   'spoken date format for 2026-07-07',
   formatSpokenDateFromSlug('2026-07-07'),
-  a => a === 'Tuesday, July seventh, twenty twenty-six',
+  a => a === 'Tuesday, July seventh, twenty twenty-six'
 );
 check(
   'deterministic intro prefix includes spoken date + title',
   buildDeterministicIntroPrefix('2026-07-07', '4,800 Out, 6,000 In'),
-  a => (a as string).includes('July seventh') && (a as string).includes('4,800 Out, 6,000 In'),
+  a =>
+    (a as string).includes('July seventh') &&
+    (a as string).includes('4,800 Out, 6,000 In')
 );
 check(
   'validateIntroDate PASS on deterministic prefix + lede hook',
   validateIntroDate(
     `${buildDeterministicIntroPrefix('2026-07-07', '4,800 Out, 6,000 In')}\n\nNATO opens in Ankara with $140 billion pledged.`,
-    '2026-07-07',
+    '2026-07-07'
   ).ok,
-  a => a === true,
+  a => a === true
 );
 check(
   'validateIntroDate FAIL on wrong year',
-  validateIntroDate('Welcome. It is Tuesday, July seventh, twenty twenty-five.', '2026-07-07').ok,
-  a => a === false,
+  validateIntroDate(
+    'Welcome. It is Tuesday, July seventh, twenty twenty-five.',
+    '2026-07-07'
+  ).ok,
+  a => a === false
 );
 check(
   'validateDisplayDateMatchesSlug rejects headline-as-date',
   validateDisplayDateMatchesSlug('4,800 Out, 6,000 In', '2026-07-07').ok,
-  a => a === false,
+  a => a === false
 );
 check(
   'auditAudioIntro PASS on stitched intro sample',
   auditAudioIntro(
     `${buildDeterministicIntroPrefix('2026-07-07', '4,800 Out, 6,000 In')}\n\nHook lede here.\n\n...\n\nOK, let's get started with today's brief.`,
     '2026-07-07',
-    'Tuesday, July 7, 2026',
+    'Tuesday, July 7, 2026'
   ).ok,
-  a => a === true,
+  a => a === true
 );
 
-console.log('── 6. Audible year + light hard-inject (Jul 8 "July 8th 26" class) ──');
+console.log(
+  '── 6. Audible year + light hard-inject (Jul 8 "July 8th 26" class) ──'
+);
 
 const jul8Prefix = buildDeterministicIntroPrefix('2026-07-08', 'Pipeline Fix');
 const jul8Collapsed = collapseDoubledWords(jul8Prefix);
 check(
   'assertAudibleYearIntact PASS when century phrase present',
   assertAudibleYearIntact(jul8Collapsed, '2026-07-08').ok,
-  a => a === true,
+  a => a === true
 );
 check(
   'assertAudibleYearIntact FAIL on collapsed "twenty-six" (the old silent pass)',
   assertAudibleYearIntact(
-    'Welcome. It\'s Wednesday, July eighth, twenty-six. Today\'s episode: Pipeline Fix.',
-    '2026-07-08',
+    "Welcome. It's Wednesday, July eighth, twenty-six. Today's episode: Pipeline Fix.",
+    '2026-07-08'
   ).ok,
-  a => a === false,
+  a => a === false
 );
 check(
   'validateIntroDate FAIL on collapsed decade-only year (no longer parses as 2026)',
   validateIntroDate(
-    'Welcome. It\'s Wednesday, July eighth, twenty-six.',
-    '2026-07-08',
+    "Welcome. It's Wednesday, July eighth, twenty-six.",
+    '2026-07-08'
   ).ok,
-  a => a === false,
+  a => a === false
 );
 check(
   'regexNormalize preserves twenty twenty-six through full normalize path',
   regexNormalize(jul8Prefix),
-  a => (a as string).includes('twenty twenty-six'),
+  a => (a as string).includes('twenty twenty-six')
 );
 check(
   'light hard-inject prefix includes Super Brief + century year + title',
@@ -295,25 +356,27 @@ check(
   a =>
     (a as string).includes('Welcome to the Super Brief') &&
     (a as string).includes('twenty twenty-six') &&
-    (a as string).includes('Pipeline Fix'),
+    (a as string).includes('Pipeline Fix')
 );
 check(
   'auditAudioIntro FAIL on collapsed year even if month/day match',
   auditAudioIntro(
-    'Welcome to Markets, Meditations, and Mental Models. It\'s Wednesday, July eighth, twenty-six.\n\nHook.\n\n...\n\nOK, let\'s get started with today\'s brief.',
+    "Welcome to Markets, Meditations, and Mental Models. It's Wednesday, July eighth, twenty-six.\n\nHook.\n\n...\n\nOK, let's get started with today's brief.",
     '2026-07-08',
-    'Wednesday, July 8, 2026',
+    'Wednesday, July 8, 2026'
   ).ok,
-  a => a === false,
+  a => a === false
 );
 check(
   'light-intro residual welcome/date stripped by enforceScriptRules',
   enforceScriptRules(
     'light-intro',
-    'Welcome to the Super Brief. It\'s Wednesday, July eighth. NATO opens with a big pledge.',
-    '',
+    "Welcome to the Super Brief. It's Wednesday, July eighth. NATO opens with a big pledge.",
+    ''
   ).script,
-  a => !(a as string).toLowerCase().includes('welcome') && !(a as string).toLowerCase().includes('wednesday'),
+  a =>
+    !(a as string).toLowerCase().includes('welcome') &&
+    !(a as string).toLowerCase().includes('wednesday')
 );
 
 console.log('── 7. Weekly ISO week slugs (W28 Invalid Date class) ──');
@@ -328,19 +391,22 @@ for (const { week, sunday, weekday } of WEEK_CASES) {
   check(
     `${week} calendarDateFromSlug → Sunday ${sunday}`,
     calendarDateFromSlug(week),
-    a => a === sunday,
+    a => a === sunday
   );
   check(
     `${week} isoWeekSunday matches`,
     isoWeekSunday(week),
-    a => a === sunday,
+    a => a === sunday
   );
   const display = formatDisplayDateFromSlug(week);
   check(
     `${week} formatDisplayDateFromSlug is not Invalid Date`,
     display,
-    a => typeof a === 'string' && !(a as string).includes('Invalid') && (a as string).startsWith(weekday),
-    display,
+    a =>
+      typeof a === 'string' &&
+      !(a as string).includes('Invalid') &&
+      (a as string).startsWith(weekday),
+    display
   );
   check(
     `${week} spoken date has century year (no Invalid Date)`,
@@ -349,32 +415,45 @@ for (const { week, sunday, weekday } of WEEK_CASES) {
       typeof a === 'string' &&
       !(a as string).includes('Invalid') &&
       (a as string).includes('twenty twenty-six') &&
-      (a as string).toLowerCase().startsWith('sunday'),
+      (a as string).toLowerCase().startsWith('sunday')
   );
   const resolved = resolveDisplayDate('Week of July 5 to 11, 2026', week);
   check(
     `${week} resolveDisplayDate recovers from weekly headline header`,
     resolved,
-    a => typeof a === 'string' && !(a as string).includes('Invalid') && validateDisplayDateMatchesSlug(a as string, week).ok,
+    a =>
+      typeof a === 'string' &&
+      !(a as string).includes('Invalid') &&
+      validateDisplayDateMatchesSlug(a as string, week).ok
   );
-  const fullPrefix = buildDeterministicIntroPrefix(week, 'The Rent Moved Downstairs');
-  const lightPrefix = buildDeterministicLightIntroPrefix(week, 'The Rent Moved Downstairs');
+  const fullPrefix = buildDeterministicIntroPrefix(
+    week,
+    'The Rent Moved Downstairs'
+  );
+  const lightPrefix = buildDeterministicLightIntroPrefix(
+    week,
+    'The Rent Moved Downstairs'
+  );
   check(
     `${week} full intro audit PASS (hard-inject + displayDate)`,
-    auditAudioIntro(`${fullPrefix}\n\nHook.\n\n...\n\nOK, let's jump into the week's Six.`, week, resolved).ok,
-    a => a === true,
+    auditAudioIntro(
+      `${fullPrefix}\n\nHook.\n\n...\n\nOK, let's jump into the week's Six.`,
+      week,
+      resolved
+    ).ok,
+    a => a === true
   );
   check(
     `${week} light intro audit PASS (hard-inject + displayDate)`,
     auditAudioIntro(`${lightPrefix}\n\nHook.\n\n...\n\n`, week, resolved).ok,
-    a => a === true,
+    a => a === true
   );
 }
 
 check(
   'daily YYYY-MM-DD still formats unchanged',
   formatDisplayDateFromSlug('2026-07-07'),
-  a => a === 'Tuesday, July 7, 2026',
+  a => a === 'Tuesday, July 7, 2026'
 );
 
 console.log('── 8. Numbers & credit ratings (W28 weekly pronunciation) ──');
@@ -382,55 +461,57 @@ console.log('── 8. Numbers & credit ratings (W28 weekly pronunciation) ─�
 check(
   'BBB- → triple-B-minus (the Oracle downgrade that shipped raw in W28)',
   expandCreditRatings('S&P cut Oracle to BBB-, one notch above junk'),
-  a => a === 'S&P cut Oracle to triple-B-minus, one notch above junk',
+  a => a === 'S&P cut Oracle to triple-B-minus, one notch above junk'
 );
 check(
   'AA+ → double-A-plus',
   expandCreditRatings('the sovereign held its AA+ rating'),
-  a => a === 'the sovereign held its double-A-plus rating',
+  a => a === 'the sovereign held its double-A-plus rating'
 );
 check(
   "Moody's Baa1 → triple-B one",
   expandCreditRatings('downgraded to Baa1 by Moody'),
-  a => a === 'downgraded to triple-B one by Moody',
+  a => a === 'downgraded to triple-B one by Moody'
 );
 check(
   'ticker AAPL is NOT mangled; bare rating letters ARE spoken',
   expandCreditRatings('AAPL closed higher while BB and AA slipped'),
-  a => a === 'AAPL closed higher while double-B and double-A slipped',
+  a => a === 'AAPL closed higher while double-B and double-A slipped'
 );
 check(
   'regexNormalize wires ratings in end-to-end',
   regexNormalize('S&P cut it to BBB-.'),
-  a => (a as string).includes('triple-B-minus'),
+  a => (a as string).includes('triple-B-minus')
 );
 check(
   'bare $62,800 → spoken dollars (no $ glyph)',
   expandBareDollarAmounts('Bitcoin started the week near $62,800'),
-  a => a === 'Bitcoin started the week near 62,800 dollars',
+  a => a === 'Bitcoin started the week near 62,800 dollars'
 );
 check(
   '$1.8 trillion → 1.8 trillion dollars',
   expandBareDollarAmounts('the GPIF, with its $1.8 trillion portfolio'),
-  a => a === 'the GPIF, with its 1.8 trillion dollars portfolio',
+  a => a === 'the GPIF, with its 1.8 trillion dollars portfolio'
 );
 check(
   '$4.67 → 4.67 dollars',
   expandBareDollarAmounts('the Brent-WTI spread to $4.67'),
-  a => a === 'the Brent-WTI spread to 4.67 dollars',
+  a => a === 'the Brent-WTI spread to 4.67 dollars'
 );
 check(
   'regexNormalize keeps an already-handled $1.2B path intact (no double dollars)',
   regexNormalize('a $1.2B raise'),
-  a => (a as string) === 'a 1.2 billion dollars raise',
+  a => (a as string) === 'a 1.2 billion dollars raise'
 );
 check(
   'negative control: a plain year 2027 is left alone (not turned into dollars)',
   regexNormalize('a deficit widening toward 42 billion by 2027'),
-  a => (a as string).includes('2027') && !/dollars\s+2027/.test(a as string),
+  a => (a as string).includes('2027') && !/dollars\s+2027/.test(a as string)
 );
 
-console.log('── 9. Light ending + outro gate + chunk plausibility (the W30 cut-off class) ──');
+console.log(
+  '── 9. Light ending + outro gate + chunk plausibility (the W30 cut-off class) ──'
+);
 
 const w30CloseText =
   'That is the week: a higher-for-longer regime that priced itself in from three directions while its loudest driver was already fading.';
@@ -438,52 +519,73 @@ const w30CloseText =
 check(
   'light ending speaks the WRITTEN close verbatim, then the weekly sign-off',
   buildLightEnding(w30CloseText, true),
-  a => (a as string).startsWith(w30CloseText) && (a as string).endsWith(WEEKLY_LIGHT_SIGN_OFF),
+  a =>
+    (a as string).startsWith(w30CloseText) &&
+    (a as string).endsWith(WEEKLY_LIGHT_SIGN_OFF)
 );
 check(
   'light ending daily flavor',
   buildLightEnding('Some landing thought.', false),
-  a => (a as string).startsWith('Some landing thought.') && (a as string).endsWith(DAILY_LIGHT_SIGN_OFF),
+  a =>
+    (a as string).startsWith('Some landing thought.') &&
+    (a as string).endsWith(DAILY_LIGHT_SIGN_OFF)
 );
 check(
   'no close in the file → sign-off alone (an episode can never end mid-air)',
   buildLightEnding(undefined, true),
-  a => a === WEEKLY_LIGHT_SIGN_OFF,
+  a => a === WEEKLY_LIGHT_SIGN_OFF
 );
 check(
   'outro audit PASS on a script ending with the sign-off (survives regex normalization)',
-  auditAudioOutro('Episode body here.\n\n...\n\n' + regexNormalize(WEEKLY_LIGHT_SIGN_OFF), WEEKLY_LIGHT_SIGN_OFF).ok,
-  a => a === true,
+  auditAudioOutro(
+    'Episode body here.\n\n...\n\n' + regexNormalize(WEEKLY_LIGHT_SIGN_OFF),
+    WEEKLY_LIGHT_SIGN_OFF
+  ).ok,
+  a => a === true
 );
 check(
   'outro audit FAIL on the exact W30 shipped ending (GPT-invented goodbye, close discarded)',
   auditAudioOutro(
-    'it\'s time to rethink the structure rather than just adding more resources.\n\n...\n\nThanks for spending your time with us today. Take care and we\'ll catch up again soon.',
-    WEEKLY_LIGHT_SIGN_OFF,
+    "it's time to rethink the structure rather than just adding more resources.\n\n...\n\nThanks for spending your time with us today. Take care and we'll catch up again soon.",
+    WEEKLY_LIGHT_SIGN_OFF
   ).ok,
-  a => a === false,
+  a => a === false
 );
 check(
   'outro audit PASS for the full weekly (WEEKLY_SIGN_OFF tail)',
   auditAudioOutro('Body.\n\n...\n\n' + WEEKLY_SIGN_OFF, WEEKLY_SIGN_OFF).ok,
-  a => a === true,
+  a => a === true
 );
 check(
   'chunk plausibility SILENT on real-rate audio (~800 B/char)',
-  (() => { try { assertPlausibleChunkAudio(4500, 4500 * 800); return true; } catch { return false; } })(),
-  a => a === true,
+  (() => {
+    try {
+      assertPlausibleChunkAudio(4500, 4500 * 800);
+      return true;
+    } catch {
+      return false;
+    }
+  })(),
+  a => a === true
 );
 check(
   'chunk plausibility THROWS on a near-empty chunk buffer (silent-truncation class)',
-  (() => { try { assertPlausibleChunkAudio(4500, 12_000); return false; } catch { return true; } })(),
-  a => a === true,
+  (() => {
+    try {
+      assertPlausibleChunkAudio(4500, 12_000);
+      return false;
+    } catch {
+      return true;
+    }
+  })(),
+  a => a === true
 );
 
 console.log('-- 10. Two-tier THE LINE item beats + spoken cues --');
 
 const lineItemBlocks = Array.from(
   { length: 8 },
-  (_, i) => `**Item ${i + 1}.** Implication ${i + 1}.`,
+  (_, i) => `**Item ${i + 1}.** Implication ${i + 1}.`
 );
 const lineItems = [
   ...lineItemBlocks.slice(0, 3),
@@ -506,25 +608,31 @@ check(
       'On a different front. ',
       'Next. ',
     ];
-    return spokenItems.length === lineItemBlocks.length
-      && spokenItems.every((item, i) => item === `${expectedCues[i]}${lineItemBlocks[i]}`);
-  },
+    return (
+      spokenItems.length === lineItemBlocks.length &&
+      spokenItems.every(
+        (item, i) => item === `${expectedCues[i]}${lineItemBlocks[i]}`
+      )
+    );
+  }
 );
 check(
   'THE LINE empty/rule-only content produces no spoken artifact',
   formatLineSectionForSpeech('  - - -  '),
-  a => a === '',
+  a => a === ''
 );
 check(
   'THE LINE normalizes a single multiline item even when no cue is needed',
   formatLineSectionForSpeech('**One item.** First line\ncontinues here.'),
-  a => a === '**One item.** First line continues here.',
+  a => a === '**One item.** First line continues here.'
 );
 check(
   'THE LINE ignores spaced rules between items',
   formatLineSectionForSpeech('**First.** One.\n\n- - -\n\n**Second.** Two.'),
-  a => a === '**First.** One.\n\n...\n\nNext. **Second.** Two.',
+  a => a === '**First.** One.\n\n...\n\nNext. **Second.** Two.'
 );
 
-console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);
+console.log(
+  `\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`
+);
 process.exit(failures === 0 ? 0 : 1);

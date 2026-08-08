@@ -30,61 +30,75 @@ let currentSection = null;
 
 for (let i = 0; i < lines.length; i++) {
   const line = lines[i].trim();
-  
+
   // Parse domain headers
   const domainMatch = line.match(/^### \*\*Domain (\d+): (.+?)\*\*/);
   if (domainMatch) {
     const [, number, name] = domainMatch;
-    
+
     // Get description (next line after *)
     let description = '';
     for (let j = i + 1; j < lines.length; j++) {
       const nextLine = lines[j].trim();
-      if (nextLine.startsWith('*') && nextLine.endsWith('*') && !nextLine.startsWith('**')) {
+      if (
+        nextLine.startsWith('*') &&
+        nextLine.endsWith('*') &&
+        !nextLine.startsWith('**')
+      ) {
         description = nextLine.slice(1, -1); // Remove asterisks
         break;
       }
     }
-    
+
     currentDomain = {
       id: `domain-${number}`,
       number: parseInt(number),
       name: name,
       description: description,
-      slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+      slug: name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, ''),
       models: [], // Will be populated with model IDs
       tier: getTier(parseInt(number)),
       icon: getIcon(name),
       color: getColor(parseInt(number)),
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
-    
+
     domains.push(currentDomain);
     continue;
   }
-  
+
   // Parse sub-model headers
   const modelMatch = line.match(/^#### \*\*Sub-Model (\d+[A-Z]): (.+?)\*\*/);
   if (modelMatch && currentDomain) {
     const [, code, name] = modelMatch;
-    
+
     // Get description (next line after *)
     let description = '';
     for (let j = i + 1; j < lines.length; j++) {
       const nextLine = lines[j].trim();
-      if (nextLine.startsWith('*') && nextLine.endsWith('*') && !nextLine.startsWith('**')) {
+      if (
+        nextLine.startsWith('*') &&
+        nextLine.endsWith('*') &&
+        !nextLine.startsWith('**')
+      ) {
         description = nextLine.slice(1, -1);
         break;
       }
     }
-    
+
     currentModel = {
       id: `${currentDomain.slug}-${code.toLowerCase()}`,
       code: code,
       name: name,
       description: description,
-      slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+      slug: name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, ''),
       domain: currentDomain.name,
       domainSlug: currentDomain.slug,
       principles: [],
@@ -95,26 +109,31 @@ for (let i = 0; i < lines.length; i++) {
       tags: extractTags(name + ' ' + description),
       difficulty: getDifficulty(currentDomain.tier),
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
-    
+
     currentDomain.models.push(currentModel.id);
     models.push(currentModel);
     currentSection = null;
     continue;
   }
-  
+
   // Parse content sections
   if (currentModel) {
     if (line.startsWith('**Key Applications:**')) {
       currentSection = 'applications';
       const apps = line.replace('**Key Applications:**', '').trim();
       if (apps) {
-        currentModel.applications.push(...apps.split(';').map(s => s.trim()).filter(Boolean));
+        currentModel.applications.push(
+          ...apps
+            .split(';')
+            .map(s => s.trim())
+            .filter(Boolean)
+        );
       }
       continue;
     }
-    
+
     if (line.startsWith('*Sources:')) {
       currentSection = 'sources';
       const sources = line.replace('*Sources:', '').replace('*', '').trim();
@@ -123,19 +142,40 @@ for (let i = 0; i < lines.length; i++) {
       }
       continue;
     }
-    
+
     // Collect content for principles
-    if (currentSection === null && line && !line.startsWith('*') && !line.startsWith('#') && !line.startsWith('**')) {
-      if (currentModel.principles.length === 0 || currentModel.principles[currentModel.principles.length - 1].length > 200) {
+    if (
+      currentSection === null &&
+      line &&
+      !line.startsWith('*') &&
+      !line.startsWith('#') &&
+      !line.startsWith('**')
+    ) {
+      if (
+        currentModel.principles.length === 0 ||
+        currentModel.principles[currentModel.principles.length - 1].length > 200
+      ) {
         currentModel.principles.push(line);
       } else {
-        currentModel.principles[currentModel.principles.length - 1] += ' ' + line;
+        currentModel.principles[currentModel.principles.length - 1] +=
+          ' ' + line;
       }
     }
-    
+
     // Continue applications on next lines
-    if (currentSection === 'applications' && line && !line.startsWith('*') && !line.startsWith('#') && !line.startsWith('**')) {
-      currentModel.applications.push(...line.split(';').map(s => s.trim()).filter(Boolean));
+    if (
+      currentSection === 'applications' &&
+      line &&
+      !line.startsWith('*') &&
+      !line.startsWith('#') &&
+      !line.startsWith('**')
+    ) {
+      currentModel.applications.push(
+        ...line
+          .split(';')
+          .map(s => s.trim())
+          .filter(Boolean)
+      );
     }
   }
 }
@@ -143,25 +183,55 @@ for (let i = 0; i < lines.length; i++) {
 // Helper functions
 function getTier(domainNumber) {
   if (domainNumber <= 8) return 1; // Foundational Meta-Frameworks
-  if (domainNumber <= 20) return 2; // Core Cognitive Frameworks  
+  if (domainNumber <= 20) return 2; // Core Cognitive Frameworks
   if (domainNumber <= 32) return 3; // Applied Domain Frameworks
   return 4; // Specialized Implementation Frameworks
 }
 
 function getIcon(name) {
   const iconMap = {
-    'time': '⏰', 'physics': '⚛️', 'energy': '⚡', 'systems': '🔗',
-    'mental': '🧠', 'psychology': '🧑‍🤝‍🧑', 'decision': '🎯', 'philosophy': '🤔',
-    'exponential': '📈', 'spatial': '📐', 'temporal': '⏳', 'power': '⚡',
-    'cultural': '🌍', 'language': '💬', 'information': '📡', 'technology': '💻',
-    'organizational': '🏢', 'relationships': '❤️', 'health': '🏥', 'mindfulness': '🧘',
-    'investment': '💰', 'learning': '📚', 'business': '💼', 'incentives': '🎁',
-    'evolution': '🧬', 'creativity': '🎨', 'mathematics': '🔢', 'history': '📜',
-    'engineering': '⚙️', 'complex': '🌀', 'statistics': '📊', 'neuroscience': '🧠',
-    'game': '🎲', 'habit': '🔄', 'economics': '📊', 'practical': '🛠️',
-    'ritual': '🕯️', 'narrative': '📖', 'constraint': '🔒', 'emergence': '🌟'
+    time: '⏰',
+    physics: '⚛️',
+    energy: '⚡',
+    systems: '🔗',
+    mental: '🧠',
+    psychology: '🧑‍🤝‍🧑',
+    decision: '🎯',
+    philosophy: '🤔',
+    exponential: '📈',
+    spatial: '📐',
+    temporal: '⏳',
+    power: '⚡',
+    cultural: '🌍',
+    language: '💬',
+    information: '📡',
+    technology: '💻',
+    organizational: '🏢',
+    relationships: '❤️',
+    health: '🏥',
+    mindfulness: '🧘',
+    investment: '💰',
+    learning: '📚',
+    business: '💼',
+    incentives: '🎁',
+    evolution: '🧬',
+    creativity: '🎨',
+    mathematics: '🔢',
+    history: '📜',
+    engineering: '⚙️',
+    complex: '🌀',
+    statistics: '📊',
+    neuroscience: '🧠',
+    game: '🎲',
+    habit: '🔄',
+    economics: '📊',
+    practical: '🛠️',
+    ritual: '🕯️',
+    narrative: '📖',
+    constraint: '🔒',
+    emergence: '🌟',
   };
-  
+
   for (const [key, icon] of Object.entries(iconMap)) {
     if (name.toLowerCase().includes(key)) return icon;
   }
@@ -170,9 +240,18 @@ function getIcon(name) {
 
 function getColor(number) {
   const colors = [
-    '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', 
-    '#EF4444', '#EC4899', '#06B6D4', '#84CC16',
-    '#6366F1', '#F97316', '#14B8A6', '#A855F7'
+    '#3B82F6',
+    '#10B981',
+    '#8B5CF6',
+    '#F59E0B',
+    '#EF4444',
+    '#EC4899',
+    '#06B6D4',
+    '#84CC16',
+    '#6366F1',
+    '#F97316',
+    '#14B8A6',
+    '#A855F7',
   ];
   return colors[number % colors.length];
 }
@@ -183,15 +262,32 @@ function getDifficulty(tier) {
 
 function extractTags(text) {
   const commonTags = [
-    'thinking', 'decision-making', 'systems', 'psychology', 'physics',
-    'energy', 'time', 'complexity', 'information', 'behavior', 'strategy',
-    'learning', 'consciousness', 'optimization', 'feedback', 'design',
-    'interaction', 'communication', 'creativity', 'logic', 'data'
+    'thinking',
+    'decision-making',
+    'systems',
+    'psychology',
+    'physics',
+    'energy',
+    'time',
+    'complexity',
+    'information',
+    'behavior',
+    'strategy',
+    'learning',
+    'consciousness',
+    'optimization',
+    'feedback',
+    'design',
+    'interaction',
+    'communication',
+    'creativity',
+    'logic',
+    'data',
   ];
-  
-  return commonTags.filter(tag => 
-    text.toLowerCase().includes(tag.toLowerCase())
-  ).slice(0, 5);
+
+  return commonTags
+    .filter(tag => text.toLowerCase().includes(tag.toLowerCase()))
+    .slice(0, 5);
 }
 
 function parseSourcesString(sources) {
@@ -207,7 +303,7 @@ function parseSourcesString(sources) {
         type: 'book',
         url: '',
         highlights: [],
-        accessedAt: new Date().toISOString()
+        accessedAt: new Date().toISOString(),
       };
     }
     return {
@@ -217,7 +313,7 @@ function parseSourcesString(sources) {
       type: 'book',
       url: '',
       highlights: [],
-      accessedAt: new Date().toISOString()
+      accessedAt: new Date().toISOString(),
     };
   });
 }
@@ -231,7 +327,9 @@ import type { Domain, MentalModel } from '@/types';
 export const READWISE_DOMAINS: Domain[] = ${JSON.stringify(domains, null, 2)};
 
 export const READWISE_MODELS: MentalModel[] = ${JSON.stringify(
-  models, null, 2
+  models,
+  null,
+  2
 )};
 
 export function getReadwiseDomainBySlug(slug: string): Domain | undefined {
@@ -281,12 +379,22 @@ export function searchReadwiseContent(query: string): Array<Domain | MentalModel
 // Write the TypeScript file
 fs.writeFileSync(outputPath, tsContent);
 
-console.log(`✅ Generated ${domains.length} domains with ${models.length} models`);
+console.log(
+  `✅ Generated ${domains.length} domains with ${models.length} models`
+);
 console.log(`📁 Output written to: ${outputPath}`);
 
 // Print summary
 console.log('\n📊 Summary:');
-console.log(`Tier 1 (Foundational): ${domains.filter(d => d.tier === 1).length} domains`);
-console.log(`Tier 2 (Core Cognitive): ${domains.filter(d => d.tier === 2).length} domains`);
-console.log(`Tier 3 (Applied Domain): ${domains.filter(d => d.tier === 3).length} domains`);
-console.log(`Tier 4 (Specialized): ${domains.filter(d => d.tier === 4).length} domains`);
+console.log(
+  `Tier 1 (Foundational): ${domains.filter(d => d.tier === 1).length} domains`
+);
+console.log(
+  `Tier 2 (Core Cognitive): ${domains.filter(d => d.tier === 2).length} domains`
+);
+console.log(
+  `Tier 3 (Applied Domain): ${domains.filter(d => d.tier === 3).length} domains`
+);
+console.log(
+  `Tier 4 (Specialized): ${domains.filter(d => d.tier === 4).length} domains`
+);

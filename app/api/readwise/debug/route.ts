@@ -6,12 +6,12 @@ export async function GET() {
   try {
     const modelIds = getAllAvailableModelIds();
     const cacheStats = getCacheStats();
-    
+
     return NextResponse.json({
       totalModels: modelIds.length,
       modelIds: modelIds,
       cacheStats: cacheStats,
-      status: 'success'
+      status: 'success',
     });
   } catch (error) {
     console.error('Error in debug endpoint:', error);

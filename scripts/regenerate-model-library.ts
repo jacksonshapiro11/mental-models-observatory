@@ -25,17 +25,25 @@ function firstSentence(desc: string): string {
 }
 
 function buildCatalog(): string {
-  const byDomain: Record<string, { name: string; slug: string; gloss: string }[]> = {};
+  const byDomain: Record<
+    string,
+    { name: string; slug: string; gloss: string }[]
+  > = {};
   for (const m of READWISE_MODELS) {
     const d = m.domain || 'Other';
     if (!byDomain[d]) byDomain[d] = [];
-    byDomain[d].push({ name: m.name, slug: m.slug, gloss: firstSentence(m.description || '') });
+    byDomain[d].push({
+      name: m.name,
+      slug: m.slug,
+      gloss: firstSentence(m.description || ''),
+    });
   }
   const domainCount = Object.keys(byDomain).length;
   const modelCount = READWISE_MODELS.length;
 
   let out = `${CATALOG_MARKER} (${modelCount} models, ${domainCount} domains)\n\n`;
-  out += 'Every entry has the format: **Model Name** [slug: `verified-slug`] — one-line gloss. The slug is the exact value `getModelBySlug()` must resolve.\n\n';
+  out +=
+    'Every entry has the format: **Model Name** [slug: `verified-slug`] — one-line gloss. The slug is the exact value `getModelBySlug()` must resolve.\n\n';
   for (const d of Object.keys(byDomain).sort()) {
     out += `### ${d}\n`;
     for (const m of byDomain[d]) {
@@ -51,7 +59,9 @@ function main() {
   const catIdx = existing.indexOf(CATALOG_MARKER);
   const footIdx = existing.indexOf(FOOTER_MARKER);
   if (catIdx === -1 || footIdx === -1 || footIdx < catIdx) {
-    console.error('Could not find catalog markers in Model_Library.md. Expected:\n  "## The Catalog" ... "## Regeneration Procedure"');
+    console.error(
+      'Could not find catalog markers in Model_Library.md. Expected:\n  "## The Catalog" ... "## Regeneration Procedure"'
+    );
     process.exit(2);
   }
   const before = existing.slice(0, catIdx);
@@ -59,7 +69,9 @@ function main() {
   const catalog = buildCatalog();
   const next = before + catalog + '---\n\n' + after;
   fs.writeFileSync(LIBRARY_PATH, next);
-  console.log(`Rewrote ${LIBRARY_PATH} — ${READWISE_MODELS.length} models across ${new Set(READWISE_MODELS.map(m => m.domain)).size} domains.`);
+  console.log(
+    `Rewrote ${LIBRARY_PATH} — ${READWISE_MODELS.length} models across ${new Set(READWISE_MODELS.map(m => m.domain)).size} domains.`
+  );
 }
 
 main();

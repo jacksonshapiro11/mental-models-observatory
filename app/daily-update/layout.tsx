@@ -4,9 +4,5 @@ export default function DailyUpdateLayout({
   children: React.ReactNode;
 }) {
   // BriefViewer handles its own full-bleed backgrounds — no wrapper padding needed.
-  return (
-    <div>
-      {children}
-    </div>
-  );
+  return <div>{children}</div>;
 }

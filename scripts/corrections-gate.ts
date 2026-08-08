@@ -48,8 +48,13 @@ import * as path from 'path';
 import { execFileSync } from 'child_process';
 
 interface Row {
-  id: string; found: string; file: string;
-  wrong: string; correct: string; source: string; applied: string;
+  id: string;
+  found: string;
+  file: string;
+  wrong: string;
+  correct: string;
+  source: string;
+  applied: string;
 }
 
 /** The literal needle is the FIRST backticked span in a cell; everything else is prose. */
@@ -63,18 +68,26 @@ export function parseLedger(md: string): Row[] {
   for (const line of md.split('\n')) {
     const t = line.trim();
     if (!t.startsWith('|')) continue;
-    const c = t.split('|').map((s) => s.trim());
+    const c = t.split('|').map(s => s.trim());
     if (c.length < 8) continue;
     if (!/^COR-\d+/.test(c[1] ?? '')) continue; // skips header + divider
     rows.push({
-      id: c[1]!, found: c[2]!, file: c[3]!,
-      wrong: c[4]!, correct: c[5]!, source: c[6]!, applied: c[7]!,
+      id: c[1]!,
+      found: c[2]!,
+      file: c[3]!,
+      wrong: c[4]!,
+      correct: c[5]!,
+      source: c[6]!,
+      applied: c[7]!,
     });
   }
   return rows;
 }
 
-export function checkRow(r: Row, readFile: (p: string) => string | null): string[] {
+export function checkRow(
+  r: Row,
+  readFile: (p: string) => string | null
+): string[] {
   const fails: string[] = [];
   const body = readFile(r.file);
   if (body === null) return [`${r.id}: target file missing: ${r.file}`];
@@ -82,16 +95,24 @@ export function checkRow(r: Row, readFile: (p: string) => string | null): string
   const wrong = needle(r.wrong);
   const correct = needle(r.correct);
   if (!wrong || !correct) {
-    return [`${r.id}: malformed row — wrong/correct cells must each contain a \`backticked\` literal (got wrong=${wrong ? 'ok' : 'MISSING'}, correct=${correct ? 'ok' : 'MISSING'})`];
+    return [
+      `${r.id}: malformed row — wrong/correct cells must each contain a \`backticked\` literal (got wrong=${wrong ? 'ok' : 'MISSING'}, correct=${correct ? 'ok' : 'MISSING'})`,
+    ];
   }
   if (body.includes(wrong)) {
-    fails.push(`${r.id}: OPEN FALSEHOOD — the wrong text is STILL LIVE in ${r.file}: "${wrong.slice(0, 90)}". We proved this false on ${r.found} (${r.source.slice(0, 70)}) and never fixed the file. Apply the correction.`);
+    fails.push(
+      `${r.id}: OPEN FALSEHOOD — the wrong text is STILL LIVE in ${r.file}: "${wrong.slice(0, 90)}". We proved this false on ${r.found} (${r.source.slice(0, 70)}) and never fixed the file. Apply the correction.`
+    );
   }
   if (!body.includes(correct)) {
-    fails.push(`${r.id}: correction NOT PRESENT in ${r.file} — expected "${correct.slice(0, 90)}". The wrong text may have been deleted rather than corrected; the reader is owed the true figure, not a hole.`);
+    fails.push(
+      `${r.id}: correction NOT PRESENT in ${r.file} — expected "${correct.slice(0, 90)}". The wrong text may have been deleted rather than corrected; the reader is owed the true figure, not a hole.`
+    );
   }
   if (!r.applied.trim() && fails.length === 0) {
-    fails.push(`${r.id}: file is correct but 'applied' is empty — log the date; an unlogged correction is an unverifiable one.`);
+    fails.push(
+      `${r.id}: file is correct but 'applied' is empty — log the date; an unlogged correction is an unverifiable one.`
+    );
   }
   return fails;
 }
@@ -112,7 +133,12 @@ type Published = string | null | typeof UNPROVEN;
 
 function makePublishedReader(): (p: string) => Published {
   const git = (args: string[], cwd?: string): string =>
-    execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 120_000, cwd }).trim();
+    execFileSync('git', args, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 120_000,
+      cwd,
+    }).trim();
 
   // FAST PATH: if the cached origin/main ref already equals the remote HEAD, the local
   // object store is authoritative and `git show` is a true published receipt — no network
@@ -121,11 +147,21 @@ function makePublishedReader(): (p: string) => Published {
     const remote = git(['ls-remote', 'origin', 'main']).split(/\s+/)[0]!;
     const cached = git(['rev-parse', 'origin/main']);
     if (remote && remote === cached) {
-      return (p) => { try { return git(['show', `origin/main:${p}`]); } catch { return null; } };
+      return p => {
+        try {
+          return git(['show', `origin/main:${p}`]);
+        } catch {
+          return null;
+        }
+      };
     }
-    console.error(`  · cached origin/main (${cached.slice(0, 7)}) is behind remote HEAD (${remote.slice(0, 7)}) — expected, since publish.py pushes via API//tmp clone and never commits locally. Reading the published tree directly.`);
+    console.error(
+      `  · cached origin/main (${cached.slice(0, 7)}) is behind remote HEAD (${remote.slice(0, 7)}) — expected, since publish.py pushes via API//tmp clone and never commits locally. Reading the published tree directly.`
+    );
   } catch {
-    console.error('  ! could not reach origin — published state cannot be proven.');
+    console.error(
+      '  ! could not reach origin — published state cannot be proven.'
+    );
     return () => UNPROVEN;
   }
 
@@ -134,68 +170,129 @@ function makePublishedReader(): (p: string) => Published {
   // the mount's permissions cannot delete, bricking every later git op (Repo_Operations).
   // A /tmp clone has full permissions and is thrown away.
   try {
-    const url = git(['remote', 'get-url', 'origin']).replace(/https:\/\/[^@]*@/, 'https://');
+    const url = git(['remote', 'get-url', 'origin']).replace(
+      /https:\/\/[^@]*@/,
+      'https://'
+    );
     let token = process.env.GITHUB_TOKEN ?? '';
     if (!token) {
       const envPath = path.join(process.cwd(), '.env.local');
       if (fs.existsSync(envPath)) {
-        token = (fs.readFileSync(envPath, 'utf8').match(/^GITHUB_TOKEN\s*=\s*["']?([^"'\r\n]+)/m)?.[1] ?? '').trim();
+        token = (
+          fs
+            .readFileSync(envPath, 'utf8')
+            .match(/^GITHUB_TOKEN\s*=\s*["']?([^"'\r\n]+)/m)?.[1] ?? ''
+        ).trim();
       }
     }
-    const auth = token ? url.replace('https://', `https://x-access-token:${token}@`) : url;
+    const auth = token
+      ? url.replace('https://', `https://x-access-token:${token}@`)
+      : url;
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'corrgate-'));
-    git(['clone', '--filter=blob:none', '--depth', '1', '--branch', 'main', '--quiet', auth, dir]);
-    return (p) => {
+    git([
+      'clone',
+      '--filter=blob:none',
+      '--depth',
+      '1',
+      '--branch',
+      'main',
+      '--quiet',
+      auth,
+      dir,
+    ]);
+    return p => {
       const fp = path.join(dir, p);
       return fs.existsSync(fp) ? fs.readFileSync(fp, 'utf8') : null;
     };
   } catch (e) {
     // Never swallow this: a silent clone failure is indistinguishable from a passing gate.
-    const msg = String((e as Error)?.message ?? e).replace(/x-access-token:[^@]*@/g, 'x-access-token:***@');
-    console.error(`  ! could not clone the published tree — published state cannot be proven: ${msg.slice(0, 160)}`);
+    const msg = String((e as Error)?.message ?? e).replace(
+      /x-access-token:[^@]*@/g,
+      'x-access-token:***@'
+    );
+    console.error(
+      `  ! could not clone the published tree — published state cannot be proven: ${msg.slice(0, 160)}`
+    );
     return () => UNPROVEN;
   }
 }
 
 function selftest(): number {
-  const FIXED = 'raising roughly $26.5 billion, the largest foreign IPO in US history';
-  const BROKEN = 'raising roughly 28 billion dollars, the largest foreign IPO in US history';
+  const FIXED =
+    'raising roughly $26.5 billion, the largest foreign IPO in US history';
+  const BROKEN =
+    'raising roughly 28 billion dollars, the largest foreign IPO in US history';
   const row: Row = {
-    id: 'COR-TEST', found: '2026-07-11', file: 'fake.md',
+    id: 'COR-TEST',
+    found: '2026-07-11',
+    file: 'fake.md',
     wrong: '`raising roughly 28 billion dollars`',
     correct: '`raising roughly $26.5 billion`',
-    source: 'selftest', applied: '2026-07-11',
+    source: 'selftest',
+    applied: '2026-07-11',
   };
   const cases: Array<[string, boolean, () => boolean]> = [
-    ['FAILs when the false text is still live (the real 07-10 state)', true,
-      () => checkRow(row, () => BROKEN).length > 0],
-    ['SILENT once the correction is applied (the real 07-10 state now)', false,
-      () => checkRow(row, () => FIXED).length > 0],
-    ['FAILs when the wrong text was deleted but no correction landed', true,
-      () => checkRow(row, () => 'SK Hynix listed on the Nasdaq under SKHY.').length > 0],
-    ['FAILs on a missing target file', true,
-      () => checkRow(row, () => null).length > 0],
+    [
+      'FAILs when the false text is still live (the real 07-10 state)',
+      true,
+      () => checkRow(row, () => BROKEN).length > 0,
+    ],
+    [
+      'SILENT once the correction is applied (the real 07-10 state now)',
+      false,
+      () => checkRow(row, () => FIXED).length > 0,
+    ],
+    [
+      'FAILs when the wrong text was deleted but no correction landed',
+      true,
+      () =>
+        checkRow(row, () => 'SK Hynix listed on the Nasdaq under SKHY.')
+          .length > 0,
+    ],
+    [
+      'FAILs on a missing target file',
+      true,
+      () => checkRow(row, () => null).length > 0,
+    ],
     // THE 2026-07-11 REGRESSION. This is the exact state v1 called green: the working copy
     // was corrected, the ledger said `applied`, and the live page still said "$28 billion".
     // The two-reader design must FIRE on the published copy even when local is spotless.
-    ['FAILs when LOCAL is fixed but PUBLISHED still carries the falsehood (the 07-11 blindness)', true,
-      () => checkRow(row, () => FIXED).length === 0 && checkRow(row, () => BROKEN).length > 0],
-    ['parses the live ledger', false, () => {
-      const p = path.join(process.cwd(), 'system/Corrections_Ledger.md');
-      if (!fs.existsSync(p)) return true;
-      return parseLedger(fs.readFileSync(p, 'utf8')).length === 0; // fires (=true) if it parses to zero rows
-    }],
+    [
+      'FAILs when LOCAL is fixed but PUBLISHED still carries the falsehood (the 07-11 blindness)',
+      true,
+      () =>
+        checkRow(row, () => FIXED).length === 0 &&
+        checkRow(row, () => BROKEN).length > 0,
+    ],
+    [
+      'parses the live ledger',
+      false,
+      () => {
+        const p = path.join(process.cwd(), 'system/Corrections_Ledger.md');
+        if (!fs.existsSync(p)) return true;
+        return parseLedger(fs.readFileSync(p, 'utf8')).length === 0; // fires (=true) if it parses to zero rows
+      },
+    ],
   ];
   let fails = 0;
   for (const [name, shouldFire, fn] of cases) {
     const fired = fn();
     const ok = fired === shouldFire;
-    console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${name} (expected ${shouldFire ? 'FIRE' : 'SILENT'}, got ${fired ? 'FIRE' : 'SILENT'})`);
+    console.log(
+      `  ${ok ? 'PASS' : 'FAIL'} — ${name} (expected ${shouldFire ? 'FIRE' : 'SILENT'}, got ${fired ? 'FIRE' : 'SILENT'})`
+    );
     if (!ok) fails++;
   }
-  console.log(`\ncorrections-gate selftest — ${cases.length - fails}/${cases.length} assertions passed`);
-  if (fails) { console.error('✗ SELFTEST FAILED'); return 1; }
-  console.log('✓ Both directions verified: an unapplied correction FAILs, an applied one is silent.');
+  console.log(
+    `\ncorrections-gate selftest — ${cases.length - fails}/${cases.length} assertions passed`
+  );
+  if (fails) {
+    console.error('✗ SELFTEST FAILED');
+    return 1;
+  }
+  console.log(
+    '✓ Both directions verified: an unapplied correction FAILs, an applied one is silent.'
+  );
   return 0;
 }
 
@@ -216,31 +313,44 @@ function main(): number {
   };
 
   const fails: string[] = [];
-  for (const r of rows) fails.push(...checkRow(r, readLocal).map((f) => `[LOCAL]     ${f}`));
+  for (const r of rows)
+    fails.push(...checkRow(r, readLocal).map(f => `[LOCAL]     ${f}`));
 
   // THE COPY THAT CAN LIE TO A READER. Never skipped silently.
   if (localOnly) {
-    console.error('  ! --local-only: the PUBLISHED archive was NOT checked. This proves only that we meant to fix it.');
+    console.error(
+      '  ! --local-only: the PUBLISHED archive was NOT checked. This proves only that we meant to fix it.'
+    );
   } else {
     const readPublished = makePublishedReader();
     for (const r of rows) {
       const body = readPublished(r.file);
       if (body === UNPROVEN) {
-        fails.push(`[PUBLISHED] ${r.id}: UNPROVEN — could not read ${r.file} from origin/main. We cannot show the reader sees the truth, so this is RED, not green. (v1 of this gate went green on the working copy while the live page still carried the falsehood — never again.)`);
+        fails.push(
+          `[PUBLISHED] ${r.id}: UNPROVEN — could not read ${r.file} from origin/main. We cannot show the reader sees the truth, so this is RED, not green. (v1 of this gate went green on the working copy while the live page still carried the falsehood — never again.)`
+        );
         continue;
       }
-      fails.push(...checkRow(r, () => body as string | null).map((f) => `[PUBLISHED] ${f}`));
+      fails.push(
+        ...checkRow(r, () => body as string | null).map(f => `[PUBLISHED] ${f}`)
+      );
     }
   }
 
   const open = fails.length;
-  console.log(`corrections-gate — ${rows.length} logged correction(s) · ${open} open · scope: LOCAL${localOnly ? '' : ' + PUBLISHED (origin/main)'}`);
+  console.log(
+    `corrections-gate — ${rows.length} logged correction(s) · ${open} open · scope: LOCAL${localOnly ? '' : ' + PUBLISHED (origin/main)'}`
+  );
   for (const f of fails) console.error(`  ✗ ${f}`);
   if (open) {
-    console.error('\n✗ CORRECTIONS GATE FAILED — a claim we PROVED false is still live in the published archive (or we could not prove otherwise). Detection without repair is not a truth system.');
+    console.error(
+      '\n✗ CORRECTIONS GATE FAILED — a claim we PROVED false is still live in the published archive (or we could not prove otherwise). Detection without repair is not a truth system.'
+    );
     return 1;
   }
-  console.log(`\n✓ Every logged correction has landed${localOnly ? ' on disk' : ' in the file the READER actually sees (origin/main)'}.`);
+  console.log(
+    `\n✓ Every logged correction has landed${localOnly ? ' on disk' : ' in the file the READER actually sees (origin/main)'}.`
+  );
   return 0;
 }
 

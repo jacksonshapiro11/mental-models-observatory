@@ -14,9 +14,13 @@ let dataContent = fs.readFileSync(dataPath, 'utf8');
 // Function to format a model as TypeScript (with proper escaping)
 function formatModel(model) {
   const escapedDescription = model.description.replace(/"/g, '\\"');
-  const escapedPrinciples = model.principles.map(p => `      "${p.replace(/"/g, '\\"')}"`).join(',\n');
-  const escapedApplications = model.applications.map(a => `      "${a.replace(/"/g, '\\"')}"`).join(',\n');
-  
+  const escapedPrinciples = model.principles
+    .map(p => `      "${p.replace(/"/g, '\\"')}"`)
+    .join(',\n');
+  const escapedApplications = model.applications
+    .map(a => `      "${a.replace(/"/g, '\\"')}"`)
+    .join(',\n');
+
   return `  {
     "id": "${model.domainSlug}-${model.code.toLowerCase()}",
     "code": "${model.code}",
@@ -60,9 +64,10 @@ for (const model of models) {
 }
 
 // Insert the models
-dataContent = dataContent.slice(0, insertPosition) + 
-              modelsText + 
-              dataContent.slice(insertPosition);
+dataContent =
+  dataContent.slice(0, insertPosition) +
+  modelsText +
+  dataContent.slice(insertPosition);
 
 // Write back
 fs.writeFileSync(dataPath, dataContent);
@@ -73,5 +78,3 @@ console.log('🔄 Verifying...\n');
 // Quick verification
 const modelCount = (dataContent.match(/"code": "/g) || []).length;
 console.log(`Total models in file: ${modelCount}`);
-
-

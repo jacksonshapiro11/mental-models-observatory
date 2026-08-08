@@ -25,7 +25,7 @@ export function filterHighlightsByTags(
   tags: string[]
 ): ReadwiseHighlight[] {
   if (!tags.length) return highlights;
-  
+
   return highlights.filter(highlight => {
     const highlightTags = highlight.tags.map(tag => tag.name.toLowerCase());
     return tags.some(tag => highlightTags.includes(tag.toLowerCase()));
@@ -40,7 +40,10 @@ export function groupHighlightsByBook(
   books: ReadwiseBook[]
 ): Record<number, { book: ReadwiseBook; highlights: ReadwiseHighlight[] }> {
   const bookMap = new Map(books.map(book => [book.id, book]));
-  const grouped: Record<number, { book: ReadwiseBook; highlights: ReadwiseHighlight[] }> = {};
+  const grouped: Record<
+    number,
+    { book: ReadwiseBook; highlights: ReadwiseHighlight[] }
+  > = {};
 
   highlights.forEach(highlight => {
     const book = bookMap.get(highlight.book_id);
@@ -66,9 +69,10 @@ export function searchHighlights(
   searchTerm: string
 ): ReadwiseHighlight[] {
   const term = searchTerm.toLowerCase();
-  return highlights.filter(highlight => 
-    highlight.text.toLowerCase().includes(term) ||
-    (highlight.note && highlight.note.toLowerCase().includes(term))
+  return highlights.filter(
+    highlight =>
+      highlight.text.toLowerCase().includes(term) ||
+      (highlight.note && highlight.note.toLowerCase().includes(term))
   );
 }
 
@@ -77,13 +81,13 @@ export function searchHighlights(
  */
 export function getUniqueTags(highlights: ReadwiseHighlight[]): string[] {
   const tagSet = new Set<string>();
-  
+
   highlights.forEach(highlight => {
     highlight.tags.forEach(tag => {
       tagSet.add(tag.name);
     });
   });
-  
+
   return Array.from(tagSet).sort();
 }
 
@@ -97,7 +101,7 @@ export function filterHighlightsByDateRange(
 ): ReadwiseHighlight[] {
   const start = new Date(startDate);
   const end = endDate ? new Date(endDate) : new Date();
-  
+
   return highlights.filter(highlight => {
     const highlightDate = new Date(highlight.highlighted_at);
     return highlightDate >= start && highlightDate <= end;
@@ -113,7 +117,7 @@ export function getRecentHighlights(
 ): ReadwiseHighlight[] {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - days);
-  
+
   return highlights.filter(highlight => {
     const highlightDate = new Date(highlight.highlighted_at);
     return highlightDate >= cutoffDate;
@@ -130,10 +134,12 @@ export function sortHighlights(
 ): ReadwiseHighlight[] {
   return [...highlights].sort((a, b) => {
     let comparison = 0;
-    
+
     switch (sortBy) {
       case 'date':
-        comparison = new Date(a.highlighted_at).getTime() - new Date(b.highlighted_at).getTime();
+        comparison =
+          new Date(a.highlighted_at).getTime() -
+          new Date(b.highlighted_at).getTime();
         break;
       case 'location':
         comparison = (a.location || 0) - (b.location || 0);
@@ -142,7 +148,7 @@ export function sortHighlights(
         comparison = a.text.localeCompare(b.text);
         break;
     }
-    
+
     return direction === 'asc' ? comparison : -comparison;
   });
 }
@@ -155,18 +161,29 @@ export function getHighlightStats(highlights: ReadwiseHighlight[]) {
   const totalBooks = new Set(highlights.map(h => h.book_id)).size;
   const totalTags = getUniqueTags(highlights).length;
   const favorites = highlights.filter(h => h.is_favorite).length;
-  
-  const dateRange = highlights.length > 0 ? {
-    earliest: new Date(Math.min(...highlights.map(h => new Date(h.highlighted_at).getTime()))),
-    latest: new Date(Math.max(...highlights.map(h => new Date(h.highlighted_at).getTime())))
-  } : null;
-  
+
+  const dateRange =
+    highlights.length > 0
+      ? {
+          earliest: new Date(
+            Math.min(
+              ...highlights.map(h => new Date(h.highlighted_at).getTime())
+            )
+          ),
+          latest: new Date(
+            Math.max(
+              ...highlights.map(h => new Date(h.highlighted_at).getTime())
+            )
+          ),
+        }
+      : null;
+
   return {
     totalHighlights,
     totalBooks,
     totalTags,
     favorites,
-    dateRange
+    dateRange,
   };
 }
 
@@ -180,9 +197,17 @@ export function exportHighlights(
   switch (format) {
     case 'json':
       return JSON.stringify(highlights, null, 2);
-    
+
     case 'csv':
-      const headers = ['id', 'text', 'note', 'location', 'highlighted_at', 'book_id', 'tags'];
+      const headers = [
+        'id',
+        'text',
+        'note',
+        'location',
+        'highlighted_at',
+        'book_id',
+        'tags',
+      ];
       const rows = highlights.map(h => [
         h.id,
         `"${h.text.replace(/"/g, '""')}"`,
@@ -190,15 +215,15 @@ export function exportHighlights(
         h.location || '',
         h.highlighted_at,
         h.book_id,
-        h.tags.map(t => t.name).join(';')
+        h.tags.map(t => t.name).join(';'),
       ]);
       return [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    
+
     case 'txt':
-      return highlights.map(h => 
-        `${h.text}\n${h.note ? `Note: ${h.note}\n` : ''}---\n`
-      ).join('\n');
-    
+      return highlights
+        .map(h => `${h.text}\n${h.note ? `Note: ${h.note}\n` : ''}---\n`)
+        .join('\n');
+
     default:
       throw new Error(`Unsupported export format: ${format}`);
   }

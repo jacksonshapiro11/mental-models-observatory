@@ -1,4 +1,7 @@
-import { getWeeklyLightBySlug, getAllWeeklyLightSlugs } from '@/lib/weekly-light-parser';
+import {
+  getWeeklyLightBySlug,
+  getAllWeeklyLightSlugs,
+} from '@/lib/weekly-light-parser';
 import SuperBriefViewer from '@/components/super-brief/SuperBriefViewer';
 import { ArticleJsonLd } from '@/components/seo/JsonLd';
 import { notFound } from 'next/navigation';
@@ -10,10 +13,12 @@ interface PageProps {
 
 export async function generateStaticParams() {
   const slugs = getAllWeeklyLightSlugs();
-  return slugs.map((slug) => ({ slug }));
+  return slugs.map(slug => ({ slug }));
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const brief = getWeeklyLightBySlug(slug);
   const title = brief?.dailyTitle
@@ -62,7 +67,11 @@ export default async function WeeklySuperSlugPage({ params }: PageProps) {
         datePublished={slug}
         url={`/weekly-super/${slug}`}
       />
-      <SuperBriefViewer brief={brief} fullBriefBasePath="/weekly" selfBasePath="/weekly-super" />
+      <SuperBriefViewer
+        brief={brief}
+        fullBriefBasePath='/weekly'
+        selfBasePath='/weekly-super'
+      />
     </>
   );
 }

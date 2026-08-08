@@ -1,10 +1,10 @@
 import ReadwiseClient from '@/lib/readwise-client';
-import { 
+import {
   ReadwiseHighlight,
   ReadwiseBook,
   ReadwiseResponse,
-  GetHighlightsParams, 
-  GetBooksParams 
+  GetHighlightsParams,
+  GetBooksParams,
 } from '@/types/readwise';
 
 // Re-export types from the new comprehensive type definitions
@@ -17,7 +17,7 @@ export type {
   GetBooksParams,
   ReadwiseError,
   CacheEntry,
-  RequestOptions
+  RequestOptions,
 } from '@/types/readwise';
 
 /**
@@ -31,7 +31,7 @@ export async function fetchHighlights(
   const client = new ReadwiseClient(token);
   const params: GetHighlightsParams = {
     page_size: pageSize,
-    ...(pageCursor && { page_cursor: pageCursor })
+    ...(pageCursor && { page_cursor: pageCursor }),
   };
   return client.getHighlights(params);
 }
@@ -47,7 +47,7 @@ export async function fetchBooks(
   const client = new ReadwiseClient(token);
   const params: GetBooksParams = {
     page_size: pageSize,
-    ...(pageCursor && { page_cursor: pageCursor })
+    ...(pageCursor && { page_cursor: pageCursor }),
   };
   return client.getBooks(params);
 }
@@ -55,7 +55,9 @@ export async function fetchBooks(
 /**
  * Fetch all highlights from Readwise (handles pagination)
  */
-export async function fetchAllHighlights(token: string): Promise<ReadwiseHighlight[]> {
+export async function fetchAllHighlights(
+  token: string
+): Promise<ReadwiseHighlight[]> {
   const client = new ReadwiseClient(token);
   return client.getAllHighlights();
 }
@@ -78,5 +80,5 @@ export {
   getRecentHighlights,
   sortHighlights,
   getHighlightStats,
-  exportHighlights
+  exportHighlights,
 } from '@/lib/readwise-utils';

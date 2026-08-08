@@ -11,7 +11,13 @@ import { ShareBar } from '@/components/share/ShareBar';
 
 // ─── Inline markdown helpers ────────────────────────────────────────────────
 
-function RichText({ text, className = '' }: { text: string; className?: string }) {
+function RichText({
+  text,
+  className = '',
+}: {
+  text: string;
+  className?: string;
+}) {
   const parts: React.ReactNode[] = [];
   let remaining = text;
   let key = 0;
@@ -22,24 +28,50 @@ function RichText({ text, className = '' }: { text: string; className?: string }
     const linkMatch = remaining.match(/\[([^\]]+?)\]\(([^)]+?)\)/);
 
     const matches = [
-      boldMatch ? { type: 'bold', match: boldMatch, index: boldMatch.index! } : null,
-      italicMatch ? { type: 'italic', match: italicMatch, index: italicMatch.index! } : null,
-      linkMatch ? { type: 'link', match: linkMatch, index: linkMatch.index! } : null,
-    ].filter(Boolean).sort((a, b) => a!.index - b!.index);
+      boldMatch
+        ? { type: 'bold', match: boldMatch, index: boldMatch.index! }
+        : null,
+      italicMatch
+        ? { type: 'italic', match: italicMatch, index: italicMatch.index! }
+        : null,
+      linkMatch
+        ? { type: 'link', match: linkMatch, index: linkMatch.index! }
+        : null,
+    ]
+      .filter(Boolean)
+      .sort((a, b) => a!.index - b!.index);
 
-    if (matches.length === 0) { parts.push(remaining); break; }
+    if (matches.length === 0) {
+      parts.push(remaining);
+      break;
+    }
 
     const first = matches[0]!;
     if (first.index > 0) parts.push(remaining.slice(0, first.index));
 
     if (first.type === 'bold') {
-      parts.push(<strong key={key++} className="font-semibold">{first.match![1]}</strong>);
+      parts.push(
+        <strong key={key++} className='font-semibold'>
+          {first.match![1]}
+        </strong>
+      );
     } else if (first.type === 'italic') {
-      parts.push(<em key={key++} className="italic">{first.match![1]}</em>);
+      parts.push(
+        <em key={key++} className='italic'>
+          {first.match![1]}
+        </em>
+      );
     } else if (first.type === 'link') {
       parts.push(
-        <a key={key++} href={first.match![2]} target="_blank" rel="noopener noreferrer"
-          className="text-ct-pink hover:text-ct-yellow underline">{first.match![1]}</a>
+        <a
+          key={key++}
+          href={first.match![2]}
+          target='_blank'
+          rel='noopener noreferrer'
+          className='text-ct-pink hover:text-ct-yellow underline'
+        >
+          {first.match![1]}
+        </a>
       );
     }
 
@@ -70,12 +102,25 @@ interface SignalItem {
   domain: string;
 }
 
-function inferSignalColor(headline: string, body: string): 'red' | 'green' | 'yellow' {
+function inferSignalColor(
+  headline: string,
+  body: string
+): 'red' | 'green' | 'yellow' {
   const t = (headline + ' ' + body).toLowerCase();
   // Red signals: risk, decline, war, crash, hack, loss, inflation, shutdown
-  if (/war|escalat|strike|attack|hack|breach|exploit|crash|decline|inflation|risk|shutdown|tariff|sanctions|weaponiz|broke|loss|selloff|selling/.test(t)) return 'red';
+  if (
+    /war|escalat|strike|attack|hack|breach|exploit|crash|decline|inflation|risk|shutdown|tariff|sanctions|weaponiz|broke|loss|selloff|selling/.test(
+      t
+    )
+  )
+    return 'red';
   // Green signals: growth, surge, rally, launch, breakthrough, innovation, record
-  if (/surge|rally|launch|breakthrough|innovation|record|milestone|bullish|growth|restored|reversed|cleared|approval|funded/.test(t)) return 'green';
+  if (
+    /surge|rally|launch|breakthrough|innovation|record|milestone|bullish|growth|restored|reversed|cleared|approval|funded/.test(
+      t
+    )
+  )
+    return 'green';
   return 'yellow';
 }
 
@@ -87,13 +132,31 @@ function inferDomain(headline: string, body: string): string {
   // while the body often name-drops other domains (an M&A story mentioning AI).
   const h = headline.toLowerCase();
   const rules: Array<[RegExp, string]> = [
-    [/\b(?:geopolit\w*|iran|china|russia|ukraine|nato|war|hormuz|military|missile|drone|sanctions|ceasefire)\b/, 'geopolitics'],
-    [/\b(?:bitcoin|btc|ethereum|eth|crypto|defi|stablecoin|aave|solana|blockchain|nft|tether|coinbase|circle)\b/, 'crypto · defi'],
-    [/\b(?:ai|a\.i\.|openai|anthropic|claude|gpt|gemini|llm|neural|semiconductor|chips?|gpus?|compute)\b/, 'ai · tech'],
-    [/\b(?:oil|gold|brent|wti|commodit\w*|copper|helium|phosphate|natural gas|lng)\b/, 'commodities'],
-    [/\b(?:s&p|nasdaq|dow|equit\w*|stocks?|fed|rates?|yields?|treasur\w*|dollar|euro|ecb|boj|yen|inflation|payrolls|gdp|m&a|merger|acquisition|private equity|kkr)\b/, 'markets · macro'],
+    [
+      /\b(?:geopolit\w*|iran|china|russia|ukraine|nato|war|hormuz|military|missile|drone|sanctions|ceasefire)\b/,
+      'geopolitics',
+    ],
+    [
+      /\b(?:bitcoin|btc|ethereum|eth|crypto|defi|stablecoin|aave|solana|blockchain|nft|tether|coinbase|circle)\b/,
+      'crypto · defi',
+    ],
+    [
+      /\b(?:ai|a\.i\.|openai|anthropic|claude|gpt|gemini|llm|neural|semiconductor|chips?|gpus?|compute)\b/,
+      'ai · tech',
+    ],
+    [
+      /\b(?:oil|gold|brent|wti|commodit\w*|copper|helium|phosphate|natural gas|lng)\b/,
+      'commodities',
+    ],
+    [
+      /\b(?:s&p|nasdaq|dow|equit\w*|stocks?|fed|rates?|yields?|treasur\w*|dollar|euro|ecb|boj|yen|inflation|payrolls|gdp|m&a|merger|acquisition|private equity|kkr)\b/,
+      'markets · macro',
+    ],
     [/\b(?:quantum|encrypt\w*|security|cyber|qubit|nist)\b/, 'tech · security'],
-    [/\b(?:health|protein|cognitive|brain|pharma|biotech|fda|parasite|livestock|disease)\b/, 'science · health'],
+    [
+      /\b(?:health|protein|cognitive|brain|pharma|biotech|fda|parasite|livestock|disease)\b/,
+      'science · health',
+    ],
   ];
   for (const [re, tag] of rules) if (re.test(h)) return tag;
   for (const [re, tag] of rules) if (re.test(t)) return tag;
@@ -196,22 +259,35 @@ function parseInterestingThings(content: string): InterestingItem[] {
 
 // ─── Meditation parser ──────────────────────────────────────────────────────
 
-function parseMeditation(content: string): { quote: string; attribution: string; before: string; after: string } {
-  const paras = content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+function parseMeditation(content: string): {
+  quote: string;
+  attribution: string;
+  before: string;
+  after: string;
+} {
+  const paras = content
+    .split(/\n\s*\n/)
+    .map(p => p.trim())
+    .filter(Boolean);
 
   let quote = '';
   let attribution = '';
   let quoteIdx = -1;
 
   for (let idx = 0; idx < paras.length; idx++) {
-    const lines = paras[idx]!.split('\n').map(l => l.trim()).filter(Boolean);
+    const lines = paras[idx]!.split('\n')
+      .map(l => l.trim())
+      .filter(Boolean);
     const first = lines[0] ?? '';
     const m = first.match(/^\*["“”](.+?)["“”]\*\s*(.*)$/);
     if (m) {
       quote = m[1] ?? '';
       let attr = (m[2] ?? '').trim();
       if (!attr && lines[1]) attr = lines[1];
-      attribution = attr.replace(/^[–—-]\s*/, '').replace(/\*/g, '').trim();
+      attribution = attr
+        .replace(/^[–—-]\s*/, '')
+        .replace(/\*/g, '')
+        .trim();
       quoteIdx = idx;
       break;
     }
@@ -224,15 +300,28 @@ function parseMeditation(content: string): { quote: string; attribution: string;
     else if (idx < quoteIdx) before.push(p);
   });
 
-  return { quote, attribution, before: before.join('\n\n'), after: after.join('\n\n') };
+  return {
+    quote,
+    attribution,
+    before: before.join('\n\n'),
+    after: after.join('\n\n'),
+  };
 }
 
 // ─── Model parser ───────────────────────────────────────────────────────────
 
 // The Model is the day's deep "keeper": a named model with a vivid example, the
 // mechanism (why), a bolded "Use it" takeaway, and an Explore link. Paragraph-aware.
-function parseModel(content: string): { name: string; body: string; useIt: string; link: string } {
-  const paras = content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+function parseModel(content: string): {
+  name: string;
+  body: string;
+  useIt: string;
+  link: string;
+} {
+  const paras = content
+    .split(/\n\s*\n/)
+    .map(p => p.trim())
+    .filter(Boolean);
 
   let name = '';
   let link = '';
@@ -240,16 +329,26 @@ function parseModel(content: string): { name: string; body: string; useIt: strin
   const bodyParas: string[] = [];
 
   for (const para of paras) {
-    const lines = para.split('\n').map(l => l.trim()).filter(Boolean);
-    if (lines[0]?.startsWith('### ')) {                              // ### Name: the angle
+    const lines = para
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean);
+    if (lines[0]?.startsWith('### ')) {
+      // ### Name: the angle
       name = lines[0].replace(/^###\s+/, '');
       const rest = lines.slice(1).join(' ').trim();
       if (rest) bodyParas.push(rest);
       continue;
     }
-    if (/^\*\*\s*use it/i.test(para)) { useIt = para; continue; }    // **Use it:** takeaway
+    if (/^\*\*\s*use it/i.test(para)) {
+      useIt = para;
+      continue;
+    } // **Use it:** takeaway
     const onlyLink = para.match(/^\*{0,2}\[([^\]]*)\]\(([^)]+)\)\*{0,2}$/);
-    if (onlyLink) { link = onlyLink[2] ?? ''; continue; }            // a paragraph that is just the link
+    if (onlyLink) {
+      link = onlyLink[2] ?? '';
+      continue;
+    } // a paragraph that is just the link
     const inlineLink = para.match(/\[([^\]]*)\]\(([^)]+)\)/);
     if (inlineLink && !link) link = inlineLink[2] ?? '';
     bodyParas.push(para);
@@ -261,12 +360,15 @@ function parseModel(content: string): { name: string; body: string; useIt: strin
 // ─── Ideas parser ───────────────────────────────────────────────────────────
 // Ideas-first ideas may arrive as a single "## ▸ THE IDEAS" block with bold
 // headlines, OR as separate "## ▸ THE IDEA: <title>" sections. Normalize to cards.
-function buildIdeaCards(ideaSections: { content: string; title?: string }[]): { headline: string; body: string }[] {
+function buildIdeaCards(
+  ideaSections: { content: string; title?: string }[]
+): { headline: string; body: string }[] {
   const cards: { headline: string; body: string }[] = [];
   for (const sec of ideaSections) {
     const items = parseInterestingThings(sec.content); // bold-headline + body items, if any
     if (items.length > 0) {
-      for (const it of items) cards.push({ headline: it.headline, body: it.body });
+      for (const it of items)
+        cards.push({ headline: it.headline, body: it.body });
     } else {
       cards.push({ headline: sec.title || '', body: sec.content });
     }
@@ -292,57 +394,69 @@ export default function SuperBriefViewer({
   const isWeekly = /^\d{4}-W\d{1,2}$/i.test(brief.date);
 
   // Find sections by ID
-  const updateSection = brief.sections.find(s => s.id === 'the-update');     // selection / two-tier deep tier
-  const ideaSections = brief.sections.filter(s => s.id === 'the-idea');      // ideas-first format
+  const updateSection = brief.sections.find(s => s.id === 'the-update'); // selection / two-tier deep tier
+  const ideaSections = brief.sections.filter(s => s.id === 'the-idea'); // ideas-first format
   const alsoMovingSection = brief.sections.find(s => s.id === 'also-moving');
-  const lineSection = brief.sections.find(s => s.id === 'the-line');         // two-tier breadth tier (v2, 2026-08)
-  const takeSection = brief.sections.find(s => s.id === 'the-take');         // two-tier: the dated falsifiable call
-  const marketsMinuteSection = brief.sections.find(s => s.id === 'markets-minute');
-  const interestingSection = brief.sections.find(s => s.id === 'interesting-things');
-  const ourCallsSection = brief.sections.find(s => s.id === 'our-calls');   // weekly-light-only — the predictions nod
+  const lineSection = brief.sections.find(s => s.id === 'the-line'); // two-tier breadth tier (v2, 2026-08)
+  const takeSection = brief.sections.find(s => s.id === 'the-take'); // two-tier: the dated falsifiable call
+  const marketsMinuteSection = brief.sections.find(
+    s => s.id === 'markets-minute'
+  );
+  const interestingSection = brief.sections.find(
+    s => s.id === 'interesting-things'
+  );
+  const ourCallsSection = brief.sections.find(s => s.id === 'our-calls'); // weekly-light-only — the predictions nod
   const meditationSection = brief.sections.find(s => s.id === 'the-meditation');
   const modelSection = brief.sections.find(s => s.id === 'the-model');
-  const closeSection = brief.sections.find(s => s.id === 'the-close');   // sign-off — parsed but previously never rendered
+  const closeSection = brief.sections.find(s => s.id === 'the-close'); // sign-off — parsed but previously never rendered
 
   // Parse content
   const signals = updateSection ? parseSignals(updateSection.content) : [];
-  const lineItems = lineSection ? parseInterestingThings(lineSection.content) : []; // same "**Headline.** body" item shape
-  const interestingItems = interestingSection ? parseInterestingThings(interestingSection.content) : [];
-  const meditation = meditationSection ? parseMeditation(meditationSection.content) : null;
+  const lineItems = lineSection
+    ? parseInterestingThings(lineSection.content)
+    : []; // same "**Headline.** body" item shape
+  const interestingItems = interestingSection
+    ? parseInterestingThings(interestingSection.content)
+    : [];
+  const meditation = meditationSection
+    ? parseMeditation(meditationSection.content)
+    : null;
   const model = modelSection ? parseModel(modelSection.content) : null;
   // Ideas-first puts the model name inline in the header ("THE MODEL: <name>") — captured as the section title.
-  if (model && !model.name && modelSection?.title) model.name = modelSection.title;
-  const ideaCards = buildIdeaCards(ideaSections);  // one card per idea, from either format
+  if (model && !model.name && modelSection?.title)
+    model.name = modelSection.title;
+  const ideaCards = buildIdeaCards(ideaSections); // one card per idea, from either format
 
   return (
-    <div className="min-h-screen">
+    <div className='min-h-screen'>
       {/* ── 1. YELLOW HERO ──────────────────────────────────────────────── */}
-      <section className="bg-ct-yellow px-4 py-4 border-b-[3px] border-ct-dark">
-        <div className="max-w-lg mx-auto">
-          <div className="font-mono text-[13px] font-semibold text-ct-dark mb-0.5">
+      <section className='bg-ct-yellow px-4 py-4 border-b-[3px] border-ct-dark'>
+        <div className='max-w-lg mx-auto'>
+          <div className='font-mono text-[13px] font-semibold text-ct-dark mb-0.5'>
             {brief.displayDate}
           </div>
-          <div className="font-mono text-[11px] font-medium text-[#555] uppercase tracking-[0.08em] mb-3">
-            Markets, Meditations &amp; Mental Models — {isWeekly ? 'Weekly Light' : 'Super Brief'}
+          <div className='font-mono text-[11px] font-medium text-[#555] uppercase tracking-[0.08em] mb-3'>
+            Markets, Meditations &amp; Mental Models —{' '}
+            {isWeekly ? 'Weekly Light' : 'Super Brief'}
           </div>
           {brief.dailyTitle && (
-            <h1 className="text-[22px] font-medium text-ct-dark leading-[1.2] mb-2 font-serif">
+            <h1 className='text-[22px] font-medium text-ct-dark leading-[1.2] mb-2 font-serif'>
               {brief.dailyTitle}
             </h1>
           )}
           {brief.epigraph && (
-            <div className="font-serif italic text-[14px] text-[#333] leading-[1.5] mb-3">
+            <div className='font-serif italic text-[14px] text-[#333] leading-[1.5] mb-3'>
               &ldquo;{brief.epigraph}&rdquo;
             </div>
           )}
           {brief.lede && (
-            <p className="text-[13px] text-[#444] leading-[1.55] italic mb-2">
+            <p className='text-[13px] text-[#444] leading-[1.55] italic mb-2'>
               <RichText text={brief.lede} />
             </p>
           )}
 
           {/* Audio player */}
-          <div className="mt-3">
+          <div className='mt-3'>
             <SuperBriefAudioPlayer date={brief.date} />
           </div>
         </div>
@@ -353,20 +467,26 @@ export default function SuperBriefViewer({
 
       {/* ── 2a. THE IDEAS — ideas-first lead (the day's biggest ideas) ───── */}
       {ideaCards.length > 0 && (
-        <section className="bg-white px-4 py-4 border-t-[3px] border-ct-dark">
-          <div className="max-w-lg mx-auto">
-            <div className="font-mono text-[10px] text-ct-pink uppercase tracking-wider font-medium mb-3">
+        <section className='bg-white px-4 py-4 border-t-[3px] border-ct-dark'>
+          <div className='max-w-lg mx-auto'>
+            <div className='font-mono text-[10px] text-ct-pink uppercase tracking-wider font-medium mb-3'>
               The ideas
             </div>
             {ideaCards.map((idea, i) => (
-              <div key={i} className={i > 0 ? 'mt-5 pt-4 border-t border-[#eee]' : ''}>
+              <div
+                key={i}
+                className={i > 0 ? 'mt-5 pt-4 border-t border-[#eee]' : ''}
+              >
                 {idea.headline && (
-                  <h2 className="font-serif text-[18px] font-medium text-[#111] leading-[1.3] mb-2">
+                  <h2 className='font-serif text-[18px] font-medium text-[#111] leading-[1.3] mb-2'>
                     {idea.headline}
                   </h2>
                 )}
                 {toParagraphs(idea.body).map((para, j) => (
-                  <p key={j} className="text-[13px] text-[#1a1a1a] font-medium leading-[1.6] mb-2 last:mb-0">
+                  <p
+                    key={j}
+                    className='text-[13px] text-[#1a1a1a] font-medium leading-[1.6] mb-2 last:mb-0'
+                  >
                     <RichText text={para} />
                   </p>
                 ))}
@@ -378,13 +498,16 @@ export default function SuperBriefViewer({
 
       {/* ── 2a2. ALSO MOVING — ideas-first secondary ────────────────────── */}
       {alsoMovingSection && (
-        <section className="bg-[#FAFAFA] px-4 py-3 border-t border-[#e5e5e5]">
-          <div className="max-w-lg mx-auto">
-            <div className="font-mono text-[9px] text-[#888] uppercase tracking-wider font-medium mb-1.5">
+        <section className='bg-[#FAFAFA] px-4 py-3 border-t border-[#e5e5e5]'>
+          <div className='max-w-lg mx-auto'>
+            <div className='font-mono text-[9px] text-[#888] uppercase tracking-wider font-medium mb-1.5'>
               Also moving
             </div>
             {toParagraphs(alsoMovingSection.content).map((para, j) => (
-              <p key={j} className="text-[12px] text-[#3a3a3a] font-medium leading-[1.6] mb-1.5 last:mb-0">
+              <p
+                key={j}
+                className='text-[12px] text-[#3a3a3a] font-medium leading-[1.6] mb-1.5 last:mb-0'
+              >
                 <RichText text={para} />
               </p>
             ))}
@@ -394,12 +517,12 @@ export default function SuperBriefViewer({
 
       {/* ── 2c. MARKETS MINUTE — market-state read, after the ideas ─────── */}
       {marketsMinuteSection && (
-        <section className="bg-ct-pink px-4 py-4 border-t-[3px] border-ct-dark">
-          <div className="max-w-lg mx-auto">
-            <div className="font-mono text-[9px] text-white/75 uppercase tracking-wider font-medium mb-2">
+        <section className='bg-ct-pink px-4 py-4 border-t-[3px] border-ct-dark'>
+          <div className='max-w-lg mx-auto'>
+            <div className='font-mono text-[9px] text-white/75 uppercase tracking-wider font-medium mb-2'>
               Markets minute
             </div>
-            <p className="text-[13px] text-white leading-[1.65] font-medium">
+            <p className='text-[13px] text-white leading-[1.65] font-medium'>
               <RichText text={marketsMinuteSection.content} />
             </p>
           </div>
@@ -408,54 +531,58 @@ export default function SuperBriefViewer({
 
       {/* ── 3. DARK SIGNALS — "Today's Signals" (legacy selection format only) ─ */}
       {signals.length > 0 && (
-      <section className="bg-ct-dark px-4 py-3 border-t border-[#1a1a1a]">
-        <div className="max-w-lg mx-auto">
-          <div className="font-mono text-[9px] text-ct-pink uppercase tracking-wider font-medium mb-2">
-            {isWeekly ? 'The week’s signals' : 'Today’s signals'}
-          </div>
-
-          {/* All signals */}
-          {signals.map((sig, i) => (
-            <div
-              key={i}
-              className="flex gap-2 items-start py-1.5 border-b border-[#1a1a1a] last:border-0"
-            >
-              <div
-                className={`w-[5px] h-[5px] rounded-full mt-[6px] flex-shrink-0 ${
-                  sig.color === 'green'
-                    ? 'bg-ct-green-data'
-                    : sig.color === 'red'
-                      ? 'bg-ct-pink'
-                      : 'bg-ct-yellow'
-                }`}
-              />
-              <div>
-                <div className="text-[12px] text-[#ccc] leading-[1.45]">
-                  <strong className="text-white font-medium"><RichText text={sig.headline} /></strong>{' '}
-                  <RichText text={sig.body} />
-                </div>
-                <div className="font-mono text-[9px] text-[#555] mt-0.5">{sig.domain}</div>
-              </div>
+        <section className='bg-ct-dark px-4 py-3 border-t border-[#1a1a1a]'>
+          <div className='max-w-lg mx-auto'>
+            <div className='font-mono text-[9px] text-ct-pink uppercase tracking-wider font-medium mb-2'>
+              {isWeekly ? 'The week’s signals' : 'Today’s signals'}
             </div>
-          ))}
-        </div>
-      </section>
+
+            {/* All signals */}
+            {signals.map((sig, i) => (
+              <div
+                key={i}
+                className='flex gap-2 items-start py-1.5 border-b border-[#1a1a1a] last:border-0'
+              >
+                <div
+                  className={`w-[5px] h-[5px] rounded-full mt-[6px] flex-shrink-0 ${
+                    sig.color === 'green'
+                      ? 'bg-ct-green-data'
+                      : sig.color === 'red'
+                        ? 'bg-ct-pink'
+                        : 'bg-ct-yellow'
+                  }`}
+                />
+                <div>
+                  <div className='text-[12px] text-[#ccc] leading-[1.45]'>
+                    <strong className='text-white font-medium'>
+                      <RichText text={sig.headline} />
+                    </strong>{' '}
+                    <RichText text={sig.body} />
+                  </div>
+                  <div className='font-mono text-[9px] text-[#555] mt-0.5'>
+                    {sig.domain}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* ── 3b. THE LINE — two-tier breadth tier: every other story, one line each ── */}
       {lineItems.length > 0 && (
-        <section className="bg-white px-4 py-4 border-t-[3px] border-ct-dark">
-          <div className="max-w-lg mx-auto">
-            <div className="font-mono text-[10px] text-ct-pink uppercase tracking-wider font-medium mb-2">
+        <section className='bg-white px-4 py-4 border-t-[3px] border-ct-dark'>
+          <div className='max-w-lg mx-auto'>
+            <div className='font-mono text-[10px] text-ct-pink uppercase tracking-wider font-medium mb-2'>
               The line
             </div>
             {lineItems.map((item, i) => (
               <div
                 key={`ln-${i}`}
-                className="py-2 border-b border-[#eee] last:border-0"
+                className='py-2 border-b border-[#eee] last:border-0'
               >
-                <div className="text-[12.5px] text-[#3a3a3a] leading-[1.55]">
-                  <strong className="text-[#111] font-semibold">
+                <div className='text-[12.5px] text-[#3a3a3a] leading-[1.55]'>
+                  <strong className='text-[#111] font-semibold'>
                     <RichText text={item.headline} />
                   </strong>{' '}
                   <RichText text={item.body} />
@@ -468,13 +595,16 @@ export default function SuperBriefViewer({
 
       {/* ── 3c. THE TAKE — the dated falsifiable call (two-tier) ────────── */}
       {takeSection && takeSection.content.trim() && (
-        <section className="bg-ct-dark px-4 py-4 border-t-2 border-ct-green-data">
-          <div className="max-w-lg mx-auto">
-            <div className="font-mono text-[9px] text-ct-green-data uppercase tracking-wider font-medium mb-2">
+        <section className='bg-ct-dark px-4 py-4 border-t-2 border-ct-green-data'>
+          <div className='max-w-lg mx-auto'>
+            <div className='font-mono text-[9px] text-ct-green-data uppercase tracking-wider font-medium mb-2'>
               The take
             </div>
             {toParagraphs(takeSection.content).map((para, i) => (
-              <p key={`tk-${i}`} className="text-[13px] text-[#ccc] leading-[1.6] mb-2 last:mb-0">
+              <p
+                key={`tk-${i}`}
+                className='text-[13px] text-[#ccc] leading-[1.6] mb-2 last:mb-0'
+              >
                 <RichText text={para} />
               </p>
             ))}
@@ -483,35 +613,44 @@ export default function SuperBriefViewer({
       )}
 
       {/* ── 4. WARM CREAM — "Interesting Things" (replaces The Take) ───── */}
-      {(interestingItems.length > 0 || (interestingSection && interestingSection.content.trim())) && (
-        <section className="bg-[#FFFDF0] px-4 py-4 border-t-[3px] border-ct-yellow">
-          <div className="max-w-lg mx-auto">
-            <div className="text-[10px] tracking-[0.06em] uppercase font-medium text-ct-dark mb-1.5">
+      {(interestingItems.length > 0 ||
+        (interestingSection && interestingSection.content.trim())) && (
+        <section className='bg-[#FFFDF0] px-4 py-4 border-t-[3px] border-ct-yellow'>
+          <div className='max-w-lg mx-auto'>
+            <div className='text-[10px] tracking-[0.06em] uppercase font-medium text-ct-dark mb-1.5'>
               Interesting things
             </div>
-            {interestingItems.length > 0 ? (
-              interestingItems.map((item, i) => (
-                <div key={i} className={i > 0 ? 'mt-4 pt-3 border-t border-[#e8e4d0]' : ''}>
-                  <h2 className="font-serif text-[16px] font-medium text-[#111] leading-[1.3] mb-2">
-                    {item.headline}
-                  </h2>
-                  <p className="text-[13px] text-[#1a1a1a] font-medium leading-[1.6]">
-                    <RichText text={item.body} />
+            {interestingItems.length > 0
+              ? interestingItems.map((item, i) => (
+                  <div
+                    key={i}
+                    className={
+                      i > 0 ? 'mt-4 pt-3 border-t border-[#e8e4d0]' : ''
+                    }
+                  >
+                    <h2 className='font-serif text-[16px] font-medium text-[#111] leading-[1.3] mb-2'>
+                      {item.headline}
+                    </h2>
+                    <p className='text-[13px] text-[#1a1a1a] font-medium leading-[1.6]'>
+                      <RichText text={item.body} />
+                    </p>
+                  </div>
+                ))
+              : toParagraphs(interestingSection!.content).map((para, i) => (
+                  <p
+                    key={i}
+                    className='text-[13px] text-[#1a1a1a] font-medium leading-[1.6] mb-2 last:mb-0'
+                  >
+                    <RichText text={para} />
                   </p>
-                </div>
-              ))
-            ) : (
-              toParagraphs(interestingSection!.content).map((para, i) => (
-                <p key={i} className="text-[13px] text-[#1a1a1a] font-medium leading-[1.6] mb-2 last:mb-0">
-                  <RichText text={para} />
-                </p>
-              ))
-            )}
+                ))}
             <Link
               href={`${fullBriefBasePath}/${brief.date}`}
-              className="text-[11px] text-ct-pink font-medium mt-3 block no-underline"
+              className='text-[11px] text-ct-pink font-medium mt-3 block no-underline'
             >
-              {isWeekly ? 'More in this week’s full brief →' : 'More in today’s full brief →'}
+              {isWeekly
+                ? 'More in this week’s full brief →'
+                : 'More in today’s full brief →'}
             </Link>
           </div>
         </section>
@@ -519,13 +658,16 @@ export default function SuperBriefViewer({
 
       {/* ── 4b. OUR CALLS — the predictions nod (weekly light only) ─────── */}
       {ourCallsSection && ourCallsSection.content.trim() && (
-        <section className="bg-ct-dark px-4 py-4 border-t-2 border-ct-green-data">
-          <div className="max-w-lg mx-auto">
-            <div className="font-mono text-[9px] text-ct-green-data uppercase tracking-wider font-medium mb-2">
+        <section className='bg-ct-dark px-4 py-4 border-t-2 border-ct-green-data'>
+          <div className='max-w-lg mx-auto'>
+            <div className='font-mono text-[9px] text-ct-green-data uppercase tracking-wider font-medium mb-2'>
               Our calls
             </div>
             {toParagraphs(ourCallsSection.content).map((para, i) => (
-              <p key={`oc-${i}`} className="text-[13px] text-[#ccc] leading-[1.6] mb-2 last:mb-0">
+              <p
+                key={`oc-${i}`}
+                className='text-[13px] text-[#ccc] leading-[1.6] mb-2 last:mb-0'
+              >
                 <RichText text={para} />
               </p>
             ))}
@@ -535,59 +677,73 @@ export default function SuperBriefViewer({
 
       {/* ── 5. DARK + PINK — "The Meditation" (matches Inner Game) ──────── */}
       {meditation && (
-        <section className="bg-ct-dark px-4 py-5 border-t-[3px] border-ct-pink">
-          <div className="max-w-lg mx-auto">
-            <div className="text-[10px] tracking-[0.1em] uppercase text-ct-pink font-medium mb-3 text-center">
+        <section className='bg-ct-dark px-4 py-5 border-t-[3px] border-ct-pink'>
+          <div className='max-w-lg mx-auto'>
+            <div className='text-[10px] tracking-[0.1em] uppercase text-ct-pink font-medium mb-3 text-center'>
               The meditation
             </div>
-            {meditation.before && toParagraphs(meditation.before).map((para, i) => (
-              <p key={`mb-${i}`} className="text-[12px] text-[#cfcfcf] font-medium leading-[1.6] mb-3">
-                <RichText text={para} />
-              </p>
-            ))}
+            {meditation.before &&
+              toParagraphs(meditation.before).map((para, i) => (
+                <p
+                  key={`mb-${i}`}
+                  className='text-[12px] text-[#cfcfcf] font-medium leading-[1.6] mb-3'
+                >
+                  <RichText text={para} />
+                </p>
+              ))}
             {meditation.quote && (
-              <blockquote className="font-serif italic text-[16px] text-[#f0f0f0] leading-[1.45] max-w-[340px] mx-auto mt-1 mb-1 text-center">
+              <blockquote className='font-serif italic text-[16px] text-[#f0f0f0] leading-[1.45] max-w-[340px] mx-auto mt-1 mb-1 text-center'>
                 &ldquo;{meditation.quote}&rdquo;
               </blockquote>
             )}
             {meditation.attribution && (
-              <div className="text-[10px] text-[#888] mb-4 text-center">{meditation.attribution}</div>
+              <div className='text-[10px] text-[#888] mb-4 text-center'>
+                {meditation.attribution}
+              </div>
             )}
-            {meditation.after && toParagraphs(meditation.after).map((para, i) => (
-              <p key={`ma-${i}`} className="text-[12px] text-[#cfcfcf] font-medium leading-[1.6] mb-3 last:mb-0">
-                <RichText text={para} />
-              </p>
-            ))}
+            {meditation.after &&
+              toParagraphs(meditation.after).map((para, i) => (
+                <p
+                  key={`ma-${i}`}
+                  className='text-[12px] text-[#cfcfcf] font-medium leading-[1.6] mb-3 last:mb-0'
+                >
+                  <RichText text={para} />
+                </p>
+              ))}
           </div>
         </section>
       )}
 
       {/* ── 6. MINT — "The Model" — the day's deep keeper ───────────────── */}
       {model && (
-        <section className="bg-[#E8FFF5] px-4 py-5 border-t-[3px] border-[#00885a]">
-          <div className="max-w-lg mx-auto">
-            <div className="font-mono text-[10px] text-[#00885a] tracking-wider uppercase font-medium mb-2">
+        <section className='bg-[#E8FFF5] px-4 py-5 border-t-[3px] border-[#00885a]'>
+          <div className='max-w-lg mx-auto'>
+            <div className='font-mono text-[10px] text-[#00885a] tracking-wider uppercase font-medium mb-2'>
               The model
             </div>
             {model.name && (
-              <h2 className="font-serif text-[19px] font-medium text-[#111] leading-[1.3] mb-3">
+              <h2 className='font-serif text-[19px] font-medium text-[#111] leading-[1.3] mb-3'>
                 {model.name}
               </h2>
             )}
-            {model.body && toParagraphs(model.body).map((para, i) => (
-              <p key={`mo-${i}`} className="text-[13px] text-[#1a1a1a] font-medium leading-[1.6] mb-2.5">
-                <RichText text={para} />
-              </p>
-            ))}
+            {model.body &&
+              toParagraphs(model.body).map((para, i) => (
+                <p
+                  key={`mo-${i}`}
+                  className='text-[13px] text-[#1a1a1a] font-medium leading-[1.6] mb-2.5'
+                >
+                  <RichText text={para} />
+                </p>
+              ))}
             {model.useIt && (
-              <div className="bg-[#D6F5E8] border-l-[3px] border-[#00885a] px-3 py-2.5 mt-1 text-[13px] text-[#1a1a1a] leading-[1.6]">
+              <div className='bg-[#D6F5E8] border-l-[3px] border-[#00885a] px-3 py-2.5 mt-1 text-[13px] text-[#1a1a1a] leading-[1.6]'>
                 <RichText text={model.useIt} />
               </div>
             )}
             {model.link && (
               <Link
                 href={model.link}
-                className="text-[11px] text-[#00885a] font-medium mt-3 inline-block no-underline"
+                className='text-[11px] text-[#00885a] font-medium mt-3 inline-block no-underline'
               >
                 Explore this model →
               </Link>
@@ -598,13 +754,16 @@ export default function SuperBriefViewer({
 
       {/* ── 6.5 DARK — "The Close" — the day's human sign-off ───────────── */}
       {closeSection && closeSection.content.trim() && (
-        <section className="bg-ct-dark px-4 py-7 border-t-[3px] border-ct-dark">
-          <div className="max-w-lg mx-auto">
-            <div className="font-mono text-[10px] text-ct-yellow tracking-wider uppercase font-medium mb-3">
+        <section className='bg-ct-dark px-4 py-7 border-t-[3px] border-ct-dark'>
+          <div className='max-w-lg mx-auto'>
+            <div className='font-mono text-[10px] text-ct-yellow tracking-wider uppercase font-medium mb-3'>
               The close
             </div>
             {toParagraphs(closeSection.content).map((para, i) => (
-              <p key={`cl-${i}`} className="font-serif text-[17px] text-[#F5F1E8] leading-[1.55] mb-3 last:mb-0">
+              <p
+                key={`cl-${i}`}
+                className='font-serif text-[17px] text-[#F5F1E8] leading-[1.55] mb-3 last:mb-0'
+              >
                 <RichText text={para} />
               </p>
             ))}
@@ -620,26 +779,33 @@ export default function SuperBriefViewer({
       />
 
       {/* ── 7. YELLOW READ FULL BRIEF CTA ───────────────────────────────── */}
-      <section className="bg-ct-yellow px-4 py-3 text-center border-t-[3px] border-ct-dark">
-        <Link href={`${fullBriefBasePath}/${brief.date}`} className="text-[12px] font-medium text-ct-dark no-underline">
+      <section className='bg-ct-yellow px-4 py-3 text-center border-t-[3px] border-ct-dark'>
+        <Link
+          href={`${fullBriefBasePath}/${brief.date}`}
+          className='text-[12px] font-medium text-ct-dark no-underline'
+        >
           Read the full brief →
         </Link>
-        <div className="text-[10px] text-[#666] mt-1">
+        <div className='text-[10px] text-[#666] mt-1'>
           Dashboard, all Six sections, Watchlist, Discovery, and more
         </div>
       </section>
 
       {/* ── 8. PINK SUBSCRIBE CTA ───────────────────────────────────────── */}
-      <section className="bg-ct-pink px-4 py-4 text-center">
-        <div className="max-w-lg mx-auto">
-          <div className="text-[14px] font-medium text-white mb-1">
-            {isWeekly ? 'Get the Weekly every Sunday' : 'Get this every morning'}
+      <section className='bg-ct-pink px-4 py-4 text-center'>
+        <div className='max-w-lg mx-auto'>
+          <div className='text-[14px] font-medium text-white mb-1'>
+            {isWeekly
+              ? 'Get the Weekly every Sunday'
+              : 'Get this every morning'}
           </div>
-          <div className="text-[11px] text-white/70 mb-3">Markets, meditations, mental models. Free.</div>
+          <div className='text-[11px] text-white/70 mb-3'>
+            Markets, meditations, mental models. Free.
+          </div>
           <SubscribeForm
             source={isWeekly ? 'weekly-light' : 'super-brief'}
-            inputClassName="px-3 py-2 border-[1.5px] border-white bg-transparent text-white text-[12px] w-[200px] placeholder-white/50"
-            buttonClassName="px-4 py-2 bg-white text-ct-pink text-[12px] font-medium border-[1.5px] border-white"
+            inputClassName='px-3 py-2 border-[1.5px] border-white bg-transparent text-white text-[12px] w-[200px] placeholder-white/50'
+            buttonClassName='px-4 py-2 bg-white text-ct-pink text-[12px] font-medium border-[1.5px] border-white'
             showNote={false}
           />
         </div>

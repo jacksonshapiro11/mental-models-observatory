@@ -43,7 +43,10 @@ export class OpenAITTSClient implements TTSProvider {
   private defaultVoice: string;
   private defaultModel: string;
 
-  constructor(apiKey: string, options?: { voice?: string | undefined; model?: string | undefined }) {
+  constructor(
+    apiKey: string,
+    options?: { voice?: string | undefined; model?: string | undefined }
+  ) {
     this.client = new OpenAI({ apiKey });
     this.defaultVoice = options?.voice || 'ash';
     this.defaultModel = options?.model || 'gpt-4o-mini-tts';
@@ -53,7 +56,18 @@ export class OpenAITTSClient implements TTSProvider {
     const model = options?.model || this.defaultModel;
     const params: Record<string, unknown> = {
       model,
-      voice: (options?.voice || this.defaultVoice) as 'onyx' | 'alloy' | 'echo' | 'fable' | 'nova' | 'shimmer' | 'ash' | 'ballad' | 'coral' | 'sage' | 'verse',
+      voice: (options?.voice || this.defaultVoice) as
+        | 'onyx'
+        | 'alloy'
+        | 'echo'
+        | 'fable'
+        | 'nova'
+        | 'shimmer'
+        | 'ash'
+        | 'ballad'
+        | 'coral'
+        | 'sage'
+        | 'verse',
       input: text,
       response_format: options?.format || 'mp3',
       speed: options?.speed || 1.0,
@@ -84,15 +98,23 @@ async function withRetry<T>(
     } catch (err: any) {
       const status = err?.status ?? err?.response?.status;
       const code = err?.code ?? err?.cause?.code;
-      const isNetworkError = code === 'ECONNRESET' || code === 'ETIMEDOUT' || code === 'ECONNREFUSED' || code === 'UND_ERR_SOCKET' || err?.message === 'terminated';
-      const isRetryable = status === 429 || (status >= 500 && status < 600) || isNetworkError;
+      const isNetworkError =
+        code === 'ECONNRESET' ||
+        code === 'ETIMEDOUT' ||
+        code === 'ECONNREFUSED' ||
+        code === 'UND_ERR_SOCKET' ||
+        err?.message === 'terminated';
+      const isRetryable =
+        status === 429 || (status >= 500 && status < 600) || isNetworkError;
 
       if (!isRetryable || attempt === maxRetries) {
         throw err;
       }
 
       const delay = baseDelayMs * Math.pow(2, attempt);
-      console.warn(`[audio] ${label} attempt ${attempt + 1} failed (${status || code || 'network error'}), retrying in ${delay}ms...`);
+      console.warn(
+        `[audio] ${label} attempt ${attempt + 1} failed (${status || code || 'network error'}), retrying in ${delay}ms...`
+      );
       await new Promise(r => setTimeout(r, delay));
     }
   }
@@ -172,11 +194,15 @@ function concatenateMP3Buffers(buffers: Buffer[]): Buffer {
  *  episode ships silently truncated. Exported for the regression suite. (2026-07-27) */
 export const MIN_AUDIO_BYTES_PER_CHAR = 100;
 
-export function assertPlausibleChunkAudio(chunkChars: number, bytes: number, label = 'TTS chunk'): void {
+export function assertPlausibleChunkAudio(
+  chunkChars: number,
+  bytes: number,
+  label = 'TTS chunk'
+): void {
   if (bytes < chunkChars * MIN_AUDIO_BYTES_PER_CHAR) {
     throw new Error(
       `${label}: got ${bytes} bytes of audio for a ${chunkChars}-char chunk ` +
-        `(< ${MIN_AUDIO_BYTES_PER_CHAR} B/char) — empty or truncated TTS response; refusing to ship a cut episode.`,
+        `(< ${MIN_AUDIO_BYTES_PER_CHAR} B/char) — empty or truncated TTS response; refusing to ship a cut episode.`
     );
   }
 }
@@ -229,7 +255,11 @@ export async function generateFullAudio(
         { label: `TTS chunk ${i + 1}/${chunks.length}` }
       );
       // A silently-partial buffer must fail the RUN, never ship as a cut episode.
-      assertPlausibleChunkAudio(chunk.length, buffer.length, `TTS chunk ${i + 1}/${chunks.length}`);
+      assertPlausibleChunkAudio(
+        chunk.length,
+        buffer.length,
+        `TTS chunk ${i + 1}/${chunks.length}`
+      );
       completed++;
       options?.onProgress?.(completed, chunks.length);
       return buffer;

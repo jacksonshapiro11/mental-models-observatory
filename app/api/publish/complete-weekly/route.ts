@@ -43,7 +43,10 @@ export async function POST(req: NextRequest) {
     const slug = getAllWeeklyLightSlugs()[0] ?? null;
     const sunday = slug ? isoWeekSunday(slug) : null;
     if (!slug || !sunday) {
-      return NextResponse.json({ skipped: true, reason: 'No weekly published yet' });
+      return NextResponse.json({
+        skipped: true,
+        reason: 'No weekly published yet',
+      });
     }
 
     const today = todayET();
@@ -65,7 +68,7 @@ export async function POST(req: NextRequest) {
     console.error('[publish/complete-weekly] Unhandled error:', err);
     return NextResponse.json(
       { error: 'Weekly publish pipeline failed', detail: message },
-      { status: 503 },
+      { status: 503 }
     );
   }
 }

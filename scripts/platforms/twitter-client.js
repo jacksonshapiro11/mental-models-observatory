@@ -1,6 +1,6 @@
 /**
  * Twitter/X API Client
- * 
+ *
  * Handles posting tweets and threads to Twitter/X
  * Uses Twitter API v2 with OAuth 1.0a
  */
@@ -11,7 +11,7 @@ class TwitterClient {
   constructor(config) {
     // Store config for token refresh
     this.config = config;
-    
+
     // Support both OAuth 1.0a and OAuth 2.0
     if (config.oauth2AccessToken) {
       // OAuth 2.0 User Context
@@ -32,7 +32,7 @@ class TwitterClient {
         appKey: config.apiKey,
         appSecret: config.apiSecret,
         accessToken: config.accessToken,
-        accessTokenSecret: config.accessTokenSecret
+        accessTokenSecret: config.accessTokenSecret,
       });
 
       this.isOAuth2 = false;
@@ -43,13 +43,14 @@ class TwitterClient {
     }
   }
 
-
   /**
    * Refresh OAuth 2.0 access token and optionally persist to Redis.
    */
   async refreshAccessToken() {
     if (!this.isOAuth2 || !this.config.refreshToken || !this.config.clientId) {
-      throw new Error('Token refresh requires OAuth 2.0 with refresh token and client ID');
+      throw new Error(
+        'Token refresh requires OAuth 2.0 with refresh token and client ID'
+      );
     }
 
     console.log('🔄 Refreshing access token...');
@@ -59,9 +60,8 @@ class TwitterClient {
       clientSecret: this.config.clientSecret,
     });
 
-    const { accessToken, refreshToken: newRefreshToken } = await authClient.refreshOAuth2Token(
-      this.config.refreshToken
-    );
+    const { accessToken, refreshToken: newRefreshToken } =
+      await authClient.refreshOAuth2Token(this.config.refreshToken);
 
     this.client = new TwitterApi(accessToken, {
       clientId: this.config.clientId,
@@ -85,14 +85,19 @@ class TwitterClient {
             accessToken,
             refreshToken: newRefreshToken || this.config.refreshToken,
             updatedAt: new Date().toISOString(),
-          }),
+          })
         );
         console.log('✅ Access token refreshed and saved to Redis');
       } catch (persistErr) {
-        console.warn('⚠️  Token refreshed but Redis persist failed:', persistErr.message);
+        console.warn(
+          '⚠️  Token refreshed but Redis persist failed:',
+          persistErr.message
+        );
       }
     } else {
-      console.log('✅ Access token refreshed (update TWITTER_OAUTH2_* env vars manually)');
+      console.log(
+        '✅ Access token refreshed (update TWITTER_OAUTH2_* env vars manually)'
+      );
     }
 
     return { accessToken, refreshToken: newRefreshToken };
@@ -104,9 +109,9 @@ class TwitterClient {
   async postTweet(text, replyToTweetId = null, retryCount = 0) {
     try {
       const tweetText = text.substring(0, 280); // Twitter limit
-      
+
       let response;
-      
+
       // Use v2 API (works with Essential/Elevated tiers and OAuth 2.0)
       if (replyToTweetId) {
         // Reply to previous tweet using v2
@@ -115,15 +120,20 @@ class TwitterClient {
         // Standalone tweet using v2
         response = await this.rwClient.v2.tweet(tweetText);
       }
-      
+
       return {
         success: true,
         tweetId: response.data.id,
-        text: response.data.text
+        text: response.data.text,
       };
     } catch (error) {
       // If 401 and we have OAuth 2.0 with refresh token, try to refresh
-      if (error.code === 401 && this.isOAuth2 && this.config.refreshToken && retryCount === 0) {
+      if (
+        error.code === 401 &&
+        this.isOAuth2 &&
+        this.config.refreshToken &&
+        retryCount === 0
+      ) {
         try {
           await this.refreshAccessToken();
           // Retry the post with new token
@@ -137,24 +147,30 @@ class TwitterClient {
       const errorDetails = {
         message: error.message,
         code: error.code,
-        data: error.data
+        data: error.data,
       };
-      
+
       // If it's a Twitter API error, include rate limit info
       if (error.rateLimit) {
         errorDetails.rateLimit = error.rateLimit;
       }
-      
+
       // Check if it's an access tier issue
-      if (error.code === 453 || (error.data && error.data.errors && error.data.errors.some(e => e.code === 453))) {
+      if (
+        error.code === 453 ||
+        (error.data &&
+          error.data.errors &&
+          error.data.errors.some(e => e.code === 453))
+      ) {
         errorDetails.accessTierIssue = true;
-        errorDetails.message = 'Your app needs "Essential" or "Elevated" access tier to post tweets. Free tier only allows read access.';
+        errorDetails.message =
+          'Your app needs "Essential" or "Elevated" access tier to post tweets. Free tier only allows read access.';
       }
-      
+
       return {
         success: false,
         error: error.message || 'Unknown error',
-        details: errorDetails
+        details: errorDetails,
       };
     }
   }
@@ -187,5 +203,3 @@ class TwitterClient {
 }
 
 module.exports = TwitterClient;
-
-

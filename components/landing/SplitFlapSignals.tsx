@@ -66,12 +66,14 @@ function SplitFlapLine({
   resolveRatio: number;
 }) {
   const colorClass =
-    color === 'green' ? 'text-ct-green-data' :
-    color === 'red' ? 'text-ct-pink' :
-    'text-ct-yellow';
+    color === 'green'
+      ? 'text-ct-green-data'
+      : color === 'red'
+        ? 'text-ct-pink'
+        : 'text-ct-yellow';
 
   return (
-    <div className="flex items-start gap-1 overflow-hidden h-[1.35rem]">
+    <div className='flex items-start gap-1 overflow-hidden h-[1.35rem]'>
       <span className={`${colorClass} flex-shrink-0`}>&gt;</span>
       <span
         className={`transition-opacity duration-200 ${resolveRatio < 0.7 ? 'opacity-50' : 'opacity-100'}`}
@@ -172,7 +174,9 @@ export function SplitFlapSignals({
     mounted.current = true;
     setResolveRatio(0);
     runResolve();
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+    };
   }, [runResolve]);
 
   // ─── Rotation timer ───────────────────────────────────────────────────
@@ -199,8 +203,11 @@ export function SplitFlapSignals({
   if (signals.length === 0) return null;
 
   return (
-    <div className="text-xs font-mono" style={{ minHeight: `${visibleCount * 1.35 + 1}rem` }}>
-      <div className="space-y-0.5">
+    <div
+      className='text-xs font-mono'
+      style={{ minHeight: `${visibleCount * 1.35 + 1}rem` }}
+    >
+      <div className='space-y-0.5'>
         {visibleSignals.map((signal, i) => (
           <SplitFlapLine
             key={`p${pageIndex}-${i}`}
@@ -213,14 +220,12 @@ export function SplitFlapSignals({
 
       {/* Page indicator */}
       {totalPages > 1 && (
-        <div className="flex gap-1.5 pt-2.5">
+        <div className='flex gap-1.5 pt-2.5'>
           {Array.from({ length: totalPages }).map((_, i) => (
             <div
               key={i}
               className={`w-1 h-1 rounded-full transition-all duration-500 ${
-                i === pageIndex
-                  ? 'bg-ct-green-data'
-                  : 'bg-ct-green-data/20'
+                i === pageIndex ? 'bg-ct-green-data' : 'bg-ct-green-data/20'
               }`}
             />
           ))}

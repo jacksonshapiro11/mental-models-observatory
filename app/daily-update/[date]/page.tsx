@@ -11,10 +11,12 @@ interface PageProps {
 
 export async function generateStaticParams() {
   const dates = getAllBriefDates();
-  return dates.map((date) => ({ date }));
+  return dates.map(date => ({ date }));
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { date } = await params;
   const brief = getBriefByDate(date);
   const title = brief?.dailyTitle

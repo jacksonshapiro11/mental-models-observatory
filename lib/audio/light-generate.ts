@@ -6,11 +6,22 @@ import { put } from '@vercel/blob';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
 import { getWeeklyLightBySlug } from '@/lib/weekly-light-parser';
 import { isStaleForAutoPublish, todayET } from '@/lib/publish-date';
-import { preprocessBriefLightForTTS, checkScriptFidelity, DAILY_LIGHT_SIGN_OFF, WEEKLY_LIGHT_SIGN_OFF } from '@/lib/audio/text-preprocessor';
-import { auditAudioIntroOrThrow, auditAudioOutroOrThrow } from '@/lib/audio/audio-intro-gate';
+import {
+  preprocessBriefLightForTTS,
+  checkScriptFidelity,
+  DAILY_LIGHT_SIGN_OFF,
+  WEEKLY_LIGHT_SIGN_OFF,
+} from '@/lib/audio/text-preprocessor';
+import {
+  auditAudioIntroOrThrow,
+  auditAudioOutroOrThrow,
+} from '@/lib/audio/audio-intro-gate';
 import { resolveDisplayDate } from '@/lib/brief-date';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
-import { writeLightEpisodeMetadata, readLightEpisodeMetadata } from '@/lib/audio/podcast-feed';
+import {
+  writeLightEpisodeMetadata,
+  readLightEpisodeMetadata,
+} from '@/lib/audio/podcast-feed';
 import { weeklyLightEpisodeKey } from '@/lib/audio/episode-keys';
 
 export { weeklyLightEpisodeKey };
@@ -30,12 +41,15 @@ export interface LightAudioResult {
   error?: string;
 }
 
-function extractDescription(brief: { sections: { content: string }[]; epigraph?: string }): string {
+function extractDescription(brief: {
+  sections: { content: string }[];
+  epigraph?: string;
+}): string {
   const firstContent = brief.sections[0]?.content || brief.epigraph || '';
   return (
     firstContent
       .split('\n')
-      .find((l) => l.trim() && !l.startsWith('**') && !l.startsWith('#'))
+      .find(l => l.trim() && !l.startsWith('**') && !l.startsWith('#'))
       ?.replace(/\*\*(.+?)\*\*/g, '$1')
       .replace(/\*(.+?)\*/g, '$1')
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
@@ -52,18 +66,29 @@ export interface GenerateLightAudioOptions {
 }
 
 export async function generateLightAudio(
-  options: GenerateLightAudioOptions,
+  options: GenerateLightAudioOptions
 ): Promise<LightAudioResult> {
-  const { date: targetDate, weeklySlug, force = false, manual = false } = options;
+  const {
+    date: targetDate,
+    weeklySlug,
+    force = false,
+    manual = false,
+  } = options;
   const isWeekly = !!weeklySlug;
   const episodeKey = isWeekly ? weeklyLightEpisodeKey(weeklySlug) : targetDate;
 
-  const brief = isWeekly ? getWeeklyLightBySlug(weeklySlug) : getBriefLightByDate(targetDate);
+  const brief = isWeekly
+    ? getWeeklyLightBySlug(weeklySlug)
+    : getBriefLightByDate(targetDate);
 
   if (!brief) {
     const label = isWeekly ? `weekly light ${weeklySlug}` : targetDate;
     if (manual) {
-      return { status: 'error', date: episodeKey, error: `Brief Light not found for ${label}` };
+      return {
+        status: 'error',
+        date: episodeKey,
+        error: `Brief Light not found for ${label}`,
+      };
     }
     return {
       status: 'skipped',
@@ -95,7 +120,9 @@ export async function generateLightAudio(
   }
 
   try {
-    console.log(`[audio:light] Generating Super Brief audio for ${episodeKey}...`);
+    console.log(
+      `[audio:light] Generating Super Brief audio for ${episodeKey}...`
+    );
 
     const openaiApiKey = process.env.OPENAI_API_KEY!;
 
@@ -105,56 +132,77 @@ export async function generateLightAudio(
         displayDate: brief.displayDate,
         dailyTitle: brief.dailyTitle,
         epigraph: brief.epigraph,
-        sections: brief.sections.map((s) => ({ id: s.id, label: s.label, content: s.content })),
+        sections: brief.sections.map(s => ({
+          id: s.id,
+          label: s.label,
+          content: s.content,
+        })),
       },
       {
         openaiApiKey,
         skipLlmCleanup: FAITHFUL_VOICING,
         isWeekly,
-      },
+      }
     );
 
     console.log(
-      `[audio:light] Script: ${preprocessed.characterCount} characters, ${preprocessed.sections.length} sections`,
+      `[audio:light] Script: ${preprocessed.characterCount} characters, ${preprocessed.sections.length} sections`
     );
 
     // Surface the script-gate outcome where the run result can carry it — a warning that only
     // ever hits console in an unattended scheduled run is a gate nobody sees. (2026-07-24)
     const gateWarnings = preprocessed.warnings ?? [];
-    const fallbackCount = gateWarnings.filter((w) => w.includes('fell back to faithful voicing')).length;
+    const fallbackCount = gateWarnings.filter(w =>
+      w.includes('fell back to faithful voicing')
+    ).length;
     if (gateWarnings.length) {
       console.warn(
-        `[audio:light] ⚠ SCRIPT GATE — ${gateWarnings.length} warning(s), ${fallbackCount} section(s) shipped on faithful-voicing fallback:`,
+        `[audio:light] ⚠ SCRIPT GATE — ${gateWarnings.length} warning(s), ${fallbackCount} section(s) shipped on faithful-voicing fallback:`
       );
       for (const w of gateWarnings) console.warn(`[audio:light]   • ${w}`);
     }
 
-    const resolvedDisplayDate = resolveDisplayDate(brief.displayDate, brief.date);
-    auditAudioIntroOrThrow(preprocessed.fullText, brief.date, resolvedDisplayDate);
+    const resolvedDisplayDate = resolveDisplayDate(
+      brief.displayDate,
+      brief.date
+    );
+    auditAudioIntroOrThrow(
+      preprocessed.fullText,
+      brief.date,
+      resolvedDisplayDate
+    );
     console.log(`[audio:light] Intro date audit PASS for ${brief.date}`);
 
     // Outro audit (2026-07-27, the W30 cut-off): the episode must end with the written close's
     // deterministic sign-off — a tail that was dropped or GPT-rewritten does not ship.
-    auditAudioOutroOrThrow(preprocessed.fullText, isWeekly ? WEEKLY_LIGHT_SIGN_OFF : DAILY_LIGHT_SIGN_OFF, 'audio:light');
+    auditAudioOutroOrThrow(
+      preprocessed.fullText,
+      isWeekly ? WEEKLY_LIGHT_SIGN_OFF : DAILY_LIGHT_SIGN_OFF,
+      'audio:light'
+    );
     console.log(`[audio:light] Outro sign-off audit PASS`);
 
     const fidelity = checkScriptFidelity(
-      brief.sections.map((s) => s.content).join('\n'),
+      brief.sections.map(s => s.content).join('\n'),
       preprocessed.fullText,
-      { minRatio: 0.7 },
+      { minRatio: 0.7 }
     );
-    for (const w of fidelity.warnings) console.warn(`[audio:light] ⚠ FIDELITY — ${w}`);
+    for (const w of fidelity.warnings)
+      console.warn(`[audio:light] ⚠ FIDELITY — ${w}`);
 
     console.log(
-      `[audio:light] VOICE=${TTS_VOICE} · FAITHFUL-VOICING=${FAITHFUL_VOICING ? 'ON (no GPT distillation)' : 'OFF (GPT path)'}`,
+      `[audio:light] VOICE=${TTS_VOICE} · FAITHFUL-VOICING=${FAITHFUL_VOICING ? 'ON (no GPT distillation)' : 'OFF (GPT path)'}`
     );
     const ttsClient = new OpenAITTSClient(openaiApiKey, {
       voice: TTS_VOICE,
       model: 'gpt-4o-mini-tts',
     });
 
-    const { audio, chunks, characterCount } = await generateFullAudio(ttsClient, preprocessed.fullText, {
-      instructions: `Voice: bright, warm, genuinely curious, a smart friend walking you through the day's biggest stories over coffee. This is the SUPER BRIEF: wide-ranging and substantial, around ten minutes. Not rushed.
+    const { audio, chunks, characterCount } = await generateFullAudio(
+      ttsClient,
+      preprocessed.fullText,
+      {
+        instructions: `Voice: bright, warm, genuinely curious, a smart friend walking you through the day's biggest stories over coffee. This is the SUPER BRIEF: wide-ranging and substantial, around ten minutes. Not rushed.
 
 Pacing: lively but unhurried. Keep momentum, but let the ideas land. Give the meditation and the mental model room to breathe; do not race through them. Natural pauses between sections. This is a real conversation, not a speed-run.
 
@@ -165,10 +213,11 @@ Energy: engaged and awake throughout, but modulated to the material: punchy on t
 Voice consistency: CRITICAL. Maintain the SAME pitch, register, and base pace throughout. One consistent voice from start to finish.
 
 Avoid: rushing, robotic cadence, singsong patterns, dramatic over-pausing, breathy emphasis, monotone, NPR flatness, sleepy energy, and any sense of speed-running the content.`,
-      onProgress: (completed, total) => {
-        console.log(`[audio:light] TTS chunk ${completed}/${total}`);
-      },
-    });
+        onProgress: (completed, total) => {
+          console.log(`[audio:light] TTS chunk ${completed}/${total}`);
+        },
+      }
+    );
 
     const filename = isWeekly
       ? `audio/weekly-light-${weeklySlug}.mp3`
@@ -178,7 +227,9 @@ Avoid: rushing, robotic cadence, singsong patterns, dramatic over-pausing, breat
       contentType: 'audio/mpeg',
       addRandomSuffix: false,
       allowOverwrite: true,
-      ...(process.env.public_READ_WRITE_TOKEN ? { token: process.env.public_READ_WRITE_TOKEN } : {}),
+      ...(process.env.public_READ_WRITE_TOKEN
+        ? { token: process.env.public_READ_WRITE_TOKEN }
+        : {}),
     });
 
     // 2026-08-07 read-back prerequisite (delta 18): keep a LOCAL copy of the produced script.
@@ -187,21 +238,39 @@ Avoid: rushing, robotic cadence, singsong patterns, dramatic over-pausing, breat
     try {
       const _fs = await import('node:fs');
       _fs.mkdirSync('daily-briefs/audio-scripts', { recursive: true });
-      const _name = isWeekly ? `weekly-light-${weeklySlug}` : `brief-light-${brief.date}`;
-      _fs.writeFileSync(`daily-briefs/audio-scripts/${_name}.txt`, preprocessed.fullText);
-      console.log(`[audio:light] local script copy → daily-briefs/audio-scripts/${_name}.txt`);
+      const _name = isWeekly
+        ? `weekly-light-${weeklySlug}`
+        : `brief-light-${brief.date}`;
+      _fs.writeFileSync(
+        `daily-briefs/audio-scripts/${_name}.txt`,
+        preprocessed.fullText
+      );
+      console.log(
+        `[audio:light] local script copy → daily-briefs/audio-scripts/${_name}.txt`
+      );
     } catch (localErr) {
-      console.warn('[audio:light] local script copy failed (non-fatal):', localErr);
+      console.warn(
+        '[audio:light] local script copy failed (non-fatal):',
+        localErr
+      );
     }
 
     try {
-      await put(isWeekly ? `audio/weekly-light-${weeklySlug}.txt` : `audio/brief-light-${brief.date}.txt`, preprocessed.fullText, {
-        access: 'public',
-        contentType: 'text/plain; charset=utf-8',
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        ...(process.env.public_READ_WRITE_TOKEN ? { token: process.env.public_READ_WRITE_TOKEN } : {}),
-      });
+      await put(
+        isWeekly
+          ? `audio/weekly-light-${weeklySlug}.txt`
+          : `audio/brief-light-${brief.date}.txt`,
+        preprocessed.fullText,
+        {
+          access: 'public',
+          contentType: 'text/plain; charset=utf-8',
+          addRandomSuffix: false,
+          allowOverwrite: true,
+          ...(process.env.public_READ_WRITE_TOKEN
+            ? { token: process.env.public_READ_WRITE_TOKEN }
+            : {}),
+        }
+      );
     } catch (scriptErr) {
       console.warn('[audio:light] Script save failed (non-fatal):', scriptErr);
     }

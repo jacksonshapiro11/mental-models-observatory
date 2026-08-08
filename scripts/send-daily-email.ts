@@ -39,7 +39,8 @@ function parseArgs(): Args {
   for (const arg of process.argv.slice(2)) {
     if (arg === '--dry-run') args.dryRun = true;
     else if (arg.startsWith('--date=')) args.date = arg.slice('--date='.length);
-    else if (arg.startsWith('--test=')) args.testEmail = arg.slice('--test='.length);
+    else if (arg.startsWith('--test='))
+      args.testEmail = arg.slice('--test='.length);
   }
   return args;
 }
@@ -70,18 +71,22 @@ async function main() {
       console.error(`❌ No brief light found for ${targetDate}`);
       process.exit(1);
     }
-    console.log(`⏭️  No brief for ${targetDate} (today) — skipping send. Not falling back to an older brief.`);
+    console.log(
+      `⏭️  No brief for ${targetDate} (today) — skipping send. Not falling back to an older brief.`
+    );
     process.exit(0);
   }
 
   console.log(`📰 Brief: ${brief.date} — "${brief.dailyTitle}"`);
-  console.log(`   Sections: ${brief.sections.map((s) => s.label).join(', ')}`);
+  console.log(`   Sections: ${brief.sections.map(s => s.label).join(', ')}`);
 
   // 2. Render email HTML
   const rendered = renderBriefEmail(brief);
   console.log(`\n📧 Subject:      ${rendered.subject}`);
   console.log(`📧 Preview:      ${rendered.previewText}`);
-  console.log(`📧 HTML size:    ${(rendered.html.length / 1024).toFixed(1)} KB`);
+  console.log(
+    `📧 HTML size:    ${(rendered.html.length / 1024).toFixed(1)} KB`
+  );
 
   // 3. Get recipients
   let recipients: string[];
@@ -127,22 +132,27 @@ async function main() {
   } else {
     // Batch send to all subscribers
     console.log(`\n🚀 Sending to ${recipients.length} subscribers...`);
-    const result = await sendBatch(recipients, rendered.subject, rendered.html, {
-      tags: [
-        { name: 'type', value: 'daily-brief' },
-        { name: 'date', value: brief.date },
-      ],
-    });
+    const result = await sendBatch(
+      recipients,
+      rendered.subject,
+      rendered.html,
+      {
+        tags: [
+          { name: 'type', value: 'daily-brief' },
+          { name: 'date', value: brief.date },
+        ],
+      }
+    );
 
     console.log(`\n✅ Sent: ${result.sent}/${result.total}`);
     if (result.failed.length > 0) {
       console.log(`❌ Failed: ${result.failed.length}`);
-      result.failed.forEach((f) => console.log(`   ${f.email}: ${f.error}`));
+      result.failed.forEach(f => console.log(`   ${f.email}: ${f.error}`));
     }
   }
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error('❌ Email send failed:', err);
   process.exit(1);
 });

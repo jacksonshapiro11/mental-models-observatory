@@ -38,14 +38,21 @@ async function main() {
   const rows: string[] = ['email,utm_source,utm_medium,subscribed_at'];
 
   for (const email of emails) {
-    const meta = await redis.hgetall<Record<string, string>>(REDIS_KEY_SUB_META + email);
+    const meta = await redis.hgetall<Record<string, string>>(
+      REDIS_KEY_SUB_META + email
+    );
     const source = (meta?.source ?? 'legacy').replace(/[",\n]/g, '');
     const subscribedAt = meta?.subscribedAt ?? '';
-    rows.push(`${csvEscape(email)},${csvEscape(source)},api_import,${csvEscape(subscribedAt)}`);
+    rows.push(
+      `${csvEscape(email)},${csvEscape(source)},api_import,${csvEscape(subscribedAt)}`
+    );
   }
 
   const dateSlug = new Date().toISOString().slice(0, 10);
-  const outPath = path.join(process.cwd(), `subscribers-export-${dateSlug}.csv`);
+  const outPath = path.join(
+    process.cwd(),
+    `subscribers-export-${dateSlug}.csv`
+  );
   fs.writeFileSync(outPath, rows.join('\n') + '\n');
 
   console.log(`\n✅ Exported ${emails.length} subscriber(s) to:`);
@@ -54,7 +61,9 @@ async function main() {
   console.log('    1. beehiiv → Subscribers → Import');
   console.log('    2. Upload the CSV');
   console.log('    3. Map columns: email → Email, utm_source → UTM Source');
-  console.log('    4. Set "Send welcome email" = OFF (these are existing subs)');
+  console.log(
+    '    4. Set "Send welcome email" = OFF (these are existing subs)'
+  );
   console.log('    5. Confirm import');
 }
 
@@ -63,7 +72,7 @@ function csvEscape(v: string): string {
   return v;
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error('❌ Export failed:', err);
   process.exit(1);
 });

@@ -30,7 +30,7 @@ export { isoWeekSunday };
 export function weeklyIsCurrent(
   weeklySunday: string | null,
   latestDailyDate: string | null,
-  today: string = todayET(),
+  today: string = todayET()
 ): boolean {
   if (!weeklySunday) return false;
   if (weeklySunday > today) return false;
@@ -51,5 +51,7 @@ export function currentWeeklyLightSlug(): string | null {
   const slug = getAllWeeklyLightSlugs()[0];
   if (!slug) return null;
   const latestLight = getLatestBriefLight();
-  return weeklyIsCurrent(isoWeekSunday(slug), latestLight?.date ?? null) ? slug : null;
+  return weeklyIsCurrent(isoWeekSunday(slug), latestLight?.date ?? null)
+    ? slug
+    : null;
 }

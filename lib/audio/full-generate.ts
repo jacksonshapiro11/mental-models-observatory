@@ -8,11 +8,22 @@ import { put } from '@vercel/blob';
 import OpenAI from 'openai';
 import { getBriefByDate, getWeeklyBySlug } from '@/lib/daily-update-parser';
 import { isStaleForAutoPublish, todayET } from '@/lib/publish-date';
-import { preprocessBriefForTTS, checkScriptFidelity, DAILY_SIGN_OFF, WEEKLY_SIGN_OFF } from '@/lib/audio/text-preprocessor';
-import { auditAudioIntroOrThrow, auditAudioOutroOrThrow } from '@/lib/audio/audio-intro-gate';
+import {
+  preprocessBriefForTTS,
+  checkScriptFidelity,
+  DAILY_SIGN_OFF,
+  WEEKLY_SIGN_OFF,
+} from '@/lib/audio/text-preprocessor';
+import {
+  auditAudioIntroOrThrow,
+  auditAudioOutroOrThrow,
+} from '@/lib/audio/audio-intro-gate';
 import { resolveDisplayDate } from '@/lib/brief-date';
 import { OpenAITTSClient, generateFullAudio } from '@/lib/audio/tts-client';
-import { writeEpisodeMetadata, readEpisodeMetadata } from '@/lib/audio/podcast-feed';
+import {
+  writeEpisodeMetadata,
+  readEpisodeMetadata,
+} from '@/lib/audio/podcast-feed';
 import { weeklyFullEpisodeKey } from '@/lib/audio/episode-keys';
 
 export { weeklyFullEpisodeKey };
@@ -33,7 +44,10 @@ export interface FullAudioResult {
   error?: string;
 }
 
-function extractDescription(brief: { lede: string; orientation?: string }): string {
+function extractDescription(brief: {
+  lede: string;
+  orientation?: string;
+}): string {
   const source = brief.lede || brief.orientation || '';
   return source
     .replace(/\*\*(.+?)\*\*/g, '$1')
@@ -45,7 +59,7 @@ function extractDescription(brief: { lede: string; orientation?: string }): stri
 async function generateEpisodeTitle(
   lede: string,
   displayDate: string,
-  apiKey: string,
+  apiKey: string
 ): Promise<string> {
   try {
     const client = new OpenAI({ apiKey });
@@ -78,7 +92,9 @@ Rules:
       return title;
     }
   } catch (err) {
-    console.warn(`[audio:full] Title generation failed (${err}), using fallback`);
+    console.warn(
+      `[audio:full] Title generation failed (${err}), using fallback`
+    );
   }
   return `Markets, Meditations, and Mental Models — ${displayDate}`;
 }
@@ -92,18 +108,29 @@ export interface GenerateFullAudioOptions {
 }
 
 export async function generateFullBriefAudio(
-  options: GenerateFullAudioOptions,
+  options: GenerateFullAudioOptions
 ): Promise<FullAudioResult> {
-  const { date: targetDate, weeklySlug, force = false, manual = false } = options;
+  const {
+    date: targetDate,
+    weeklySlug,
+    force = false,
+    manual = false,
+  } = options;
   const isWeekly = !!weeklySlug;
   const episodeKey = isWeekly ? weeklyFullEpisodeKey(weeklySlug) : targetDate;
 
-  const brief = isWeekly ? getWeeklyBySlug(weeklySlug) : getBriefByDate(targetDate);
+  const brief = isWeekly
+    ? getWeeklyBySlug(weeklySlug)
+    : getBriefByDate(targetDate);
 
   if (!brief) {
     const label = isWeekly ? `weekly ${weeklySlug}` : targetDate;
     if (manual) {
-      return { status: 'error', date: episodeKey, error: `Brief not found for ${label}` };
+      return {
+        status: 'error',
+        date: episodeKey,
+        error: `Brief not found for ${label}`,
+      };
     }
     return {
       status: 'skipped',
@@ -150,13 +177,23 @@ export async function generateFullBriefAudio(
       } else if (fs.existsSync(WEEKLY_CONTENT_DIR)) {
         const match = fs
           .readdirSync(WEEKLY_CONTENT_DIR)
-          .find((f) => f.startsWith(`${weeklySlug}-`) && f.endsWith('.md') && !f.includes('-light'));
+          .find(
+            f =>
+              f.startsWith(`${weeklySlug}-`) &&
+              f.endsWith('.md') &&
+              !f.includes('-light')
+          );
         if (match) {
-          rawMarkdown = fs.readFileSync(path.join(WEEKLY_CONTENT_DIR, match), 'utf-8');
+          rawMarkdown = fs.readFileSync(
+            path.join(WEEKLY_CONTENT_DIR, match),
+            'utf-8'
+          );
         }
       }
     } else {
-      rawMarkdown = fs.existsSync(mdPath) ? fs.readFileSync(mdPath, 'utf-8') : undefined;
+      rawMarkdown = fs.existsSync(mdPath)
+        ? fs.readFileSync(mdPath, 'utf-8')
+        : undefined;
     }
 
     const preprocessOpts: Parameters<typeof preprocessBriefForTTS>[1] = {
@@ -169,35 +206,53 @@ export async function generateFullBriefAudio(
     const preprocessed = await preprocessBriefForTTS(brief, preprocessOpts);
 
     console.log(
-      `[audio:full] Script: ${preprocessed.characterCount} characters, ${preprocessed.sections.length} sections`,
+      `[audio:full] Script: ${preprocessed.characterCount} characters, ${preprocessed.sections.length} sections`
     );
 
     // Surface the script-gate outcome where the run result can carry it — a warning that only
     // ever hits console in an unattended scheduled run is a gate nobody sees. (2026-07-24)
     const gateWarnings = preprocessed.warnings ?? [];
-    const fallbackCount = gateWarnings.filter((w) => w.includes('fell back to faithful voicing')).length;
+    const fallbackCount = gateWarnings.filter(w =>
+      w.includes('fell back to faithful voicing')
+    ).length;
     if (gateWarnings.length) {
       console.warn(
-        `[audio:full] ⚠ SCRIPT GATE — ${gateWarnings.length} warning(s), ${fallbackCount} section(s) shipped on faithful-voicing fallback:`,
+        `[audio:full] ⚠ SCRIPT GATE — ${gateWarnings.length} warning(s), ${fallbackCount} section(s) shipped on faithful-voicing fallback:`
       );
       for (const w of gateWarnings) console.warn(`[audio:full]   • ${w}`);
     }
 
-    const resolvedDisplayDate = resolveDisplayDate(brief.displayDate, brief.date);
-    auditAudioIntroOrThrow(preprocessed.fullText, brief.date, resolvedDisplayDate);
+    const resolvedDisplayDate = resolveDisplayDate(
+      brief.displayDate,
+      brief.date
+    );
+    auditAudioIntroOrThrow(
+      preprocessed.fullText,
+      brief.date,
+      resolvedDisplayDate
+    );
     console.log(`[audio:full] Intro date audit PASS for ${brief.date}`);
 
     // Outro audit (2026-07-27): the episode must end with the deterministic sign-off —
     // a script whose tail was dropped or rewritten does not ship.
-    auditAudioOutroOrThrow(preprocessed.fullText, isWeekly ? WEEKLY_SIGN_OFF : DAILY_SIGN_OFF, 'audio:full');
+    auditAudioOutroOrThrow(
+      preprocessed.fullText,
+      isWeekly ? WEEKLY_SIGN_OFF : DAILY_SIGN_OFF,
+      'audio:full'
+    );
     console.log(`[audio:full] Outro sign-off audit PASS`);
 
-    const fidelity = checkScriptFidelity(rawMarkdown || '', preprocessed.fullText, { minRatio: 0.45 });
-    for (const w of fidelity.warnings) console.warn(`[audio:full] ⚠ FIDELITY — ${w}`);
+    const fidelity = checkScriptFidelity(
+      rawMarkdown || '',
+      preprocessed.fullText,
+      { minRatio: 0.45 }
+    );
+    for (const w of fidelity.warnings)
+      console.warn(`[audio:full] ⚠ FIDELITY — ${w}`);
 
     // Full brief keeps GPT register conversion (skipLlmCleanup: false above). Super Brief is faithful.
     console.log(
-      `[audio:full] VOICE=${TTS_VOICE} · FAITHFUL-VOICING=N/A (full brief uses GPT register conversion)`,
+      `[audio:full] VOICE=${TTS_VOICE} · FAITHFUL-VOICING=N/A (full brief uses GPT register conversion)`
     );
     const ttsClient = new OpenAITTSClient(openaiApiKey, {
       voice: TTS_VOICE,
@@ -222,7 +277,7 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy e
         onProgress: (completed, total) => {
           console.log(`[audio:full] TTS chunk ${completed}/${total}`);
         },
-      },
+      }
     );
 
     const filename = isWeekly
@@ -233,17 +288,27 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy e
       contentType: 'audio/mpeg',
       addRandomSuffix: false,
       allowOverwrite: true,
-      ...(process.env.public_READ_WRITE_TOKEN ? { token: process.env.public_READ_WRITE_TOKEN } : {}),
+      ...(process.env.public_READ_WRITE_TOKEN
+        ? { token: process.env.public_READ_WRITE_TOKEN }
+        : {}),
     });
 
     try {
-      await put(isWeekly ? `audio/weekly-${weeklySlug}.txt` : `audio/daily-brief-${brief.date}.txt`, preprocessed.fullText, {
-        access: 'public',
-        contentType: 'text/plain; charset=utf-8',
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        ...(process.env.public_READ_WRITE_TOKEN ? { token: process.env.public_READ_WRITE_TOKEN } : {}),
-      });
+      await put(
+        isWeekly
+          ? `audio/weekly-${weeklySlug}.txt`
+          : `audio/daily-brief-${brief.date}.txt`,
+        preprocessed.fullText,
+        {
+          access: 'public',
+          contentType: 'text/plain; charset=utf-8',
+          addRandomSuffix: false,
+          allowOverwrite: true,
+          ...(process.env.public_READ_WRITE_TOKEN
+            ? { token: process.env.public_READ_WRITE_TOKEN }
+            : {}),
+        }
+      );
     } catch (scriptErr) {
       console.warn('[audio:full] Script save failed (non-fatal):', scriptErr);
     }
@@ -255,8 +320,14 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy e
       episodeTitle = brief.dailyTitle;
     } else {
       const titleInput =
-        brief.lede || brief.orientation || (rawMarkdown ? rawMarkdown.slice(0, 500) : '');
-      episodeTitle = await generateEpisodeTitle(titleInput, brief.displayDate, openaiApiKey);
+        brief.lede ||
+        brief.orientation ||
+        (rawMarkdown ? rawMarkdown.slice(0, 500) : '');
+      episodeTitle = await generateEpisodeTitle(
+        titleInput,
+        brief.displayDate,
+        openaiApiKey
+      );
     }
 
     const episode = {

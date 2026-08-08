@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 
-export function superBriefOgImage(date: string): NonNullable<Metadata['openGraph']>['images'] {
+export function superBriefOgImage(
+  date: string
+): NonNullable<Metadata['openGraph']>['images'] {
   return [
     {
       url: `/api/og/super-brief/${date}`,

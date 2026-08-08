@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * Layout components for consistent spacing and responsive design
- * 
+ *
  * @example
  * ```tsx
  * <Container>
@@ -13,12 +13,12 @@ import { cn } from '@/lib/utils';
  *     <div>Item 3</div>
  *   </Grid>
  * </Container>
- * 
+ *
  * <Stack gap="md">
  *   <div>First item</div>
  *   <div>Second item</div>
  * </Stack>
- * 
+ *
  * <Cluster gap="sm">
  *   <Badge>Tag 1</Badge>
  *   <Badge>Tag 2</Badge>
@@ -51,20 +51,20 @@ export const Container = forwardRef<HTMLDivElement, ContainerProps>(
     ref
   ) => {
     const maxWidthClasses = {
-      'sm': 'max-w-sm',
-      'md': 'max-w-md',
-      'lg': 'max-w-lg',
-      'xl': 'max-w-xl',
+      sm: 'max-w-sm',
+      md: 'max-w-md',
+      lg: 'max-w-lg',
+      xl: 'max-w-xl',
       '2xl': 'max-w-2xl',
-      'full': 'max-w-full'
+      full: 'max-w-full',
     };
 
     const paddingClasses = {
-      'none': '',
-      'sm': 'px-sm',
-      'md': 'px-md',
-      'lg': 'px-lg',
-      'xl': 'px-xl'
+      none: '',
+      sm: 'px-sm',
+      md: 'px-md',
+      lg: 'px-lg',
+      xl: 'px-xl',
     };
 
     return (
@@ -102,23 +102,15 @@ export interface GridProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export const Grid = forwardRef<HTMLDivElement, GridProps>(
   (
-    {
-      cols = 1,
-      colsMd,
-      colsLg,
-      gap = 'md',
-      className,
-      children,
-      ...props
-    },
+    { cols = 1, colsMd, colsLg, gap = 'md', className, children, ...props },
     ref
   ) => {
     const gapClasses = {
-      'xs': 'gap-xs',
-      'sm': 'gap-sm',
-      'md': 'gap-md',
-      'lg': 'gap-lg',
-      'xl': 'gap-xl'
+      xs: 'gap-xs',
+      sm: 'gap-sm',
+      md: 'gap-md',
+      lg: 'gap-lg',
+      xl: 'gap-xl',
     };
 
     const colsClasses = {
@@ -128,28 +120,32 @@ export const Grid = forwardRef<HTMLDivElement, GridProps>(
       4: 'grid-cols-4',
       5: 'grid-cols-5',
       6: 'grid-cols-6',
-      12: 'grid-cols-12'
+      12: 'grid-cols-12',
     };
 
-    const colsMdClasses = colsMd ? {
-      1: 'md:grid-cols-1',
-      2: 'md:grid-cols-2',
-      3: 'md:grid-cols-3',
-      4: 'md:grid-cols-4',
-      5: 'md:grid-cols-5',
-      6: 'md:grid-cols-6',
-      12: 'md:grid-cols-12'
-    } : {};
+    const colsMdClasses = colsMd
+      ? {
+          1: 'md:grid-cols-1',
+          2: 'md:grid-cols-2',
+          3: 'md:grid-cols-3',
+          4: 'md:grid-cols-4',
+          5: 'md:grid-cols-5',
+          6: 'md:grid-cols-6',
+          12: 'md:grid-cols-12',
+        }
+      : {};
 
-    const colsLgClasses = colsLg ? {
-      1: 'lg:grid-cols-1',
-      2: 'lg:grid-cols-2',
-      3: 'lg:grid-cols-3',
-      4: 'lg:grid-cols-4',
-      5: 'lg:grid-cols-5',
-      6: 'lg:grid-cols-6',
-      12: 'lg:grid-cols-12'
-    } : {};
+    const colsLgClasses = colsLg
+      ? {
+          1: 'lg:grid-cols-1',
+          2: 'lg:grid-cols-2',
+          3: 'lg:grid-cols-3',
+          4: 'lg:grid-cols-4',
+          5: 'lg:grid-cols-5',
+          6: 'lg:grid-cols-6',
+          12: 'lg:grid-cols-12',
+        }
+      : {};
 
     return (
       <div
@@ -196,28 +192,28 @@ export const Stack = forwardRef<HTMLDivElement, StackProps>(
     ref
   ) => {
     const gapClasses = {
-      'xs': 'space-y-xs',
-      'sm': 'space-y-sm',
-      'md': 'space-y-md',
-      'lg': 'space-y-lg',
-      'xl': 'space-y-xl',
-      '2xl': 'space-y-2xl'
+      xs: 'space-y-xs',
+      sm: 'space-y-sm',
+      md: 'space-y-md',
+      lg: 'space-y-lg',
+      xl: 'space-y-xl',
+      '2xl': 'space-y-2xl',
     };
 
     const alignClasses = {
-      'start': 'items-start',
-      'center': 'items-center',
-      'end': 'items-end',
-      'stretch': 'items-stretch'
+      start: 'items-start',
+      center: 'items-center',
+      end: 'items-end',
+      stretch: 'items-stretch',
     };
 
     const justifyClasses = {
-      'start': 'justify-start',
-      'center': 'justify-center',
-      'end': 'justify-end',
-      'between': 'justify-between',
-      'around': 'justify-around',
-      'evenly': 'justify-evenly'
+      start: 'justify-start',
+      center: 'justify-center',
+      end: 'justify-end',
+      between: 'justify-between',
+      around: 'justify-around',
+      evenly: 'justify-evenly',
     };
 
     return (
@@ -267,28 +263,28 @@ export const Cluster = forwardRef<HTMLDivElement, ClusterProps>(
     ref
   ) => {
     const gapClasses = {
-      'xs': 'gap-xs',
-      'sm': 'gap-sm',
-      'md': 'gap-md',
-      'lg': 'gap-lg',
-      'xl': 'gap-xl'
+      xs: 'gap-xs',
+      sm: 'gap-sm',
+      md: 'gap-md',
+      lg: 'gap-lg',
+      xl: 'gap-xl',
     };
 
     const alignClasses = {
-      'start': 'items-start',
-      'center': 'items-center',
-      'end': 'items-end',
-      'stretch': 'items-stretch',
-      'baseline': 'items-baseline'
+      start: 'items-start',
+      center: 'items-center',
+      end: 'items-end',
+      stretch: 'items-stretch',
+      baseline: 'items-baseline',
     };
 
     const justifyClasses = {
-      'start': 'justify-start',
-      'center': 'justify-center',
-      'end': 'justify-end',
-      'between': 'justify-between',
-      'around': 'justify-around',
-      'evenly': 'justify-evenly'
+      start: 'justify-start',
+      center: 'justify-center',
+      end: 'justify-end',
+      between: 'justify-between',
+      around: 'justify-around',
+      evenly: 'justify-evenly',
     };
 
     return (
@@ -316,7 +312,12 @@ export interface SectionProps extends React.HTMLAttributes<HTMLElement> {
   /** Padding size */
   padding?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   /** Background color */
-  background?: 'transparent' | 'neutral' | 'foundational' | 'practical' | 'specialized';
+  background?:
+    | 'transparent'
+    | 'neutral'
+    | 'foundational'
+    | 'practical'
+    | 'specialized';
   /** Additional CSS classes */
   className?: string;
 }
@@ -333,20 +334,20 @@ export const Section = forwardRef<HTMLElement, SectionProps>(
     ref
   ) => {
     const paddingClasses = {
-      'none': '',
-      'sm': 'py-sm',
-      'md': 'py-md',
-      'lg': 'py-lg',
-      'xl': 'py-xl',
-      '2xl': 'py-2xl'
+      none: '',
+      sm: 'py-sm',
+      md: 'py-md',
+      lg: 'py-lg',
+      xl: 'py-xl',
+      '2xl': 'py-2xl',
     };
 
     const backgroundClasses = {
-      'transparent': '',
-      'neutral': 'bg-neutral-50',
-      'foundational': 'bg-foundational-50',
-      'practical': 'bg-practical-50',
-      'specialized': 'bg-specialized-50'
+      transparent: '',
+      neutral: 'bg-neutral-50',
+      foundational: 'bg-foundational-50',
+      practical: 'bg-practical-50',
+      specialized: 'bg-specialized-50',
     };
 
     return (
@@ -373,5 +374,5 @@ export default {
   Grid: memo(Grid),
   Stack: memo(Stack),
   Cluster: memo(Cluster),
-  Section: memo(Section)
+  Section: memo(Section),
 };

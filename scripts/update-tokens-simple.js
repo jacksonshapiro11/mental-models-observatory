@@ -26,13 +26,14 @@ if (accessTokenMatch && refreshTokenMatch) {
   const tokens = {
     accessToken: accessTokenMatch[1],
     refreshToken: refreshTokenMatch[1],
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
-  
+
   fs.writeFileSync(tokensPath, JSON.stringify(tokens, null, 2));
   console.log('✅ Tokens saved to .tokens.json');
-  console.log('⚠️  You need to manually update GitHub Secrets with these values');
+  console.log(
+    '⚠️  You need to manually update GitHub Secrets with these values'
+  );
 } else {
   console.log('No token updates found');
 }
-

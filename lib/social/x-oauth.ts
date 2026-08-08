@@ -35,7 +35,7 @@ export function getXOAuthCallbackUrl(requestOrigin?: string): string {
   }
 
   throw new Error(
-    'Cannot determine X OAuth callback URL. Set X_OAUTH_CALLBACK_URL or NEXT_PUBLIC_SITE_URL.',
+    'Cannot determine X OAuth callback URL. Set X_OAUTH_CALLBACK_URL or NEXT_PUBLIC_SITE_URL.'
   );
 }
 
@@ -74,7 +74,9 @@ export async function readXTokensFromRedis(): Promise<XOAuthTokens | null> {
   return parsed;
 }
 
-export async function writeXTokensToRedis(tokens: XOAuthTokens): Promise<boolean> {
+export async function writeXTokensToRedis(
+  tokens: XOAuthTokens
+): Promise<boolean> {
   const redis = getRedis();
   if (!redis) return false;
 
@@ -83,7 +85,7 @@ export async function writeXTokensToRedis(tokens: XOAuthTokens): Promise<boolean
     JSON.stringify({
       ...tokens,
       updatedAt: tokens.updatedAt || new Date().toISOString(),
-    }),
+    })
   );
   return true;
 }
@@ -127,7 +129,7 @@ export async function hasXPostingCredentials(): Promise<boolean> {
  * Returns the access token to use for posting.
  */
 export async function refreshAndPersistXTokens(
-  current: XOAuthTokens,
+  current: XOAuthTokens
 ): Promise<{ accessToken: string; refreshed: boolean }> {
   const clientId = process.env.TWITTER_CLIENT_ID;
   if (!clientId) {
@@ -140,7 +142,9 @@ export async function refreshAndPersistXTokens(
 
   const clientSecret = process.env.TWITTER_CLIENT_SECRET || '';
   const authClient = new TwitterApi({ clientId, clientSecret });
-  const refreshResult = await authClient.refreshOAuth2Token(current.refreshToken);
+  const refreshResult = await authClient.refreshOAuth2Token(
+    current.refreshToken
+  );
 
   const nextTokens: XOAuthTokens = {
     accessToken: refreshResult.accessToken,
@@ -165,7 +169,7 @@ export async function resolveXPostingClient(): Promise<{
   const { tokens, source } = await loadXOAuthTokens();
   if (!tokens?.accessToken) {
     throw new Error(
-      'No X OAuth 2.0 tokens found. Run OAuth at /api/x-auth or set TWITTER_OAUTH2_ACCESS_TOKEN.',
+      'No X OAuth 2.0 tokens found. Run OAuth at /api/x-auth or set TWITTER_OAUTH2_ACCESS_TOKEN.'
     );
   }
 
@@ -179,7 +183,9 @@ export async function resolveXPostingClient(): Promise<{
       refreshed = result.refreshed;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[x-oauth] Token refresh failed, trying existing access token: ${msg}`);
+      console.warn(
+        `[x-oauth] Token refresh failed, trying existing access token: ${msg}`
+      );
     }
   }
 

@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { modelSlug } = await params;
-    
+
     if (!modelSlug) {
       return NextResponse.json(
         { error: 'Model slug is required' },
@@ -16,7 +16,7 @@ export async function GET(
     }
 
     const highlights = await getModelHighlights(modelSlug);
-    
+
     return NextResponse.json(highlights);
   } catch (error) {
     console.error('Error fetching model highlights:', error);

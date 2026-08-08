@@ -56,7 +56,9 @@ interface Baseline {
 
 function readBaseline(): Baseline {
   if (!fs.existsSync(BASELINE_FILE)) {
-    throw new Error(`baseline missing: ${BASELINE_FILE} — run --ratchet to initialise`);
+    throw new Error(
+      `baseline missing: ${BASELINE_FILE} — run --ratchet to initialise`
+    );
   }
   return JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8'));
 }
@@ -70,9 +72,12 @@ function lineCount(file: string): number {
 
 /** Trailing-7-day completeness of the ceiling scorecard. */
 function trendCoverage(): { present: number; missing: string[] } {
-  if (!fs.existsSync(TREND_FILE)) return { present: 0, missing: ['<file absent>'] };
-  const rows: { date: string }[] = JSON.parse(fs.readFileSync(TREND_FILE, 'utf8'));
-  const have = new Set(rows.map((r) => r.date));
+  if (!fs.existsSync(TREND_FILE))
+    return { present: 0, missing: ['<file absent>'] };
+  const rows: { date: string }[] = JSON.parse(
+    fs.readFileSync(TREND_FILE, 'utf8')
+  );
+  const have = new Set(rows.map(r => r.date));
   const missing: string[] = [];
   let present = 0;
   for (let i = 1; i <= 7; i++) {
@@ -98,7 +103,7 @@ function main(): number {
     if (actual >= baseline.ceiling_lines) {
       console.error(
         `✗ RATCHET REFUSED — Novelty_Audit.md is ${actual} lines, ceiling is ${baseline.ceiling_lines}. ` +
-          `The ratchet only turns one way: retire passes first, then lower the ceiling.`,
+          `The ratchet only turns one way: retire passes first, then lower the ceiling.`
       );
       return 1;
     }
@@ -111,7 +116,9 @@ function main(): number {
     baseline.ceiling_lines = actual;
     baseline.set_on = new Date().toISOString().slice(0, 10);
     fs.writeFileSync(BASELINE_FILE, JSON.stringify(baseline, null, 2) + '\n');
-    console.log(`✓ RATCHETED — ceiling lowered to ${actual} (−${removed}). Debt to target: ${Math.max(0, actual - baseline.target_lines)} lines.`);
+    console.log(
+      `✓ RATCHETED — ceiling lowered to ${actual} (−${removed}). Debt to target: ${Math.max(0, actual - baseline.target_lines)} lines.`
+    );
     return 0;
   }
 
@@ -121,7 +128,7 @@ function main(): number {
       `QG-GROWTH: system/Novelty_Audit.md is ${actual} lines, ceiling is ${baseline.ceiling_lines} ` +
         `(+${actual - baseline.ceiling_lines}). The quality gate grew without a logged retirement. ` +
         `Retire a pass and run --ratchet, or revert the addition. Five prose freezes failed here; ` +
-        `this one is code.`,
+        `this one is code.`
     );
   }
 
@@ -129,7 +136,7 @@ function main(): number {
   if (debt > 0) {
     warns.push(
       `QG-DEBT: ${actual} lines vs target ${baseline.target_lines} — ${debt} lines owed in retirements ` +
-        `(no retirement logged since ${baseline.set_on}).`,
+        `(no retirement logged since ${baseline.set_on}).`
     );
   }
 
@@ -138,24 +145,26 @@ function main(): number {
   if (present < TREND_FAIL_BELOW) {
     fails.push(
       `CEILING-TREND-GAP: only ${present}/7 trailing days in system/ceiling-trend.json (missing: ${missing.join(', ')}). ` +
-        `Dimension 4.5 reads the weekly ceiling bet FROM THIS FILE. A trend that isn't written can't be read.`,
+        `Dimension 4.5 reads the weekly ceiling bet FROM THIS FILE. A trend that isn't written can't be read.`
     );
   } else if (present < TREND_WARN_BELOW) {
     warns.push(
       `CEILING-TREND-THIN: ${present}/7 trailing days in ceiling-trend.json (missing: ${missing.join(', ')}). ` +
-        `The scorecard is not appending every night.`,
+        `The scorecard is not appending every night.`
     );
   }
 
   console.log(
     `qg-growth-gate — Novelty_Audit ${actual}/${baseline.ceiling_lines} lines (target ${baseline.target_lines}) · ` +
-      `ceiling-trend ${present}/7 days · ${fails.length} FAIL · ${warns.length} warn`,
+      `ceiling-trend ${present}/7 days · ${fails.length} FAIL · ${warns.length} warn`
   );
   for (const w of warns) console.log(`  ⚠ ${w}`);
   for (const f of fails) console.error(`  ✗ ${f}`);
 
   if (fails.length > 0) {
-    console.error('\n✗ QG GROWTH GATE FAILED — the freeze is now enforced, not requested.');
+    console.error(
+      '\n✗ QG GROWTH GATE FAILED — the freeze is now enforced, not requested.'
+    );
     return 1;
   }
   console.log('\n✓ Quality gate within its ceiling; trend file readable.');

@@ -6,8 +6,8 @@ import React, { useEffect } from 'react';
 export function SkipToContent() {
   return (
     <a
-      href="#main-content"
-      className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50 bg-foundational-600 text-white px-4 py-2 rounded-lg font-medium transition-colors hover:bg-foundational-700"
+      href='#main-content'
+      className='sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50 bg-foundational-600 text-white px-4 py-2 rounded-lg font-medium transition-colors hover:bg-foundational-700'
     >
       Skip to main content
     </a>
@@ -22,9 +22,14 @@ interface AccessibleHeadingProps {
   id?: string;
 }
 
-export function AccessibleHeading({ level, children, className = '', id }: AccessibleHeadingProps) {
+export function AccessibleHeading({
+  level,
+  children,
+  className = '',
+  id,
+}: AccessibleHeadingProps) {
   const Tag = `h${level}` as keyof React.JSX.IntrinsicElements;
-  
+
   return (
     <Tag className={className} id={id}>
       {children}
@@ -38,11 +43,7 @@ interface ScreenReaderOnlyProps {
 }
 
 export function ScreenReaderOnly({ children }: ScreenReaderOnlyProps) {
-  return (
-    <span className="sr-only">
-      {children}
-    </span>
-  );
+  return <span className='sr-only'>{children}</span>;
 }
 
 // Accessible button with proper states
@@ -53,14 +54,14 @@ interface AccessibleButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEle
   children: React.ReactNode;
 }
 
-export function AccessibleButton({ 
-  variant = 'primary', 
-  size = 'md', 
-  loading = false, 
-  children, 
+export function AccessibleButton({
+  variant = 'primary',
+  size = 'md',
+  loading = false,
+  children,
   disabled,
   'aria-label': ariaLabel,
-  ...props 
+  ...props
 }: AccessibleButtonProps) {
   const baseClasses = `
     inline-flex items-center justify-center font-medium rounded-lg 
@@ -69,16 +70,20 @@ export function AccessibleButton({
   `;
 
   const variantClasses = {
-    primary: 'bg-foundational-600 text-white hover:bg-foundational-700 focus:ring-foundational-500',
-    secondary: 'bg-neutral-600 text-white hover:bg-neutral-700 focus:ring-neutral-500',
-    outline: 'border-2 border-foundational-600 text-foundational-600 hover:bg-foundational-50 focus:ring-foundational-500',
-    ghost: 'text-foundational-600 hover:bg-foundational-50 focus:ring-foundational-500'
+    primary:
+      'bg-foundational-600 text-white hover:bg-foundational-700 focus:ring-foundational-500',
+    secondary:
+      'bg-neutral-600 text-white hover:bg-neutral-700 focus:ring-neutral-500',
+    outline:
+      'border-2 border-foundational-600 text-foundational-600 hover:bg-foundational-50 focus:ring-foundational-500',
+    ghost:
+      'text-foundational-600 hover:bg-foundational-50 focus:ring-foundational-500',
   };
 
   const sizeClasses = {
     sm: 'px-3 py-2 text-sm min-h-[32px]',
     md: 'px-4 py-2 text-base min-h-[40px]',
-    lg: 'px-6 py-3 text-lg min-h-[48px]'
+    lg: 'px-6 py-3 text-lg min-h-[48px]',
   };
 
   return (
@@ -90,15 +95,26 @@ export function AccessibleButton({
       {...props}
     >
       {loading && (
-        <svg 
-          className="animate-spin -ml-1 mr-2 h-4 w-4" 
-          xmlns="http://www.w3.org/2000/svg" 
-          fill="none" 
-          viewBox="0 0 24 24"
-          aria-hidden="true"
+        <svg
+          className='animate-spin -ml-1 mr-2 h-4 w-4'
+          xmlns='http://www.w3.org/2000/svg'
+          fill='none'
+          viewBox='0 0 24 24'
+          aria-hidden='true'
         >
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          <circle
+            className='opacity-25'
+            cx='12'
+            cy='12'
+            r='10'
+            stroke='currentColor'
+            strokeWidth='4'
+          ></circle>
+          <path
+            className='opacity-75'
+            fill='currentColor'
+            d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+          ></path>
         </svg>
       )}
       {children}
@@ -126,7 +142,9 @@ export function FocusTrap({ active, children }: FocusTrapProps) {
     );
 
     const firstElement = focusableElements[0] as HTMLElement;
-    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+    const lastElement = focusableElements[
+      focusableElements.length - 1
+    ] as HTMLElement;
 
     const handleTabKey = (e: KeyboardEvent) => {
       if (e.key === 'Tab') {
@@ -159,11 +177,7 @@ export function FocusTrap({ active, children }: FocusTrapProps) {
     };
   }, [active]);
 
-  return (
-    <div ref={containerRef}>
-      {children}
-    </div>
-  );
+  return <div ref={containerRef}>{children}</div>;
 }
 
 // Live region for dynamic content announcements
@@ -173,13 +187,13 @@ interface LiveRegionProps {
   atomic?: boolean;
 }
 
-export function LiveRegion({ children, politeness = 'polite', atomic = false }: LiveRegionProps) {
+export function LiveRegion({
+  children,
+  politeness = 'polite',
+  atomic = false,
+}: LiveRegionProps) {
   return (
-    <div 
-      aria-live={politeness}
-      aria-atomic={atomic}
-      className="sr-only"
-    >
+    <div aria-live={politeness} aria-atomic={atomic} className='sr-only'>
       {children}
     </div>
   );
@@ -195,47 +209,47 @@ interface AccessibleFieldProps {
   children: React.ReactElement;
 }
 
-export function AccessibleField({ 
-  label, 
-  id, 
-  required = false, 
-  error, 
-  help, 
-  children 
+export function AccessibleField({
+  label,
+  id,
+  required = false,
+  error,
+  help,
+  children,
 }: AccessibleFieldProps) {
   const helpId = help ? `${id}-help` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   const describedBy = [helpId, errorId].filter(Boolean).join(' ') || undefined;
 
   return (
-    <div className="space-y-1">
-      <label 
-        htmlFor={id} 
-        className="block text-sm font-medium text-neutral-700"
+    <div className='space-y-1'>
+      <label
+        htmlFor={id}
+        className='block text-sm font-medium text-neutral-700'
       >
         {label}
         {required && (
-          <span className="text-red-500 ml-1" aria-label="required">
+          <span className='text-red-500 ml-1' aria-label='required'>
             *
           </span>
         )}
       </label>
-      
+
       {React.cloneElement(children as React.ReactElement<any>, {
         id,
         'aria-describedby': describedBy,
         'aria-required': required,
-        'aria-invalid': !!error
+        'aria-invalid': !!error,
       })}
-      
+
       {help && (
-        <p id={helpId} className="text-sm text-neutral-600">
+        <p id={helpId} className='text-sm text-neutral-600'>
           {help}
         </p>
       )}
-      
+
       {error && (
-        <p id={errorId} className="text-sm text-red-600" role="alert">
+        <p id={errorId} className='text-sm text-red-600' role='alert'>
           {error}
         </p>
       )}
@@ -290,5 +304,5 @@ export default {
   LiveRegion,
   AccessibleField,
   useHighContrastMode,
-  useReducedMotion
+  useReducedMotion,
 };

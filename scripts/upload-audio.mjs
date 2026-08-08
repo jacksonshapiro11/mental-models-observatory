@@ -26,8 +26,14 @@ const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-if (!BLOB_TOKEN) { console.error('Missing BLOB_READ_WRITE_TOKEN'); process.exit(1); }
-if (!REDIS_URL || !REDIS_TOKEN) { console.error('Missing UPSTASH_REDIS env vars'); process.exit(1); }
+if (!BLOB_TOKEN) {
+  console.error('Missing BLOB_READ_WRITE_TOKEN');
+  process.exit(1);
+}
+if (!REDIS_URL || !REDIS_TOKEN) {
+  console.error('Missing UPSTASH_REDIS env vars');
+  process.exit(1);
+}
 
 // ─── Args ────────────────────────────────────────────────────────────────────
 
@@ -89,7 +95,7 @@ async function uploadToBlob(filePath, pathname) {
   const resp = await fetch(url, {
     method: 'PUT',
     headers: {
-      'Authorization': `Bearer ${BLOB_TOKEN}`,
+      Authorization: `Bearer ${BLOB_TOKEN}`,
       'x-api-version': '7',
       'x-content-type': 'audio/mpeg',
       'x-cache-control-max-age': '31536000',
@@ -120,7 +126,9 @@ async function main() {
     if (existing) {
       console.log(`\nAudio already exists for ${date}:`);
       console.log(`  URL: ${existing.audioUrl}`);
-      console.log(`  Duration: ${Math.floor(existing.duration / 60)}:${String(existing.duration % 60).padStart(2, '0')}`);
+      console.log(
+        `  Duration: ${Math.floor(existing.duration / 60)}:${String(existing.duration % 60).padStart(2, '0')}`
+      );
       console.log(`\n  Use --force to overwrite.`);
       return;
     }
@@ -132,7 +140,9 @@ async function main() {
   const estimatedDuration = Math.round(fileSizeBytes / (128000 / 8));
 
   console.log(`  Size: ${fileSizeMB} MB`);
-  console.log(`  Est. duration: ${Math.floor(estimatedDuration / 60)}:${String(estimatedDuration % 60).padStart(2, '0')}`);
+  console.log(
+    `  Est. duration: ${Math.floor(estimatedDuration / 60)}:${String(estimatedDuration % 60).padStart(2, '0')}`
+  );
 
   // Upload to Vercel Blob
   console.log(`\nUploading to Vercel Blob (streaming)...`);
@@ -145,7 +155,8 @@ async function main() {
   const episode = {
     date,
     title: `Daily Brief — ${date}`,
-    description: 'Daily market intelligence: macro, crypto, AI, geopolitics, and the mental models that connect them.',
+    description:
+      'Daily market intelligence: macro, crypto, AI, geopolitics, and the mental models that connect them.',
     audioUrl: blob.url,
     duration: estimatedDuration,
     fileSize: fileSizeBytes,
@@ -158,7 +169,9 @@ async function main() {
   console.log(`\nDone! Audio available at:`);
   console.log(`  CDN: ${blob.url}`);
   console.log(`  API: https://mentalmodelsobservatory.com/api/audio/${date}`);
-  console.log(`  Duration: ${Math.floor(estimatedDuration / 60)}:${String(estimatedDuration % 60).padStart(2, '0')}`);
+  console.log(
+    `  Duration: ${Math.floor(estimatedDuration / 60)}:${String(estimatedDuration % 60).padStart(2, '0')}`
+  );
 }
 
 main().catch(err => {

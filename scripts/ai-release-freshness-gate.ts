@@ -44,12 +44,18 @@ export function aiTechSection(body: string): string | null {
   const lines = body.split('\n');
   let start = -1;
   for (let i = 0; i < lines.length; i++) {
-    if (AIT_HEADER_RE.test(lines[i]!)) { start = i; break; }
+    if (AIT_HEADER_RE.test(lines[i]!)) {
+      start = i;
+      break;
+    }
   }
   if (start === -1) return null;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    if (/^#{1,3}\s/.test(lines[i]!)) { end = i; break; }
+    if (/^#{1,3}\s/.test(lines[i]!)) {
+      end = i;
+      break;
+    }
   }
   return lines.slice(start + 1, end).join('\n');
 }
@@ -61,12 +67,13 @@ const MODEL_CUE_RE = new RegExp(
     'deepseek|moonshot(?:ai)?|kimi|openai|gpt-?\\d|anthropic|claude|google|gemini|deepmind|' +
     'meta|llama|mistral|qwen|alibaba|xai|grok|cohere|command\\s?r|nvidia|microsoft|phi-?\\d|' +
     'stability|falcon|yi-?\\d|baidu|ernie|minimax|zhipu|glm-?\\d' +
-  ')\\b',
-  'i',
+    ')\\b',
+  'i'
 );
 
 // A generic "<Proper> V4 / K3 / R2 / 4.0" model-version token (catches unlisted labs' model names).
-const MODEL_VERSION_RE = /\b[A-Z][A-Za-z.]+\s+(?:V|K|R|GLM-|Phi-)?\d+(?:\.\d+)?\b/;
+const MODEL_VERSION_RE =
+  /\b[A-Z][A-Za-z.]+\s+(?:V|K|R|GLM-|Phi-)?\d+(?:\.\d+)?\b/;
 
 // FUTURE-release framing #1: an explicit forward auxiliary + a release verb.
 const FUTURE_VERB_RE =
@@ -75,23 +82,25 @@ const FUTURE_VERB_RE =
 // FUTURE-release framing #2: a PRESENT-tense release verb pointing AT a forward date
 // ("Kimi K3 … on July 27", "GPT-6 lands on August 15"). Present tense only — "released … on
 // July 16" (past) must NOT match, which is why the verbs below carry no "-ed" form.
-const MONTHS = 'Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?';
+const MONTHS =
+  'Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?';
 const PRESENT_RELEASE_TO_DATE_RE = new RegExp(
   `\\b(?:releases?|launches?|drops?|arrives?|lands?|ships?|debuts?)\\b[^.?!]*?\\bon\\b[^.?!]*?\\b(?:${MONTHS})\\s+\\d{1,2}\\b`,
-  'i',
+  'i'
 );
 
 // A weights / API / preview / update drop is NOT the model shipping — the corrected 07-23 form
 // ("open weights due around July 27") must stay silent even though it carries a forward date.
-const NON_MODEL_OBJECT_RE = /\b(?:open\s+)?weights?\b|\bapi\b|\bpreview\b|\bwaitlist\b|\bupdate\b|\bcheckpoint\b/i;
+const NON_MODEL_OBJECT_RE =
+  /\b(?:open\s+)?weights?\b|\bapi\b|\bpreview\b|\bwaitlist\b|\bupdate\b|\bcheckpoint\b/i;
 
 function splitSentences(text: string): string[] {
   // Strip list markers / bold, then split on sentence terminators and hard newlines.
   return text
     .replace(/\*\*/g, '')
     .split(/(?<=[.?!])\s+|\n{1,}/)
-    .map((s) => s.replace(/^[-*\d.\s]+/, '').trim())
-    .filter((s) => s.length > 0);
+    .map(s => s.replace(/^[-*\d.\s]+/, '').trim())
+    .filter(s => s.length > 0);
 }
 
 export function checkAiReleaseFreshness(body: string): Finding[] {
@@ -99,12 +108,16 @@ export function checkAiReleaseFreshness(body: string): Finding[] {
   if (section == null) return []; // absence of the section is validate-brief's job
   const findings: Finding[] = [];
   for (const sentence of splitSentences(section)) {
-    const future = FUTURE_VERB_RE.test(sentence) || PRESENT_RELEASE_TO_DATE_RE.test(sentence);
+    const future =
+      FUTURE_VERB_RE.test(sentence) ||
+      PRESENT_RELEASE_TO_DATE_RE.test(sentence);
     if (!future) continue;
-    const namesModel = MODEL_CUE_RE.test(sentence) || MODEL_VERSION_RE.test(sentence);
+    const namesModel =
+      MODEL_CUE_RE.test(sentence) || MODEL_VERSION_RE.test(sentence);
     if (!namesModel) continue;
     // If the ONLY forward object is weights/API/preview/update (not the model), stay silent.
-    if (NON_MODEL_OBJECT_RE.test(sentence) && !FUTURE_VERB_RE.test(sentence)) continue;
+    if (NON_MODEL_OBJECT_RE.test(sentence) && !FUTURE_VERB_RE.test(sentence))
+      continue;
     findings.push({
       check: 'ai-release-status-unverified',
       severity: 'FAIL',
@@ -120,50 +133,95 @@ export function checkAiReleaseFreshness(body: string): Finding[] {
 
 function selftest(): number {
   let fail = 0;
-  const t = (name: string, cond: boolean) => { console.log(`  ${cond ? '✓' : '✗'} ${name}`); if (!cond) fail++; };
+  const t = (name: string, cond: boolean) => {
+    console.log(`  ${cond ? '✓' : '✗'} ${name}`);
+    if (!cond) fail++;
+  };
 
   // FIRE on the REAL 07-23 failure sentence (Critic-quoted verbatim).
   const bad = `## AI & Tech\n\n- Two Chinese labs will release open-weight frontier models four days apart: DeepSeek's V4 on July 24 and MoonshotAI's Kimi K3 on July 27.\n\n## Geopolitics\n`;
-  t('FIRE on the real 07-23 "will release … Kimi K3 on July 27"', checkAiReleaseFreshness(bad).some((f) => f.check === 'ai-release-status-unverified'));
+  t(
+    'FIRE on the real 07-23 "will release … Kimi K3 on July 27"',
+    checkAiReleaseFreshness(bad).some(
+      f => f.check === 'ai-release-status-unverified'
+    )
+  );
 
   // SILENT on the CORRECTED past-tense form the morning gate produced (released … on July 16; weights due).
   const fixed = `## AI & Tech\n\n- MoonshotAI released Kimi K3, a 2.8-trillion-parameter model rivaling top US systems, on July 16, with open weights due around July 27.\n\n## Geopolitics\n`;
-  t('SILENT on the corrected "released … on July 16, weights due ~July 27"', checkAiReleaseFreshness(fixed).length === 0);
+  t(
+    'SILENT on the corrected "released … on July 16, weights due ~July 27"',
+    checkAiReleaseFreshness(fixed).length === 0
+  );
 
   // FIRE on a clean future model launch ("OpenAI will launch GPT-6 on August 15").
   const bad2 = `## AI & Tech\n\n- OpenAI will launch GPT-6 on August 15, its first frontier model since GPT-5.\n\n## Markets\n`;
-  t('FIRE on "OpenAI will launch GPT-6 on August 15"', checkAiReleaseFreshness(bad2).length === 1);
+  t(
+    'FIRE on "OpenAI will launch GPT-6 on August 15"',
+    checkAiReleaseFreshness(bad2).length === 1
+  );
 
   // SILENT on a straightforward PAST-tense ship (the normal, healthy AI&T bullet).
   const ok1 = `## AI & Tech\n\n- Anthropic released Claude 4.0 with extended context and improved reasoning this week.\n\n## Markets\n`;
-  t('SILENT on past-tense "Anthropic released Claude 4.0"', checkAiReleaseFreshness(ok1).length === 0);
+  t(
+    'SILENT on past-tense "Anthropic released Claude 4.0"',
+    checkAiReleaseFreshness(ok1).length === 0
+  );
 
   // SILENT when the future-release language is NOT about a model (out-of-scope-but-in-section prose).
   const ok2 = `## AI & Tech\n\n- Regulators will publish new disclosure rules next quarter for frontier labs.\n\n## Markets\n`;
-  t('SILENT on non-model future prose ("regulators will publish rules")', checkAiReleaseFreshness(ok2).length === 0);
+  t(
+    'SILENT on non-model future prose ("regulators will publish rules")',
+    checkAiReleaseFreshness(ok2).length === 0
+  );
 
   // SILENT when the model release framing lives OUTSIDE the AI & Tech section (scope guard).
   const ok3 = `## Companies & Crypto\n\n- Acme will launch its GPT-6 integration next week.\n\n## Markets\n`;
-  t('SILENT on model-future framing outside AI & Tech (scope guard)', checkAiReleaseFreshness(ok3).length === 0);
+  t(
+    'SILENT on model-future framing outside AI & Tech (scope guard)',
+    checkAiReleaseFreshness(ok3).length === 0
+  );
 
   // SILENT when the section is absent.
-  t('SILENT when AI & Tech section absent', checkAiReleaseFreshness('## Markets\n\n- Stocks rose.\n').length === 0);
+  t(
+    'SILENT when AI & Tech section absent',
+    checkAiReleaseFreshness('## Markets\n\n- Stocks rose.\n').length === 0
+  );
 
-  console.log(`\n${fail === 0 ? '✅ SELFTEST PASS — fires on a named model framed as a future release, silent on the corrected past-tense/weights form and out-of-scope prose.' : `❌ SELFTEST FAIL (${fail})`}`);
+  console.log(
+    `\n${fail === 0 ? '✅ SELFTEST PASS — fires on a named model framed as a future release, silent on the corrected past-tense/weights form and out-of-scope prose.' : `❌ SELFTEST FAIL (${fail})`}`
+  );
   return fail === 0 ? 0 : 1;
 }
 
 function main(): number {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
-  const fileArg = args.find((a) => !a.startsWith('--'));
-  if (!fileArg) { console.error('Usage: ai-release-freshness-gate.ts <brief.md> | --selftest'); return 2; }
-  const fp = path.isAbsolute(fileArg) ? fileArg : path.join(process.cwd(), fileArg);
-  if (!fs.existsSync(fp)) { console.error(`File not found: ${fp}`); return 2; }
+  const fileArg = args.find(a => !a.startsWith('--'));
+  if (!fileArg) {
+    console.error(
+      'Usage: ai-release-freshness-gate.ts <brief.md> | --selftest'
+    );
+    return 2;
+  }
+  const fp = path.isAbsolute(fileArg)
+    ? fileArg
+    : path.join(process.cwd(), fileArg);
+  if (!fs.existsSync(fp)) {
+    console.error(`File not found: ${fp}`);
+    return 2;
+  }
   const findings = checkAiReleaseFreshness(fs.readFileSync(fp, 'utf8'));
   console.log(`ai-release-freshness-gate — ${path.basename(fp)}`);
-  if (findings.length === 0) { console.log('\n✅ PASS — no named model framed as an unverified future release.'); return 0; }
-  console.log(`\n⚠️  WORKLIST — ${findings.length} future-release claim(s) to verify at the morning truth gate:`);
+  if (findings.length === 0) {
+    console.log(
+      '\n✅ PASS — no named model framed as an unverified future release.'
+    );
+    return 0;
+  }
+  console.log(
+    `\n⚠️  WORKLIST — ${findings.length} future-release claim(s) to verify at the morning truth gate:`
+  );
   for (const f of findings) console.log(`   ✗ [${f.check}] ${f.message}`);
   return 1;
 }

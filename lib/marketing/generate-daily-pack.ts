@@ -16,7 +16,7 @@ export interface DailyMarketingPack {
 
 function extractSubject(brief: ReturnType<typeof getBriefLightByDate>): string {
   if (!brief) return '';
-  const update = brief.sections.find((s) => s.id === 'the-update');
+  const update = brief.sections.find(s => s.id === 'the-update');
   if (update) {
     const match = update.content.match(/^\*\*(.+?)\*\*\s*$/m);
     if (match?.[1]) return match[1].trim();
@@ -59,7 +59,7 @@ export async function generateDailyPack(date: string): Promise<{
   const subject = extractSubject(brief);
   const previewText = truncate(brief.lede || brief.epigraph, 140);
   const thread = generateThreadFromDate(date);
-  const xPosts = thread?.tweets.map((t) => t.text) ?? [];
+  const xPosts = thread?.tweets.map(t => t.text) ?? [];
 
   const pack: DailyMarketingPack = {
     subject,

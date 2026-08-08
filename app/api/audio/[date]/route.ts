@@ -35,7 +35,10 @@ export async function GET(
 
   if (!episodeKey) {
     return NextResponse.json(
-      { error: 'Invalid date format. Use YYYY-MM-DD or a weekly slug like 2026-W27.' },
+      {
+        error:
+          'Invalid date format. Use YYYY-MM-DD or a weekly slug like 2026-W27.',
+      },
       { status: 400 }
     );
   }
@@ -53,13 +56,21 @@ export async function GET(
       }
     } catch (redisErr) {
       // Redis unavailable (common in local dev) — fall through to local file check
-      console.warn(`[audio] Redis lookup failed for ${episodeKey}, checking local files:`, redisErr);
+      console.warn(
+        `[audio] Redis lookup failed for ${episodeKey}, checking local files:`,
+        redisErr
+      );
     }
 
     // Dev fallback: check for local MP3 in public/audio/
     const localFilename = localFilenameForFullEpisode(episodeKey);
     if (localFilename) {
-      const localPath = path.join(process.cwd(), 'public', 'audio', localFilename);
+      const localPath = path.join(
+        process.cwd(),
+        'public',
+        'audio',
+        localFilename
+      );
 
       if (fs.existsSync(localPath)) {
         const stats = fs.statSync(localPath);

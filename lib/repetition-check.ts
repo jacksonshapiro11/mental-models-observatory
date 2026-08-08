@@ -18,9 +18,9 @@
  */
 
 export interface RepetitionFinding {
-  atom: string;              // canonical key, e.g. "162" or "$23.5 billion" or "79 percent"
-  display: string;           // a representative surface form for the message
-  sections: string[];        // the distinct sections it appeared in (in order)
+  atom: string; // canonical key, e.g. "162" or "$23.5 billion" or "79 percent"
+  display: string; // a representative surface form for the message
+  sections: string[]; // the distinct sections it appeared in (in order)
 }
 
 export interface RepetitionResult {
@@ -63,7 +63,8 @@ export function splitIntoSegments(markdown: string): Segment[] {
   return segments;
 }
 
-const MONEY_RE = /\$\s?([\d,]+(?:\.\d+)?)\s*(trillion|billion|million|bn|mn|k)?\b/gi;
+const MONEY_RE =
+  /\$\s?([\d,]+(?:\.\d+)?)\s*(trillion|billion|million|bn|mn|k)?\b/gi;
 const MONEY_WORD_RE = /\b([\d,]+(?:\.\d+)?)\s+(trillion|billion|million)\b/gi;
 const PERCENT_RE = /\b([\d,]+(?:\.\d+)?)\s*(?:%|percent)\b/gi;
 // Distinctive bare numbers: thousands-separated (52,319), 3+ straight digits (162, 4000),
@@ -71,7 +72,12 @@ const PERCENT_RE = /\b([\d,]+(?:\.\d+)?)\s*(?:%|percent)\b/gi;
 const BARE_NUM_RE = /\b(\d{1,3}(?:,\d{3})+|\d{3,}|\d+\.\d+)\b/g;
 
 const UNIT_INITIAL: Record<string, string> = {
-  trillion: 't', billion: 'b', million: 'm', bn: 'b', mn: 'm', k: 'k',
+  trillion: 't',
+  billion: 'b',
+  million: 'm',
+  bn: 'b',
+  mn: 'm',
+  k: 'k',
 };
 
 function isYear(raw: string): boolean {
@@ -125,14 +131,20 @@ export function extractDataAtoms(text: string): Map<string, string> {
  */
 export function checkRepetition(
   markdown: string,
-  opts: { maxSections?: number; ignoreSections?: string[] } = {},
+  opts: { maxSections?: number; ignoreSections?: string[] } = {}
 ): RepetitionResult {
   const maxSections = opts.maxSections ?? 2;
-  const ignore = (opts.ignoreSections ?? ['THE MODEL', 'INNER GAME', 'THE MEDITATION', 'DISCOVERY'])
-    .map(s => s.toUpperCase());
+  const ignore = (
+    opts.ignoreSections ?? [
+      'THE MODEL',
+      'INNER GAME',
+      'THE MEDITATION',
+      'DISCOVERY',
+    ]
+  ).map(s => s.toUpperCase());
 
   const segments = splitIntoSegments(markdown).filter(
-    s => !ignore.some(ig => s.name.toUpperCase().includes(ig)),
+    s => !ignore.some(ig => s.name.toUpperCase().includes(ig))
   );
 
   // atom key -> { sections: ordered distinct section names, display }
@@ -149,7 +161,11 @@ export function checkRepetition(
   const findings: RepetitionFinding[] = [];
   for (const [key, entry] of seen) {
     if (entry.sections.length > maxSections) {
-      findings.push({ atom: key, display: entry.display, sections: entry.sections });
+      findings.push({
+        atom: key,
+        display: entry.display,
+        sections: entry.sections,
+      });
     }
   }
   // Most-repeated first
@@ -158,12 +174,14 @@ export function checkRepetition(
 }
 
 /** Format findings as a human worklist (used by both gates). */
-export function formatRepetitionFindings(findings: RepetitionFinding[]): string {
+export function formatRepetitionFindings(
+  findings: RepetitionFinding[]
+): string {
   return findings
     .map(
       f =>
         `  • "${f.display}" appears in ${f.sections.length} sections: ${f.sections.join(' · ')}\n` +
-        `    → keep it in at most two (the lede preview + its home story); reference it elsewhere without restating the figure.`,
+        `    → keep it in at most two (the lede preview + its home story); reference it elsewhere without restating the figure.`
     )
     .join('\n');
 }

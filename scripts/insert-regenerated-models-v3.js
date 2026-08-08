@@ -52,25 +52,28 @@ let insertedCount = 0;
 
 for (const [domainSlug, domainModels] of Object.entries(modelsByDomain)) {
   console.log(`\n📂 Domain: ${domainSlug}`);
-  
+
   // Find all model IDs in this domain
   const idPattern = new RegExp(`"id": "${domainSlug}-\\d+[a-z]"`, 'gi');
   const idMatches = [...dataContent.matchAll(idPattern)];
-  
+
   if (idMatches.length === 0) {
     console.log(`   ❌ Could not find any models in domain: ${domainSlug}`);
     continue;
   }
-  
+
   // Get the last match
   const lastIdMatch = idMatches[idMatches.length - 1];
   const lastIdIndex = lastIdMatch.index;
-  
+
   // Now find the end of this entire model object
   // Strategy: find the next "id": pattern OR the closing of READWISE_MODELS array
-  const nextIdMatch = dataContent.indexOf('"id":', lastIdIndex + lastIdMatch[0].length);
+  const nextIdMatch = dataContent.indexOf(
+    '"id":',
+    lastIdIndex + lastIdMatch[0].length
+  );
   const closingArrayMatch = dataContent.indexOf('];', lastIdIndex);
-  
+
   let insertPosition;
   if (nextIdMatch !== -1 && nextIdMatch < closingArrayMatch) {
     // There's another model after this one - insert before it
@@ -82,7 +85,7 @@ for (const [domainSlug, domainModels] of Object.entries(modelsByDomain)) {
     const lastComma = dataContent.lastIndexOf(',', closingArrayMatch);
     insertPosition = dataContent.indexOf('}', lastComma) + 1;
   }
-  
+
   // Insert all models for this domain
   let insertText = '';
   for (const model of domainModels) {
@@ -90,16 +93,17 @@ for (const [domainSlug, domainModels] of Object.entries(modelsByDomain)) {
     insertText += ',\n' + formatModel(model);
     insertedCount++;
   }
-  
-  dataContent = dataContent.slice(0, insertPosition) + 
-                insertText + 
-                dataContent.slice(insertPosition);
+
+  dataContent =
+    dataContent.slice(0, insertPosition) +
+    insertText +
+    dataContent.slice(insertPosition);
 }
 
 // Write the updated content back
 fs.writeFileSync(dataPath, dataContent);
 
-console.log(`\n✅ Successfully inserted ${insertedCount} models into lib/readwise-data.ts\n`);
+console.log(
+  `\n✅ Successfully inserted ${insertedCount} models into lib/readwise-data.ts\n`
+);
 console.log('🔄 Next step: Verify the file compiles and test the website\n');
-
-

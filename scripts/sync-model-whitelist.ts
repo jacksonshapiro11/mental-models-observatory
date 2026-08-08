@@ -25,7 +25,11 @@ const QUEUE = path.join(ROOT, 'data/model-rotation-queue.json');
 const WL = path.join(ROOT, 'system/Model_Tier3_Whitelist.md');
 const MARKER = '## Catalog Tier — every rotation-queue model (auto-synced)';
 
-export interface QModel { name: string; slug: string; domain: string }
+export interface QModel {
+  name: string;
+  slug: string;
+  domain: string;
+}
 
 export function missingFromWhitelist(models: QModel[], wl: string): QModel[] {
   return models.filter(m => !wl.includes(m.slug));
@@ -57,15 +61,31 @@ function main(): number {
   console.log(`queue models: ${models.length}`);
   console.log(`already present: ${models.length - missing.length}`);
   console.log(`missing: ${missing.length}`);
-  if (!missing.length) { console.log('✓ whitelist already covers the catalog.'); return 0; }
-  if (!write) { console.log('\n(report only — pass --write to apply)'); return 0; }
+  if (!missing.length) {
+    console.log('✓ whitelist already covers the catalog.');
+    return 0;
+  }
+  if (!write) {
+    console.log('\n(report only — pass --write to apply)');
+    return 0;
+  }
 
   const idx = wl.indexOf(MARKER);
   const curated = (idx === -1 ? wl : wl.slice(0, idx)).trimEnd();
   const catalogModels = missingFromWhitelist(models, curated);
-  fs.writeFileSync(WL, `${curated}\n\n---\n\n${catalogTable(catalogModels)}`, 'utf8');
-  console.log(`✓ catalog tier rebuilt: ${catalogModels.length} models. Total eligible pool: ${models.length}.`);
+  fs.writeFileSync(
+    WL,
+    `${curated}\n\n---\n\n${catalogTable(catalogModels)}`,
+    'utf8'
+  );
+  console.log(
+    `✓ catalog tier rebuilt: ${catalogModels.length} models. Total eligible pool: ${models.length}.`
+  );
   return 0;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exit(main());
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+)
+  process.exit(main());

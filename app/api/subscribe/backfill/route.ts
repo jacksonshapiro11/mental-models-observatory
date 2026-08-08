@@ -30,7 +30,7 @@ const MAX_PER_RUN = 30;
 const DELAY_MS = 1200;
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+  return new Promise(r => setTimeout(r, ms));
 }
 
 function isAuthorized(req: NextRequest): boolean {

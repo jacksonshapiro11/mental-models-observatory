@@ -35,7 +35,10 @@ export async function GET(
 
   if (!episodeKey) {
     return NextResponse.json(
-      { error: 'Invalid date format. Use YYYY-MM-DD or a weekly slug like 2026-W27.' },
+      {
+        error:
+          'Invalid date format. Use YYYY-MM-DD or a weekly slug like 2026-W27.',
+      },
       { status: 400 }
     );
   }
@@ -52,13 +55,21 @@ export async function GET(
         });
       }
     } catch (redisErr) {
-      console.warn(`[audio:light] Redis lookup failed for ${episodeKey}, checking local files:`, redisErr);
+      console.warn(
+        `[audio:light] Redis lookup failed for ${episodeKey}, checking local files:`,
+        redisErr
+      );
     }
 
     // Dev fallback: check for local MP3 in public/audio/
     const localFilename = localFilenameForLightEpisode(episodeKey);
     if (localFilename) {
-      const localPath = path.join(process.cwd(), 'public', 'audio', localFilename);
+      const localPath = path.join(
+        process.cwd(),
+        'public',
+        'audio',
+        localFilename
+      );
 
       if (fs.existsSync(localPath)) {
         const stats = fs.statSync(localPath);
@@ -80,11 +91,17 @@ export async function GET(
     }
 
     return NextResponse.json(
-      { error: 'No Brief Light audio available for this date', date: episodeKey },
+      {
+        error: 'No Brief Light audio available for this date',
+        date: episodeKey,
+      },
       { status: 404 }
     );
   } catch (err) {
-    console.error(`[audio:light] Metadata fetch failed for ${episodeKey}:`, err);
+    console.error(
+      `[audio:light] Metadata fetch failed for ${episodeKey}:`,
+      err
+    );
     return NextResponse.json(
       { error: 'Failed to fetch Brief Light audio metadata' },
       { status: 500 }

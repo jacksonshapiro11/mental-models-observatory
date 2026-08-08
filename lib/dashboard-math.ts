@@ -25,7 +25,10 @@
 //   months/years = calendar offset (Mar 27 → Feb 27; Mar 27 → Mar 27 last year)
 // Do NOT use { days: 7 } as a 5D proxy — it diverges from 5 sessions around holidays
 // (receipt 2026-07-30: MLK week cal-7 ≠ td-5) and mislabels crypto "5D" as a week.
-export const CHANGE_PERIODS: Record<string, { tradingDays?: number; days?: number; months?: number; years?: number }> = {
+export const CHANGE_PERIODS: Record<
+  string,
+  { tradingDays?: number; days?: number; months?: number; years?: number }
+> = {
   '1D': { tradingDays: 1 },
   '5D': { tradingDays: 5 },
   '1M': { months: 1 },
@@ -33,11 +36,15 @@ export const CHANGE_PERIODS: Record<string, { tradingDays?: number; days?: numbe
 };
 
 // MA periods in trading days (industry standard)
-export const MA_PERIODS: Record<string, number> = { '50D': 50, '200D': 200, '200W': 1000 };
+export const MA_PERIODS: Record<string, number> = {
+  '50D': 50,
+  '200D': 200,
+  '200W': 1000,
+};
 
 export interface PriceSeries {
-  dates: string[];   // YYYY-MM-DD, ascending
-  prices: number[];  // same length as dates
+  dates: string[]; // YYYY-MM-DD, ascending
+  prices: number[]; // same length as dates
 }
 
 function round(value: number, decimals: number): number {
@@ -49,25 +56,37 @@ function round(value: number, decimals: number): number {
 export function findBaselineIndex(
   dates: string[],
   latestIdx: number,
-  period: { tradingDays?: number; days?: number; months?: number; years?: number },
+  period: {
+    tradingDays?: number;
+    days?: number;
+    months?: number;
+    years?: number;
+  }
 ): number {
   if (period.tradingDays) return latestIdx - period.tradingDays;
 
   const dateStr = dates[latestIdx];
   if (!dateStr) return -1;
   const parts = dateStr.split('-').map(Number);
-  let ty = parts[0]!, tm = parts[1]!, td = parts[2]!;
+  let ty = parts[0]!,
+    tm = parts[1]!,
+    td = parts[2]!;
   if (period.years) ty -= period.years;
   if (period.months) {
     tm -= period.months;
-    if (tm < 1) { ty -= 1; tm += 12; }
+    if (tm < 1) {
+      ty -= 1;
+      tm += 12;
+    }
   }
   if (period.days) td -= period.days;
   const maxDay = new Date(ty, tm, 0).getDate();
   if (td > maxDay) td = maxDay;
   const targetStr = `${ty}-${String(tm).padStart(2, '0')}-${String(td).padStart(2, '0')}`;
 
-  let lo = 0, hi = latestIdx - 1, bestIdx = -1;
+  let lo = 0,
+    hi = latestIdx - 1,
+    bestIdx = -1;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
     if (dates[mid]! <= targetStr) {
@@ -83,14 +102,19 @@ export function findBaselineIndex(
 /** Calendar target date string for a period relative to the latest date (for gap checks). */
 export function targetDateFor(
   latestDate: string,
-  period: { days?: number; months?: number; years?: number },
+  period: { days?: number; months?: number; years?: number }
 ): string {
   const parts = latestDate.split('-').map(Number);
-  let ty = parts[0]!, tm = parts[1]!, td = parts[2]!;
+  let ty = parts[0]!,
+    tm = parts[1]!,
+    td = parts[2]!;
   if (period.years) ty -= period.years;
   if (period.months) {
     tm -= period.months;
-    if (tm < 1) { ty -= 1; tm += 12; }
+    if (tm < 1) {
+      ty -= 1;
+      tm += 12;
+    }
   }
   if (period.days) td -= period.days;
   const maxDay = new Date(ty, tm, 0).getDate();
@@ -99,7 +123,8 @@ export function targetDateFor(
 }
 
 function daysBetween(a: string, b: string): number {
-  const toUTC = (s: string) => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+  const toUTC = (s: string) =>
+    Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
   return Math.round(Math.abs(toUTC(a) - toUTC(b)) / 86_400_000);
 }
 
@@ -118,7 +143,10 @@ export interface ChangeResult {
  *  Real markets never close for more than ~5 consecutive days; 10 is generous. */
 export const MAX_BASELINE_GAP_DAYS = 10;
 
-export function calculateChangesChecked(dates: string[], prices: number[]): ChangeResult {
+export function calculateChangesChecked(
+  dates: string[],
+  prices: number[]
+): ChangeResult {
   const out: ChangeResult = { changes: {}, baselines: {}, staleBaselines: [] };
   if (!dates || !prices || prices.length < 2) return out;
 
@@ -137,12 +165,16 @@ export function calculateChangesChecked(dates: string[], prices: number[]): Chan
     // tolerance the horizon is omitted, never fabricated.
     if (!period.tradingDays && bestIdx < 0 && dates.length > 0) {
       const target = targetDateFor(dates[latestIdx]!, period);
-      if (dates[0]! > target && daysBetween(dates[0]!, target) <= MAX_BASELINE_GAP_DAYS) {
+      if (
+        dates[0]! > target &&
+        daysBetween(dates[0]!, target) <= MAX_BASELINE_GAP_DAYS
+      ) {
         bestIdx = 0;
       }
     }
 
-    if (bestIdx < 0 || prices[bestIdx] == null || prices[bestIdx]! <= 0) continue;
+    if (bestIdx < 0 || prices[bestIdx] == null || prices[bestIdx]! <= 0)
+      continue;
 
     // Gap tripwire for calendar periods: a baseline weeks before its target is a hole in
     // the data, and the % computed across it is wrong.
@@ -175,7 +207,7 @@ export function calculateChangesChecked(dates: string[], prices: number[]): Chan
 export function recomputeChangesFromLive(
   livePrice: number,
   baselines: Record<string, number>,
-  opts?: { prevClose?: number | null },
+  opts?: { prevClose?: number | null }
 ): Record<string, number> {
   const changes: Record<string, number> = {};
   if (!livePrice || livePrice <= 0) return changes;
@@ -192,7 +224,10 @@ export function recomputeChangesFromLive(
 }
 
 /** Back-compat wrapper (history-array path). */
-export function calculateChanges(dates: string[], prices: number[]): Record<string, number> {
+export function calculateChanges(
+  dates: string[],
+  prices: number[]
+): Record<string, number> {
   return calculateChangesChecked(dates, prices).changes;
 }
 
@@ -212,13 +247,20 @@ export function calculateMAs(prices: number[]): Record<string, number> {
   return mas;
 }
 
-export interface ScaleBreak { index: number; date: string; ratio: number }
+export interface ScaleBreak {
+  index: number;
+  date: string;
+  ratio: number;
+}
 
 /** Detect unexplained cliffs in a price series — adjacent closes whose ratio exceeds the
  *  threshold. A real asset does not halve or double overnight without a split/rebase; an
  *  ADJUSTED series never shows one at all. Any hit means the series mixes scales (the IWF
  *  4:1 class) and every stat computed across it is garbage. */
-export function detectScaleBreaks(series: PriceSeries, maxJumpRatio = 1.5): ScaleBreak[] {
+export function detectScaleBreaks(
+  series: PriceSeries,
+  maxJumpRatio = 1.5
+): ScaleBreak[] {
   const breaks: ScaleBreak[] = [];
   for (let i = 1; i < series.prices.length; i++) {
     const a = series.prices[i - 1];
@@ -226,7 +268,11 @@ export function detectScaleBreaks(series: PriceSeries, maxJumpRatio = 1.5): Scal
     if (a == null || b == null || a <= 0 || b <= 0) continue;
     const ratio = b > a ? b / a : a / b;
     if (ratio > maxJumpRatio) {
-      breaks.push({ index: i, date: series.dates[i] ?? '?', ratio: round(ratio, 3) });
+      breaks.push({
+        index: i,
+        date: series.dates[i] ?? '?',
+        ratio: round(ratio, 3),
+      });
     }
   }
   return breaks;
@@ -239,7 +285,10 @@ export function detectScaleBreaks(series: PriceSeries, maxJumpRatio = 1.5): Scal
  * changeYahoo assets (NATGAS→UNG class) — never for unexplained split/rebase cliffs
  * (those stay withheld until history is re-seeded from adjclose).
  */
-export function backAdjustScaleBreaks(series: PriceSeries, maxJumpRatio = 1.5): PriceSeries {
+export function backAdjustScaleBreaks(
+  series: PriceSeries,
+  maxJumpRatio = 1.5
+): PriceSeries {
   const prices = [...series.prices];
   for (let i = prices.length - 1; i >= 1; i--) {
     const prev = prices[i - 1];
@@ -261,16 +310,26 @@ export function backAdjustScaleBreaks(series: PriceSeries, maxJumpRatio = 1.5): 
 export function seriesFromYahooChart(
   result: {
     timestamp?: number[];
-    indicators?: { quote?: Array<{ close?: Array<number | null> }>; adjclose?: Array<{ adjclose?: Array<number | null> }> };
+    indicators?: {
+      quote?: Array<{ close?: Array<number | null> }>;
+      adjclose?: Array<{ adjclose?: Array<number | null> }>;
+    };
     meta?: { exchangeTimezoneName?: string };
   },
-  opts?: { crypto?: boolean },
+  opts?: { crypto?: boolean }
 ): PriceSeries {
   const timestamps = result.timestamp || [];
   const closes = result.indicators?.quote?.[0]?.close || [];
   const adj = result.indicators?.adjclose?.[0]?.adjclose;
-  const tz = opts?.crypto ? 'UTC' : result.meta?.exchangeTimezoneName || 'America/New_York';
-  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+  const tz = opts?.crypto
+    ? 'UTC'
+    : result.meta?.exchangeTimezoneName || 'America/New_York';
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
 
   const series: PriceSeries = { dates: [], prices: [] };
   for (let i = 0; i < timestamps.length; i++) {
@@ -278,7 +337,10 @@ export function seriesFromYahooChart(
     if (price == null || price <= 0) continue;
     const date = fmt.format(new Date(timestamps[i]! * 1000));
     // Collapse duplicate dates (intraday partial bars) — keep the latest value
-    if (series.dates.length > 0 && series.dates[series.dates.length - 1] === date) {
+    if (
+      series.dates.length > 0 &&
+      series.dates[series.dates.length - 1] === date
+    ) {
       series.prices[series.prices.length - 1] = round(price, 4);
     } else {
       series.dates.push(date);
@@ -289,7 +351,11 @@ export function seriesFromYahooChart(
 }
 
 /** Merge the live/latest quote into a daily series: replace today's bar or append. */
-export function mergeLatestIntoSeries(series: PriceSeries, latestPrice: number, tradingDate: string | null): PriceSeries {
+export function mergeLatestIntoSeries(
+  series: PriceSeries,
+  latestPrice: number,
+  tradingDate: string | null
+): PriceSeries {
   if (!latestPrice || latestPrice <= 0 || !tradingDate) return series;
   const dates = [...series.dates];
   const prices = [...series.prices];

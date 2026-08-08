@@ -13,7 +13,10 @@ import fs from 'fs';
 import path from 'path';
 import { parseBriefLight, type BriefLight } from '@/lib/brief-light-parser';
 
-const WEEKLY_CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates/weekly');
+const WEEKLY_CONTENT_DIR = path.join(
+  process.cwd(),
+  'content/daily-updates/weekly'
+);
 
 export function getWeeklyLightBySlug(slug: string): BriefLight | null {
   const filePath = path.join(WEEKLY_CONTENT_DIR, `${slug}-light.md`);
@@ -30,7 +33,8 @@ export function hasWeeklyLight(slug: string): boolean {
 /** All published weekly-light slugs (week ids), newest first. */
 export function getAllWeeklyLightSlugs(): string[] {
   if (!fs.existsSync(WEEKLY_CONTENT_DIR)) return [];
-  return fs.readdirSync(WEEKLY_CONTENT_DIR)
+  return fs
+    .readdirSync(WEEKLY_CONTENT_DIR)
     .filter(f => f.endsWith('-light.md'))
     .map(f => f.replace('-light.md', ''))
     .sort()

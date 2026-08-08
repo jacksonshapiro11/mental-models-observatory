@@ -19,7 +19,11 @@ export interface DashboardSnapshot {
   crypto: Record<string, AssetSnapshot>;
   commodities: Record<string, AssetSnapshot>;
   rates: Record<string, AssetSnapshot>;
-  dxy: { value: number; rates: Record<string, number>; yoyChange?: number | null } | null;
+  dxy: {
+    value: number;
+    rates: Record<string, number>;
+    yoyChange?: number | null;
+  } | null;
   fearGreed: { value: number; label: string; timestamp: number } | null;
   errors: Array<{ index: number; error: string }>;
 }
@@ -55,9 +59,14 @@ export interface CoinGeckoGlobal {
   defiToEthRatio: number | null;
   defiVolume24h: number | null;
   defiDominance: number | null;
-  trending: Array<{ name: string; symbol: string; rank: number; price_btc?: number }>;
-  btcFundingRate: number | null;    // perpetual futures avg funding rate
-  btcOpenInterest: number | null;   // total open interest USD
+  trending: Array<{
+    name: string;
+    symbol: string;
+    rank: number;
+    price_btc?: number;
+  }>;
+  btcFundingRate: number | null; // perpetual futures avg funding rate
+  btcOpenInterest: number | null; // total open interest USD
   corporateBtcHoldings: number | null; // total BTC held by public companies
   fetchedAt: number;
 }
@@ -110,12 +119,14 @@ export async function readSnapshot(): Promise<DashboardSnapshot | null> {
   const r = getRedis();
   const raw = await r.get(KEYS.DAILY_SNAPSHOT);
   if (!raw) return null;
-  return typeof raw === 'string' ? JSON.parse(raw) : raw as DashboardSnapshot;
+  return typeof raw === 'string' ? JSON.parse(raw) : (raw as DashboardSnapshot);
 }
 
 // ─── COINGECKO CACHE (4-hour TTL — cuts live-dashboard Redis reads ~4×) ─────
 
-export async function writeCoinGeckoGlobal(data: CoinGeckoGlobal): Promise<boolean> {
+export async function writeCoinGeckoGlobal(
+  data: CoinGeckoGlobal
+): Promise<boolean> {
   const r = getRedis();
   // TTL = 14400 seconds (4 hours)
   await r.set(KEYS.COINGECKO_GLOBAL, JSON.stringify(data), { ex: 14400 });
@@ -126,15 +137,21 @@ export async function readCoinGeckoGlobal(): Promise<CoinGeckoGlobal | null> {
   const r = getRedis();
   const raw = await r.get(KEYS.COINGECKO_GLOBAL);
   if (!raw) return null;
-  return typeof raw === 'string' ? JSON.parse(raw) : raw as CoinGeckoGlobal;
+  return typeof raw === 'string' ? JSON.parse(raw) : (raw as CoinGeckoGlobal);
 }
 
 // ─── MANUAL FIELDS (FedWatch, ETF flows — entered via PATCH) ────────────────
 
-export async function writeManualFields(fields: Partial<ManualFields>): Promise<ManualFields> {
+export async function writeManualFields(
+  fields: Partial<ManualFields>
+): Promise<ManualFields> {
   const r = getRedis();
   const existing = await readManualFields();
-  const merged: ManualFields = { ...existing, ...fields, updatedAt: Date.now() };
+  const merged: ManualFields = {
+    ...existing,
+    ...fields,
+    updatedAt: Date.now(),
+  };
   await r.set(KEYS.MANUAL_FIELDS, JSON.stringify(merged));
   return merged;
 }
@@ -143,19 +160,23 @@ export async function readManualFields(): Promise<ManualFields> {
   const r = getRedis();
   const raw = await r.get(KEYS.MANUAL_FIELDS);
   if (!raw) return {};
-  return typeof raw === 'string' ? JSON.parse(raw) : raw as ManualFields;
+  return typeof raw === 'string' ? JSON.parse(raw) : (raw as ManualFields);
 }
 
 // ─── PRICE HISTORY (append daily, never overwrite) ──────────────────────────
 
-export function snapshotToHistoryEntry(snapshot: DashboardSnapshot): PriceHistoryEntry {
+export function snapshotToHistoryEntry(
+  snapshot: DashboardSnapshot
+): PriceHistoryEntry {
   const slimEquities = (
-    assets: Record<string, AssetSnapshot & { multiplier?: number }>,
+    assets: Record<string, AssetSnapshot & { multiplier?: number }>
   ): PriceHistoryEntry['equities'] => {
     const out: PriceHistoryEntry['equities'] = {};
     for (const [name, data] of Object.entries(assets || {})) {
       if (data?.latestClose != null) {
-        const entry: { latestClose: number; multiplier?: number } = { latestClose: data.latestClose };
+        const entry: { latestClose: number; multiplier?: number } = {
+          latestClose: data.latestClose,
+        };
         if (data.multiplier != null) entry.multiplier = data.multiplier;
         out[name] = entry;
       }
@@ -164,7 +185,7 @@ export function snapshotToHistoryEntry(snapshot: DashboardSnapshot): PriceHistor
   };
 
   const slimSimple = (
-    assets: Record<string, AssetSnapshot>,
+    assets: Record<string, AssetSnapshot>
   ): Record<string, { latestClose: number }> => {
     const out: Record<string, { latestClose: number }> = {};
     for (const [name, data] of Object.entries(assets || {})) {
@@ -177,10 +198,18 @@ export function snapshotToHistoryEntry(snapshot: DashboardSnapshot): PriceHistor
 
   return {
     date: snapshot.date,
-    equities: slimEquities(snapshot.equities as Record<string, AssetSnapshot & { multiplier?: number }>),
+    equities: slimEquities(
+      snapshot.equities as Record<
+        string,
+        AssetSnapshot & { multiplier?: number }
+      >
+    ),
     crypto: slimSimple(snapshot.crypto),
     commodities: slimEquities(
-      snapshot.commodities as Record<string, AssetSnapshot & { multiplier?: number }>,
+      snapshot.commodities as Record<
+        string,
+        AssetSnapshot & { multiplier?: number }
+      >
     ),
     rates: slimSimple(snapshot.rates),
   };
@@ -198,7 +227,9 @@ export async function readHistoryBundle(): Promise<PriceHistoryEntry[]> {
   }
 }
 
-export async function writeHistoryBundle(entries: PriceHistoryEntry[]): Promise<void> {
+export async function writeHistoryBundle(
+  entries: PriceHistoryEntry[]
+): Promise<void> {
   const r = getRedis();
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
   const trimmed = sorted.slice(-HISTORY_BUNDLE_MAX_DAYS);
@@ -207,12 +238,15 @@ export async function writeHistoryBundle(entries: PriceHistoryEntry[]): Promise<
 
 async function appendHistoryBundle(entry: PriceHistoryEntry): Promise<void> {
   const existing = await readHistoryBundle();
-  const without = existing.filter((e) => e.date !== entry.date);
+  const without = existing.filter(e => e.date !== entry.date);
   without.push(entry);
   await writeHistoryBundle(without);
 }
 
-export async function writePriceHistory(date: string, data: DashboardSnapshot): Promise<boolean> {
+export async function writePriceHistory(
+  date: string,
+  data: DashboardSnapshot
+): Promise<boolean> {
   const r = getRedis();
   const key = KEYS.PRICE_HISTORY_PREFIX + date;
   await r.set(key, JSON.stringify(data));
@@ -220,12 +254,14 @@ export async function writePriceHistory(date: string, data: DashboardSnapshot): 
   return true;
 }
 
-export async function readPriceHistory(date: string): Promise<DashboardSnapshot | null> {
+export async function readPriceHistory(
+  date: string
+): Promise<DashboardSnapshot | null> {
   const r = getRedis();
   const key = KEYS.PRICE_HISTORY_PREFIX + date;
   const raw = await r.get(key);
   if (!raw) return null;
-  return typeof raw === 'string' ? JSON.parse(raw) : raw as DashboardSnapshot;
+  return typeof raw === 'string' ? JSON.parse(raw) : (raw as DashboardSnapshot);
 }
 
 // ─── HEALTH CHECK ───────────────────────────────────────────────────────────

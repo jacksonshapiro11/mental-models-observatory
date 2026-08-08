@@ -21,9 +21,18 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 
 interface Row {
-  id: string; date: string; source: string; rc: string; sev: string;
-  summary: string; targets: string[]; check: string;
-  applied: string; verified: string; behavior: string; recur: string;
+  id: string;
+  date: string;
+  source: string;
+  rc: string;
+  sev: string;
+  summary: string;
+  targets: string[];
+  check: string;
+  applied: string;
+  verified: string;
+  behavior: string;
+  recur: string;
 }
 
 const AGE_FUSE_DAYS = 30; // check=none on Critical/High: WARN until this age, FAIL after.
@@ -39,9 +48,21 @@ function parseLedger(md: string): Row[] {
     const id = cells[1]!;
     if (!/^(IMP|ESC)-\d+/.test(id)) continue; // skips header + divider
     rows.push({
-      id, date: cells[2]!, source: cells[3]!, rc: cells[4]!, sev: cells[5]!,
-      summary: cells[6]!, targets: cells[7]!.split(',').map(s => s.trim()).filter(s => s && s !== 'scripts/'),
-      check: cells[8]!, applied: cells[9]!, verified: cells[10]!, behavior: cells[11]!, recur: cells[12]!,
+      id,
+      date: cells[2]!,
+      source: cells[3]!,
+      rc: cells[4]!,
+      sev: cells[5]!,
+      summary: cells[6]!,
+      targets: cells[7]!
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s && s !== 'scripts/'),
+      check: cells[8]!,
+      applied: cells[9]!,
+      verified: cells[10]!,
+      behavior: cells[11]!,
+      recur: cells[12]!,
     });
   }
   return rows;
@@ -76,7 +97,10 @@ function ageDays(dateStr: string): number {
  * "was this ever here, and what took it out" in one line, and the answer decides the fix.
  */
 function anchorForensics(file: string, needle: string): string {
-  const res = spawnSync('git', ['log', '--oneline', '-S', needle, '--', file], { encoding: 'utf8', timeout: 30000 });
+  const res = spawnSync('git', ['log', '--oneline', '-S', needle, '--', file], {
+    encoding: 'utf8',
+    timeout: 30000,
+  });
   const lines = (res.stdout || '').trim().split('\n').filter(Boolean);
   if (res.status !== 0 || lines.length === 0) {
     return `\n      FORENSICS: git log -S finds NO commit that ever added this string to ${file}. Either the enforcement never landed, or it lives in a gitignored path. Treat as NEVER-LANDED, not as a revert.`;
@@ -96,7 +120,10 @@ function runLeg(leg: string, id: string): string | null {
     const fp = path.join(process.cwd(), file);
     if (!fs.existsSync(fp)) return `${id}: grep target missing: ${file}`;
     if (!fs.readFileSync(fp, 'utf8').includes(needle)) {
-      return `${id}: enforcement text ABSENT — "${needle}" not found in ${file} (the improvement was reverted or never landed)` + anchorForensics(file, needle);
+      return (
+        `${id}: enforcement text ABSENT — "${needle}" not found in ${file} (the improvement was reverted or never landed)` +
+        anchorForensics(file, needle)
+      );
     }
     return null;
   }
@@ -114,18 +141,28 @@ function runLeg(leg: string, id: string): string | null {
     const file = rest.slice(0, colon).trim();
     const needle = rest.slice(colon + 1).trim();
     if (!file || !needle) return `${id}: malformed gitshow check: ${leg}`;
-    const res = spawnSync('git', ['show', `HEAD:${file}`], { encoding: 'utf8', timeout: 30000 });
+    const res = spawnSync('git', ['show', `HEAD:${file}`], {
+      encoding: 'utf8',
+      timeout: 30000,
+    });
     if (res.status !== 0) {
       return `${id}: gitshow target missing from HEAD: ${file}\n      ${(res.stderr || '').trim().split('\n').slice(-2).join('\n      ')}`;
     }
     if (!(res.stdout || '').includes(needle)) {
-      return `${id}: enforcement ABSENT from committed tree — "${needle}" not in HEAD:${file} (working tree may still have it; nightly rebase will not)` + anchorForensics(file, needle);
+      return (
+        `${id}: enforcement ABSENT from committed tree — "${needle}" not in HEAD:${file} (working tree may still have it; nightly rebase will not)` +
+        anchorForensics(file, needle)
+      );
     }
     return null;
   }
   if (leg.startsWith('run:')) {
     const cmd = leg.slice(4).trim();
-    const res = spawnSync(cmd, { shell: true, encoding: 'utf8', timeout: 120000 });
+    const res = spawnSync(cmd, {
+      shell: true,
+      encoding: 'utf8',
+      timeout: 120000,
+    });
     if (res.status !== 0) {
       return `${id}: gate FAILED (exit ${res.status}): ${cmd}\n      ${(res.stderr || res.stdout || '').trim().split('\n').slice(-3).join('\n      ')}`;
     }
@@ -148,21 +185,34 @@ function runLeg(leg: string, id: string): string | null {
  * revert now turns the registry RED on the grep leg instead of hiding behind exit 0.
  */
 function executeCheck(check: string, id: string): string[] {
-  const legs = check.split(/\s+&&\s+/).map(s => s.trim()).filter(Boolean);
+  const legs = check
+    .split(/\s+&&\s+/)
+    .map(s => s.trim())
+    .filter(Boolean);
   const fails: string[] = [];
-  for (const leg of legs) { const f = runLeg(leg, id); if (f) fails.push(f); }
+  for (const leg of legs) {
+    const f = runLeg(leg, id);
+    if (f) fails.push(f);
+  }
   return fails;
 }
 
 function main(): number {
   const argIdx = process.argv.indexOf('--ledger');
-  const ledgerPath = argIdx > -1 && process.argv[argIdx + 1]
-    ? process.argv[argIdx + 1]!
-    : path.join(process.cwd(), 'system/Improvement_Ledger.md');
-  if (!fs.existsSync(ledgerPath)) { console.error(`FAIL: ledger not found: ${ledgerPath}`); return 2; }
+  const ledgerPath =
+    argIdx > -1 && process.argv[argIdx + 1]
+      ? process.argv[argIdx + 1]!
+      : path.join(process.cwd(), 'system/Improvement_Ledger.md');
+  if (!fs.existsSync(ledgerPath)) {
+    console.error(`FAIL: ledger not found: ${ledgerPath}`);
+    return 2;
+  }
 
   const rows = parseLedger(fs.readFileSync(ledgerPath, 'utf8'));
-  if (rows.length === 0) { console.error('FAIL: ledger parsed to zero rows — schema drift?'); return 2; }
+  if (rows.length === 0) {
+    console.error('FAIL: ledger parsed to zero rows — schema drift?');
+    return 2;
+  }
 
   const fails: string[] = [];
   const warns: string[] = [];
@@ -184,7 +234,8 @@ function main(): number {
       if (/^(Critical|High)$/i.test(r.sev) && !closed) {
         const age = ageDays(r.date);
         const msg = `${r.id} [${r.sev}] has NO mechanical check (age ${age}d): "${r.summary.slice(0, 80)}" — convert to a code gate or close WONT-FIX-VIA-PROSE`;
-        if (age >= AGE_FUSE_DAYS) fails.push(msg + ` — ${AGE_FUSE_DAYS}d fuse blown, this now BLOCKS`);
+        if (age >= AGE_FUSE_DAYS)
+          fails.push(msg + ` — ${AGE_FUSE_DAYS}d fuse blown, this now BLOCKS`);
         else warns.push(msg);
       }
       continue;
@@ -192,7 +243,8 @@ function main(): number {
 
     // 3. Execute the check (compound-aware; ALL ` && `-joined legs must pass).
     const checkFails = executeCheck(r.check, r.id);
-    if (checkFails.length) fails.push(...checkFails); else verified++;
+    if (checkFails.length) fails.push(...checkFails);
+    else verified++;
   }
 
   // 4. The theater report — behavior counts (informational, the accountability view).
@@ -200,16 +252,24 @@ function main(): number {
     rows: rows.length,
     behaviorY: rows.filter(r => /^Y/i.test(r.behavior)).length,
     pending: rows.filter(r => /pending/i.test(r.behavior)).length,
-    recurred: rows.filter(r => parseInt(r.recur || '0', 10) > 0 && !/CLOSED/i.test(r.behavior)).length,
+    recurred: rows.filter(
+      r => parseInt(r.recur || '0', 10) > 0 && !/CLOSED/i.test(r.behavior)
+    ).length,
     closedByCode: rows.filter(r => /CLOSED-BY-CODE/i.test(r.behavior)).length,
   };
 
-  console.log(`verify-improvements — ${rows.length} rows · ${verified} checks passed · ${fails.length} FAIL · ${warns.length} warn`);
-  console.log(`  behavior: ${counts.behaviorY} changed · ${counts.pending} pending · ${counts.recurred} recurred-open (theater candidates) · ${counts.closedByCode} closed-by-code`);
+  console.log(
+    `verify-improvements — ${rows.length} rows · ${verified} checks passed · ${fails.length} FAIL · ${warns.length} warn`
+  );
+  console.log(
+    `  behavior: ${counts.behaviorY} changed · ${counts.pending} pending · ${counts.recurred} recurred-open (theater candidates) · ${counts.closedByCode} closed-by-code`
+  );
   for (const w of warns) console.log(`  ⚠ ${w}`);
   for (const f of fails) console.error(`  ✗ ${f}`);
   if (fails.length) {
-    console.error('\n✗ IMPROVEMENT VERIFICATION FAILED — a logged improvement is not mechanically real. Fix the enforcement or the ledger row; do not log new improvements on top of broken ones.');
+    console.error(
+      '\n✗ IMPROVEMENT VERIFICATION FAILED — a logged improvement is not mechanically real. Fix the enforcement or the ledger row; do not log new improvements on top of broken ones.'
+    );
     return 1;
   }
   console.log('\n✓ All ledger improvements mechanically verified.');
@@ -222,20 +282,53 @@ function selftest(): number {
   const self = 'scripts/verify-improvements.ts';
   // Build the ABSENT needle at RUNTIME so it never appears as a source literal in this file
   // (a literal would make its own grep leg pass — the bug the first cut of this selftest hit).
-  const absent = ['zz', Math.random().toString(36).slice(2), Date.now().toString(36), 'zz'].join('_');
+  const absent = [
+    'zz',
+    Math.random().toString(36).slice(2),
+    Date.now().toString(36),
+    'zz',
+  ].join('_');
   const cases: [string, string, boolean][] = [
     [`grep:${self}:AGE_FUSE_DAYS`, 'grep leg PASSES on a present string', true],
-    [`grep:${self}:${absent}`, 'grep leg FAILS on an absent string (revert catch)', false],
+    [
+      `grep:${self}:${absent}`,
+      'grep leg FAILS on an absent string (revert catch)',
+      false,
+    ],
     ['run:true', 'run leg PASSES on exit 0', true],
     ['run:false', 'run leg FAILS on exit 1', false],
-    [`run:true && grep:${self}:AGE_FUSE_DAYS`, 'compound PASSES when ALL legs pass', true],
-    [`run:true && grep:${self}:${absent}`, 'compound FAILS when the grep-anchor is gone (the green-but-gone catch)', false],
-    [`grep:${self}:AGE_FUSE_DAYS && run:false`, 'compound FAILS when the run leg fails', false],
+    [
+      `run:true && grep:${self}:AGE_FUSE_DAYS`,
+      'compound PASSES when ALL legs pass',
+      true,
+    ],
+    [
+      `run:true && grep:${self}:${absent}`,
+      'compound FAILS when the grep-anchor is gone (the green-but-gone catch)',
+      false,
+    ],
+    [
+      `grep:${self}:AGE_FUSE_DAYS && run:false`,
+      'compound FAILS when the run leg fails',
+      false,
+    ],
     // gitshow: proves the pattern is on HEAD (committed tree), not just the working tree.
     // AGE_FUSE_DAYS has been on HEAD since before this edit; an absent needle must fail.
-    [`gitshow:${self}:AGE_FUSE_DAYS`, 'gitshow leg PASSES when needle is on HEAD', true],
-    [`gitshow:${self}:${absent}`, 'gitshow leg FAILS when needle is absent from HEAD', false],
-    [`gitshow:scripts/does-not-exist-zz.ts:anything`, 'gitshow leg FAILS when path is absent from HEAD', false],
+    [
+      `gitshow:${self}:AGE_FUSE_DAYS`,
+      'gitshow leg PASSES when needle is on HEAD',
+      true,
+    ],
+    [
+      `gitshow:${self}:${absent}`,
+      'gitshow leg FAILS when needle is absent from HEAD',
+      false,
+    ],
+    [
+      `gitshow:scripts/does-not-exist-zz.ts:anything`,
+      'gitshow leg FAILS when path is absent from HEAD',
+      false,
+    ],
   ];
   let fails = 0;
   for (const [check, label, expectPass] of cases) {
@@ -246,19 +339,40 @@ function selftest(): number {
   }
   // IMP-129 — an absent anchor must arrive WITH its forensics, so the next session classifies
   // revert-vs-supersession from a receipt instead of from a hunch. Both directions:
-  const t2 = (ok: boolean, label: string) => { console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`); if (!ok) fails++; };
+  const t2 = (ok: boolean, label: string) => {
+    console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`);
+    if (!ok) fails++;
+  };
   {
     const msg = executeCheck(`grep:${self}:${absent}`, 'SELFTEST').join('');
     t2(/FORENSICS:/.test(msg), '[IMP-129] an absent anchor carries FORENSICS');
-    t2(/NEVER-LANDED/.test(msg), '[IMP-129] a string no commit ever added is classified NEVER-LANDED, not a revert');
+    t2(
+      /NEVER-LANDED/.test(msg),
+      '[IMP-129] a string no commit ever added is classified NEVER-LANDED, not a revert'
+    );
     // A REAL supersession from today: be7fdf0 deleted this string from validate-brief.ts.
-    const sup = executeCheck('grep:scripts/validate-brief.ts:BULLET LENGTH ADVISORY', 'SELFTEST').join('');
-    t2(/FORENSICS: last commit touching this string/.test(sup) && /SUPERSESSION/.test(sup),
-      '[IMP-129] a deleted-but-once-committed anchor names the commit that removed it (the real IMP-125 case)');
+    const sup = executeCheck(
+      'grep:scripts/validate-brief.ts:BULLET LENGTH ADVISORY',
+      'SELFTEST'
+    ).join('');
+    t2(
+      /FORENSICS: last commit touching this string/.test(sup) &&
+        /SUPERSESSION/.test(sup),
+      '[IMP-129] a deleted-but-once-committed anchor names the commit that removed it (the real IMP-125 case)'
+    );
   }
-  console.log(`\nverify-improvements selftest — ${cases.length + 3 - fails}/${cases.length + 3} assertions passed`);
-  if (fails) { console.error('✗ SELFTEST FAILED — compound-check logic no longer bites both directions.'); return 1; }
-  console.log('✓ compound-check (run:<selftest> && grep:<anchor> && gitshow:<anchor>) verified — a reverted enforcement now goes RED.');
+  console.log(
+    `\nverify-improvements selftest — ${cases.length + 3 - fails}/${cases.length + 3} assertions passed`
+  );
+  if (fails) {
+    console.error(
+      '✗ SELFTEST FAILED — compound-check logic no longer bites both directions.'
+    );
+    return 1;
+  }
+  console.log(
+    '✓ compound-check (run:<selftest> && grep:<anchor> && gitshow:<anchor>) verified — a reverted enforcement now goes RED.'
+  );
   return 0;
 }
 

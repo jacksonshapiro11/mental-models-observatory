@@ -21,7 +21,7 @@ export interface AudioIntroAuditResult {
 export function auditAudioIntro(
   fullScript: string,
   dateSlug: string,
-  displayDate: string,
+  displayDate: string
 ): AudioIntroAuditResult {
   const errors: string[] = [];
 
@@ -49,11 +49,13 @@ export function auditAudioIntro(
 export function auditAudioIntroOrThrow(
   fullScript: string,
   dateSlug: string,
-  displayDate: string,
+  displayDate: string
 ): void {
   const result = auditAudioIntro(fullScript, dateSlug, displayDate);
   if (!result.ok) {
-    throw new Error(`Audio intro date audit failed: ${result.errors.join(' | ')}`);
+    throw new Error(
+      `Audio intro date audit failed: ${result.errors.join(' | ')}`
+    );
   }
 }
 
@@ -62,14 +64,20 @@ export function auditAudioIntroOrThrow(
 /** Normalize for tail comparison: lowercase, alphanumeric words only — tolerant of the
  *  regex-normalize/pronunciation passes that run after stitching. */
 function normalizeTail(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
 /** Blocking outro audit: the finished script must END with the deterministic sign-off.
  *  (2026-07-27: the W30 weekly light shipped ending on a GPT-invented goodbye — the written
  *  close was discarded upstream and nothing checked the tail, so the episode "just cut off".
  *  An episode that does not end with the house sign-off does not ship.) */
-export function auditAudioOutro(fullScript: string, expectedSignOff: string): AudioIntroAuditResult {
+export function auditAudioOutro(
+  fullScript: string,
+  expectedSignOff: string
+): AudioIntroAuditResult {
   const script = normalizeTail(fullScript);
   const expected = normalizeTail(expectedSignOff);
   const tail = expected.length > 80 ? expected.slice(-80) : expected;
@@ -82,10 +90,16 @@ export function auditAudioOutro(fullScript: string, expectedSignOff: string): Au
   };
 }
 
-export function auditAudioOutroOrThrow(fullScript: string, expectedSignOff: string, label = 'audio'): void {
+export function auditAudioOutroOrThrow(
+  fullScript: string,
+  expectedSignOff: string,
+  label = 'audio'
+): void {
   const result = auditAudioOutro(fullScript, expectedSignOff);
   if (!result.ok) {
-    throw new Error(`[${label}] Audio outro audit failed: ${result.errors.join(' | ')}`);
+    throw new Error(
+      `[${label}] Audio outro audit failed: ${result.errors.join(' | ')}`
+    );
   }
 }
 

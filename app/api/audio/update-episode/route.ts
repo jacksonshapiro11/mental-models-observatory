@@ -9,12 +9,17 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readEpisodeMetadata, writeEpisodeMetadata } from '@/lib/audio/podcast-feed';
+import {
+  readEpisodeMetadata,
+  writeEpisodeMetadata,
+} from '@/lib/audio/podcast-feed';
 
 function isAuthorized(req: NextRequest): boolean {
   const snapshotSecret = process.env.SNAPSHOT_SECRET;
   if (!snapshotSecret) return false;
-  const secret = req.headers.get('x-snapshot-secret') || req.nextUrl.searchParams.get('secret');
+  const secret =
+    req.headers.get('x-snapshot-secret') ||
+    req.nextUrl.searchParams.get('secret');
   return secret === snapshotSecret;
 }
 
@@ -50,7 +55,10 @@ async function handleUpdate(req: NextRequest) {
 
   const episode = await readEpisodeMetadata(date);
   if (!episode) {
-    return NextResponse.json({ error: `No episode found for ${date}` }, { status: 404 });
+    return NextResponse.json(
+      { error: `No episode found for ${date}` },
+      { status: 404 }
+    );
   }
 
   const updates: string[] = [];
@@ -64,7 +72,10 @@ async function handleUpdate(req: NextRequest) {
   }
 
   if (updates.length === 0) {
-    return NextResponse.json({ error: 'No updates provided (title or description)' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'No updates provided (title or description)' },
+      { status: 400 }
+    );
   }
 
   await writeEpisodeMetadata(episode);

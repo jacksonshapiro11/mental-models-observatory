@@ -2,15 +2,15 @@
 
 /**
  * Auto-Scheduler for Marketing Content
- * 
+ *
  * Takes generated content and creates scheduling files for:
  * - Buffer/Hootsuite CSV imports
  * - Social media platform native schedulers
  * - Email newsletter scheduling
- * 
+ *
  * Usage:
  *   node scripts/auto-schedule-content.js [options]
- * 
+ *
  * Options:
  *   --input DIR     Input directory with generated content (default: ./marketing-content)
  *   --platform PLATFORM  Target platform (buffer, twitter, linkedin, all)
@@ -21,54 +21,73 @@ const path = require('path');
 
 function generateBufferCSV(contentDir, outputFile) {
   const csvRows = [
-    ['Created At', 'Text', 'Profile IDs', 'Media URLs', 'Scheduled At', 'Now', 'Top', 'Sent', 'Service Link', 'Status'].join(',')
+    [
+      'Created At',
+      'Text',
+      'Profile IDs',
+      'Media URLs',
+      'Scheduled At',
+      'Now',
+      'Top',
+      'Sent',
+      'Service Link',
+      'Status',
+    ].join(','),
   ];
 
   // Find all Twitter thread files
   const files = fs.readdirSync(contentDir);
-  const twitterFiles = files.filter(f => f.startsWith('twitter-day-') && f.endsWith('.txt'));
+  const twitterFiles = files.filter(
+    f => f.startsWith('twitter-day-') && f.endsWith('.txt')
+  );
 
   for (const file of twitterFiles) {
     const filePath = path.join(contentDir, file);
     const content = fs.readFileSync(filePath, 'utf8');
-    
+
     // Parse threads (simple regex-based parsing)
     const threadMatches = content.match(/=== (.+?) ===([\s\S]*?)(?===|$)/g);
-    
+
     if (threadMatches) {
       threadMatches.forEach(match => {
         const modelMatch = match.match(/=== (.+?) ===/);
-        const threadMatch = match.match(/Tweet (\d+) \([\d]+ chars\):\n([\s\S]*?)(?=Tweet \d+|$)/g);
-        
+        const threadMatch = match.match(
+          /Tweet (\d+) \([\d]+ chars\):\n([\s\S]*?)(?=Tweet \d+|$)/g
+        );
+
         if (modelMatch && threadMatch) {
           const modelName = modelMatch[1];
-          
+
           threadMatch.forEach((tweet, idx) => {
-            const tweetMatch = tweet.match(/Tweet \d+ \([\d]+ chars\):\n([\s\S]*?)$/);
+            const tweetMatch = tweet.match(
+              /Tweet \d+ \([\d]+ chars\):\n([\s\S]*?)$/
+            );
             if (tweetMatch) {
               const tweetText = tweetMatch[1].trim();
               const dayMatch = file.match(/day-(\d+)/);
               const dayNumber = dayMatch ? parseInt(dayMatch[1]) : 0;
-              
+
               // Schedule for 8am, 12pm, or 5pm based on tweet number
               const hours = [8, 12, 17];
               const hour = hours[idx % hours.length] || 8;
               const scheduledDate = new Date();
               scheduledDate.setDate(scheduledDate.getDate() + dayNumber);
               scheduledDate.setHours(hour, 0, 0, 0);
-              
-              csvRows.push([
-                new Date().toISOString(),
-                `"${tweetText.replace(/"/g, '""')}"`,
-                '', // Profile IDs - user fills in
-                '', // Media URLs
-                scheduledDate.toISOString(),
-                'false',
-                'false',
-                'false',
-                '', // Service link
-                'pending'
-              ].join(','));
+
+              csvRows.push(
+                [
+                  new Date().toISOString(),
+                  `"${tweetText.replace(/"/g, '""')}"`,
+                  '', // Profile IDs - user fills in
+                  '', // Media URLs
+                  scheduledDate.toISOString(),
+                  'false',
+                  'false',
+                  'false',
+                  '', // Service link
+                  'pending',
+                ].join(',')
+              );
             }
           });
         }
@@ -87,7 +106,9 @@ function generateTwitterNativeSchedule(contentDir, outputDir) {
   }
 
   const files = fs.readdirSync(contentDir);
-  const twitterFiles = files.filter(f => f.startsWith('twitter-day-') && f.endsWith('.txt'));
+  const twitterFiles = files.filter(
+    f => f.startsWith('twitter-day-') && f.endsWith('.txt')
+  );
 
   const schedule = [];
 
@@ -96,20 +117,24 @@ function generateTwitterNativeSchedule(contentDir, outputDir) {
     const content = fs.readFileSync(filePath, 'utf8');
     const dayMatch = file.match(/day-(\d+)/);
     const dayNumber = dayMatch ? parseInt(dayMatch[1]) : 0;
-    
+
     const threadMatches = content.match(/=== (.+?) ===([\s\S]*?)(?===|$)/g);
-    
+
     if (threadMatches) {
       threadMatches.forEach(match => {
         const modelMatch = match.match(/=== (.+?) ===/);
-        const threadMatch = match.match(/Tweet (\d+) \([\d]+ chars\):\n([\s\S]*?)(?=Tweet \d+|$)/g);
-        
+        const threadMatch = match.match(
+          /Tweet (\d+) \([\d]+ chars\):\n([\s\S]*?)(?=Tweet \d+|$)/g
+        );
+
         if (modelMatch && threadMatch) {
           const modelName = modelMatch[1];
           const tweets = [];
-          
+
           threadMatch.forEach(tweet => {
-            const tweetMatch = tweet.match(/Tweet \d+ \([\d]+ chars\):\n([\s\S]*?)$/);
+            const tweetMatch = tweet.match(
+              /Tweet \d+ \([\d]+ chars\):\n([\s\S]*?)$/
+            );
             if (tweetMatch) {
               tweets.push(tweetMatch[1].trim());
             }
@@ -124,13 +149,13 @@ function generateTwitterNativeSchedule(contentDir, outputDir) {
             tweets.forEach((tweet, idx) => {
               const tweetDate = new Date(baseDate);
               tweetDate.setMinutes(tweetDate.getMinutes() + idx * 5); // 5 min between tweets
-              
+
               schedule.push({
                 date: tweetDate.toISOString(),
                 text: tweet,
                 type: idx === 0 ? 'tweet' : 'reply',
                 threadId: modelName,
-                model: modelName
+                model: modelName,
               });
             });
           }
@@ -142,12 +167,14 @@ function generateTwitterNativeSchedule(contentDir, outputDir) {
   // Save as JSON for easy import
   const scheduleFile = path.join(outputDir, 'twitter-schedule.json');
   fs.writeFileSync(scheduleFile, JSON.stringify(schedule, null, 2));
-  
+
   // Also create a human-readable schedule
   const readableFile = path.join(outputDir, 'twitter-schedule.txt');
-  const readable = schedule.map(s => 
-    `${s.date} | ${s.type.toUpperCase()} | ${s.text.substring(0, 50)}...`
-  ).join('\n');
+  const readable = schedule
+    .map(
+      s => `${s.date} | ${s.type.toUpperCase()} | ${s.text.substring(0, 50)}...`
+    )
+    .join('\n');
   fs.writeFileSync(readableFile, readable);
 
   console.log(`✅ Generated Twitter schedule: ${scheduleFile}`);
@@ -159,12 +186,14 @@ function generateNewsletterSchedule(contentDir, outputFile) {
 
   // Find all day files
   const files = fs.readdirSync(contentDir);
-  const dayFiles = files.filter(f => f.startsWith('day-') && f.endsWith('.json'));
+  const dayFiles = files.filter(
+    f => f.startsWith('day-') && f.endsWith('.json')
+  );
 
   for (const file of dayFiles) {
     const filePath = path.join(contentDir, file);
     const dayContent = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    
+
     // Find models with newsletter content
     dayContent.models.forEach(model => {
       if (model.newsletter) {
@@ -175,7 +204,7 @@ function generateNewsletterSchedule(contentDir, outputFile) {
           preview: newsletter.preview,
           model: model.model,
           slug: model.slug,
-          url: model.url
+          url: model.url,
         });
       }
     });
@@ -198,19 +227,24 @@ function generateNewsletterSchedule(contentDir, outputFile) {
 
 // Main function
 const args = process.argv.slice(2);
-const inputArg = args.find(arg => arg.startsWith('--input='))?.split('=')[1] || 
-                 (args.includes('--input') ? args[args.indexOf('--input') + 1] : null);
-const platformArg = args.find(arg => arg.startsWith('--platform='))?.split('=')[1] || 
-                    (args.includes('--platform') ? args[args.indexOf('--platform') + 1] : 'all');
+const inputArg =
+  args.find(arg => arg.startsWith('--input='))?.split('=')[1] ||
+  (args.includes('--input') ? args[args.indexOf('--input') + 1] : null);
+const platformArg =
+  args.find(arg => arg.startsWith('--platform='))?.split('=')[1] ||
+  (args.includes('--platform') ? args[args.indexOf('--platform') + 1] : 'all');
 
 const inputDir = inputArg || path.join(process.cwd(), 'marketing-content');
-const latestDir = fs.readdirSync(inputDir)
+const latestDir = fs
+  .readdirSync(inputDir)
   .filter(f => fs.statSync(path.join(inputDir, f)).isDirectory())
   .sort()
   .reverse()[0];
 
 if (!latestDir) {
-  console.error('❌ No content directory found. Run generate-marketing-content.js first.');
+  console.error(
+    '❌ No content directory found. Run generate-marketing-content.js first.'
+  );
   process.exit(1);
 }
 
@@ -232,8 +266,10 @@ if (platformArg === 'all' || platformArg === 'twitter') {
 }
 
 if (platformArg === 'all' || platformArg === 'newsletter') {
-  generateNewsletterSchedule(contentDir, path.join(outputDir, 'newsletter-schedule.json'));
+  generateNewsletterSchedule(
+    contentDir,
+    path.join(outputDir, 'newsletter-schedule.json')
+  );
 }
 
 console.log(`\n✅ All schedules generated in: ${outputDir}`);
-

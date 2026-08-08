@@ -12,7 +12,9 @@ import { validateDisplayDateMatchesSlug } from '../lib/brief-date';
 let failures = 0;
 
 function check(name: string, ok: boolean, detail?: string) {
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : detail ? `\n      ${detail}` : ''}`);
+  console.log(
+    `${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : detail ? `\n      ${detail}` : ''}`
+  );
   if (!ok) failures++;
 }
 
@@ -55,44 +57,74 @@ check('section marker rejected', !isDisplayDateLine('## ▸ OVERNIGHT'));
 
 console.log('── parseDailyBrief: new format ──');
 const newParsed = parseDailyBrief(NEW_FORMAT_HEADER, '2026-07-07');
-check('displayDate', newParsed.displayDate === 'Tuesday, July 7, 2026', `got "${newParsed.displayDate}"`);
-check('dailyTitle', newParsed.dailyTitle === '4,800 Out, 6,000 In', `got "${newParsed.dailyTitle}"`);
+check(
+  'displayDate',
+  newParsed.displayDate === 'Tuesday, July 7, 2026',
+  `got "${newParsed.displayDate}"`
+);
+check(
+  'dailyTitle',
+  newParsed.dailyTitle === '4,800 Out, 6,000 In',
+  `got "${newParsed.dailyTitle}"`
+);
 check(
   'displayDate matches slug',
-  validateDisplayDateMatchesSlug(newParsed.displayDate, '2026-07-07').ok,
+  validateDisplayDateMatchesSlug(newParsed.displayDate, '2026-07-07').ok
 );
 
 console.log('── parseDailyBrief: old format ──');
 const oldParsed = parseDailyBrief(OLD_FORMAT_HEADER, '2026-06-01');
-check('displayDate', oldParsed.displayDate === 'Monday, June 1, 2026', `got "${oldParsed.displayDate}"`);
-check('dailyTitle', oldParsed.dailyTitle === "Dell's $60 Billion Question", `got "${oldParsed.dailyTitle}"`);
+check(
+  'displayDate',
+  oldParsed.displayDate === 'Monday, June 1, 2026',
+  `got "${oldParsed.displayDate}"`
+);
+check(
+  'dailyTitle',
+  oldParsed.dailyTitle === "Dell's $60 Billion Question",
+  `got "${oldParsed.dailyTitle}"`
+);
 check(
   'displayDate matches slug',
-  validateDisplayDateMatchesSlug(oldParsed.displayDate, '2026-06-01').ok,
+  validateDisplayDateMatchesSlug(oldParsed.displayDate, '2026-06-01').ok
 );
 
 console.log('── live brief on disk (2026-07-07.md) ──');
-const livePath = path.join(process.cwd(), 'content/daily-updates/2026-07-07.md');
+const livePath = path.join(
+  process.cwd(),
+  'content/daily-updates/2026-07-07.md'
+);
 if (fs.existsSync(livePath)) {
   const live = fs.readFileSync(livePath, 'utf8');
   const liveParsed = parseDailyBrief(live, '2026-07-07');
-  check('live displayDate', liveParsed.displayDate === 'Tuesday, July 7, 2026', `got "${liveParsed.displayDate}"`);
-  check('live dailyTitle', liveParsed.dailyTitle === '4,800 Out, 6,000 In', `got "${liveParsed.dailyTitle}"`);
+  check(
+    'live displayDate',
+    liveParsed.displayDate === 'Tuesday, July 7, 2026',
+    `got "${liveParsed.displayDate}"`
+  );
+  check(
+    'live dailyTitle',
+    liveParsed.dailyTitle === '4,800 Out, 6,000 In',
+    `got "${liveParsed.dailyTitle}"`
+  );
   check(
     'live slug validation',
-    validateDisplayDateMatchesSlug(liveParsed.displayDate, '2026-07-07').ok,
+    validateDisplayDateMatchesSlug(liveParsed.displayDate, '2026-07-07').ok
   );
 } else {
   console.log('SKIP  live 2026-07-07.md not found');
 }
 
 console.log('── bad header would fail validation ──');
-const badParsed = parseDailyBrief('## 4,800 Out, 6,000 In\n\n---\n', '2026-07-07');
+const badParsed = parseDailyBrief(
+  '## 4,800 Out, 6,000 In\n\n---\n',
+  '2026-07-07'
+);
 // Parser falls back to slug-derived date when no date line found
 check(
   'fallback displayDate from slug when header missing',
   badParsed.displayDate === 'Tuesday, July 7, 2026',
-  `got "${badParsed.displayDate}"`,
+  `got "${badParsed.displayDate}"`
 );
 
 const WEEKLY_FORMAT_HEADER = `# MARKETS, MEDITATIONS & MENTAL MODELS: THE WEEKLY
@@ -115,34 +147,39 @@ const weeklyParsed = parseDailyBrief(WEEKLY_FORMAT_HEADER, '2026-W29');
 check(
   'weekly displayDate keeps Week of…',
   weeklyParsed.displayDate === 'Week of July 12 to 18, 2026',
-  `got "${weeklyParsed.displayDate}"`,
+  `got "${weeklyParsed.displayDate}"`
 );
 check(
   'weekly dailyTitle',
   weeklyParsed.dailyTitle === 'The Duration Discount',
-  `got "${weeklyParsed.dailyTitle}"`,
+  `got "${weeklyParsed.dailyTitle}"`
 );
 
 console.log('── live weekly on disk (2026-W28) ──');
 const weeklyLivePath = path.join(
   process.cwd(),
-  'content/daily-updates/weekly/2026-W28-jul-05-11.md',
+  'content/daily-updates/weekly/2026-W28-jul-05-11.md'
 );
 if (fs.existsSync(weeklyLivePath)) {
-  const weeklyLive = parseDailyBrief(fs.readFileSync(weeklyLivePath, 'utf8'), '2026-W28');
+  const weeklyLive = parseDailyBrief(
+    fs.readFileSync(weeklyLivePath, 'utf8'),
+    '2026-W28'
+  );
   check(
     'live weekly displayDate',
     weeklyLive.displayDate === 'Week of July 5 to 11, 2026',
-    `got "${weeklyLive.displayDate}"`,
+    `got "${weeklyLive.displayDate}"`
   );
   check(
     'live weekly dailyTitle',
     weeklyLive.dailyTitle === 'The Rent Moved Downstairs',
-    `got "${weeklyLive.dailyTitle}"`,
+    `got "${weeklyLive.dailyTitle}"`
   );
 } else {
   console.log('SKIP  live 2026-W28 weekly md not found');
 }
 
-console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`);
+console.log(
+  `\n${failures === 0 ? '✅ ALL CHECKS PASS' : `❌ ${failures} FAILURE(S)`}`
+);
 process.exit(failures === 0 ? 0 : 1);

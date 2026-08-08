@@ -31,7 +31,7 @@ export async function GET() {
     const recentDates = dates.slice(0, 30);
 
     const items = recentDates
-      .map((date) => {
+      .map(date => {
         const brief = getBriefByDate(date);
         if (!brief) return null;
 

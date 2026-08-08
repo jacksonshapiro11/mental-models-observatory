@@ -35,7 +35,8 @@ function getConfig() {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error('RESEND_API_KEY not set');
 
-  const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'jackson@cosmictrex.com';
+  const fromAddress =
+    process.env.EMAIL_FROM_ADDRESS || 'jackson@cosmictrex.com';
   const fromName = process.env.EMAIL_FROM_NAME || 'Cosmic Trex';
 
   return { apiKey, from: `${fromName} <${fromAddress}>` };
@@ -45,7 +46,9 @@ function getConfig() {
  * Send a single email via Resend API.
  * No SDK dependency — just fetch.
  */
-export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+export async function sendEmail(
+  input: SendEmailInput
+): Promise<SendEmailResult> {
   const { apiKey, from } = getConfig();
 
   try {
@@ -60,14 +63,20 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
         to: Array.isArray(input.to) ? input.to : [input.to],
         subject: input.subject,
         html: input.html,
-        reply_to: input.replyTo || process.env.EMAIL_FROM_ADDRESS || 'jackson@cosmictrex.com',
+        reply_to:
+          input.replyTo ||
+          process.env.EMAIL_FROM_ADDRESS ||
+          'jackson@cosmictrex.com',
         tags: input.tags,
       }),
     });
 
     if (!res.ok) {
       const text = await res.text();
-      return { success: false, error: `Resend API error: ${res.status} ${text}` };
+      return {
+        success: false,
+        error: `Resend API error: ${res.status} ${text}`,
+      };
     }
 
     const data = (await res.json()) as { id: string };
@@ -112,7 +121,7 @@ export async function sendBatch(
     }
 
     // Rate limit: ~1 email/second (Resend free tier = 2/sec)
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
   return result;

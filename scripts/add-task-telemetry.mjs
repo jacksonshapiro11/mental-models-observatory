@@ -20,9 +20,14 @@ import path from 'path';
 const dir = process.argv[2];
 const write = process.argv.includes('--write');
 const STAMP = process.argv.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a)) ?? 'manual';
-if (!dir) { console.error('usage: add-task-telemetry.mjs <ScheduledDir> [--write] [YYYY-MM-DD]'); process.exit(2); }
+if (!dir) {
+  console.error(
+    'usage: add-task-telemetry.mjs <ScheduledDir> [--write] [YYYY-MM-DD]'
+  );
+  process.exit(2);
+}
 
-const canary = (task) => `
+const canary = task => `
 ## STEP 0 — CANARY (your very first action, before reading any file)
 
 **BRIEF_DATE** = the brief this run feeds. If this task body already computes a BRIEF_DATE, use that.
@@ -40,7 +45,7 @@ If that append fails, or you cannot read the workspace: email cosmictrex11@gmail
 work whose output cannot persist. Email does not depend on the workspace mount; that is the point.
 `;
 
-const status = (task) => `
+const status = task => `
 ## FINAL STEP — STATUS LINE (never exit without one)
 
 Append one line to \`daily-briefs/{BRIEF_DATE}-pipeline-status.md\`:
@@ -54,30 +59,31 @@ Critic and evening super-brief: the task ran, wrote nothing, said nothing, and n
 5 AM. SKIPPED is a valid, useful outcome. Silence is not.
 `;
 
-
 // Dead `skills/*/SKILL.md` mirror (archived 2026-06-12) -> live system/ files.
 // 11 bodies, 28 references, incl. all six intel sweeps loading their "canonical standards"
 // from files deleted seven weeks ago. Audited 2026-07-31.
 const REMAP = {
-  'skills/operating-system/SKILL.md':       'system/Operating_System.md` + `system/Operating_Doctrine.md',
-  'skills/source-network/SKILL.md':         'system/SOURCE_NETWORK.md',
+  'skills/operating-system/SKILL.md':
+    'system/Operating_System.md` + `system/Operating_Doctrine.md',
+  'skills/source-network/SKILL.md': 'system/SOURCE_NETWORK.md',
   'skills/intelligence-processor/SKILL.md': 'system/Intelligence_Processor.md',
-  'skills/morning-updater/SKILL.md':        'system/Morning_Updater.md',
-  'skills/portfolio-monitor/SKILL.md':      'system/portfolio-monitor/SKILL.md',
-  'skills/pipeline-controller/SKILL.md':    'system/Pipeline_Controller.md',
-  'skills/brief-email/SKILL.md':            'system/Brief_Email.md',
-  'skills/brief-editor/SKILL.md':           'system/Brief_Editor.md',
-  'skills/brief-critic/SKILL.md':           'system/Brief_Critic.md',
-  'skills/accountability-cycle/SKILL.md':   'system/Accountability_Cycle.md',
-  'skills/brief-quality-gate/SKILL.md':     'system/Novelty_Audit.md',
+  'skills/morning-updater/SKILL.md': 'system/Morning_Updater.md',
+  'skills/portfolio-monitor/SKILL.md': 'system/portfolio-monitor/SKILL.md',
+  'skills/pipeline-controller/SKILL.md': 'system/Pipeline_Controller.md',
+  'skills/brief-email/SKILL.md': 'system/Brief_Email.md',
+  'skills/brief-editor/SKILL.md': 'system/Brief_Editor.md',
+  'skills/brief-critic/SKILL.md': 'system/Brief_Critic.md',
+  'skills/accountability-cycle/SKILL.md': 'system/Accountability_Cycle.md',
+  'skills/brief-quality-gate/SKILL.md': 'system/Novelty_Audit.md',
   // Stale doc names that were never in the skills/ mirror (audited 2026-07-31):
-  'system/Worldview.md':                    'system/Current_Worldview_v5.md',
+  'system/Worldview.md': 'system/Current_Worldview_v5.md',
 };
 
 const HAS_CANARY = /canary/i;
 const HAS_STATUS = /SUCCESS\|FAIL|pipeline-status/;
 
-let changed = 0, skipped = 0;
+let changed = 0,
+  skipped = 0;
 for (const task of fs.readdirSync(dir).sort()) {
   const f = path.join(dir, task, 'SKILL.md');
   if (!fs.existsSync(f)) continue;
@@ -88,22 +94,34 @@ for (const task of fs.readdirSync(dir).sort()) {
   let out = body;
   for (const [dead, live] of Object.entries(REMAP)) {
     const n = out.split(dead).length - 1;
-    if (n) { deadRefs += n; out = out.split(dead).join(live); }
+    if (n) {
+      deadRefs += n;
+      out = out.split(dead).join(live);
+    }
   }
-  if (!needC && !needS && !deadRefs) { skipped++; console.log(`  skip  ${task} (already clean)`); continue; }
+  if (!needC && !needS && !deadRefs) {
+    skipped++;
+    console.log(`  skip  ${task} (already clean)`);
+    continue;
+  }
   if (needC) {
     // insert immediately after frontmatter so the canary is genuinely first
     const m = out.match(/^---\n[\s\S]*?\n---\n/);
-    out = m ? out.slice(0, m[0].length) + canary(task) + out.slice(m[0].length)
-            : canary(task) + out;
+    out = m
+      ? out.slice(0, m[0].length) + canary(task) + out.slice(m[0].length)
+      : canary(task) + out;
   }
   if (needS) out = out.trimEnd() + '\n' + status(task);
 
-  console.log(`  ${write ? 'WRITE' : 'would'} ${task}  ${needC ? '+canary' : ''} ${needS ? '+status' : ''} ${deadRefs ? `+${deadRefs} dead-path` : ''}`);
+  console.log(
+    `  ${write ? 'WRITE' : 'would'} ${task}  ${needC ? '+canary' : ''} ${needS ? '+status' : ''} ${deadRefs ? `+${deadRefs} dead-path` : ''}`
+  );
   if (write) {
     fs.copyFileSync(f, `${f}.bak-telemetry-${STAMP}`);
     fs.writeFileSync(f, out, 'utf8');
   }
   changed++;
 }
-console.log(`\n${write ? 'updated' : 'would update'}: ${changed} · already complete: ${skipped}`);
+console.log(
+  `\n${write ? 'updated' : 'would update'}: ${changed} · already complete: ${skipped}`
+);

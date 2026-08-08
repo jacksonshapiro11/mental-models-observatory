@@ -16,14 +16,14 @@ function main() {
   assert.equal(
     weeklyIsCurrent(w29Sunday, '2026-07-19', today),
     true,
-    'same-day daily must NOT suppress The Weekly',
+    'same-day daily must NOT suppress The Weekly'
   );
 
   // Healthy: Monday daily ends the zoom-out window
   assert.equal(
     weeklyIsCurrent(w29Sunday, '2026-07-20', '2026-07-20'),
     false,
-    'newer daily must end weekly front-page window',
+    'newer daily must end weekly front-page window'
   );
 
   // Healthy: no daily yet → weekly wins once Sunday arrives
@@ -37,7 +37,7 @@ function main() {
   assert.equal(
     weeklyIsCurrent('2026-07-12', '2026-07-19', today),
     false,
-    'stale prior weekly must yield once a later daily exists',
+    'stale prior weekly must yield once a later daily exists'
   );
 
   console.log('weekly-window-regression: PASS');

@@ -13,7 +13,9 @@ import { formatDisplayDateFromSlug } from '../lib/brief-date.ts';
 function main() {
   const [, , dateSlug, scriptPath] = process.argv;
   if (!dateSlug || !scriptPath) {
-    console.error('Usage: audio-intro-gate.ts <YYYY-MM-DD> <script-file|- > [displayDate]');
+    console.error(
+      'Usage: audio-intro-gate.ts <YYYY-MM-DD> <script-file|- > [displayDate]'
+    );
     process.exit(2);
   }
 

@@ -43,31 +43,33 @@ let insertedCount = 0;
 
 for (const model of models) {
   console.log(`📌 Inserting ${model.code}: ${model.name}`);
-  
+
   // Find the domain section
   const domainRegex = new RegExp(
     `domain: "${model.domain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[\\s\\S]*?(?=\\n  },\\n  {\\n    "id"|\\n];)`,
     'g'
   );
-  
+
   // Find all models in this domain
   const domainMatches = [...dataContent.matchAll(domainRegex)];
-  
+
   if (domainMatches.length === 0) {
     console.log(`   ❌ Could not find domain: ${model.domain}`);
     continue;
   }
-  
+
   // Get the last match (last model in this domain)
   const lastMatch = domainMatches[domainMatches.length - 1];
   const insertPosition = lastMatch.index + lastMatch[0].length;
-  
+
   // Insert the new model
   const formattedModel = formatModel(model);
-  dataContent = dataContent.slice(0, insertPosition) + 
-                ',\n' + formattedModel + 
-                dataContent.slice(insertPosition);
-  
+  dataContent =
+    dataContent.slice(0, insertPosition) +
+    ',\n' +
+    formattedModel +
+    dataContent.slice(insertPosition);
+
   insertedCount++;
   console.log(`   ✅ Inserted successfully`);
 }
@@ -75,7 +77,7 @@ for (const model of models) {
 // Write the updated content back
 fs.writeFileSync(dataPath, dataContent);
 
-console.log(`\n✅ Successfully inserted ${insertedCount} models into lib/readwise-data.ts\n`);
+console.log(
+  `\n✅ Successfully inserted ${insertedCount} models into lib/readwise-data.ts\n`
+);
 console.log('🔄 Next step: Verify the file compiles and test the website\n');
-
-

@@ -28,7 +28,11 @@ function getRedis(): Redis {
   });
 }
 
-function verifySvixSignature(payload: string, headers: Headers, secret: string): boolean {
+function verifySvixSignature(
+  payload: string,
+  headers: Headers,
+  secret: string
+): boolean {
   const msgId = headers.get('svix-id');
   const timestamp = headers.get('svix-timestamp');
   const signature = headers.get('svix-signature');
@@ -36,7 +40,9 @@ function verifySvixSignature(payload: string, headers: Headers, secret: string):
 
   const signed = `${msgId}.${timestamp}.${payload}`;
   const secretBytes = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
-  const expected = createHmac('sha256', secretBytes).update(signed).digest('base64');
+  const expected = createHmac('sha256', secretBytes)
+    .update(signed)
+    .digest('base64');
 
   for (const part of signature.split(' ')) {
     const [, sig] = part.split(',');
@@ -56,7 +62,10 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
 
-  if (webhookSecret && !verifySvixSignature(rawBody, req.headers, webhookSecret)) {
+  if (
+    webhookSecret &&
+    !verifySvixSignature(rawBody, req.headers, webhookSecret)
+  ) {
     console.warn('[webhooks/resend] Invalid signature');
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
@@ -68,7 +77,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const dateTag = event.data?.tags?.find((t) => t.name === 'date')?.value;
+  const dateTag = event.data?.tags?.find(t => t.name === 'date')?.value;
   const dateKey = dateTag || todayET();
   const redisKey = `metrics:email:${dateKey}`;
 

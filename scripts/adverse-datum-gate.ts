@@ -60,7 +60,10 @@ export function stripHtmlComments(md: string): string {
   let i = 0;
   for (;;) {
     const start = md.indexOf('<!--', i);
-    if (start === -1) { out += md.slice(i); break; }
+    if (start === -1) {
+      out += md.slice(i);
+      break;
+    }
     out += md.slice(i, start);
     const end = md.indexOf('-->', start);
     const body = end === -1 ? md.slice(start) : md.slice(start, end + 3);
@@ -84,7 +87,8 @@ export function stripHtmlComments(md: string): string {
  * and there is no adverse datum for it to withhold. The trigger must be the CLAIM SHAPE — a state
  * change asserted about an entity or an aggregate — never the verb alone.
  */
-const THESIS_RE = /\b(?:has stopped (?:being|carrying|measuring|working|tracking)|stopped being \w+ and started being|is no longer|are no longer|does not measure|do not measure|the economy lost|has become the|is now the only)\b/i;
+const THESIS_RE =
+  /\b(?:has stopped (?:being|carrying|measuring|working|tracking)|stopped being \w+ and started being|is no longer|are no longer|does not measure|do not measure|the economy lost|has become the|is now the only)\b/i;
 
 /**
  * THE ESCAPE HATCH. Explicit counter-disclosure. Deliberately NARROW: these are phrases a writer
@@ -95,7 +99,8 @@ const THESIS_RE = /\b(?:has stopped (?:being|carrying|measuring|working|tracking
  * is a historical aside, not a concession — so "on the other side" is excluded too. A marker that
  * a supporting clause can satisfy is not a counter-disclosure requirement; it is a loophole.
  */
-const COUNTER_RE = /\b(?:the counter (?:is|to this|here)|counter-case|the countervailing|cuts the other way|cuts against (?:this|it|the thesis)|the bear case|what would falsify|the falsifier|the objection|the case against|the risk to this|argues the other way|to be fair|the strongest figure against)\b/i;
+const COUNTER_RE =
+  /\b(?:the counter (?:is|to this|here)|counter-case|the countervailing|cuts the other way|cuts against (?:this|it|the thesis)|the bear case|what would falsify|the falsifier|the objection|the case against|the risk to this|argues the other way|to be fair|the strongest figure against)\b/i;
 
 /**
  * SCOPE. The mandate names three generators — Markets & Macro, Companies & Crypto, AI & Tech —
@@ -106,16 +111,20 @@ const COUNTER_RE = /\b(?:the counter (?:is|to this|here)|counter-case|the counte
  * three-million-year-old ocean current. A disclosure rule aimed at argument should not be pointed
  * at reportage.
  */
-const IN_SCOPE_SECTION_RE = /Markets\s*&\s*Macro|Companies\s*&\s*Crypto|AI\s*&\s*Tech|AI&T|Geopolitics|THE TAKE|The Take/i;
+const IN_SCOPE_SECTION_RE =
+  /Markets\s*&\s*Macro|Companies\s*&\s*Crypto|AI\s*&\s*Tech|AI&T|Geopolitics|THE TAKE|The Take/i;
 
 /** Bullets: a markdown list item that opens with a bold hook, inside an in-scope section.
  *  A fragment with no headings at all (a single bullet handed to the gate, as in the selftest and
  *  in the Editor's per-bullet use) is treated as in scope — the caller has already chosen it. */
 export function bullets(body: string): string[] {
   const clean = stripHtmlComments(body);
-  const split = (s: string) => s.split(/\n(?=\s*[-*]\s+\*\*)/).filter((b) => /^\s*[-*]\s+\*\*/.test(b));
+  const split = (s: string) =>
+    s.split(/\n(?=\s*[-*]\s+\*\*)/).filter(b => /^\s*[-*]\s+\*\*/.test(b));
   const lines = clean.split('\n');
-  const headingIdx = lines.map((l, i) => (/^#{1,6}\s/.test(l) ? i : -1)).filter((i) => i >= 0);
+  const headingIdx = lines
+    .map((l, i) => (/^#{1,6}\s/.test(l) ? i : -1))
+    .filter(i => i >= 0);
   if (!headingIdx.length) return split(clean);
 
   const out: string[] = [];
@@ -134,7 +143,7 @@ export function counterDisclosures(bullet: string): string[] {
   let m: RegExpExecArray | null;
   const re = new RegExp(COUNTER_RE.source, 'gi');
   while ((m = re.exec(bullet)) !== null) {
-    if (m.index === re.lastIndex) re.lastIndex++;   // zero-width guard (IMP-136's class)
+    if (m.index === re.lastIndex) re.lastIndex++; // zero-width guard (IMP-136's class)
     out.push(m[0]);
   }
   return out;
@@ -143,23 +152,27 @@ export function counterDisclosures(bullet: string): string[] {
 /** Every numeric token in a bullet, normalised for comparison against a recorded counterDatum. */
 function numerals(text: string): Set<string> {
   const out = new Set<string>();
-  for (const m of text.matchAll(/\d[\d,.]*/g)) out.add(m[0].replace(/[,]/g, '').replace(/\.0+$/, ''));
+  for (const m of text.matchAll(/\d[\d,.]*/g))
+    out.add(m[0].replace(/[,]/g, '').replace(/\.0+$/, ''));
   return out;
 }
 
-export interface TruthCounter { bullet?: string; counterDatum?: string }
+export interface TruthCounter {
+  bullet?: string;
+  counterDatum?: string;
+}
 
 export function adverseDatum(
   body: string,
-  truthClaims?: Record<string, TruthCounter> | undefined,
+  truthClaims?: Record<string, TruthCounter> | undefined
 ): AdverseFinding[] {
   const findings: AdverseFinding[] = [];
   const bs = bullets(body);
 
   for (const bullet of bs) {
     const t = THESIS_RE.exec(bullet);
-    if (!t) continue;                                   // no directional thesis, nothing to counter
-    if (counterDisclosures(bullet).length) continue;    // the bullet already prints its own counter
+    if (!t) continue; // no directional thesis, nothing to counter
+    if (counterDisclosures(bullet).length) continue; // the bullet already prints its own counter
 
     findings.push({
       check: 'adverse-datum',
@@ -185,11 +198,13 @@ export function adverseDatum(
       const wanted = numerals(cd);
       if (!wanted.size) continue;
       const target = row.bullet
-        ? bs.find((b) => b.toLowerCase().includes(row.bullet!.toLowerCase().slice(0, 40)))
+        ? bs.find(b =>
+            b.toLowerCase().includes(row.bullet!.toLowerCase().slice(0, 40))
+          )
         : undefined;
       const haystack = target ?? stripHtmlComments(body);
       const printed = numerals(haystack);
-      const missing = [...wanted].filter((n) => !printed.has(n));
+      const missing = [...wanted].filter(n => !printed.has(n));
       if (missing.length === wanted.size) {
         findings.push({
           check: 'adverse-datum-contract',
@@ -211,14 +226,18 @@ export function adverseDatum(
 // ---------------------------------------------------------------------------
 function sectionBlock(body: string, heading: RegExp): string | null {
   const lines = stripHtmlComments(body).split('\n');
-  const start = lines.findIndex((l) => /^#{1,6}\s/.test(l) && heading.test(l));
+  const start = lines.findIndex(l => /^#{1,6}\s/.test(l) && heading.test(l));
   if (start === -1) return null;
   const rest = lines.slice(start + 1);
-  const end = rest.findIndex((l) => /^#{1,6}\s/.test(l));
+  const end = rest.findIndex(l => /^#{1,6}\s/.test(l));
   return (end === -1 ? rest : rest.slice(0, end)).join('\n');
 }
 
-function pickBullet(body: string, heading: RegExp, pick: (b: string) => boolean): string | null {
+function pickBullet(
+  body: string,
+  heading: RegExp,
+  pick: (b: string) => boolean
+): string | null {
   const block = sectionBlock(body, heading);
   if (block === null) return null;
   return bullets(block).find(pick) ?? null;
@@ -227,100 +246,194 @@ function pickBullet(body: string, heading: RegExp, pick: (b: string) => boolean)
 function selftest(): number {
   const root = process.cwd();
   let fails = 0;
-  const t = (ok: boolean, label: string) => { console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`); if (!ok) fails++; };
+  const t = (ok: boolean, label: string) => {
+    console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`);
+    if (!ok) fails++;
+  };
 
   const v2Path = path.join(root, 'daily-briefs/2026-08-08-v2.md');
-  if (!fs.existsSync(v2Path)) { console.error(`SELFTEST FAIL — missing fixture: ${v2Path}`); return 1; }
+  if (!fs.existsSync(v2Path)) {
+    console.error(`SELFTEST FAIL — missing fixture: ${v2Path}`);
+    return 1;
+  }
   const v2 = fs.readFileSync(v2Path, 'utf8');
 
   // ── FIRE, on the two bullets the Critic's acceptance gate names, off the real file. ──
-  const mm2 = pickBullet(v2, /Markets\s*&\s*Macro/i, (b) => /87 percent/.test(b) && /Trade Desk/.test(b));
-  t(!!mm2, '[fixture] the real M&M-2 "87 percent beat" bullet was located in 2026-08-08-v2.md');
-  t(mm2 ? adverseDatum(mm2).length === 1 : false,
-    'FIRES on the REAL M&M-2 — thesis "has stopped carrying", no counterweight (TTD missed Q2 revenue)');
+  const mm2 = pickBullet(
+    v2,
+    /Markets\s*&\s*Macro/i,
+    b => /87 percent/.test(b) && /Trade Desk/.test(b)
+  );
+  t(
+    !!mm2,
+    '[fixture] the real M&M-2 "87 percent beat" bullet was located in 2026-08-08-v2.md'
+  );
+  t(
+    mm2 ? adverseDatum(mm2).length === 1 : false,
+    'FIRES on the REAL M&M-2 — thesis "has stopped carrying", no counterweight (TTD missed Q2 revenue)'
+  );
 
-  const ait2 = pickBullet(v2, /AI\s*&\s*Tech/i, (b) => /Alphabet/.test(b) && /free cash flow/i.test(b));
-  t(!!ait2, '[fixture] the real AI&T-2 Alphabet free-cash-flow bullet was located');
-  t(ait2 ? adverseDatum(ait2).length === 1 : false,
-    'FIRES on the REAL AI&T-2 — "has stopped being capex and started being leverage", no TTM FCF or cash printed');
+  const ait2 = pickBullet(
+    v2,
+    /AI\s*&\s*Tech/i,
+    b => /Alphabet/.test(b) && /free cash flow/i.test(b)
+  );
+  t(
+    !!ait2,
+    '[fixture] the real AI&T-2 Alphabet free-cash-flow bullet was located'
+  );
+  t(
+    ait2 ? adverseDatum(ait2).length === 1 : false,
+    'FIRES on the REAL AI&T-2 — "has stopped being capex and started being leverage", no TTM FCF or cash printed'
+  );
 
   // The Critic named a third receipt; it is not in the acceptance gate, but it must not escape.
-  const mm1 = pickBullet(v2, /Markets\s*&\s*Macro/i, (b) => /Nonfarm payrolls/.test(b));
-  t(mm1 ? adverseDatum(mm1).length === 1 : false,
-    'FIRES on the REAL M&M-1 — "the economy lost 920,000 jobs" with no private/government composition');
-  t(mm1 ? counterDisclosures(mm1).length === 0 : false,
-    '…and for the RIGHT reason: "stood on the other side of" is a historical aside, not a counter-disclosure');
+  const mm1 = pickBullet(v2, /Markets\s*&\s*Macro/i, b =>
+    /Nonfarm payrolls/.test(b)
+  );
+  t(
+    mm1 ? adverseDatum(mm1).length === 1 : false,
+    'FIRES on the REAL M&M-1 — "the economy lost 920,000 jobs" with no private/government composition'
+  );
+  t(
+    mm1 ? counterDisclosures(mm1).length === 0 : false,
+    '…and for the RIGHT reason: "stood on the other side of" is a historical aside, not a counter-disclosure'
+  );
 
   // ── SILENT, on the two the Critic says already do it right. ──
-  const cc2 = pickBullet(v2, /Companies\s*&\s*Crypto/i, (b) => /Grab/.test(b) && /lending/.test(b));
+  const cc2 = pickBullet(
+    v2,
+    /Companies\s*&\s*Crypto/i,
+    b => /Grab/.test(b) && /lending/.test(b)
+  );
   t(!!cc2, '[fixture] the real C&C-2 Grab lending bullet was located');
-  t(cc2 ? adverseDatum(cc2).length === 0 : false, 'SILENT on the real C&C-2 (Grab), which prints its own counter');
-  t(cc2 ? counterDisclosures(cc2).length > 0 : false,
-    '…and the escape hatch is what does it: "The counter is the same fact read forward" is detected');
+  t(
+    cc2 ? adverseDatum(cc2).length === 0 : false,
+    'SILENT on the real C&C-2 (Grab), which prints its own counter'
+  );
+  t(
+    cc2 ? counterDisclosures(cc2).length > 0 : false,
+    '…and the escape hatch is what does it: "The counter is the same fact read forward" is detected'
+  );
 
   const signal = sectionBlock(v2, /The Signal/i);
-  t(signal ? adverseDatum(signal).length === 0 : false,
-    'SILENT on the real Signal-1, which prints exposure on both sides');
+  t(
+    signal ? adverseDatum(signal).length === 0 : false,
+    'SILENT on the real Signal-1, which prints exposure on both sides'
+  );
 
   // ── WHOLE-BRIEF FIRE RATE. A gate that fires on a third of the brief every night gets ignored.
   const all = adverseDatum(v2);
-  t(all.length === 3, `whole-brief fire rate on the real 08-08 v2 is exactly the Critic's 3 receipts (got ${all.length})`);
-  t(bullets(v2).length >= 7, `[fixture] the gate scanned every IN-SCOPE bullet: ${bullets(v2).length} of 11 (Wild Card excluded by design)`);
+  t(
+    all.length === 3,
+    `whole-brief fire rate on the real 08-08 v2 is exactly the Critic's 3 receipts (got ${all.length})`
+  );
+  t(
+    bullets(v2).length >= 7,
+    `[fixture] the gate scanned every IN-SCOPE bullet: ${bullets(v2).length} of 11 (Wild Card excluded by design)`
+  );
   const wild = sectionBlock(v2, /Wild Card/i);
-  t(wild ? adverseDatum(`## The Wild Card\n${wild}`).length === 0 : false,
-    'SILENT on the whole real Wild Card section — "is no longer" about a 3.4-million-year-old ocean current is reportage, not a withheld figure');
+  t(
+    wild ? adverseDatum(`## The Wild Card\n${wild}`).length === 0 : false,
+    'SILENT on the whole real Wild Card section — "is no longer" about a 3.4-million-year-old ocean current is reportage, not a withheld figure'
+  );
 
   // ── THE MINIMAL PAIR: identical bullets differing ONLY by the disclosed counter.
-  const bare = '- **A hook.** The build has stopped being capex and started being leverage, and the guide went up again.';
-  const withCounter = bare + ' The counter is that trailing free cash flow is still positive at $53 billion.';
-  t(adverseDatum(bare).length === 1, 'FIRES on the minimal pair without a counter');
-  t(adverseDatum(withCounter).length === 0, 'SILENT on the same sentence once the counter is printed (the fix)');
+  const bare =
+    '- **A hook.** The build has stopped being capex and started being leverage, and the guide went up again.';
+  const withCounter =
+    bare +
+    ' The counter is that trailing free cash flow is still positive at $53 billion.';
+  t(
+    adverseDatum(bare).length === 1,
+    'FIRES on the minimal pair without a counter'
+  );
+  t(
+    adverseDatum(withCounter).length === 0,
+    'SILENT on the same sentence once the counter is printed (the fix)'
+  );
 
   // ── THE CONTRACT LEG, both directions, and its graceful degradation (ESC-013).
   //     The minimal pair here differs ONLY in whether the RECORDED figure reaches the page: both
   //     bullets satisfy the textual leg (each prints a counter), so only the contract leg can move.
-  const truthRow = { 'ait-2': { bullet: 'A hook.', counterDatum: 'TTM free cash flow +$53 billion' } };
+  const truthRow = {
+    'ait-2': {
+      bullet: 'A hook.',
+      counterDatum: 'TTM free cash flow +$53 billion',
+    },
+  };
   const counterButNotTheFigure =
     '- **A hook.** The build has stopped being capex and started being leverage. The counter is that the balance sheet is still unusually strong.';
   const contractFinds = adverseDatum(counterButNotTheFigure, truthRow);
-  t(contractFinds.length === 1 && contractFinds[0]!.check === 'adverse-datum-contract',
-    'CONTRACT: a recorded counterDatum ($53B) that never reaches the page FAILS, even though the bullet prints A counter');
-  const printedBullet = '- **A hook.** The build has stopped being capex. The counter is trailing free cash flow of $53 billion.';
-  t(adverseDatum(printedBullet, truthRow).length === 0,
-    'CONTRACT: …and passes once that same recorded figure is printed');
-  t(adverseDatum(counterButNotTheFigure, undefined).length === 0,
-    'NO ORPHAN: with NO truth file the same bullet is CLEAN — the contract is additive, never a blocker (ESC-013)');
-  t(adverseDatum(bare, {}).length === 1,
-    'NO ORPHAN: an EMPTY truth object does not disable the textual leg');
+  t(
+    contractFinds.length === 1 &&
+      contractFinds[0]!.check === 'adverse-datum-contract',
+    'CONTRACT: a recorded counterDatum ($53B) that never reaches the page FAILS, even though the bullet prints A counter'
+  );
+  const printedBullet =
+    '- **A hook.** The build has stopped being capex. The counter is trailing free cash flow of $53 billion.';
+  t(
+    adverseDatum(printedBullet, truthRow).length === 0,
+    'CONTRACT: …and passes once that same recorded figure is printed'
+  );
+  t(
+    adverseDatum(counterButNotTheFigure, undefined).length === 0,
+    'NO ORPHAN: with NO truth file the same bullet is CLEAN — the contract is additive, never a blocker (ESC-013)'
+  );
+  t(
+    adverseDatum(bare, {}).length === 1,
+    'NO ORPHAN: an EMPTY truth object does not disable the textual leg'
+  );
 
   const total = 19;
-  console.log(`\nadverse-datum-gate selftest — ${total - fails}/${total} assertions passed`);
-  if (fails) { console.error('✗ SELFTEST FAILED'); return 1; }
-  console.log('✓ adverse-datum-gate verified in BOTH directions on the real 2026-08-08 v2.');
+  console.log(
+    `\nadverse-datum-gate selftest — ${total - fails}/${total} assertions passed`
+  );
+  if (fails) {
+    console.error('✗ SELFTEST FAILED');
+    return 1;
+  }
+  console.log(
+    '✓ adverse-datum-gate verified in BOTH directions on the real 2026-08-08 v2.'
+  );
   return 0;
 }
 
 function main(): number {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
-  const briefPath = args.find((a) => !a.startsWith('--'));
+  const briefPath = args.find(a => !a.startsWith('--'));
   if (!briefPath || !fs.existsSync(briefPath)) {
-    console.error('usage: adverse-datum-gate.ts <brief.md> [--truth <truth.json>]');
+    console.error(
+      'usage: adverse-datum-gate.ts <brief.md> [--truth <truth.json>]'
+    );
     return 2;
   }
   const ti = args.indexOf('--truth');
   let truthClaims: Record<string, TruthCounter> | undefined;
   if (ti > -1 && args[ti + 1] && fs.existsSync(args[ti + 1]!)) {
-    try { truthClaims = JSON.parse(fs.readFileSync(args[ti + 1]!, 'utf8'))?.claims; } catch { truthClaims = undefined; }
+    try {
+      truthClaims = JSON.parse(fs.readFileSync(args[ti + 1]!, 'utf8'))?.claims;
+    } catch {
+      truthClaims = undefined;
+    }
   }
-  const findings = adverseDatum(fs.readFileSync(briefPath, 'utf8'), truthClaims);
+  const findings = adverseDatum(
+    fs.readFileSync(briefPath, 'utf8'),
+    truthClaims
+  );
   console.log(`adverse-datum-gate — ${path.basename(briefPath)}`);
-  for (const f of findings) console.error(`  ✗ [${f.check}] ${f.message}\n      "${f.bullet}"`);
+  for (const f of findings)
+    console.error(`  ✗ [${f.check}] ${f.message}\n      "${f.bullet}"`);
   if (findings.length) {
-    console.error(`\n❌ ADVERSE-DATUM FAIL — ${findings.length} bullet(s) assert a thesis without disclosing what cuts against it.`);
+    console.error(
+      `\n❌ ADVERSE-DATUM FAIL — ${findings.length} bullet(s) assert a thesis without disclosing what cuts against it.`
+    );
     return 1;
   }
-  console.log('\n✅ ADVERSE-DATUM PASS — every directional thesis prints its counterweight.');
+  console.log(
+    '\n✅ ADVERSE-DATUM PASS — every directional thesis prints its counterweight.'
+  );
   return 0;
 }
 

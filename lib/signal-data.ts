@@ -65,7 +65,12 @@ function extractTitle(sectionContent: string): string {
 function extractFirstParagraph(sectionContent: string, minLen = 40): string {
   for (const line of sectionContent.split('\n')) {
     const t = line.trim();
-    if (t.length >= minLen && !t.startsWith('#') && !t.startsWith('---') && !t.startsWith('>')) {
+    if (
+      t.length >= minLen &&
+      !t.startsWith('#') &&
+      !t.startsWith('---') &&
+      !t.startsWith('>')
+    ) {
       return t;
     }
   }
@@ -74,8 +79,18 @@ function extractFirstParagraph(sectionContent: string, minLen = 40): string {
 
 function assignColor(text: string): 'red' | 'green' | 'yellow' {
   const lower = text.toLowerCase();
-  if (/kill|strike|crash|declin|crisis|collapses?|war|attack|bomb|invasion/.test(lower)) return 'red';
-  if (/growth|rally|surge|record|launch|partner|breakthrough|gain|rise|profit/.test(lower)) return 'green';
+  if (
+    /kill|strike|crash|declin|crisis|collapses?|war|attack|bomb|invasion/.test(
+      lower
+    )
+  )
+    return 'red';
+  if (
+    /growth|rally|surge|record|launch|partner|breakthrough|gain|rise|profit/.test(
+      lower
+    )
+  )
+    return 'green';
   return 'yellow';
 }
 
@@ -113,14 +128,25 @@ function extractSignals(markdown: string): SignalItem[] {
       // Collect continuation lines
       for (let j = i + 1; j < lines.length; j++) {
         const nextLine = (lines[j] ?? '').trim();
-        if (nextLine.startsWith('- **') || nextLine.startsWith('## ') || nextLine.startsWith('# ▸')) break;
-        if (nextLine === '' && ((lines[j + 1] ?? '').trim().startsWith('## ') || (lines[j + 1] ?? '').trim().startsWith('- **'))) break;
+        if (
+          nextLine.startsWith('- **') ||
+          nextLine.startsWith('## ') ||
+          nextLine.startsWith('# ▸')
+        )
+          break;
+        if (
+          nextLine === '' &&
+          ((lines[j + 1] ?? '').trim().startsWith('## ') ||
+            (lines[j + 1] ?? '').trim().startsWith('- **'))
+        )
+          break;
         if (nextLine) fullText += ' ' + nextLine;
       }
 
-      const text = fullText.length > 300
-        ? fullText.slice(0, 297).replace(/\s+\S*$/, '') + '…'
-        : fullText;
+      const text =
+        fullText.length > 300
+          ? fullText.slice(0, 297).replace(/\s+\S*$/, '') + '…'
+          : fullText;
 
       signals.push({
         text,
@@ -136,7 +162,11 @@ function extractSignals(markdown: string): SignalItem[] {
 
 // ─── Inner Game extraction ──────────────────────────────────────────────────
 
-function extractInnerGame(markdown: string): { quote: string; attribution: string; action: string } {
+function extractInnerGame(markdown: string): {
+  quote: string;
+  attribution: string;
+  action: string;
+} {
   const content = extractSectionContent(markdown, '# ▸ INNER GAME');
   if (!content) return { quote: '', attribution: '', action: '' };
 
@@ -146,7 +176,9 @@ function extractInnerGame(markdown: string): { quote: string; attribution: strin
   const quoteMatch = content.match(/\*"([^*]+)"\*/);
   if (quoteMatch && quoteMatch[1]) {
     quote = quoteMatch[1].trim();
-    const afterQuote = content.slice(content.indexOf(quoteMatch[0]) + quoteMatch[0].length);
+    const afterQuote = content.slice(
+      content.indexOf(quoteMatch[0]) + quoteMatch[0].length
+    );
     const attrMatch = afterQuote.match(/[—–-]\s*(.+?)(?:\n|$)/);
     if (attrMatch && attrMatch[1]) {
       attribution = attrMatch[1].replace(/\*/g, '').trim();
@@ -159,7 +191,9 @@ function extractInnerGame(markdown: string): { quote: string; attribution: strin
   }
 
   let action = '';
-  const actionMatch = content.match(/\*\*Today's practice:\*\*\s*(.+?)(\n\n|$)/);
+  const actionMatch = content.match(
+    /\*\*Today's practice:\*\*\s*(.+?)(\n\n|$)/
+  );
   if (actionMatch && actionMatch[1]) {
     action = actionMatch[1].trim();
   } else {
@@ -174,10 +208,17 @@ function extractInnerGame(markdown: string): { quote: string; attribution: strin
 
 // ─── Model extraction ───────────────────────────────────────────────────────
 
-function extractModel(markdown: string): { name: string; slug: string; preview: string } {
+function extractModel(markdown: string): {
+  name: string;
+  slug: string;
+  preview: string;
+} {
   const content = extractSectionContent(markdown, '# ▸ THE MODEL');
   const name = extractTitle(content);
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
   const preview = extractFirstParagraph(content);
   return { name, slug, preview: preview || name };
 }
@@ -200,10 +241,13 @@ function generateFromBrief(): SignalData | null {
   const takeContent = extractSectionContent(markdown, '# ▸ THE TAKE');
   const takeTitle = extractTitle(takeContent);
   const takeSubMatch = takeContent.match(/^####\s+(.+)$/m);
-  const takeSubtitle = takeSubMatch && takeSubMatch[1] ? takeSubMatch[1].trim() : '';
+  const takeSubtitle =
+    takeSubMatch && takeSubMatch[1] ? takeSubMatch[1].trim() : '';
   const takePreview = extractFirstParagraph(takeContent);
   let framework = '';
-  const fwMatch = takeContent.match(/\*\*(?:[^*]*)?Framework(?:[^*]*):\*\*\s*(.+)/i);
+  const fwMatch = takeContent.match(
+    /\*\*(?:[^*]*)?Framework(?:[^*]*):\*\*\s*(.+)/i
+  );
   if (fwMatch && fwMatch[1]) framework = fwMatch[1].trim();
 
   return {
@@ -212,7 +256,8 @@ function generateFromBrief(): SignalData | null {
     format: 'full',
     lifeNote: brief.epigraph,
     headline: brief.dailyTitle || 'Daily Intelligence Brief',
-    tldr: tldr || `${brief.displayDate} — Markets, meditations, and mental models.`,
+    tldr:
+      tldr || `${brief.displayDate} — Markets, meditations, and mental models.`,
     signals: extractSignals(markdown),
     take: {
       title: takeTitle,

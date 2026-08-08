@@ -28,7 +28,10 @@ function htmlPage(title: string, message: string): NextResponse {
 h1{font-size:22px;margin:0 0 12px;}p{font-size:15px;line-height:1.6;color:#3d3629;margin:0;}</style>
 </head>
 <body><div class="card"><h1>${title}</h1><p>${message}</p></div></body></html>`;
-  return new NextResponse(body, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  return new NextResponse(body, {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
 }
 
 export async function GET(req: NextRequest) {
@@ -36,11 +39,17 @@ export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');
 
   if (!email || !token) {
-    return htmlPage('Invalid link', 'This unsubscribe link is missing required parameters.');
+    return htmlPage(
+      'Invalid link',
+      'This unsubscribe link is missing required parameters.'
+    );
   }
 
   if (!verifyUnsubscribeToken(email, token)) {
-    return htmlPage('Invalid link', 'This unsubscribe link is invalid or has expired.');
+    return htmlPage(
+      'Invalid link',
+      'This unsubscribe link is invalid or has expired.'
+    );
   }
 
   try {
@@ -52,9 +61,15 @@ export async function GET(req: NextRequest) {
       });
       console.log('[unsubscribe] removed:', email);
     }
-    return htmlPage("You're unsubscribed", "You won't receive any more emails from Cosmic Trex.");
+    return htmlPage(
+      "You're unsubscribed",
+      "You won't receive any more emails from Cosmic Trex."
+    );
   } catch (err) {
     console.error('[unsubscribe] error:', err);
-    return htmlPage('Something went wrong', 'Please try again or reply to any email to unsubscribe manually.');
+    return htmlPage(
+      'Something went wrong',
+      'Please try again or reply to any email to unsubscribe manually.'
+    );
   }
 }

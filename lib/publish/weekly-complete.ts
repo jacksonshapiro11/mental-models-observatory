@@ -15,8 +15,14 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getWeeklyBySlug } from '@/lib/daily-update-parser';
 import { getWeeklyLightBySlug } from '@/lib/weekly-light-parser';
-import { generateLightAudio, weeklyLightEpisodeKey } from '@/lib/audio/light-generate';
-import { generateFullBriefAudio, weeklyFullEpisodeKey } from '@/lib/audio/full-generate';
+import {
+  generateLightAudio,
+  weeklyLightEpisodeKey,
+} from '@/lib/audio/light-generate';
+import {
+  generateFullBriefAudio,
+  weeklyFullEpisodeKey,
+} from '@/lib/audio/full-generate';
 import { readEpisodeMetadata } from '@/lib/audio/podcast-feed';
 import { runDistributeIfNeeded } from '@/lib/distribute/run-if-needed';
 import { audioNeedsRetry } from '@/lib/marketing/pipeline-status';
@@ -27,7 +33,7 @@ const WEEKLY_WAIT_MS = 90_000;
 const WEEKLY_POLL_MS = 5_000;
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function waitForWeeklyLight(weeklySlug: string): Promise<boolean> {
@@ -37,11 +43,13 @@ async function waitForWeeklyLight(weeklySlug: string): Promise<boolean> {
   while (Date.now() < deadline) {
     attempt += 1;
     console.warn(
-      `[publish/complete] weekly light missing for ${weeklySlug} — waiting (${attempt}, up to ${WEEKLY_WAIT_MS / 1000}s)`,
+      `[publish/complete] weekly light missing for ${weeklySlug} — waiting (${attempt}, up to ${WEEKLY_WAIT_MS / 1000}s)`
     );
     await sleep(WEEKLY_POLL_MS);
     if (getWeeklyLightBySlug(weeklySlug)) {
-      console.log(`[publish/complete] weekly light appeared for ${weeklySlug} after wait`);
+      console.log(
+        `[publish/complete] weekly light appeared for ${weeklySlug} after wait`
+      );
       return true;
     }
   }
@@ -57,7 +65,7 @@ export async function runWeeklyPublishComplete(weeklySlug: string) {
   if (!(await waitForWeeklyLight(weeklySlug))) {
     console.error(
       `[publish/complete] SKIPPED — No Weekly Light published for ${weeklySlug} on deployed filesystem after ${WEEKLY_WAIT_MS / 1000}s wait. ` +
-        `Caller should poll /api/publish/health?weekly=${weeklySlug} until lightBrief=true before retrying.`,
+        `Caller should poll /api/publish/health?weekly=${weeklySlug} until lightBrief=true before retrying.`
     );
     return NextResponse.json(
       {
@@ -67,7 +75,7 @@ export async function runWeeklyPublishComplete(weeklySlug: string) {
         waitedMs: WEEKLY_WAIT_MS,
         success: false,
       },
-      { status: 409 },
+      { status: 409 }
     );
   }
 
@@ -79,27 +87,31 @@ export async function runWeeklyPublishComplete(weeklySlug: string) {
   ]);
 
   const shouldRunLightAudio = audioNeedsRetry(existingAudioLog);
-  const shouldRunFullAudio = !existingFullEpisode && !!getWeeklyBySlug(weeklySlug);
+  const shouldRunFullAudio =
+    !existingFullEpisode && !!getWeeklyBySlug(weeklySlug);
 
-  const [fullAudioSettled, lightAudioSettled, distributeSettled] = await Promise.allSettled([
-    shouldRunFullAudio
-      ? generateFullBriefAudio({ date: weeklySlug, weeklySlug, manual })
-      : Promise.resolve({
-          status: existingFullEpisode ? ('exists' as const) : ('skipped' as const),
-          date: fullEpisodeKey,
-          details: existingFullEpisode
-            ? 'skipped — full weekly podcast already completed'
-            : 'skipped — no full weekly on site',
-        }),
-    shouldRunLightAudio
-      ? generateLightAudio({ date: weeklySlug, weeklySlug, manual })
-      : Promise.resolve({
-          status: 'exists' as const,
-          date: lightEpisodeKey,
-          details: 'skipped — weekly light audio already completed',
-        }),
-    runDistributeIfNeeded({ dateSlug: logKey, weeklySlug, channel: 'email' }),
-  ]);
+  const [fullAudioSettled, lightAudioSettled, distributeSettled] =
+    await Promise.allSettled([
+      shouldRunFullAudio
+        ? generateFullBriefAudio({ date: weeklySlug, weeklySlug, manual })
+        : Promise.resolve({
+            status: existingFullEpisode
+              ? ('exists' as const)
+              : ('skipped' as const),
+            date: fullEpisodeKey,
+            details: existingFullEpisode
+              ? 'skipped — full weekly podcast already completed'
+              : 'skipped — no full weekly on site',
+          }),
+      shouldRunLightAudio
+        ? generateLightAudio({ date: weeklySlug, weeklySlug, manual })
+        : Promise.resolve({
+            status: 'exists' as const,
+            date: lightEpisodeKey,
+            details: 'skipped — weekly light audio already completed',
+          }),
+      runDistributeIfNeeded({ dateSlug: logKey, weeklySlug, channel: 'email' }),
+    ]);
 
   const at = new Date().toISOString();
   const summary: Record<string, unknown> = { weekly: weeklySlug, at };
@@ -119,7 +131,9 @@ export async function runWeeklyPublishComplete(weeklySlug: string) {
     summary.lightAudio = audio;
 
     if (audio.status === 'skipped') {
-      console.warn(`[publish/complete] Weekly light audio skipped for ${weeklySlug}: ${audio.details}`);
+      console.warn(
+        `[publish/complete] Weekly light audio skipped for ${weeklySlug}: ${audio.details}`
+      );
     } else {
       const audioOk = audio.status === 'success' || audio.status === 'exists';
       const audioLog: Parameters<typeof writeAudioLog>[1] = {
@@ -168,5 +182,8 @@ export async function runWeeklyPublishComplete(weeklySlug: string) {
     revalidatePath('/api/podcast/feed');
   }
 
-  return NextResponse.json({ ...summary, success: allOk }, { status: allOk ? 200 : 207 });
+  return NextResponse.json(
+    { ...summary, success: allOk },
+    { status: allOk ? 200 : 207 }
+  );
 }

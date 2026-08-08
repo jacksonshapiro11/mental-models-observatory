@@ -17,7 +17,8 @@ import path from 'path';
 function getAllBriefLightDates(): string[] {
   const dir = path.join(process.cwd(), 'content/daily-updates');
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir)
+  return fs
+    .readdirSync(dir)
     .filter(f => f.endsWith('-light.md'))
     .map(f => f.replace('-light.md', ''))
     .sort()
@@ -44,19 +45,59 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // Core pages
   const corePages: MetadataRoute.Sitemap = [
-    { url: `${SITE_URL}`, lastModified: now, changeFrequency: 'daily', priority: 1.0 },
-    { url: `${SITE_URL}/super-brief`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
-    { url: `${SITE_URL}/daily-update`, lastModified: now, changeFrequency: 'daily', priority: 0.7 },
-    { url: `${SITE_URL}/archive`, lastModified: now, changeFrequency: 'daily', priority: 0.7 },
-    { url: `${SITE_URL}/models`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
-    { url: `${SITE_URL}/blog`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
-    { url: `${SITE_URL}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${SITE_URL}/subscribe`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+    {
+      url: `${SITE_URL}`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 1.0,
+    },
+    {
+      url: `${SITE_URL}/super-brief`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/daily-update`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 0.7,
+    },
+    {
+      url: `${SITE_URL}/archive`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 0.7,
+    },
+    {
+      url: `${SITE_URL}/models`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    },
+    {
+      url: `${SITE_URL}/blog`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    },
+    {
+      url: `${SITE_URL}/about`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: `${SITE_URL}/subscribe`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
   ];
 
   // Daily briefs
   const briefDates = getAllBriefDates();
-  const briefPages: MetadataRoute.Sitemap = briefDates.map((date) => ({
+  const briefPages: MetadataRoute.Sitemap = briefDates.map(date => ({
     url: `${SITE_URL}/daily-update/${date}`,
     lastModified: new Date(date),
     changeFrequency: 'never' as const,
@@ -65,7 +106,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // Super briefs (light)
   const lightDates = getAllBriefLightDates();
-  const lightPages: MetadataRoute.Sitemap = lightDates.map((date) => ({
+  const lightPages: MetadataRoute.Sitemap = lightDates.map(date => ({
     url: `${SITE_URL}/super-brief/${date}`,
     lastModified: new Date(date),
     changeFrequency: 'never' as const,
@@ -74,7 +115,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // Mental models
   const models = getAllModels();
-  const modelPages: MetadataRoute.Sitemap = models.map((model) => ({
+  const modelPages: MetadataRoute.Sitemap = models.map(model => ({
     url: `${SITE_URL}/models/${model.slug}`,
     lastModified: now,
     changeFrequency: 'monthly' as const,
@@ -83,12 +124,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // Blog posts
   const blogSlugs = getAllBlogSlugs();
-  const blogPages: MetadataRoute.Sitemap = blogSlugs.map((slug) => ({
+  const blogPages: MetadataRoute.Sitemap = blogSlugs.map(slug => ({
     url: `${SITE_URL}/blog/${slug}`,
     lastModified: now,
     changeFrequency: 'monthly' as const,
     priority: 0.5,
   }));
 
-  return [...corePages, ...briefPages, ...lightPages, ...modelPages, ...blogPages];
+  return [
+    ...corePages,
+    ...briefPages,
+    ...lightPages,
+    ...modelPages,
+    ...blogPages,
+  ];
 }

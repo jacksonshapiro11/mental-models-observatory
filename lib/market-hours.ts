@@ -6,7 +6,13 @@
 export type MarketStatus = 'pre' | 'open' | 'after' | 'closed';
 
 /** Parse wall-clock components in America/New_York without locale string round-trips. */
-export function getETParts(now = new Date()): { year: number; month: number; day: number; dayOfWeek: number; minutes: number } {
+export function getETParts(now = new Date()): {
+  year: number;
+  month: number;
+  day: number;
+  dayOfWeek: number;
+  minutes: number;
+} {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/New_York',
     year: 'numeric',
@@ -18,11 +24,19 @@ export function getETParts(now = new Date()): { year: number; month: number; day
     hour12: false,
   }).formatToParts(now);
 
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? '';
   const hour = parseInt(get('hour'), 10);
   const minute = parseInt(get('minute'), 10);
 
-  const weekdayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const weekdayMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
 
   return {
     year: parseInt(get('year'), 10),
@@ -34,7 +48,9 @@ export function getETParts(now = new Date()): { year: number; month: number; day
 }
 
 export function formatETDate(now = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(now);
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+  }).format(now);
 }
 
 export function isWeekendET(now = new Date()): boolean {
@@ -45,14 +61,38 @@ export function isWeekendET(now = new Date()): boolean {
 /** NYSE full-day closures (early-close days still run snapshot). */
 const NYSE_HOLIDAYS = new Set([
   // 2025
-  '2025-01-01', '2025-01-20', '2025-02-17', '2025-04-18', '2025-05-26',
-  '2025-06-19', '2025-07-04', '2025-09-01', '2025-11-27', '2025-12-25',
+  '2025-01-01',
+  '2025-01-20',
+  '2025-02-17',
+  '2025-04-18',
+  '2025-05-26',
+  '2025-06-19',
+  '2025-07-04',
+  '2025-09-01',
+  '2025-11-27',
+  '2025-12-25',
   // 2026
-  '2026-01-01', '2026-01-19', '2026-02-16', '2026-04-03', '2026-05-25',
-  '2026-06-19', '2026-07-03', '2026-09-07', '2026-11-26', '2026-12-25',
+  '2026-01-01',
+  '2026-01-19',
+  '2026-02-16',
+  '2026-04-03',
+  '2026-05-25',
+  '2026-06-19',
+  '2026-07-03',
+  '2026-09-07',
+  '2026-11-26',
+  '2026-12-25',
   // 2027
-  '2027-01-01', '2027-01-18', '2027-02-15', '2027-03-26', '2027-05-31',
-  '2027-06-18', '2027-07-05', '2027-09-06', '2027-11-25', '2027-12-24',
+  '2027-01-01',
+  '2027-01-18',
+  '2027-02-15',
+  '2027-03-26',
+  '2027-05-31',
+  '2027-06-18',
+  '2027-07-05',
+  '2027-09-06',
+  '2027-11-25',
+  '2027-12-24',
 ]);
 
 export function isUSMarketHoliday(now = new Date()): boolean {

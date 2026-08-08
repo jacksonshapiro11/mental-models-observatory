@@ -9,7 +9,9 @@ interface PageProps {
   params: Promise<{ date: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { date } = await params;
   const brief = getBriefLightByDate(date);
   const title = brief?.dailyTitle

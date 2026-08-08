@@ -20,7 +20,7 @@ const FALLBACK_DATA: MarketData = {
     SPX: { price: 6905, changes: { '1D': 0.22 } },
     NDX: { price: 21200, changes: { '1D': 0.35 } },
     DJI: { price: 42500, changes: { '1D': 0.15 } },
-    RUT: { price: 2050, changes: { '1D': -0.30 } },
+    RUT: { price: 2050, changes: { '1D': -0.3 } },
   },
   crypto: {
     BTC: { price: 65500, changes: { '1D': 4.2 } },
@@ -59,14 +59,26 @@ function formatChange(value: number | null): string {
 
 function getChangeColor(value: number | null): string {
   if (value == null) return 'text-text-on-dark-muted';
-  return value > 0 ? 'text-ct-green-data' : value < 0 ? 'text-ct-pink' : 'text-text-on-dark-muted';
+  return value > 0
+    ? 'text-ct-green-data'
+    : value < 0
+      ? 'text-ct-pink'
+      : 'text-text-on-dark-muted';
 }
 
-function TickerItem({ label, price, change }: { label: string; price: string; change: number | null | undefined }) {
+function TickerItem({
+  label,
+  price,
+  change,
+}: {
+  label: string;
+  price: string;
+  change: number | null | undefined;
+}) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="text-text-on-dark font-semibold">{label}</span>
-      <span className="text-text-on-dark">{price}</span>
+    <span className='inline-flex items-center gap-1.5'>
+      <span className='text-text-on-dark font-semibold'>{label}</span>
+      <span className='text-text-on-dark'>{price}</span>
       {change != null && (
         <span className={getChangeColor(change)}>{formatChange(change)}</span>
       )}
@@ -75,7 +87,7 @@ function TickerItem({ label, price, change }: { label: string; price: string; ch
 }
 
 function Dot() {
-  return <span className="text-text-on-dark-muted mx-2">·</span>;
+  return <span className='text-text-on-dark-muted mx-2'>·</span>;
 }
 
 export function TickerBar() {
@@ -116,59 +128,201 @@ export function TickerBar() {
   const items = (
     <>
       {/* Indices */}
-      <TickerItem label="S&P" price={formatPrice(spx?.price ?? null, 0)} change={spx?.changes?.['1D']} />
+      <TickerItem
+        label='S&P'
+        price={formatPrice(spx?.price ?? null, 0)}
+        change={spx?.changes?.['1D']}
+      />
       <Dot />
-      <TickerItem label="NDX" price={formatPrice(ndx?.price ?? null, 0)} change={ndx?.changes?.['1D']} />
+      <TickerItem
+        label='NDX'
+        price={formatPrice(ndx?.price ?? null, 0)}
+        change={ndx?.changes?.['1D']}
+      />
       <Dot />
-      <TickerItem label="DOW" price={formatPrice(dji?.price ?? null, 0)} change={dji?.changes?.['1D']} />
+      <TickerItem
+        label='DOW'
+        price={formatPrice(dji?.price ?? null, 0)}
+        change={dji?.changes?.['1D']}
+      />
       <Dot />
-      <TickerItem label="RUT" price={formatPrice(rut?.price ?? null, 0)} change={rut?.changes?.['1D']} />
+      <TickerItem
+        label='RUT'
+        price={formatPrice(rut?.price ?? null, 0)}
+        change={rut?.changes?.['1D']}
+      />
       <Dot />
 
       {/* ETFs (only render if data exists) */}
-      {smh?.price != null && <><TickerItem label="SMH" price={formatPrice(smh.price, 0, '$')} change={smh.changes?.['1D']} /><Dot /></>}
-      {igv?.price != null && <><TickerItem label="IGV" price={formatPrice(igv.price, 0, '$')} change={igv.changes?.['1D']} /><Dot /></>}
-      {iwf?.price != null && <><TickerItem label="IWF" price={formatPrice(iwf.price, 0, '$')} change={iwf.changes?.['1D']} /><Dot /></>}
-      {iwd?.price != null && <><TickerItem label="IWD" price={formatPrice(iwd.price, 0, '$')} change={iwd.changes?.['1D']} /><Dot /></>}
-      {xle?.price != null && <><TickerItem label="XLE" price={formatPrice(xle.price, 0, '$')} change={xle.changes?.['1D']} /><Dot /></>}
-      {arkk?.price != null && <><TickerItem label="ARKK" price={formatPrice(arkk.price, 0, '$')} change={arkk.changes?.['1D']} /><Dot /></>}
+      {smh?.price != null && (
+        <>
+          <TickerItem
+            label='SMH'
+            price={formatPrice(smh.price, 0, '$')}
+            change={smh.changes?.['1D']}
+          />
+          <Dot />
+        </>
+      )}
+      {igv?.price != null && (
+        <>
+          <TickerItem
+            label='IGV'
+            price={formatPrice(igv.price, 0, '$')}
+            change={igv.changes?.['1D']}
+          />
+          <Dot />
+        </>
+      )}
+      {iwf?.price != null && (
+        <>
+          <TickerItem
+            label='IWF'
+            price={formatPrice(iwf.price, 0, '$')}
+            change={iwf.changes?.['1D']}
+          />
+          <Dot />
+        </>
+      )}
+      {iwd?.price != null && (
+        <>
+          <TickerItem
+            label='IWD'
+            price={formatPrice(iwd.price, 0, '$')}
+            change={iwd.changes?.['1D']}
+          />
+          <Dot />
+        </>
+      )}
+      {xle?.price != null && (
+        <>
+          <TickerItem
+            label='XLE'
+            price={formatPrice(xle.price, 0, '$')}
+            change={xle.changes?.['1D']}
+          />
+          <Dot />
+        </>
+      )}
+      {arkk?.price != null && (
+        <>
+          <TickerItem
+            label='ARKK'
+            price={formatPrice(arkk.price, 0, '$')}
+            change={arkk.changes?.['1D']}
+          />
+          <Dot />
+        </>
+      )}
 
       {/* Crypto */}
-      <TickerItem label="BTC" price={formatPrice(btc?.price ?? null, 0, '$')} change={btc?.changes?.['1D']} />
+      <TickerItem
+        label='BTC'
+        price={formatPrice(btc?.price ?? null, 0, '$')}
+        change={btc?.changes?.['1D']}
+      />
       <Dot />
-      <TickerItem label="ETH" price={formatPrice(eth?.price ?? null, 0, '$')} change={eth?.changes?.['1D']} />
+      <TickerItem
+        label='ETH'
+        price={formatPrice(eth?.price ?? null, 0, '$')}
+        change={eth?.changes?.['1D']}
+      />
       <Dot />
-      <TickerItem label="SOL" price={formatPrice(sol?.price ?? null, 0, '$')} change={sol?.changes?.['1D']} />
+      <TickerItem
+        label='SOL'
+        price={formatPrice(sol?.price ?? null, 0, '$')}
+        change={sol?.changes?.['1D']}
+      />
       <Dot />
-      {aave?.price != null && <><TickerItem label="AAVE" price={formatPrice(aave.price, 0, '$')} change={aave.changes?.['1D']} /><Dot /></>}
-      {uni?.price != null && <><TickerItem label="UNI" price={formatPrice(uni.price, 2, '$')} change={uni.changes?.['1D']} /><Dot /></>}
-      {link?.price != null && <><TickerItem label="LINK" price={formatPrice(link.price, 2, '$')} change={link.changes?.['1D']} /><Dot /></>}
+      {aave?.price != null && (
+        <>
+          <TickerItem
+            label='AAVE'
+            price={formatPrice(aave.price, 0, '$')}
+            change={aave.changes?.['1D']}
+          />
+          <Dot />
+        </>
+      )}
+      {uni?.price != null && (
+        <>
+          <TickerItem
+            label='UNI'
+            price={formatPrice(uni.price, 2, '$')}
+            change={uni.changes?.['1D']}
+          />
+          <Dot />
+        </>
+      )}
+      {link?.price != null && (
+        <>
+          <TickerItem
+            label='LINK'
+            price={formatPrice(link.price, 2, '$')}
+            change={link.changes?.['1D']}
+          />
+          <Dot />
+        </>
+      )}
 
       {/* Commodities */}
-      <TickerItem label="Gold" price={formatPrice(gold?.price ?? null, 0, '$')} change={gold?.changes?.['1D']} />
+      <TickerItem
+        label='Gold'
+        price={formatPrice(gold?.price ?? null, 0, '$')}
+        change={gold?.changes?.['1D']}
+      />
       <Dot />
-      <TickerItem label="Silver" price={formatPrice(silver?.price ?? null, 2, '$')} change={silver?.changes?.['1D']} />
+      <TickerItem
+        label='Silver'
+        price={formatPrice(silver?.price ?? null, 2, '$')}
+        change={silver?.changes?.['1D']}
+      />
       <Dot />
-      <TickerItem label="Oil" price={formatPrice(brent?.price ?? null, 0, '$')} change={brent?.changes?.['1D']} />
+      <TickerItem
+        label='Oil'
+        price={formatPrice(brent?.price ?? null, 0, '$')}
+        change={brent?.changes?.['1D']}
+      />
       <Dot />
-      <TickerItem label="Copper" price={formatPrice(copper?.price ?? null, 2, '$')} change={copper?.changes?.['1D']} />
+      <TickerItem
+        label='Copper'
+        price={formatPrice(copper?.price ?? null, 2, '$')}
+        change={copper?.changes?.['1D']}
+      />
       <Dot />
-      {natgas?.price != null && <><TickerItem label="NatGas" price={formatPrice(natgas.price, 2, '$')} change={natgas.changes?.['1D']} /><Dot /></>}
+      {natgas?.price != null && (
+        <>
+          <TickerItem
+            label='NatGas'
+            price={formatPrice(natgas.price, 2, '$')}
+            change={natgas.changes?.['1D']}
+          />
+          <Dot />
+        </>
+      )}
 
       {/* Rates & FX */}
-      <TickerItem label="10Y" price={us10y?.price ? `${us10y.price.toFixed(2)}%` : '—'} change={null} />
+      <TickerItem
+        label='10Y'
+        price={us10y?.price ? `${us10y.price.toFixed(2)}%` : '—'}
+        change={null}
+      />
       <Dot />
-      <TickerItem label="DXY" price={dxyValue ? dxyValue.toFixed(2) : '—'} change={null} />
+      <TickerItem
+        label='DXY'
+        price={dxyValue ? dxyValue.toFixed(2) : '—'}
+        change={null}
+      />
     </>
   );
 
   return (
-    <div className="bg-ct-dark overflow-hidden">
-      <div className="font-mono text-[10px] py-1.5 whitespace-nowrap animate-ticker">
-        <div className="inline-flex gap-0 ticker-content">
+    <div className='bg-ct-dark overflow-hidden'>
+      <div className='font-mono text-[10px] py-1.5 whitespace-nowrap animate-ticker'>
+        <div className='inline-flex gap-0 ticker-content'>
           {/* Duplicate content for seamless loop */}
-          <span className="inline-flex items-center gap-0 px-4">{items}</span>
-          <span className="inline-flex items-center gap-0 px-4">{items}</span>
+          <span className='inline-flex items-center gap-0 px-4'>{items}</span>
+          <span className='inline-flex items-center gap-0 px-4'>{items}</span>
         </div>
       </div>
     </div>

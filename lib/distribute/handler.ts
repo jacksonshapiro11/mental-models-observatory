@@ -6,10 +6,16 @@
 import { Redis } from '@upstash/redis';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
 import { getWeeklyLightBySlug } from '@/lib/weekly-light-parser';
-import { renderBriefEmail, type RenderBriefEmailOptions } from '@/lib/email/render-brief';
+import {
+  renderBriefEmail,
+  type RenderBriefEmailOptions,
+} from '@/lib/email/render-brief';
 import { sendEmail } from '@/lib/email/resend-client';
 import { resolveXPostContent } from '@/lib/social/x-post-content';
-import { hasXPostingCredentials, resolveXPostingClient } from '@/lib/social/x-oauth';
+import {
+  hasXPostingCredentials,
+  resolveXPostingClient,
+} from '@/lib/social/x-oauth';
 
 export interface ChannelResult {
   success: boolean;
@@ -33,7 +39,7 @@ export interface DistributeResults {
 export async function distributeEmail(
   dateSlug: string,
   dryRun: boolean,
-  weeklySlug?: string,
+  weeklySlug?: string
 ): Promise<ChannelResult> {
   if (!process.env.RESEND_API_KEY) {
     return { success: false, details: 'RESEND_API_KEY not set' };
@@ -71,7 +77,10 @@ export async function distributeEmail(
   }
 
   if (dryRun) {
-    return { success: true, details: `Would send to ${recipients.length} subscriber(s)` };
+    return {
+      success: true,
+      details: `Would send to ${recipients.length} subscriber(s)`,
+    };
   }
 
   let sent = 0;
@@ -93,7 +102,7 @@ export async function distributeEmail(
     } else {
       failed++;
     }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
   return {
@@ -102,7 +111,10 @@ export async function distributeEmail(
   };
 }
 
-export async function distributeX(dateSlug: string, dryRun: boolean): Promise<ChannelResult> {
+export async function distributeX(
+  dateSlug: string,
+  dryRun: boolean
+): Promise<ChannelResult> {
   if (!(await hasXPostingCredentials())) {
     return {
       success: false,
@@ -121,7 +133,7 @@ export async function distributeX(dateSlug: string, dryRun: boolean): Promise<Ch
 
   const { posts, source } = content;
   console.log(
-    `[distribute] Using ${source}: ${posts.length} posts (${posts.map((p) => p.length).join('/')} chars)`,
+    `[distribute] Using ${source}: ${posts.length} posts (${posts.map(p => p.length).join('/')} chars)`
   );
 
   if (dryRun) {
@@ -136,7 +148,7 @@ export async function distributeX(dateSlug: string, dryRun: boolean): Promise<Ch
     const resolved = await resolveXPostingClient();
     client = resolved.client;
     console.log(
-      `[distribute] Token source: ${resolved.tokenSource}${resolved.refreshed ? ' (refreshed)' : ''}`,
+      `[distribute] Token source: ${resolved.tokenSource}${resolved.refreshed ? ' (refreshed)' : ''}`
     );
   } catch (authErr) {
     const msg = authErr instanceof Error ? authErr.message : String(authErr);
@@ -147,13 +159,17 @@ export async function distributeX(dateSlug: string, dryRun: boolean): Promise<Ch
     const firstResult = await client.v2.tweet(posts[0]!);
     const firstTweetId = firstResult.data.id;
     let lastTweetId = firstTweetId;
-    console.log(`[distribute] Post 1/${posts.length} published: ${lastTweetId} [${source}]`);
+    console.log(
+      `[distribute] Post 1/${posts.length} published: ${lastTweetId} [${source}]`
+    );
 
     for (let i = 1; i < posts.length; i++) {
-      await new Promise<void>((resolve) => setTimeout(resolve, 3000));
+      await new Promise<void>(resolve => setTimeout(resolve, 3000));
       const replyResult = await client.v2.reply(posts[i]!, lastTweetId);
       lastTweetId = replyResult.data.id;
-      console.log(`[distribute] Post ${i + 1}/${posts.length} published: ${lastTweetId}`);
+      console.log(
+        `[distribute] Post ${i + 1}/${posts.length} published: ${lastTweetId}`
+      );
     }
 
     return {
@@ -170,7 +186,9 @@ export async function distributeX(dateSlug: string, dryRun: boolean): Promise<Ch
   }
 }
 
-export async function runDistribute(options: DistributeOptions): Promise<DistributeResults> {
+export async function runDistribute(
+  options: DistributeOptions
+): Promise<DistributeResults> {
   const { dateSlug, weeklySlug, dryRun = false, channel = null } = options;
   const results: DistributeResults = {};
 
@@ -184,7 +202,7 @@ export async function runDistribute(options: DistributeOptions): Promise<Distrib
       };
     }
     console.log(
-      `[distribute] Email: ${results.email.success ? '✅' : '❌'} ${results.email.details}`,
+      `[distribute] Email: ${results.email.success ? '✅' : '❌'} ${results.email.details}`
     );
   }
 
@@ -197,7 +215,9 @@ export async function runDistribute(options: DistributeOptions): Promise<Distrib
         details: `Error: ${err instanceof Error ? err.message : String(err)}`,
       };
     }
-    console.log(`[distribute] X: ${results.x.success ? '✅' : '❌'} ${results.x.details}`);
+    console.log(
+      `[distribute] X: ${results.x.success ? '✅' : '❌'} ${results.x.details}`
+    );
   }
 
   return results;

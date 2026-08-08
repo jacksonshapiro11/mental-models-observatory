@@ -56,7 +56,8 @@ export const GATE_INPUTS: InputSpec[] = [
     name: 'Geo-Lead Theater Log',
     file: 'system/Thesis_Tracker.md',
     sectionHeader: '### Geo-Lead Theater Log',
-    reader: "the Quality Gate's ENTITY-PERSISTENCE CAP (system/Novelty_Audit.md, system/Geopolitics_Generator.md)",
+    reader:
+      "the Quality Gate's ENTITY-PERSISTENCE CAP (system/Novelty_Audit.md, system/Geopolitics_Generator.md)",
     consequence:
       'the >=5-consecutive-days Geo-lead compression cap cannot fire — it re-reads the last recorded status forever and returns clean regardless of what the briefs do. Found dead 20 days (06-27 -> 07-17) on 2026-07-17.',
   },
@@ -65,7 +66,10 @@ export const GATE_INPUTS: InputSpec[] = [
 const DATE_RE = /\b(\d{4}-\d{2}-\d{2})\b/;
 
 /** Newest date in the dated rows under `sectionHeader`. Null if the section or its rows are absent. */
-export function newestDateInSection(body: string, sectionHeader: string): string | null {
+export function newestDateInSection(
+  body: string,
+  sectionHeader: string
+): string | null {
   const start = body.indexOf(sectionHeader);
   if (start === -1) return null;
   const rest = body.slice(start + sectionHeader.length);
@@ -75,7 +79,7 @@ export function newestDateInSection(body: string, sectionHeader: string): string
   const dates: string[] = [];
   for (const line of section.split('\n')) {
     const t = line.trim();
-    if (!t.startsWith('|')) continue;           // dated ROWS only, not prose mentioning a date
+    if (!t.startsWith('|')) continue; // dated ROWS only, not prose mentioning a date
     const m = t.match(DATE_RE);
     if (m) dates.push(m[1]!);
   }
@@ -87,7 +91,9 @@ export function newestDateInSection(body: string, sectionHeader: string): string
 export function nyToday(now: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/New_York',
-    year: 'numeric', month: '2-digit', day: '2-digit',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).format(now);
 }
 
@@ -109,24 +115,33 @@ export function nyToday(now: Date = new Date()): string {
  * NOT reading origin/main: this gate is warn-only and must run offline in the sandbox; the reading
  * clock is sufficient and cannot fail closed on a network blip.
  */
-export function newestPublishedBrief(root: string, today: string = nyToday()): string | null {
+export function newestPublishedBrief(
+  root: string,
+  today: string = nyToday()
+): string | null {
   const dir = path.join(root, 'content/daily-updates');
   if (!fs.existsSync(dir)) return null;
-  const dates = fs.readdirSync(dir)
-    .map((f) => f.match(/^(\d{4}-\d{2}-\d{2})\.md$/)?.[1])
+  const dates = fs
+    .readdirSync(dir)
+    .map(f => f.match(/^(\d{4}-\d{2}-\d{2})\.md$/)?.[1])
     .filter((d): d is string => !!d)
-    .filter((d) => d <= today) // a future-dated draft on disk is not published
+    .filter(d => d <= today) // a future-dated draft on disk is not published
     .sort();
   return dates.length ? dates[dates.length - 1]! : null;
 }
 
 function daysBetween(a: string, b: string): number {
   return Math.round(
-    (new Date(b + 'T00:00:00Z').getTime() - new Date(a + 'T00:00:00Z').getTime()) / 86400000,
+    (new Date(b + 'T00:00:00Z').getTime() -
+      new Date(a + 'T00:00:00Z').getTime()) /
+      86400000
   );
 }
 
-export function checkInputs(root: string, inputs: InputSpec[] = GATE_INPUTS): Finding[] {
+export function checkInputs(
+  root: string,
+  inputs: InputSpec[] = GATE_INPUTS
+): Finding[] {
   const out: Finding[] = [];
   const latestBrief = newestPublishedBrief(root);
   if (!latestBrief) return out; // no published briefs (fresh clone / sandbox) — nothing to be stale against
@@ -140,7 +155,10 @@ export function checkInputs(root: string, inputs: InputSpec[] = GATE_INPUTS): Fi
       });
       continue;
     }
-    const newest = newestDateInSection(fs.readFileSync(p, 'utf8'), spec.sectionHeader);
+    const newest = newestDateInSection(
+      fs.readFileSync(p, 'utf8'),
+      spec.sectionHeader
+    );
     if (!newest) {
       out.push({
         check: 'gate-input-unreadable',
@@ -166,29 +184,45 @@ function selftest(): number {
 
   // SILENT on a log current through the latest brief.
   const fresh = `### Geo-Lead Theater Log\n\n| Date | Theater |\n|---|---|\n| 2026-07-16 | Iran |\n| 2026-07-17 | Iran |\n\n### Next\n`;
-  const okFresh = newestDateInSection(fresh, '### Geo-Lead Theater Log') === '2026-07-17';
+  const okFresh =
+    newestDateInSection(fresh, '### Geo-Lead Theater Log') === '2026-07-17';
 
   // FIRES on the REAL 20-day gap: the log as it stood before the 07-17 rebuild (last row 06-27)
   // against a 07-17 brief. This is the exact decorative-gate window.
   const dead = `### Geo-Lead Theater Log\n\n| Date | Theater |\n|---|---|\n| 2026-06-26 | Iran |\n| 2026-06-27 | AI Policy |\n\n### Next\n`;
-  const okDead = newestDateInSection(dead, '### Geo-Lead Theater Log') === '2026-06-27'
-    && daysBetween('2026-06-27', '2026-07-17') === 20;
+  const okDead =
+    newestDateInSection(dead, '### Geo-Lead Theater Log') === '2026-06-27' &&
+    daysBetween('2026-06-27', '2026-07-17') === 20;
 
   // Prose dates must NOT count as maintenance — only dated ROWS. (A "Status (rebuilt 2026-07-17)"
   // paragraph is exactly the kind of line that would have made the dead log look alive.)
   const proseOnly = `### Geo-Lead Theater Log\n\nStatus (rebuilt 2026-07-17): all current.\n\n| Date | Theater |\n|---|---|\n| 2026-06-27 | AI Policy |\n\n### Next\n`;
-  const okProse = newestDateInSection(proseOnly, '### Geo-Lead Theater Log') === '2026-06-27';
+  const okProse =
+    newestDateInSection(proseOnly, '### Geo-Lead Theater Log') === '2026-06-27';
 
   // Absent section / no rows → null (reported as unreadable, never silently "fresh").
-  const okAbsent = newestDateInSection('# Something else\n', '### Geo-Lead Theater Log') === null;
-  const okNoRows = newestDateInSection('### Geo-Lead Theater Log\n\nNo table yet.\n\n### Next\n', '### Geo-Lead Theater Log') === null;
+  const okAbsent =
+    newestDateInSection('# Something else\n', '### Geo-Lead Theater Log') ===
+    null;
+  const okNoRows =
+    newestDateInSection(
+      '### Geo-Lead Theater Log\n\nNo table yet.\n\n### Next\n',
+      '### Geo-Lead Theater Log'
+    ) === null;
 
   // Synthetic end-to-end: a stale input FAILs and names its reader.
-  const tmpFindings = checkInputs(root, [{
-    name: 'Synthetic Log', file: 'system/Thesis_Tracker.md',
-    sectionHeader: '### __no_such_section__', reader: 'nobody', consequence: 'n/a',
-  }]);
-  const okUnreadable = tmpFindings.some((f) => f.check === 'gate-input-unreadable');
+  const tmpFindings = checkInputs(root, [
+    {
+      name: 'Synthetic Log',
+      file: 'system/Thesis_Tracker.md',
+      sectionHeader: '### __no_such_section__',
+      reader: 'nobody',
+      consequence: 'n/a',
+    },
+  ]);
+  const okUnreadable = tmpFindings.some(
+    f => f.check === 'gate-input-unreadable'
+  );
 
   // A FUTURE-DATED DRAFT ON DISK IS NOT PUBLISHED (the 20:00 regression, IMP-068).
   // Both directions, against the real content/daily-updates:
@@ -208,20 +242,47 @@ function selftest(): number {
 
   console.log('gate-input-freshness --selftest');
   console.log(`  reads the newest dated ROW: ${okFresh ? '✓' : '✗'}`);
-  console.log(`  FIRES on the real 06-27 -> 07-17 dead-log window (20 days): ${okDead ? '✓' : '✗'}`);
-  console.log(`  prose dates do NOT count as maintenance (rows only): ${okProse ? '✓' : '✗'}`);
-  console.log(`  absent section -> null (never silently "fresh"): ${okAbsent ? '✓' : '✗'}`);
+  console.log(
+    `  FIRES on the real 06-27 -> 07-17 dead-log window (20 days): ${okDead ? '✓' : '✗'}`
+  );
+  console.log(
+    `  prose dates do NOT count as maintenance (rows only): ${okProse ? '✓' : '✗'}`
+  );
+  console.log(
+    `  absent section -> null (never silently "fresh"): ${okAbsent ? '✓' : '✗'}`
+  );
   console.log(`  section with no rows -> null: ${okNoRows ? '✓' : '✗'}`);
-  console.log(`  unreadable input FAILs and names its reader: ${okUnreadable ? '✓' : '✗'}`);
-  console.log(`  tomorrow's draft on disk is NOT "published" (20:00 regression): ${okFutureExcluded ? '✓' : '✗'}`);
-  console.log(`  ...but the same file DOES count once its date arrives (not blinded): ${okNotBlinded ? '✓' : '✗'}`);
-  console.log(`  reading clock is America/New_York, not UTC: ${okNyClock ? '✓' : '✗'}`);
-  console.log(`  the REAL registered inputs are current right now: ${okRealClean ? '✓' : '✗'}${okRealClean ? '' : `\n${real.map((f) => `      ✗ ${f.message}`).join('\n')}`}`);
+  console.log(
+    `  unreadable input FAILs and names its reader: ${okUnreadable ? '✓' : '✗'}`
+  );
+  console.log(
+    `  tomorrow's draft on disk is NOT "published" (20:00 regression): ${okFutureExcluded ? '✓' : '✗'}`
+  );
+  console.log(
+    `  ...but the same file DOES count once its date arrives (not blinded): ${okNotBlinded ? '✓' : '✗'}`
+  );
+  console.log(
+    `  reading clock is America/New_York, not UTC: ${okNyClock ? '✓' : '✗'}`
+  );
+  console.log(
+    `  the REAL registered inputs are current right now: ${okRealClean ? '✓' : '✗'}${okRealClean ? '' : `\n${real.map(f => `      ✗ ${f.message}`).join('\n')}`}`
+  );
 
-  const ok = okFresh && okDead && okProse && okAbsent && okNoRows && okUnreadable
-    && okFutureExcluded && okNotBlinded && okNyClock && okRealClean;
+  const ok =
+    okFresh &&
+    okDead &&
+    okProse &&
+    okAbsent &&
+    okNoRows &&
+    okUnreadable &&
+    okFutureExcluded &&
+    okNotBlinded &&
+    okNyClock &&
+    okRealClean;
   if (ok) {
-    console.log('\n✅ SELFTEST PASS — a gate input that stops being maintained now FAILs loudly instead of quietly making its gate decorative.');
+    console.log(
+      '\n✅ SELFTEST PASS — a gate input that stops being maintained now FAILs loudly instead of quietly making its gate decorative.'
+    );
     return 0;
   }
   console.error('\n❌ SELFTEST FAIL');
@@ -233,18 +294,25 @@ function main(): number {
   const root = process.cwd();
   const findings = checkInputs(root);
   const latest = newestPublishedBrief(root);
-  console.log(`gate-input-freshness — newest published brief: ${latest ?? 'none'}`);
+  console.log(
+    `gate-input-freshness — newest published brief: ${latest ?? 'none'}`
+  );
   for (const spec of GATE_INPUTS) {
     const p = path.join(root, spec.file);
     const newest = fs.existsSync(p)
-      ? newestDateInSection(fs.readFileSync(p, 'utf8'), spec.sectionHeader) : null;
+      ? newestDateInSection(fs.readFileSync(p, 'utf8'), spec.sectionHeader)
+      : null;
     console.log(`  ${spec.name}: current through ${newest ?? 'UNREADABLE'}`);
   }
   if (findings.length === 0) {
-    console.log('\n✅ GATE-INPUT-FRESHNESS PASS — every registered gate input is current.');
+    console.log(
+      '\n✅ GATE-INPUT-FRESHNESS PASS — every registered gate input is current.'
+    );
     return 0;
   }
-  console.log(`\n❌ GATE-INPUT-FRESHNESS FAIL — ${findings.length} stale input(s):`);
+  console.log(
+    `\n❌ GATE-INPUT-FRESHNESS FAIL — ${findings.length} stale input(s):`
+  );
   for (const f of findings) console.log(`   ✗ [${f.check}] ${f.message}`);
   return 1;
 }

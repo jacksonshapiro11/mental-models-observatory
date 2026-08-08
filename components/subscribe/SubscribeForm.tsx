@@ -29,7 +29,9 @@ function SubscribeFormInner({
   const attribution = attributionProp ?? refFromUrl ?? undefined;
 
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle');
   const [message, setMessage] = useState('');
 
   async function handleSubmit(e: FormEvent) {
@@ -51,7 +53,11 @@ function SubscribeFormInner({
         }),
       });
 
-      const data = await res.json() as { success?: boolean; error?: string; message?: string };
+      const data = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+      };
 
       if (res.ok && data.success) {
         setStatus('success');
@@ -69,8 +75,8 @@ function SubscribeFormInner({
 
   if (status === 'success') {
     return (
-      <div className="py-2">
-        <p className="font-mono text-sm font-semibold text-ct-green-data">
+      <div className='py-2'>
+        <p className='font-mono text-sm font-semibold text-ct-green-data'>
           ✓ {message}
         </p>
       </div>
@@ -78,19 +84,22 @@ function SubscribeFormInner({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={handleSubmit} className='space-y-3'>
       <div className={`flex ${layout === 'column' ? 'flex-col' : ''} gap-2`}>
         <input
-          type="email"
+          type='email'
           value={email}
-          onChange={(e) => { setEmail(e.target.value); if (status === 'error') setStatus('idle'); }}
-          placeholder="your@email.com"
+          onChange={e => {
+            setEmail(e.target.value);
+            if (status === 'error') setStatus('idle');
+          }}
+          placeholder='your@email.com'
           required
           className={inputClassName}
           disabled={status === 'loading'}
         />
         <button
-          type="submit"
+          type='submit'
           disabled={status === 'loading'}
           className={`${buttonClassName} ${status === 'loading' ? 'opacity-70 cursor-wait' : ''}`}
         >
@@ -99,15 +108,15 @@ function SubscribeFormInner({
       </div>
       {/* Honeypot — hidden from humans, filled by bots */}
       <input
-        type="text"
-        name="website"
+        type='text'
+        name='website'
         tabIndex={-1}
-        autoComplete="off"
+        autoComplete='off'
         style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0 }}
-        aria-hidden="true"
+        aria-hidden='true'
       />
       {status === 'error' && (
-        <p className="text-xs text-ct-pink font-body">{message}</p>
+        <p className='text-xs text-ct-pink font-body'>{message}</p>
       )}
       {showNote && status === 'idle' && (
         <p className={noteClassName}>Free. No spam. Ever.</p>

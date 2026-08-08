@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       healthy: status.ready,
       alert: !status.ready,
     },
-    { status: status.ready ? 200 : 503 },
+    { status: status.ready ? 200 : 503 }
   );
 }
 

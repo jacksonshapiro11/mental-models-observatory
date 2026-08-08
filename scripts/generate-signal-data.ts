@@ -22,7 +22,8 @@ const OUTPUT_FILE = path.join(process.cwd(), 'data', 'daily-signal.json');
 
 function getLatestBriefFile(): string | null {
   if (!fs.existsSync(CONTENT_DIR)) return null;
-  const files = fs.readdirSync(CONTENT_DIR)
+  const files = fs
+    .readdirSync(CONTENT_DIR)
     .filter(f => f.endsWith('.md') && !f.includes('-light'))
     .sort()
     .reverse();
@@ -54,7 +55,12 @@ function extractTitle(sectionContent: string): string {
 function extractFirstParagraph(sectionContent: string, minLen = 40): string {
   for (const line of sectionContent.split('\n')) {
     const t = line.trim();
-    if (t.length >= minLen && !t.startsWith('#') && !t.startsWith('---') && !t.startsWith('>')) {
+    if (
+      t.length >= minLen &&
+      !t.startsWith('#') &&
+      !t.startsWith('---') &&
+      !t.startsWith('>')
+    ) {
       return t;
     }
   }
@@ -66,9 +72,19 @@ function extractFirstParagraph(sectionContent: string, minLen = 40): string {
 function assignColor(domain: string, text: string): 'red' | 'green' | 'yellow' {
   const lower = text.toLowerCase();
   // Red signals: conflict, crisis, decline, kill, strike, crash
-  if (/kill|strike|crash|declin|crisis|collapses?|war|attack|bomb|invasion/.test(lower)) return 'red';
+  if (
+    /kill|strike|crash|declin|crisis|collapses?|war|attack|bomb|invasion/.test(
+      lower
+    )
+  )
+    return 'red';
   // Green signals: growth, rally, surge, record, launch, partnership
-  if (/growth|rally|surge|record|launch|partner|breakthrough|gain|rise|profit/.test(lower)) return 'green';
+  if (
+    /growth|rally|surge|record|launch|partner|breakthrough|gain|rise|profit/.test(
+      lower
+    )
+  )
+    return 'green';
   // Default: yellow (caution/watch)
   return 'yellow';
 }
@@ -103,11 +119,27 @@ function main() {
     if (t.startsWith('### ') && !dailyTitle && !t.includes('▸')) {
       dailyTitle = t.replace('### ', '');
     }
-    if (t.startsWith('*') && t.endsWith('*') && !t.startsWith('**') && !epigraph) {
-      epigraph = t.slice(1, -1).replace(/^[""\u201C\u201D]+/, '').replace(/[""\u201C\u201D]+$/, '').trim();
+    if (
+      t.startsWith('*') &&
+      t.endsWith('*') &&
+      !t.startsWith('**') &&
+      !epigraph
+    ) {
+      epigraph = t
+        .slice(1, -1)
+        .replace(/^[""\u201C\u201D]+/, '')
+        .replace(/[""\u201C\u201D]+$/, '')
+        .trim();
     }
     // Lede: italic paragraph after the title (starts with * and is long)
-    if (foundDate && dailyTitle && t.startsWith('*') && !t.startsWith('**') && t.length > 100 && !lede) {
+    if (
+      foundDate &&
+      dailyTitle &&
+      t.startsWith('*') &&
+      !t.startsWith('**') &&
+      t.length > 100 &&
+      !lede
+    ) {
       lede = t.replace(/^\*/, '').replace(/\*$/, '').trim();
     }
     if (t === '---' && foundDate) break;
@@ -117,12 +149,18 @@ function main() {
   const headline = dailyTitle || 'Daily Intelligence Brief';
 
   // ─── Extract TLDR from lede ───────────────────────────────────────────
-  const tldr = lede || `${displayDate} — Markets, meditations, and mental models.`;
+  const tldr =
+    lede || `${displayDate} — Markets, meditations, and mental models.`;
 
   // ─── Extract signals from The Six section ─────────────────────────────
   // Format: ## Domain Name \n\n - **Bold lead sentence.** Body text...
   const sixContent = extractSection(content, '# ▸ THE SIX');
-  const signals: Array<{ text: string; color: 'red' | 'green' | 'yellow'; domain: string; terminalLine: string }> = [];
+  const signals: Array<{
+    text: string;
+    color: 'red' | 'green' | 'yellow';
+    domain: string;
+    terminalLine: string;
+  }> = [];
 
   if (sixContent) {
     let currentDomain = '';
@@ -146,7 +184,8 @@ function main() {
         // Terminal line: use bold lead, truncated
         let terminalLine = boldLead;
         if (terminalLine.length > 70) {
-          terminalLine = terminalLine.slice(0, 67).replace(/\s+\S*$/, '') + '...';
+          terminalLine =
+            terminalLine.slice(0, 67).replace(/\s+\S*$/, '') + '...';
         }
 
         // Full text: combine bold lead + rest of body (may span lines)
@@ -155,16 +194,30 @@ function main() {
         // Collect continuation lines until next bullet, heading, or blank line + heading
         for (let j = i + 1; j < sixLines.length; j++) {
           const nextLine = sixLines[j]?.trim() || '';
-          if (nextLine.startsWith('- **') || nextLine.startsWith('## ') || nextLine.startsWith('# ▸')) break;
-          if (nextLine === '' && (sixLines[j + 1]?.trim() || '').startsWith('## ')) break;
-          if (nextLine === '' && (sixLines[j + 1]?.trim() || '').startsWith('- **')) break;
+          if (
+            nextLine.startsWith('- **') ||
+            nextLine.startsWith('## ') ||
+            nextLine.startsWith('# ▸')
+          )
+            break;
+          if (
+            nextLine === '' &&
+            (sixLines[j + 1]?.trim() || '').startsWith('## ')
+          )
+            break;
+          if (
+            nextLine === '' &&
+            (sixLines[j + 1]?.trim() || '').startsWith('- **')
+          )
+            break;
           if (nextLine) fullText += ' ' + nextLine;
         }
 
         // Truncate full text for display
-        const text = fullText.length > 300
-          ? fullText.slice(0, 297).replace(/\s+\S*$/, '') + '…'
-          : fullText;
+        const text =
+          fullText.length > 300
+            ? fullText.slice(0, 297).replace(/\s+\S*$/, '') + '…'
+            : fullText;
 
         signals.push({
           text,
@@ -180,13 +233,17 @@ function main() {
   const takeContent = extractSection(content, '# ▸ THE TAKE');
   const takeTitle = extractTitle(takeContent);
   const takeSubtitleMatch = takeContent.match(/^####\s+(.+)$/m);
-  const takeSubtitle = takeSubtitleMatch && takeSubtitleMatch[1] ? takeSubtitleMatch[1].trim() : '';
+  const takeSubtitle =
+    takeSubtitleMatch && takeSubtitleMatch[1]
+      ? takeSubtitleMatch[1].trim()
+      : '';
   const takePreview = extractFirstParagraph(takeContent);
 
   // Extract framework line if present
   let framework = '';
-  const fwMatch = takeContent.match(/\*\*Framework:\*\*\s*(.+)/i)
-    || takeContent.match(/\*\*[^*]*Framework[^*]*:\*\*\s*(.+)/i);
+  const fwMatch =
+    takeContent.match(/\*\*Framework:\*\*\s*(.+)/i) ||
+    takeContent.match(/\*\*[^*]*Framework[^*]*:\*\*\s*(.+)/i);
   if (fwMatch && fwMatch[1]) framework = fwMatch[1].trim();
 
   // ─── Extract Inner Game ───────────────────────────────────────────────
@@ -196,9 +253,12 @@ function main() {
   const quoteMatch = innerContent.match(/\*"([^*]+)"\*/);
   if (quoteMatch && quoteMatch[1]) {
     innerQuote = quoteMatch[1].trim();
-    const afterQ = innerContent.slice(innerContent.indexOf(quoteMatch[0]) + quoteMatch[0].length);
+    const afterQ = innerContent.slice(
+      innerContent.indexOf(quoteMatch[0]) + quoteMatch[0].length
+    );
     const attrMatch = afterQ.match(/[—–-]\s*(.+?)(?:\n|$)/);
-    if (attrMatch && attrMatch[1]) innerAttribution = attrMatch[1].replace(/\*/g, '').trim();
+    if (attrMatch && attrMatch[1])
+      innerAttribution = attrMatch[1].replace(/\*/g, '').trim();
   }
   if (!innerQuote) {
     // Use first substantial paragraph
@@ -208,7 +268,9 @@ function main() {
 
   // Action: look for "Today's practice:" or last paragraph
   let innerAction = '';
-  const actionMatch = innerContent.match(/\*\*Today's practice:\*\*\s*([^\n]+)/);
+  const actionMatch = innerContent.match(
+    /\*\*Today's practice:\*\*\s*([^\n]+)/
+  );
   if (actionMatch && actionMatch[1]) {
     innerAction = actionMatch[1].trim();
   } else {
@@ -220,13 +282,16 @@ function main() {
   // ─── Extract The Model ────────────────────────────────────────────────
   const modelContent = extractSection(content, '# ▸ THE MODEL');
   const modelName = extractTitle(modelContent);
-  const modelSlug = modelName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const modelSlug = modelName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
   const modelPreview = extractFirstParagraph(modelContent);
 
   // ─── Count editions ───────────────────────────────────────────────────
-  const editionCount = fs.readdirSync(CONTENT_DIR)
-    .filter(f => f.endsWith('.md') && !f.includes('-light'))
-    .length;
+  const editionCount = fs
+    .readdirSync(CONTENT_DIR)
+    .filter(f => f.endsWith('.md') && !f.includes('-light')).length;
 
   // ─── Build output ─────────────────────────────────────────────────────
   const signalData = {

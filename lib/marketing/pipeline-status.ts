@@ -32,6 +32,7 @@ export function xWasActuallyPosted(entry?: StepLogEntry | null): boolean {
   if (!entry || entry.status !== 'success') return false;
   const d = entry.details ?? '';
   if (d.includes('skipped')) return false;
-  if (d.startsWith('Would post') || d.startsWith('[redis] Would post')) return false;
+  if (d.startsWith('Would post') || d.startsWith('[redis] Would post'))
+    return false;
   return !!entry.tweetId || /Published \d+ posts/.test(d);
 }

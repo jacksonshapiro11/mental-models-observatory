@@ -10,38 +10,38 @@ const path = require('path');
 
 function main() {
   const queueFile = path.join(process.cwd(), 'tweets', 'queue', 'pending.json');
-  
+
   if (!fs.existsSync(queueFile)) {
     console.log('❌ No queued tweets found.');
     console.log(`   Run: npm run queue-weekly-tweets <markdown-file>`);
     process.exit(1);
   }
-  
+
   const queue = JSON.parse(fs.readFileSync(queueFile, 'utf8'));
-  
+
   if (queue.length === 0) {
     console.log('📭 Queue is empty.');
     process.exit(0);
   }
-  
+
   // Sort by scheduled date/time
-  const sorted = [...queue].sort((a, b) => 
-    new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime)
+  const sorted = [...queue].sort(
+    (a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime)
   );
-  
+
   // Filter to show only upcoming/pending tweets
   const now = new Date();
-  const upcoming = sorted.filter(item => 
-    new Date(item.scheduledDateTime) >= now || item.status === 'pending'
+  const upcoming = sorted.filter(
+    item => new Date(item.scheduledDateTime) >= now || item.status === 'pending'
   );
-  
-  const past = sorted.filter(item => 
-    new Date(item.scheduledDateTime) < now && item.status !== 'posted'
+
+  const past = sorted.filter(
+    item => new Date(item.scheduledDateTime) < now && item.status !== 'posted'
   );
-  
+
   console.log('\n📋 QUEUED TWEETS FOR MANUAL POSTING\n');
   console.log('═'.repeat(60));
-  
+
   if (past.length > 0) {
     console.log(`\n⏰ PAST DUE (${past.length}):\n`);
     past.forEach((item, idx) => {
@@ -57,7 +57,7 @@ function main() {
       });
     });
   }
-  
+
   if (upcoming.length > 0) {
     console.log(`\n\n📅 UPCOMING (${upcoming.length}):\n`);
     upcoming.forEach((item, idx) => {
@@ -73,7 +73,7 @@ function main() {
       });
     });
   }
-  
+
   // Summary
   console.log('\n\n' + '═'.repeat(60));
   console.log('\n📊 SUMMARY:');
@@ -81,14 +81,10 @@ function main() {
   console.log(`   Past due: ${past.length}`);
   console.log(`   Upcoming: ${upcoming.length}`);
   console.log(`   Posted: ${queue.filter(q => q.status === 'posted').length}`);
-  
+
   // Export option
   console.log('\n💡 TIP: Copy tweets above and post manually to Twitter');
   console.log(`   Queue file: ${queueFile}\n`);
 }
 
 main();
-
-
-
-

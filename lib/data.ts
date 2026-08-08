@@ -54,10 +54,7 @@ export interface SearchResult {
 }
 
 // Import the parsed Readwise data
-import {
-    READWISE_DOMAINS,
-    READWISE_MODELS
-} from './readwise-data';
+import { READWISE_DOMAINS, READWISE_MODELS } from './readwise-data';
 
 /**
  * Mental models data from Readwise framework
@@ -121,7 +118,7 @@ export function searchContent(query: string): SearchResult[] {
         title: model.name,
         description: model.description,
         url: `/models/${model.slug}`,
-        relevance
+        relevance,
       });
     }
   });
@@ -136,7 +133,7 @@ export function searchContent(query: string): SearchResult[] {
         title: domain.name,
         description: domain.description,
         url: `/knowledge-domains/${domain.slug}`,
-        relevance
+        relevance,
       });
     }
   });
@@ -147,19 +144,22 @@ export function searchContent(query: string): SearchResult[] {
 /**
  * Calculate search relevance score
  */
-function calculateRelevance(item: MentalModel | Domain, searchTerm: string): number {
+function calculateRelevance(
+  item: MentalModel | Domain,
+  searchTerm: string
+): number {
   let score = 0;
-  
+
   if (item.name.toLowerCase().includes(searchTerm)) score += 10;
   if (item.description.toLowerCase().includes(searchTerm)) score += 5;
-  
+
   if ('tags' in item) {
     const model = item as MentalModel;
     model.tags.forEach(tag => {
       if (tag.toLowerCase().includes(searchTerm)) score += 3;
     });
   }
-  
+
   return score;
 }
 
@@ -169,17 +169,20 @@ function calculateRelevance(item: MentalModel | Domain, searchTerm: string): num
 export function getRelatedModels(modelSlug: string): MentalModel[] {
   const model = getModelBySlug(modelSlug);
   if (!model) return [];
-  
-  return SAMPLE_MODELS.filter(m => 
-    model.relatedModels.includes(m.slug) || 
-    m.relatedModels.includes(model.slug)
+
+  return SAMPLE_MODELS.filter(
+    m =>
+      model.relatedModels.includes(m.slug) ||
+      m.relatedModels.includes(model.slug)
   );
 }
 
 /**
  * Get models by difficulty level
  */
-export function getModelsByDifficulty(difficulty: MentalModel['difficulty']): MentalModel[] {
+export function getModelsByDifficulty(
+  difficulty: MentalModel['difficulty']
+): MentalModel[] {
   return SAMPLE_MODELS.filter(model => model.difficulty === difficulty);
 }
 
@@ -198,7 +201,7 @@ export function getAllTags(): string[] {
  * Get models by tag
  */
 export function getModelsByTag(tag: string): MentalModel[] {
-  return SAMPLE_MODELS.filter(model => 
+  return SAMPLE_MODELS.filter(model =>
     model.tags.some(t => t.toLowerCase() === tag.toLowerCase())
   );
 }

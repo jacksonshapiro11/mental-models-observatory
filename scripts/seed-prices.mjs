@@ -35,7 +35,9 @@ if (fs.existsSync(envPath)) {
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 if (!REDIS_URL || !REDIS_TOKEN) {
-  console.error('ERROR: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN required');
+  console.error(
+    'ERROR: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN required'
+  );
   process.exit(1);
 }
 
@@ -44,44 +46,156 @@ if (!REDIS_URL || !REDIS_TOKEN) {
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
 // Request 1500 calendar days (~1050 trading days) to cover 200W MA (1000 trading days)
-const DAYS = parseInt(args.find(a => a.startsWith('--days='))?.split('=')[1] || '1500');
+const DAYS = parseInt(
+  args.find(a => a.startsWith('--days='))?.split('=')[1] || '1500'
+);
 
 // All assets we track, mapped to Yahoo Finance symbols.
 // Primary: use actual index/futures symbols directly (no ETF proxy math).
 // Fallback: ETF proxy is available if the actual symbol fails on Yahoo.
 const ASSETS = {
   // Equities — actual index symbols (direct prices, no multiplier needed)
-  SPX:    { yahoo: '^GSPC',  fallback: 'SPY',  fallbackMultiplier: 10,    category: 'equities' },
-  NDX:    { yahoo: '^NDX',   fallback: 'QQQ',  fallbackMultiplier: 40.95, category: 'equities' },
-  DJI:    { yahoo: '^DJI',   fallback: 'DIA',  fallbackMultiplier: 100,   category: 'equities' },
-  RUT:    { yahoo: '^RUT',   fallback: 'IWM',  fallbackMultiplier: 10,    category: 'equities' },
-  IGV:    { yahoo: 'IGV',    fallback: null,    fallbackMultiplier: 1,     category: 'equities' },
-  SMH:    { yahoo: 'SMH',    fallback: null,    fallbackMultiplier: 1,     category: 'equities' },
-  IWF:    { yahoo: 'IWF',    fallback: null,    fallbackMultiplier: 1,     category: 'equities' },
-  IWD:    { yahoo: 'IWD',    fallback: null,    fallbackMultiplier: 1,     category: 'equities' },
-  XLE:    { yahoo: 'XLE',    fallback: null,    fallbackMultiplier: 1,     category: 'equities' },
-  ARKK:   { yahoo: 'ARKK',   fallback: null,    fallbackMultiplier: 1,     category: 'equities' },
+  SPX: {
+    yahoo: '^GSPC',
+    fallback: 'SPY',
+    fallbackMultiplier: 10,
+    category: 'equities',
+  },
+  NDX: {
+    yahoo: '^NDX',
+    fallback: 'QQQ',
+    fallbackMultiplier: 40.95,
+    category: 'equities',
+  },
+  DJI: {
+    yahoo: '^DJI',
+    fallback: 'DIA',
+    fallbackMultiplier: 100,
+    category: 'equities',
+  },
+  RUT: {
+    yahoo: '^RUT',
+    fallback: 'IWM',
+    fallbackMultiplier: 10,
+    category: 'equities',
+  },
+  IGV: {
+    yahoo: 'IGV',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'equities',
+  },
+  SMH: {
+    yahoo: 'SMH',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'equities',
+  },
+  IWF: {
+    yahoo: 'IWF',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'equities',
+  },
+  IWD: {
+    yahoo: 'IWD',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'equities',
+  },
+  XLE: {
+    yahoo: 'XLE',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'equities',
+  },
+  ARKK: {
+    yahoo: 'ARKK',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'equities',
+  },
 
   // Crypto (direct price, multiplier always 1)
-  BTC:    { yahoo: 'BTC-USD',      fallback: null, fallbackMultiplier: 1, category: 'crypto' },
-  ETH:    { yahoo: 'ETH-USD',      fallback: null, fallbackMultiplier: 1, category: 'crypto' },
-  SOL:    { yahoo: 'SOL-USD',      fallback: null, fallbackMultiplier: 1, category: 'crypto' },
-  AAVE:   { yahoo: 'AAVE-USD',     fallback: null, fallbackMultiplier: 1, category: 'crypto' },
-  UNI:    { yahoo: 'UNI7083-USD',  fallback: null, fallbackMultiplier: 1, category: 'crypto' },
-  LINK:   { yahoo: 'LINK-USD',     fallback: null, fallbackMultiplier: 1, category: 'crypto' },
+  BTC: {
+    yahoo: 'BTC-USD',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'crypto',
+  },
+  ETH: {
+    yahoo: 'ETH-USD',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'crypto',
+  },
+  SOL: {
+    yahoo: 'SOL-USD',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'crypto',
+  },
+  AAVE: {
+    yahoo: 'AAVE-USD',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'crypto',
+  },
+  UNI: {
+    yahoo: 'UNI7083-USD',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'crypto',
+  },
+  LINK: {
+    yahoo: 'LINK-USD',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'crypto',
+  },
 
   // Commodities — actual futures symbols (direct prices, no ETF proxy math)
-  GOLD:   { yahoo: 'GC=F',   fallback: 'GLD',  fallbackMultiplier: 10,  category: 'commodities' },
-  SILVER: { yahoo: 'SI=F',   fallback: 'SLV',  fallbackMultiplier: 1,   category: 'commodities' },
-  BRENT:  { yahoo: 'BZ=F',   fallback: 'BNO',  fallbackMultiplier: 1,   category: 'commodities' },
-  COPPER: { yahoo: 'HG=F',   fallback: 'CPER', fallbackMultiplier: 1,   category: 'commodities' },
-  NATGAS: { yahoo: 'NG=F',   fallback: 'UNG',  fallbackMultiplier: 1,   category: 'commodities' },
+  GOLD: {
+    yahoo: 'GC=F',
+    fallback: 'GLD',
+    fallbackMultiplier: 10,
+    category: 'commodities',
+  },
+  SILVER: {
+    yahoo: 'SI=F',
+    fallback: 'SLV',
+    fallbackMultiplier: 1,
+    category: 'commodities',
+  },
+  BRENT: {
+    yahoo: 'BZ=F',
+    fallback: 'BNO',
+    fallbackMultiplier: 1,
+    category: 'commodities',
+  },
+  COPPER: {
+    yahoo: 'HG=F',
+    fallback: 'CPER',
+    fallbackMultiplier: 1,
+    category: 'commodities',
+  },
+  NATGAS: {
+    yahoo: 'NG=F',
+    fallback: 'UNG',
+    fallbackMultiplier: 1,
+    category: 'commodities',
+  },
   // NATGAS history: NG=F front-month continuous series has roll cliffs (e.g. 2026-01-29 ×1.9).
   // Snapshot % changes use UNG via changeYahoo; Redis NG=F history still feeds MAs with
   // per-window scale-break withholding (50D may publish; 200D/200W stay blank across the cliff).
 
   // Rates (Treasury yields — direct, multiplier always 1)
-  US10Y:  { yahoo: '^TNX',   fallback: null,   fallbackMultiplier: 1,   category: 'rates' },
+  US10Y: {
+    yahoo: '^TNX',
+    fallback: null,
+    fallbackMultiplier: 1,
+    category: 'rates',
+  },
 };
 
 // ─── Yahoo Finance fetch ─────────────────────────────────────────────────────
@@ -92,7 +206,12 @@ function timestampToTradingDate(ts, category) {
   const d = new Date(ts * 1000);
   const tz = category === 'crypto' ? 'UTC' : 'America/New_York';
   // Format in the exchange timezone to get the correct trading date
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
   return parts; // en-CA format is YYYY-MM-DD
 }
 
@@ -156,7 +275,9 @@ async function redisSet(key, value) {
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
-console.log(`Seeding ${DAYS} days of price history${DRY_RUN ? ' (DRY RUN)' : ''}...\n`);
+console.log(
+  `Seeding ${DAYS} days of price history${DRY_RUN ? ' (DRY RUN)' : ''}...\n`
+);
 
 // Step 1: Fetch price histories from Yahoo Finance
 // Primary: use actual index/futures symbols directly (no multiplier math)
@@ -182,15 +303,20 @@ for (const name of assetNames) {
   // If primary failed and we have a fallback ETF, try that
   if ((!history || Object.keys(history).length === 0) && asset.fallback) {
     try {
-      process.stdout.write(`  Fetching ${name} fallback (${asset.fallback})...`);
+      process.stdout.write(
+        `  Fetching ${name} fallback (${asset.fallback})...`
+      );
       const etfHistory = await fetchYahooHistory(asset.fallback, DAYS);
       // Apply fallback multiplier to convert ETF price → approximate index level
       history = {};
       for (const [date, price] of Object.entries(etfHistory)) {
-        history[date] = Math.round(price * asset.fallbackMultiplier * 100) / 100;
+        history[date] =
+          Math.round(price * asset.fallbackMultiplier * 100) / 100;
       }
       usedFallback = true;
-      console.log(` ${Object.keys(history).length} days (via ${asset.fallback} × ${asset.fallbackMultiplier})`);
+      console.log(
+        ` ${Object.keys(history).length} days (via ${asset.fallback} × ${asset.fallbackMultiplier})`
+      );
     } catch (err) {
       console.log(` FALLBACK FAILED: ${err.message}`);
     }
@@ -213,7 +339,7 @@ console.log('');
 // Step 2: Build per-asset sorted date arrays (needed because crypto trades weekends but equities don't)
 // Using global index-based lookback would land on weekend dates for equities → null → dashes
 const allDates = new Set();
-const perAssetDates = {};  // { SPX: ['2022-01-03', '2022-01-04', ...], BTC: [...], ... }
+const perAssetDates = {}; // { SPX: ['2022-01-03', '2022-01-04', ...], BTC: [...], ... }
 
 for (const [name, data] of Object.entries(allHistories)) {
   const dates = Object.keys(data.history).sort();
@@ -225,7 +351,9 @@ for (const [name, data] of Object.entries(allHistories)) {
 
 const sortedDates = [...allDates].sort();
 console.log(`Found ${sortedDates.length} unique calendar dates`);
-console.log(`Range: ${sortedDates[0]} to ${sortedDates[sortedDates.length - 1]}\n`);
+console.log(
+  `Range: ${sortedDates[0]} to ${sortedDates[sortedDates.length - 1]}\n`
+);
 
 // Build per-date price records and calculate changes + MAs
 // Change periods matching Yahoo Finance conventions:
@@ -240,7 +368,10 @@ const CHANGE_PERIODS = {
 // MA periods remain in trading days (industry standard)
 const MA_PERIODS = { '50D': 50, '200D': 200, '200W': 1000 };
 
-function round(v, d) { const m = Math.pow(10, d); return Math.round(v * m) / m; }
+function round(v, d) {
+  const m = Math.pow(10, d);
+  return Math.round(v * m) / m;
+}
 
 // Helper: get the price for a period ago for a specific asset.
 // tradingDays: count back N entries in the date array (handles weekends + holidays)
@@ -258,11 +389,16 @@ function getCalendarLookbackPrice(assetDates, history, currentDate, period) {
     // Calendar date lookback with binary search
     // Parse date components directly to avoid timezone issues
     const [y, m, d] = currentDate.split('-').map(Number);
-    let ty = y, tm = m, td = d;
+    let ty = y,
+      tm = m,
+      td = d;
     if (period.years) ty -= period.years;
     if (period.months) {
       tm -= period.months;
-      if (tm < 1) { ty -= 1; tm += 12; }
+      if (tm < 1) {
+        ty -= 1;
+        tm += 12;
+      }
     }
     if (period.days) td -= period.days;
     // Clamp day to valid range for target month (handles e.g. March 31 → Feb 28)
@@ -270,7 +406,8 @@ function getCalendarLookbackPrice(assetDates, history, currentDate, period) {
     if (td > maxDay) td = maxDay;
     const targetStr = `${ty}-${String(tm).padStart(2, '0')}-${String(td).padStart(2, '0')}`;
 
-    let lo = 0, hi = currentIdx - 1;
+    let lo = 0,
+      hi = currentIdx - 1;
     while (lo <= hi) {
       const mid = (lo + hi) >> 1;
       if (assetDates[mid] <= targetStr) {
@@ -293,7 +430,8 @@ function getCalendarLookbackPrice(assetDates, history, currentDate, period) {
 function calcMA(assetDates, history, currentDate, period) {
   const idx = binarySearch(assetDates, currentDate);
   if (idx < 0 || idx < period - 1) return null;
-  let sum = 0, count = 0;
+  let sum = 0,
+    count = 0;
   for (let i = idx - period + 1; i <= idx; i++) {
     const d = assetDates[i];
     const p = history[d];
@@ -307,7 +445,8 @@ function calcMA(assetDates, history, currentDate, period) {
 }
 
 function binarySearch(arr, target) {
-  let lo = 0, hi = arr.length - 1;
+  let lo = 0,
+    hi = arr.length - 1;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
     if (arr[mid] === target) return mid;
@@ -342,7 +481,12 @@ for (let dateIdx = 0; dateIdx < sortedDates.length; dateIdx++) {
     // Prices are already in actual units (direct from Yahoo index/futures)
     const changes = {};
     for (const [label, period] of Object.entries(CHANGE_PERIODS)) {
-      const pastPrice = getCalendarLookbackPrice(assetDates, data.history, date, period);
+      const pastPrice = getCalendarLookbackPrice(
+        assetDates,
+        data.history,
+        date,
+        period
+      );
       if (pastPrice != null && pastPrice > 0) {
         changes[label] = round(((price - pastPrice) / pastPrice) * 100, 2);
       }
@@ -367,7 +511,8 @@ for (let dateIdx = 0; dateIdx < sortedDates.length; dateIdx++) {
 
   // Write to Redis
   const key = `dashboard:history:${date}`;
-  const assetCount = Object.keys(snapshot.equities).length +
+  const assetCount =
+    Object.keys(snapshot.equities).length +
     Object.keys(snapshot.crypto).length +
     Object.keys(snapshot.commodities).length +
     Object.keys(snapshot.rates).length;
@@ -376,7 +521,9 @@ for (let dateIdx = 0; dateIdx < sortedDates.length; dateIdx++) {
 
   if (DRY_RUN) {
     if (dateIdx === 0 || dateIdx === sortedDates.length - 1) {
-      console.log(`  ${date}: ${assetCount} assets (${Object.keys(snapshot.equities).length} eq, ${Object.keys(snapshot.crypto).length} crypto, ${Object.keys(snapshot.commodities).length} comm, ${Object.keys(snapshot.rates).length} rates)`);
+      console.log(
+        `  ${date}: ${assetCount} assets (${Object.keys(snapshot.equities).length} eq, ${Object.keys(snapshot.crypto).length} crypto, ${Object.keys(snapshot.commodities).length} comm, ${Object.keys(snapshot.rates).length} rates)`
+      );
     }
   } else {
     try {
@@ -426,7 +573,12 @@ if (!DRY_RUN) {
     // Prices are already in actual units — no multiplier math needed
     const changes = {};
     for (const [label, period] of Object.entries(CHANGE_PERIODS)) {
-      const pastPrice = getCalendarLookbackPrice(assetDates, data.history, assetLatestDate, period);
+      const pastPrice = getCalendarLookbackPrice(
+        assetDates,
+        data.history,
+        assetLatestDate,
+        period
+      );
       if (pastPrice != null && pastPrice > 0) {
         changes[label] = round(((price - pastPrice) / pastPrice) * 100, 2);
       }
@@ -438,7 +590,12 @@ if (!DRY_RUN) {
       if (ma != null) mas[label] = ma;
     }
 
-    latestSnapshot[data.category][name] = { latestClose: round(price, 2), changes, mas, multiplier: data.multiplier };
+    latestSnapshot[data.category][name] = {
+      latestClose: round(price, 2),
+      changes,
+      mas,
+      multiplier: data.multiplier,
+    };
   }
 
   await redisSet('dashboard:snapshot:latest', JSON.stringify(latestSnapshot));
@@ -455,13 +612,20 @@ if (!DRY_RUN) {
   const BUNDLE_MAX_DAYS = 1200;
   const bundleEntries = [];
   for (const date of sortedDates) {
-    const entry = { date, equities: {}, crypto: {}, commodities: {}, rates: {} };
+    const entry = {
+      date,
+      equities: {},
+      crypto: {},
+      commodities: {},
+      rates: {},
+    };
     let count = 0;
     for (const [name, data] of Object.entries(allHistories)) {
       const price = data.history[date];
       if (price == null || price <= 0) continue;
       const slim = { latestClose: round(price, 2) };
-      if (data.multiplier != null && data.multiplier !== 1) slim.multiplier = data.multiplier;
+      if (data.multiplier != null && data.multiplier !== 1)
+        slim.multiplier = data.multiplier;
       entry[data.category][name] = slim;
       count++;
     }
@@ -469,9 +633,13 @@ if (!DRY_RUN) {
   }
   const bundle = bundleEntries.slice(-BUNDLE_MAX_DAYS);
   await redisSet('dashboard:history:bundle', JSON.stringify(bundle));
-  console.log(`Rebuilt dashboard:history:bundle with ${bundle.length} days (${bundle[0]?.date} → ${bundle[bundle.length - 1]?.date})`);
+  console.log(
+    `Rebuilt dashboard:history:bundle with ${bundle.length} days (${bundle[0]?.date} → ${bundle[bundle.length - 1]?.date})`
+  );
 } else {
-  console.log(`\nDRY RUN complete — would write ${sortedDates.length} snapshots to Redis`);
+  console.log(
+    `\nDRY RUN complete — would write ${sortedDates.length} snapshots to Redis`
+  );
 }
 
 console.log('\nDone!');

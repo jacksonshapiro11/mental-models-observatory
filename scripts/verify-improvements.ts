@@ -21,9 +21,18 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 
 interface Row {
-  id: string; date: string; source: string; rc: string; sev: string;
-  summary: string; targets: string[]; check: string;
-  applied: string; verified: string; behavior: string; recur: string;
+  id: string;
+  date: string;
+  source: string;
+  rc: string;
+  sev: string;
+  summary: string;
+  targets: string[];
+  check: string;
+  applied: string;
+  verified: string;
+  behavior: string;
+  recur: string;
 }
 
 const AGE_FUSE_DAYS = 30; // check=none on Critical/High: WARN until this age, FAIL after.
@@ -39,9 +48,21 @@ function parseLedger(md: string): Row[] {
     const id = cells[1]!;
     if (!/^(IMP|ESC)-\d+/.test(id)) continue; // skips header + divider
     rows.push({
-      id, date: cells[2]!, source: cells[3]!, rc: cells[4]!, sev: cells[5]!,
-      summary: cells[6]!, targets: cells[7]!.split(',').map(s => s.trim()).filter(s => s && s !== 'scripts/'),
-      check: cells[8]!, applied: cells[9]!, verified: cells[10]!, behavior: cells[11]!, recur: cells[12]!,
+      id,
+      date: cells[2]!,
+      source: cells[3]!,
+      rc: cells[4]!,
+      sev: cells[5]!,
+      summary: cells[6]!,
+      targets: cells[7]!
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s && s !== 'scripts/'),
+      check: cells[8]!,
+      applied: cells[9]!,
+      verified: cells[10]!,
+      behavior: cells[11]!,
+      recur: cells[12]!,
     });
   }
   return rows;
@@ -65,7 +86,9 @@ function parseLedger(md: string): Row[] {
  * that merely mentions closing no longer closes anything.
  */
 const CLOSED_RE = /^\W*(?:Y\s*[—–-]\s*)?(?:CLOSED\b|WONT-FIX-VIA-PROSE\b)/i;
-export function isClosed(behavior: string): boolean { return CLOSED_RE.test(behavior.trim()); }
+export function isClosed(behavior: string): boolean {
+  return CLOSED_RE.test(behavior.trim());
+}
 
 function ageDays(dateStr: string): number {
   const d = new Date(dateStr + 'T00:00:00Z').getTime();
@@ -110,7 +133,11 @@ type GitResult = { status: number | null; out: string; err: string };
 type GitRunner = (args: string[], cwd?: string) => GitResult;
 
 function gitStdout(args: string[], cwd?: string): GitResult {
-  const res = spawnSync('git', args, { encoding: 'utf8', timeout: 30000, ...(cwd ? { cwd } : {}) });
+  const res = spawnSync('git', args, {
+    encoding: 'utf8',
+    timeout: 30000,
+    ...(cwd ? { cwd } : {}),
+  });
   return {
     status: res.status,
     out: (res.stdout || '').trim(),
@@ -118,8 +145,16 @@ function gitStdout(args: string[], cwd?: string): GitResult {
   };
 }
 
-export function anchorForensics(file: string, needle: string, cwd?: string, run: GitRunner = gitStdout): string {
-  const { status, out, err } = run(['log', '--oneline', '-S', needle, '--', file], cwd);
+export function anchorForensics(
+  file: string,
+  needle: string,
+  cwd?: string,
+  run: GitRunner = gitStdout
+): string {
+  const { status, out, err } = run(
+    ['log', '--oneline', '-S', needle, '--', file],
+    cwd
+  );
   const lines = out.split('\n').filter(Boolean);
   if (status === 0 && lines.length > 0) {
     return `\n      FORENSICS: last commit touching this string in ${file} → ${lines[0]}\n      Classify before you act: REVERT (restore the code) or SUPERSESSION (re-point the row at the enforcement that replaced it, and prove the behaviour survives with a run: leg). Re-pointing a REVERT is how a regression turns green.`;
@@ -162,29 +197,45 @@ export function parseMandates(criticMd: string): number[] {
   const lines = criticMd.split('\n');
   // The 08-07 report carries the heading TWICE; the mandates follow the LAST one.
   let start = -1;
-  lines.forEach((l, i) => { if (/^#{1,6}\s*MUST BE BETTER TOMORROW\s*$/i.test(l.trim())) start = i; });
+  lines.forEach((l, i) => {
+    if (/^#{1,6}\s*MUST BE BETTER TOMORROW\s*$/i.test(l.trim())) start = i;
+  });
   if (start === -1) return [];
   const nums = new Set<number>();
   for (const l of lines.slice(start + 1)) {
-    if (/^#{1,3}\s+\w/.test(l) && !/^#{4,6}/.test(l)) break;   // next top-level section ends it
+    if (/^#{1,3}\s+\w/.test(l) && !/^#{4,6}/.test(l)) break; // next top-level section ends it
     const m = l.match(/^\*\*(\d+)[.)]/);
     if (m) nums.add(parseInt(m[1]!, 10));
   }
   return [...nums].sort((a, b) => a - b);
 }
 
-export interface Coverage { applied: number[]; deferred: number[]; uncovered: number[] }
+export interface Coverage {
+  applied: number[];
+  deferred: number[];
+  uncovered: number[];
+}
 
 /** Which of `mandates` (issued by the {MM-DD} critic) has a ledger row discharging it? */
-export function mandateCoverage(rows: Row[], criticDate: string, mandates: number[]): Coverage {
-  const mmdd = criticDate.slice(5);                       // 2026-08-07 → 08-07
+export function mandateCoverage(
+  rows: Row[],
+  criticDate: string,
+  mandates: number[]
+): Coverage {
+  const mmdd = criticDate.slice(5); // 2026-08-07 → 08-07
   const out: Coverage = { applied: [], deferred: [], uncovered: [] };
   for (const n of mandates) {
     // The established citation form, already used by 20+ rows: "(08-07 Critic mandate #3, 🔴)".
     // Sub-lettered mandates (#1a/#1b) discharge the parent number.
-    const re = new RegExp(`${mmdd}\\s+Critic\\s+mandate\\s+#${n}(?![0-9])`, 'i');
+    const re = new RegExp(
+      `${mmdd}\\s+Critic\\s+mandate\\s+#${n}(?![0-9])`,
+      'i'
+    );
     const hit = rows.filter(r => re.test(r.summary));
-    if (!hit.length) { out.uncovered.push(n); continue; }
+    if (!hit.length) {
+      out.uncovered.push(n);
+      continue;
+    }
     if (hit.every(r => /deferred/i.test(r.applied))) out.deferred.push(n);
     else out.applied.push(n);
   }
@@ -192,10 +243,14 @@ export function mandateCoverage(rows: Row[], criticDate: string, mandates: numbe
 }
 
 /** The most recent critic report for a FULLY ELAPSED improvement cycle (date < today). */
-export function latestElapsedCritic(dbDir: string, today: string): string | null {
+export function latestElapsedCritic(
+  dbDir: string,
+  today: string
+): string | null {
   if (!fs.existsSync(dbDir)) return null;
-  const dates = fs.readdirSync(dbDir)
-    .filter(f => /^\d{4}-\d{2}-\d{2}-critic\.md$/.test(f))   // never the -light-critic siblings
+  const dates = fs
+    .readdirSync(dbDir)
+    .filter(f => /^\d{4}-\d{2}-\d{2}-critic\.md$/.test(f)) // never the -light-critic siblings
     .map(f => f.slice(0, 10))
     .filter(d => d < today)
     .sort();
@@ -214,7 +269,10 @@ function runLeg(leg: string, id: string): string | null {
     const fp = path.join(process.cwd(), file);
     if (!fs.existsSync(fp)) return `${id}: grep target missing: ${file}`;
     if (!fs.readFileSync(fp, 'utf8').includes(needle)) {
-      return `${id}: enforcement text ABSENT — "${needle}" not found in ${file} (the improvement was reverted or never landed)` + anchorForensics(file, needle);
+      return (
+        `${id}: enforcement text ABSENT — "${needle}" not found in ${file} (the improvement was reverted or never landed)` +
+        anchorForensics(file, needle)
+      );
     }
     return null;
   }
@@ -232,18 +290,28 @@ function runLeg(leg: string, id: string): string | null {
     const file = rest.slice(0, colon).trim();
     const needle = rest.slice(colon + 1).trim();
     if (!file || !needle) return `${id}: malformed gitshow check: ${leg}`;
-    const res = spawnSync('git', ['show', `HEAD:${file}`], { encoding: 'utf8', timeout: 30000 });
+    const res = spawnSync('git', ['show', `HEAD:${file}`], {
+      encoding: 'utf8',
+      timeout: 30000,
+    });
     if (res.status !== 0) {
       return `${id}: gitshow target missing from HEAD: ${file}\n      ${(res.stderr || '').trim().split('\n').slice(-2).join('\n      ')}`;
     }
     if (!(res.stdout || '').includes(needle)) {
-      return `${id}: enforcement ABSENT from committed tree — "${needle}" not in HEAD:${file} (working tree may still have it; nightly rebase will not)` + anchorForensics(file, needle);
+      return (
+        `${id}: enforcement ABSENT from committed tree — "${needle}" not in HEAD:${file} (working tree may still have it; nightly rebase will not)` +
+        anchorForensics(file, needle)
+      );
     }
     return null;
   }
   if (leg.startsWith('run:')) {
     const cmd = leg.slice(4).trim();
-    const res = spawnSync(cmd, { shell: true, encoding: 'utf8', timeout: 120000 });
+    const res = spawnSync(cmd, {
+      shell: true,
+      encoding: 'utf8',
+      timeout: 120000,
+    });
     if (res.status !== 0) {
       return `${id}: gate FAILED (exit ${res.status}): ${cmd}\n      ${(res.stderr || res.stdout || '').trim().split('\n').slice(-3).join('\n      ')}`;
     }
@@ -266,21 +334,34 @@ function runLeg(leg: string, id: string): string | null {
  * revert now turns the registry RED on the grep leg instead of hiding behind exit 0.
  */
 function executeCheck(check: string, id: string): string[] {
-  const legs = check.split(/\s+&&\s+/).map(s => s.trim()).filter(Boolean);
+  const legs = check
+    .split(/\s+&&\s+/)
+    .map(s => s.trim())
+    .filter(Boolean);
   const fails: string[] = [];
-  for (const leg of legs) { const f = runLeg(leg, id); if (f) fails.push(f); }
+  for (const leg of legs) {
+    const f = runLeg(leg, id);
+    if (f) fails.push(f);
+  }
   return fails;
 }
 
 function main(): number {
   const argIdx = process.argv.indexOf('--ledger');
-  const ledgerPath = argIdx > -1 && process.argv[argIdx + 1]
-    ? process.argv[argIdx + 1]!
-    : path.join(process.cwd(), 'system/Improvement_Ledger.md');
-  if (!fs.existsSync(ledgerPath)) { console.error(`FAIL: ledger not found: ${ledgerPath}`); return 2; }
+  const ledgerPath =
+    argIdx > -1 && process.argv[argIdx + 1]
+      ? process.argv[argIdx + 1]!
+      : path.join(process.cwd(), 'system/Improvement_Ledger.md');
+  if (!fs.existsSync(ledgerPath)) {
+    console.error(`FAIL: ledger not found: ${ledgerPath}`);
+    return 2;
+  }
 
   const rows = parseLedger(fs.readFileSync(ledgerPath, 'utf8'));
-  if (rows.length === 0) { console.error('FAIL: ledger parsed to zero rows — schema drift?'); return 2; }
+  if (rows.length === 0) {
+    console.error('FAIL: ledger parsed to zero rows — schema drift?');
+    return 2;
+  }
 
   const fails: string[] = [];
   const warns: string[] = [];
@@ -302,7 +383,8 @@ function main(): number {
       if (/^(Critical|High)$/i.test(r.sev) && !closed) {
         const age = ageDays(r.date);
         const msg = `${r.id} [${r.sev}] has NO mechanical check (age ${age}d): "${r.summary.slice(0, 80)}" — convert to a code gate or close WONT-FIX-VIA-PROSE`;
-        if (age >= AGE_FUSE_DAYS) fails.push(msg + ` — ${AGE_FUSE_DAYS}d fuse blown, this now BLOCKS`);
+        if (age >= AGE_FUSE_DAYS)
+          fails.push(msg + ` — ${AGE_FUSE_DAYS}d fuse blown, this now BLOCKS`);
         else warns.push(msg);
       }
       continue;
@@ -310,7 +392,8 @@ function main(): number {
 
     // 3. Execute the check (compound-aware; ALL ` && `-joined legs must pass).
     const checkFails = executeCheck(r.check, r.id);
-    if (checkFails.length) fails.push(...checkFails); else verified++;
+    if (checkFails.length) fails.push(...checkFails);
+    else verified++;
   }
 
   // 3b. IMP-142: MANDATE COVERAGE — the absence check. A Critic mandate with no row at all is
@@ -320,7 +403,10 @@ function main(): number {
   const criticDate = latestElapsedCritic(dbDir, today);
   let coverageLine = '';
   if (criticDate) {
-    const criticMd = fs.readFileSync(path.join(dbDir, `${criticDate}-critic.md`), 'utf8');
+    const criticMd = fs.readFileSync(
+      path.join(dbDir, `${criticDate}-critic.md`),
+      'utf8'
+    );
     const mandates = parseMandates(criticMd);
     if (mandates.length) {
       const cov = mandateCoverage(rows, criticDate, mandates);
@@ -328,8 +414,8 @@ function main(): number {
       for (const n of cov.uncovered) {
         fails.push(
           `MANDATE #${n} of the ${criticDate} Critic is UNCOVERED — no ledger row cites "${criticDate.slice(5)} Critic mandate #${n}" and none is marked deferred. ` +
-          `A mandate that disappears silently is worse than one that fails, because failure is visible (08-08 receipt: the 08-07 mandate #2 vanished, and the defect it targeted shipped the next night as a top-slot C). ` +
-          `Apply it, or log an IMP row whose applied cell reads "deferred" with the reason and carry-forward date — per the MANDATE-DEFERRAL rule in system/Apply_Improvements.md.`,
+            `A mandate that disappears silently is worse than one that fails, because failure is visible (08-08 receipt: the 08-07 mandate #2 vanished, and the defect it targeted shipped the next night as a top-slot C). ` +
+            `Apply it, or log an IMP row whose applied cell reads "deferred" with the reason and carry-forward date — per the MANDATE-DEFERRAL rule in system/Apply_Improvements.md.`
         );
       }
     } else {
@@ -342,17 +428,25 @@ function main(): number {
     rows: rows.length,
     behaviorY: rows.filter(r => /^Y/i.test(r.behavior)).length,
     pending: rows.filter(r => /pending/i.test(r.behavior)).length,
-    recurred: rows.filter(r => parseInt(r.recur || '0', 10) > 0 && !/CLOSED/i.test(r.behavior)).length,
+    recurred: rows.filter(
+      r => parseInt(r.recur || '0', 10) > 0 && !/CLOSED/i.test(r.behavior)
+    ).length,
     closedByCode: rows.filter(r => /CLOSED-BY-CODE/i.test(r.behavior)).length,
   };
 
-  console.log(`verify-improvements — ${rows.length} rows · ${verified} checks passed · ${fails.length} FAIL · ${warns.length} warn`);
-  console.log(`  behavior: ${counts.behaviorY} changed · ${counts.pending} pending · ${counts.recurred} recurred-open (theater candidates) · ${counts.closedByCode} closed-by-code`);
+  console.log(
+    `verify-improvements — ${rows.length} rows · ${verified} checks passed · ${fails.length} FAIL · ${warns.length} warn`
+  );
+  console.log(
+    `  behavior: ${counts.behaviorY} changed · ${counts.pending} pending · ${counts.recurred} recurred-open (theater candidates) · ${counts.closedByCode} closed-by-code`
+  );
   if (coverageLine) console.log(coverageLine);
   for (const w of warns) console.log(`  ⚠ ${w}`);
   for (const f of fails) console.error(`  ✗ ${f}`);
   if (fails.length) {
-    console.error('\n✗ IMPROVEMENT VERIFICATION FAILED — a logged improvement is not mechanically real. Fix the enforcement or the ledger row; do not log new improvements on top of broken ones.');
+    console.error(
+      '\n✗ IMPROVEMENT VERIFICATION FAILED — a logged improvement is not mechanically real. Fix the enforcement or the ledger row; do not log new improvements on top of broken ones.'
+    );
     return 1;
   }
   console.log('\n✓ All ledger improvements mechanically verified.');
@@ -365,20 +459,53 @@ function selftest(): number {
   const self = 'scripts/verify-improvements.ts';
   // Build the ABSENT needle at RUNTIME so it never appears as a source literal in this file
   // (a literal would make its own grep leg pass — the bug the first cut of this selftest hit).
-  const absent = ['zz', Math.random().toString(36).slice(2), Date.now().toString(36), 'zz'].join('_');
+  const absent = [
+    'zz',
+    Math.random().toString(36).slice(2),
+    Date.now().toString(36),
+    'zz',
+  ].join('_');
   const cases: [string, string, boolean][] = [
     [`grep:${self}:AGE_FUSE_DAYS`, 'grep leg PASSES on a present string', true],
-    [`grep:${self}:${absent}`, 'grep leg FAILS on an absent string (revert catch)', false],
+    [
+      `grep:${self}:${absent}`,
+      'grep leg FAILS on an absent string (revert catch)',
+      false,
+    ],
     ['run:true', 'run leg PASSES on exit 0', true],
     ['run:false', 'run leg FAILS on exit 1', false],
-    [`run:true && grep:${self}:AGE_FUSE_DAYS`, 'compound PASSES when ALL legs pass', true],
-    [`run:true && grep:${self}:${absent}`, 'compound FAILS when the grep-anchor is gone (the green-but-gone catch)', false],
-    [`grep:${self}:AGE_FUSE_DAYS && run:false`, 'compound FAILS when the run leg fails', false],
+    [
+      `run:true && grep:${self}:AGE_FUSE_DAYS`,
+      'compound PASSES when ALL legs pass',
+      true,
+    ],
+    [
+      `run:true && grep:${self}:${absent}`,
+      'compound FAILS when the grep-anchor is gone (the green-but-gone catch)',
+      false,
+    ],
+    [
+      `grep:${self}:AGE_FUSE_DAYS && run:false`,
+      'compound FAILS when the run leg fails',
+      false,
+    ],
     // gitshow: proves the pattern is on HEAD (committed tree), not just the working tree.
     // AGE_FUSE_DAYS has been on HEAD since before this edit; an absent needle must fail.
-    [`gitshow:${self}:AGE_FUSE_DAYS`, 'gitshow leg PASSES when needle is on HEAD', true],
-    [`gitshow:${self}:${absent}`, 'gitshow leg FAILS when needle is absent from HEAD', false],
-    [`gitshow:scripts/does-not-exist-zz.ts:anything`, 'gitshow leg FAILS when path is absent from HEAD', false],
+    [
+      `gitshow:${self}:AGE_FUSE_DAYS`,
+      'gitshow leg PASSES when needle is on HEAD',
+      true,
+    ],
+    [
+      `gitshow:${self}:${absent}`,
+      'gitshow leg FAILS when needle is absent from HEAD',
+      false,
+    ],
+    [
+      `gitshow:scripts/does-not-exist-zz.ts:anything`,
+      'gitshow leg FAILS when path is absent from HEAD',
+      false,
+    ],
   ];
   let fails = 0;
   for (const [check, label, expectPass] of cases) {
@@ -401,43 +528,100 @@ function selftest(): number {
   // test that fails for reasons outside its subject is not protection, it is a tax on every future
   // session. So: build the history the assertion needs, in a throwaway repo, and prove all three
   // outcomes anywhere — NAMED, TRUNCATED, NEVER-LANDED.
-  const t2 = (ok: boolean, label: string) => { console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`); if (!ok) fails++; };
+  const t2 = (ok: boolean, label: string) => {
+    console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`);
+    if (!ok) fails++;
+  };
   let forensicAssertions = 0;
   {
     const msg = executeCheck(`grep:${self}:${absent}`, 'SELFTEST').join('');
-    t2(/FORENSICS:/.test(msg), '[IMP-129] an absent anchor carries FORENSICS'); forensicAssertions++;
+    t2(/FORENSICS:/.test(msg), '[IMP-129] an absent anchor carries FORENSICS');
+    forensicAssertions++;
 
-    const scripted = (log: GitResult, shallow: GitResult, depth = '1'): GitRunner =>
-      args => args[0] === 'log'
-        ? log
-        : args[0] === 'rev-parse'
-          ? shallow
-          : { status: 0, out: depth, err: '' };
+    const scripted =
+      (log: GitResult, shallow: GitResult, depth = '1'): GitRunner =>
+      args =>
+        args[0] === 'log'
+          ? log
+          : args[0] === 'rev-parse'
+            ? shallow
+            : { status: 0, out: depth, err: '' };
     const ok = (out: string): GitResult => ({ status: 0, out, err: '' });
-    const named = anchorForensics('gate.ts', 'SENTINEL_ENFORCEMENT_STRING', undefined, scripted(ok('abc123 delete enforcement'), ok('false')));
-    t2(/FORENSICS: last commit touching this string/.test(named) && /SUPERSESSION/.test(named),
-      '[IMP-129] a deleted-but-once-committed anchor NAMES the commit that removed it (hermetic decision fixture)');
-    const never = anchorForensics('gate.ts', `zz_${absent}`, undefined, scripted(ok(''), ok('false')));
-    t2(/Treat as NEVER-LANDED/.test(never) && !/HISTORY TRUNCATED/.test(never),
-      '[IMP-129] in FULL history, a string no commit ever added is classified NEVER-LANDED, not a revert');
-    const trunc = anchorForensics('gate.ts', 'SENTINEL_ENFORCEMENT_STRING', undefined, scripted(ok(''), ok('true'), '13'));
-    t2(/HISTORY TRUNCATED/.test(trunc) && !/Treat as NEVER-LANDED/.test(trunc),
-      '[IMP-130] in a SHALLOW clone the same string is TRUNCATED, never NEVER-LANDED');
-    const errored = anchorForensics('gate.ts', 'SENTINEL_ENFORCEMENT_STRING', undefined, scripted(
-      { status: 128, out: '', err: 'fatal: not a git repository' }, ok('false'),
-    ));
-    t2(/FORENSICS: GIT ERROR/.test(errored) && !/Treat as NEVER-LANDED/.test(errored),
-      '[IMP-130] a git failure is reported as UNKNOWN, never fabricated into NEVER-LANDED');
+    const named = anchorForensics(
+      'gate.ts',
+      'SENTINEL_ENFORCEMENT_STRING',
+      undefined,
+      scripted(ok('abc123 delete enforcement'), ok('false'))
+    );
+    t2(
+      /FORENSICS: last commit touching this string/.test(named) &&
+        /SUPERSESSION/.test(named),
+      '[IMP-129] a deleted-but-once-committed anchor NAMES the commit that removed it (hermetic decision fixture)'
+    );
+    const never = anchorForensics(
+      'gate.ts',
+      `zz_${absent}`,
+      undefined,
+      scripted(ok(''), ok('false'))
+    );
+    t2(
+      /Treat as NEVER-LANDED/.test(never) && !/HISTORY TRUNCATED/.test(never),
+      '[IMP-129] in FULL history, a string no commit ever added is classified NEVER-LANDED, not a revert'
+    );
+    const trunc = anchorForensics(
+      'gate.ts',
+      'SENTINEL_ENFORCEMENT_STRING',
+      undefined,
+      scripted(ok(''), ok('true'), '13')
+    );
+    t2(
+      /HISTORY TRUNCATED/.test(trunc) && !/Treat as NEVER-LANDED/.test(trunc),
+      '[IMP-130] in a SHALLOW clone the same string is TRUNCATED, never NEVER-LANDED'
+    );
+    const errored = anchorForensics(
+      'gate.ts',
+      'SENTINEL_ENFORCEMENT_STRING',
+      undefined,
+      scripted(
+        { status: 128, out: '', err: 'fatal: not a git repository' },
+        ok('false')
+      )
+    );
+    t2(
+      /FORENSICS: GIT ERROR/.test(errored) &&
+        !/Treat as NEVER-LANDED/.test(errored),
+      '[IMP-130] a git failure is reported as UNKNOWN, never fabricated into NEVER-LANDED'
+    );
     forensicAssertions += 4;
   }
   // IMP-140 — closure is a declaration, not a substring. Both directions, verbatim cells
   // taken from the live ledger (the two false exemptions and the three true closures).
   const closureCases: [string, boolean, string][] = [
-    ['CLOSED-BY-CODE (IMP-007)', true, 'ESC-001 verbatim: an explicit closure token closes'],
-    ['**Y — closed by code path, not by prose.** A subsequent session…', true, 'ESC-010 verbatim: closure behind markdown + a Y grade still closes'],
-    ['pending — advisory leg + rubric verified both directions today; flips Y when an AI&T segment figure ships as a disclosed single qualifier', false, 'IMP-083 verbatim: "disCLOSED" no longer closes a row'],
-    ['pending — OPEN escalation, deliberately not closed; carry-forward Critical for the next session', false, 'ESC-013 verbatim: a row that says it is NOT closed is not closed'],
-    ['WONT-FIX-VIA-PROSE — superseded by the length rail', true, 'the second legal closure token closes'],
+    [
+      'CLOSED-BY-CODE (IMP-007)',
+      true,
+      'ESC-001 verbatim: an explicit closure token closes',
+    ],
+    [
+      '**Y — closed by code path, not by prose.** A subsequent session…',
+      true,
+      'ESC-010 verbatim: closure behind markdown + a Y grade still closes',
+    ],
+    [
+      'pending — advisory leg + rubric verified both directions today; flips Y when an AI&T segment figure ships as a disclosed single qualifier',
+      false,
+      'IMP-083 verbatim: "disCLOSED" no longer closes a row',
+    ],
+    [
+      'pending — OPEN escalation, deliberately not closed; carry-forward Critical for the next session',
+      false,
+      'ESC-013 verbatim: a row that says it is NOT closed is not closed',
+    ],
+    [
+      'WONT-FIX-VIA-PROSE — superseded by the length rail',
+      true,
+      'the second legal closure token closes',
+    ],
   ];
   for (const [cell, expect, label] of closureCases) {
     const got = isClosed(cell);
@@ -451,53 +635,129 @@ function selftest(): number {
   let coverageAssertions = 0;
   {
     const mkRow = (id: string, summary: string, applied: string): Row => ({
-      id, date: '2026-08-07', source: 'improvement', rc: 'RC2', sev: 'High',
-      summary, targets: [], check: 'none', applied, verified: '', behavior: 'pending', recur: '0',
+      id,
+      date: '2026-08-07',
+      source: 'improvement',
+      rc: 'RC2',
+      sev: 'High',
+      summary,
+      targets: [],
+      check: 'none',
+      applied,
+      verified: '',
+      behavior: 'pending',
+      recur: '0',
     });
     const fixtureRows = [
       mkRow('IMP-901', 'a fix (08-07 Critic mandate #1, 🔴)', '2026-08-07'),
-      mkRow('IMP-902', 'another fix (08-07 Critic mandate #3, RC6)', '2026-08-07'),
+      mkRow(
+        'IMP-902',
+        'another fix (08-07 Critic mandate #3, RC6)',
+        '2026-08-07'
+      ),
     ];
     const bare = mandateCoverage(fixtureRows, '2026-08-07', [1, 2, 3]);
-    t2(bare.uncovered.length === 1 && bare.uncovered[0] === 2 && bare.applied.length === 2,
-      '[IMP-142] a mandate with NO row is UNCOVERED — the real 08-07 #2 shape, on crafted rows');
+    t2(
+      bare.uncovered.length === 1 &&
+        bare.uncovered[0] === 2 &&
+        bare.applied.length === 2,
+      '[IMP-142] a mandate with NO row is UNCOVERED — the real 08-07 #2 shape, on crafted rows'
+    );
 
-    const withDeferral = [...fixtureRows, mkRow('IMP-903', 'skipped (08-07 Critic mandate #2)', 'deferred→2026-08-08')];
+    const withDeferral = [
+      ...fixtureRows,
+      mkRow(
+        'IMP-903',
+        'skipped (08-07 Critic mandate #2)',
+        'deferred→2026-08-08'
+      ),
+    ];
     const def = mandateCoverage(withDeferral, '2026-08-07', [1, 2, 3]);
-    t2(def.uncovered.length === 0 && def.deferred.length === 1 && def.deferred[0] === 2,
-      '[IMP-142] …and a DEFERRED row discharges it: 0 uncovered, deferred count non-zero');
+    t2(
+      def.uncovered.length === 0 &&
+        def.deferred.length === 1 &&
+        def.deferred[0] === 2,
+      '[IMP-142] …and a DEFERRED row discharges it: 0 uncovered, deferred count non-zero'
+    );
 
-    const applied = [...fixtureRows, mkRow('IMP-904', 'shipped (08-07 Critic mandate #2)', '2026-08-07')];
+    const applied = [
+      ...fixtureRows,
+      mkRow('IMP-904', 'shipped (08-07 Critic mandate #2)', '2026-08-07'),
+    ];
     const all = mandateCoverage(applied, '2026-08-07', [1, 2, 3]);
-    t2(all.uncovered.length === 0 && all.deferred.length === 0 && all.applied.length === 3,
-      '[IMP-142] …and when all three land: 0 uncovered, 0 deferred (the green state)');
+    t2(
+      all.uncovered.length === 0 &&
+        all.deferred.length === 0 &&
+        all.applied.length === 3,
+      '[IMP-142] …and when all three land: 0 uncovered, 0 deferred (the green state)'
+    );
 
     // #1 must not be satisfied by a row citing #10 — the off-by-substring trap.
-    const decoy = mandateCoverage([mkRow('IMP-905', 'x (08-07 Critic mandate #10)', '2026-08-07')], '2026-08-07', [1]);
-    t2(decoy.uncovered.length === 1, '[IMP-142] "#10" does not satisfy mandate #1 (no substring bleed)');
+    const decoy = mandateCoverage(
+      [mkRow('IMP-905', 'x (08-07 Critic mandate #10)', '2026-08-07')],
+      '2026-08-07',
+      [1]
+    );
+    t2(
+      decoy.uncovered.length === 1,
+      '[IMP-142] "#10" does not satisfy mandate #1 (no substring bleed)'
+    );
 
     // …and the wrong DAY must not satisfy it either: this is how a stale row would launder a gap.
-    const wrongDay = mandateCoverage([mkRow('IMP-906', 'x (08-06 Critic mandate #1)', '2026-08-06')], '2026-08-07', [1]);
-    t2(wrongDay.uncovered.length === 1, '[IMP-142] a row citing a DIFFERENT day\'s mandate #1 does not cover this one');
+    const wrongDay = mandateCoverage(
+      [mkRow('IMP-906', 'x (08-06 Critic mandate #1)', '2026-08-06')],
+      '2026-08-07',
+      [1]
+    );
+    t2(
+      wrongDay.uncovered.length === 1,
+      "[IMP-142] a row citing a DIFFERENT day's mandate #1 does not cover this one"
+    );
 
     // REAL PARSE: both live critic reports, including the 08-07 one that carries the heading twice.
     const dbDir = path.join(process.cwd(), 'daily-briefs');
-    const realParse = (d: string) => fs.existsSync(path.join(dbDir, `${d}-critic.md`))
-      ? parseMandates(fs.readFileSync(path.join(dbDir, `${d}-critic.md`), 'utf8')) : [];
+    const realParse = (d: string) =>
+      fs.existsSync(path.join(dbDir, `${d}-critic.md`))
+        ? parseMandates(
+            fs.readFileSync(path.join(dbDir, `${d}-critic.md`), 'utf8')
+          )
+        : [];
     const m0807 = realParse('2026-08-07');
     const m0808 = realParse('2026-08-08');
-    t2(JSON.stringify(m0807) === '[1,2,3]', `[IMP-142] parses 3 mandates from the REAL 2026-08-07 critic (got ${JSON.stringify(m0807)}; that report repeats the heading)`);
-    t2(JSON.stringify(m0808) === '[1,2,3]', `[IMP-142] parses 3 mandates from the REAL 2026-08-08 critic (got ${JSON.stringify(m0808)})`);
+    t2(
+      JSON.stringify(m0807) === '[1,2,3]',
+      `[IMP-142] parses 3 mandates from the REAL 2026-08-07 critic (got ${JSON.stringify(m0807)}; that report repeats the heading)`
+    );
+    t2(
+      JSON.stringify(m0808) === '[1,2,3]',
+      `[IMP-142] parses 3 mandates from the REAL 2026-08-08 critic (got ${JSON.stringify(m0808)})`
+    );
     // …and never mistakes a -light-critic for the daily one.
     const elapsed = latestElapsedCritic(dbDir, '2026-08-08');
-    t2(elapsed === '2026-08-07', `[IMP-142] the graded cycle is the last ELAPSED one, not today's (got ${elapsed})`);
+    t2(
+      elapsed === '2026-08-07',
+      `[IMP-142] the graded cycle is the last ELAPSED one, not today's (got ${elapsed})`
+    );
     coverageAssertions += 8;
   }
 
-  const total = cases.length + forensicAssertions + closureCases.length + coverageAssertions;
-  console.log(`\nverify-improvements selftest — ${total - fails}/${total} assertions passed`);
-  if (fails) { console.error('✗ SELFTEST FAILED — compound-check logic no longer bites both directions.'); return 1; }
-  console.log('✓ compound-check (run:<selftest> && grep:<anchor> && gitshow:<anchor>) verified — a reverted enforcement now goes RED.');
+  const total =
+    cases.length +
+    forensicAssertions +
+    closureCases.length +
+    coverageAssertions;
+  console.log(
+    `\nverify-improvements selftest — ${total - fails}/${total} assertions passed`
+  );
+  if (fails) {
+    console.error(
+      '✗ SELFTEST FAILED — compound-check logic no longer bites both directions.'
+    );
+    return 1;
+  }
+  console.log(
+    '✓ compound-check (run:<selftest> && grep:<anchor> && gitshow:<anchor>) verified — a reverted enforcement now goes RED.'
+  );
   return 0;
 }
 

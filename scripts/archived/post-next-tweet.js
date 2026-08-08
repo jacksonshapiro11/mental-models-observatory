@@ -17,7 +17,9 @@ async function postNextTweet() {
 
   // Ensure directories exist
   if (!fs.existsSync(queueDir)) {
-    console.error('❌ No tweet queue found. Run: node scripts/generate-tweet-queue.js');
+    console.error(
+      '❌ No tweet queue found. Run: node scripts/generate-tweet-queue.js'
+    );
     process.exit(1);
   }
 
@@ -26,7 +28,8 @@ async function postNextTweet() {
   }
 
   // Find next pending tweet
-  const files = fs.readdirSync(queueDir)
+  const files = fs
+    .readdirSync(queueDir)
     .filter(f => f.endsWith('.json') && !f.startsWith('.'))
     .sort();
 
@@ -47,7 +50,7 @@ async function postNextTweet() {
     oauth2AccessToken: process.env.TWITTER_OAUTH2_ACCESS_TOKEN,
     refreshToken: process.env.TWITTER_OAUTH2_REFRESH_TOKEN,
     clientId: process.env.TWITTER_CLIENT_ID,
-    clientSecret: process.env.TWITTER_CLIENT_SECRET
+    clientSecret: process.env.TWITTER_CLIENT_SECRET,
   });
 
   // Post the thread
@@ -100,4 +103,3 @@ postNextTweet()
     console.error('❌ Fatal error:', error);
     process.exit(1);
   });
-

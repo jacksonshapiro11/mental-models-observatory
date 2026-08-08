@@ -63,8 +63,10 @@ export interface CausalFinding {
 interface CausalRow {
   resolved?: boolean;
   match?: string;
-  antecedent?: string; antecedentDate?: string;
-  consequent?: string; consequentDate?: string;
+  antecedent?: string;
+  antecedentDate?: string;
+  consequent?: string;
+  consequentDate?: string;
   note?: string;
 }
 
@@ -81,7 +83,10 @@ export function stripHtmlComments(md: string): string {
   let i = 0;
   for (;;) {
     const start = md.indexOf('<!--', i);
-    if (start === -1) { out += md.slice(i); break; }
+    if (start === -1) {
+      out += md.slice(i);
+      break;
+    }
     out += md.slice(i, start);
     const end = md.indexOf('-->', start);
     const body = end === -1 ? md.slice(start) : md.slice(start, end + 3);
@@ -93,37 +98,62 @@ export function stripHtmlComments(md: string): string {
 }
 
 /** TIER A — the sentence asserts that one party acted BECAUSE another did. */
-const RESPONSE_RE = new RegExp([
-  /\banswered\s+(?:it\s+)?(?:with|by)\b/, /\banswered\s+that\b/,
-  /\bin\s+response\s+to\b/, /\bresponded\s+(?:to|with|by)\b/, /\bresponding\s+to\b/,
-  /\bretaliat(?:ed|ing)\s+(?:with|by|against)\b/, /\bcounter(?:ed|ing)\s+with\b/,
-  /\bfollowed\s+suit\b/, /\breplied\s+with\b/, /\bhit\s+back\s+with\b/,
-  /\bstaked\s+[^.;]{0,80}\bon\s+a\s+(?:listing|ruling|docket|determination|policy)\b/,
-  /\bpriced\s+[^.;]{0,60}\b(?:off|against)\s+(?:the\s+)?(?:listing|ruling|clearance|determination)\b/,
-  /\bprompted\s+by\b/, /\bspurred\s+by\b/, /\bdrew\s+[^.;]{0,40}\bin\s+response\b/,
-].map((r) => r.source).join('|'), 'i');
+const RESPONSE_RE = new RegExp(
+  [
+    /\banswered\s+(?:it\s+)?(?:with|by)\b/,
+    /\banswered\s+that\b/,
+    /\bin\s+response\s+to\b/,
+    /\bresponded\s+(?:to|with|by)\b/,
+    /\bresponding\s+to\b/,
+    /\bretaliat(?:ed|ing)\s+(?:with|by|against)\b/,
+    /\bcounter(?:ed|ing)\s+with\b/,
+    /\bfollowed\s+suit\b/,
+    /\breplied\s+with\b/,
+    /\bhit\s+back\s+with\b/,
+    /\bstaked\s+[^.;]{0,80}\bon\s+a\s+(?:listing|ruling|docket|determination|policy)\b/,
+    /\bpriced\s+[^.;]{0,60}\b(?:off|against)\s+(?:the\s+)?(?:listing|ruling|clearance|determination)\b/,
+    /\bprompted\s+by\b/,
+    /\bspurred\s+by\b/,
+    /\bdrew\s+[^.;]{0,40}\bin\s+response\b/,
+  ]
+    .map(r => r.source)
+    .join('|'),
+  'i'
+);
 
 /**
  * ANTERIORITY — the sentence explicitly places the money/act BEFORE the trigger. This is
  * the corrected 08-07 construction and must stay silent, or the gate punishes the repair.
  */
-const ANTERIORITY_RE = new RegExp([
-  /\bhad\s+already\b/, /\balready\s+(?:sunk|spent|committed|in\s+the\s+ground|paid|built)\b/,
-  /\bwas\s+already\b/, /\bpre-?existing\b/, /\bpredates?\b/, /\bpre-?dated\b/,
-  /\bbefore\s+the\s+(?:FCC|agency|ruling|listing|policy|determination|ban|order|vote)\b/,
-  /\balready\s+in\s+the\s+ground\b/, /\bmonths?\s+(?:earlier|before)\b/, /\byears?\s+(?:earlier|before)\b/,
-  /\bhad\s+been\s+(?:committed|approved|inked|signed|announced)\b/,
-].map((r) => r.source).join('|'), 'i');
+const ANTERIORITY_RE = new RegExp(
+  [
+    /\bhad\s+already\b/,
+    /\balready\s+(?:sunk|spent|committed|in\s+the\s+ground|paid|built)\b/,
+    /\bwas\s+already\b/,
+    /\bpre-?existing\b/,
+    /\bpredates?\b/,
+    /\bpre-?dated\b/,
+    /\bbefore\s+the\s+(?:FCC|agency|ruling|listing|policy|determination|ban|order|vote)\b/,
+    /\balready\s+in\s+the\s+ground\b/,
+    /\bmonths?\s+(?:earlier|before)\b/,
+    /\byears?\s+(?:earlier|before)\b/,
+    /\bhad\s+been\s+(?:committed|approved|inked|signed|announced)\b/,
+  ]
+    .map(r => r.source)
+    .join('|'),
+  'i'
+);
 
 /** TIER B — the sentence states its own ordering with an explicit interval. */
-const INTERVAL_RE = /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|eighteen)\s+(?:day|week|month|year)s?\s+(?:after|later|before|earlier)\b/i;
+const INTERVAL_RE =
+  /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|eighteen)\s+(?:day|week|month|year)s?\s+(?:after|later|before|earlier)\b/i;
 
 export function splitSentences(text: string): string[] {
   return text
     .split(/\n{2,}/)
-    .flatMap((para) => para.split(/(?<=[.!?])\s+(?=[A-Z"“(])/))
-    .map((s) => s.replace(/\s+/g, ' ').trim())
-    .filter((s) => s.length > 30);
+    .flatMap(para => para.split(/(?<=[.!?])\s+(?=[A-Z"“(])/))
+    .map(s => s.replace(/\s+/g, ' ').trim())
+    .filter(s => s.length > 30);
 }
 
 function loadTruth(truthPath: string | null): Record<string, CausalRow> {
@@ -132,44 +162,61 @@ function loadTruth(truthPath: string | null): Record<string, CausalRow> {
     const j = JSON.parse(fs.readFileSync(truthPath, 'utf8'));
     const claims = (j.claims ?? j) as Record<string, CausalRow>;
     const out: Record<string, CausalRow> = {};
-    for (const [k, v] of Object.entries(claims)) if (k.startsWith('causal:')) out[k] = v;
+    for (const [k, v] of Object.entries(claims))
+      if (k.startsWith('causal:')) out[k] = v;
     return out;
-  } catch { return {}; }
+  } catch {
+    return {};
+  }
 }
 
 /** A row covers a sentence when its `match` regex hits, or both event labels appear. */
-function coveringRow(sentence: string, rows: Record<string, CausalRow>): [string, CausalRow] | null {
+function coveringRow(
+  sentence: string,
+  rows: Record<string, CausalRow>
+): [string, CausalRow] | null {
   for (const [key, row] of Object.entries(rows)) {
     if (row.match) {
-      try { if (new RegExp(row.match, 'i').test(sentence)) return [key, row]; } catch { /* bad row: fall through */ }
+      try {
+        if (new RegExp(row.match, 'i').test(sentence)) return [key, row];
+      } catch {
+        /* bad row: fall through */
+      }
     }
     const a = row.antecedent?.trim();
     const c = row.consequent?.trim();
-    if (a && c && new RegExp(escapeRe(a), 'i').test(sentence) && new RegExp(escapeRe(c), 'i').test(sentence)) {
+    if (
+      a &&
+      c &&
+      new RegExp(escapeRe(a), 'i').test(sentence) &&
+      new RegExp(escapeRe(c), 'i').test(sentence)
+    ) {
       return [key, row];
     }
   }
   return null;
 }
 
-function escapeRe(s: string): string { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 export function causalSequence(
   body: string,
   truth: Record<string, CausalRow>,
-  opts: { requireResolved?: boolean } = {},
+  opts: { requireResolved?: boolean } = {}
 ): CausalFinding[] {
   const findings: CausalFinding[] = [];
   const clean = stripHtmlComments(body);
   for (const sentence of splitSentences(clean)) {
-    if (ANTERIORITY_RE.test(sentence)) continue;      // asserts priority, not response — the corrected form
+    if (ANTERIORITY_RE.test(sentence)) continue; // asserts priority, not response — the corrected form
     const isResponse = RESPONSE_RE.test(sentence);
     const isInterval = INTERVAL_RE.test(sentence);
     if (!isResponse && !isInterval) continue;
 
     const hit = coveringRow(sentence, truth);
     if (!hit) {
-      if (!isResponse) continue;                       // TIER B is silent without a row to check against
+      if (!isResponse) continue; // TIER B is silent without a row to check against
       findings.push({
         check: 'causal-sequence-unresolved',
         severity: opts.requireResolved ? 'FAIL' : 'FLAG',
@@ -225,7 +272,10 @@ export function causalSequence(
 function selftest(): number {
   const root = process.cwd();
   let fails = 0;
-  const t = (ok: boolean, label: string) => { console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`); if (!ok) fails++; };
+  const t = (ok: boolean, label: string) => {
+    console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`);
+    if (!ok) fails++;
+  };
 
   // The VERBATIM false sentence. It no longer exists in daily-briefs/2026-08-07-v2.md because
   // the Morning Truth Gate repaired the artifact at 05:27 — so the honest fixture is the
@@ -233,13 +283,23 @@ function selftest(): number {
   const FALSE_INTRO =
     'The FCC banned a class of foreign robot without spending a dollar, and Ohio answered with $762 million of its own.';
   const criticPath = path.join(root, 'daily-briefs/2026-08-07-critic.md');
-  const criticHasIt = fs.existsSync(criticPath)
-    && fs.readFileSync(criticPath, 'utf8').includes('Ohio answered with $762 million of its own');
-  t(criticHasIt, '[fixture] the verbatim 08-07 falsehood is on disk in the Critic report (real text, not invented)');
+  const criticHasIt =
+    fs.existsSync(criticPath) &&
+    fs
+      .readFileSync(criticPath, 'utf8')
+      .includes('Ohio answered with $762 million of its own');
+  t(
+    criticHasIt,
+    '[fixture] the verbatim 08-07 falsehood is on disk in the Critic report (real text, not invented)'
+  );
 
   // 1. FIRE — undated response claim.
-  t(causalSequence(FALSE_INTRO, {}).some((f) => f.check === 'causal-sequence-unresolved'),
-    'FIRES on the real 08-07 intro: an undated "answered with" response claim');
+  t(
+    causalSequence(FALSE_INTRO, {}).some(
+      f => f.check === 'causal-sequence-unresolved'
+    ),
+    'FIRES on the real 08-07 intro: an undated "answered with" response claim'
+  );
 
   // 2. FIRE — the INVERSION itself, once the real dates are recorded. This is the assertion
   //    that matters: absence is easy to catch, a wrong order recorded as fact is the failure.
@@ -247,25 +307,38 @@ function selftest(): number {
     'causal:fcc-robotics-listing-ohio-anduril': {
       resolved: true,
       match: 'Ohio answered with \\$762 million',
-      antecedent: 'FCC Covered List robotics addition', antecedentDate: '2026-07-28',
-      consequent: 'Ohio JCTC approval for Anduril Arsenal-1', consequentDate: '2025-01-27',
+      antecedent: 'FCC Covered List robotics addition',
+      antecedentDate: '2026-07-28',
+      consequent: 'Ohio JCTC approval for Anduril Arsenal-1',
+      consequentDate: '2025-01-27',
     },
   };
   const inverted = causalSequence(FALSE_INTRO, realDates);
-  t(inverted.some((f) => f.check === 'causal-sequence' && f.severity === 'FAIL' && /INVERTED/.test(f.message)),
-    'FIRES with CAUSAL SEQUENCE INVERTED once the real dates are recorded (2026-07-28 → 2025-01-27)');
+  t(
+    inverted.some(
+      f =>
+        f.check === 'causal-sequence' &&
+        f.severity === 'FAIL' &&
+        /INVERTED/.test(f.message)
+    ),
+    'FIRES with CAUSAL SEQUENCE INVERTED once the real dates are recorded (2026-07-28 → 2025-01-27)'
+  );
 
   // 3. SILENT — the corrected construction, taken verbatim from the real repaired artifact.
   const CORRECTED =
     'The FCC banned a class of foreign robot without spending a dollar, and the $762 million Ohio had already sunk into a domestic arsenal is what now makes the ban expensive to lift.';
-  t(causalSequence(CORRECTED, realDates).length === 0,
-    'SILENT on the corrected anteriority form ("had already sunk") — the gate must not punish the repair');
+  t(
+    causalSequence(CORRECTED, realDates).length === 0,
+    'SILENT on the corrected anteriority form ("had already sunk") — the gate must not punish the repair'
+  );
 
   // 4. SILENT — the real Hadrian chain, correctly ordered, no causal row.
   const HADRIAN =
-    'Two agencies removed that ambiguity in one week, and the week\'s largest private round priced seven days later.';
-  t(causalSequence(HADRIAN, {}).length === 0,
-    'SILENT on AI&T-3\'s Hadrian interval chain (Tier B, correctly ordered, no row to contradict it)');
+    "Two agencies removed that ambiguity in one week, and the week's largest private round priced seven days later.";
+  t(
+    causalSequence(HADRIAN, {}).length === 0,
+    "SILENT on AI&T-3's Hadrian interval chain (Tier B, correctly ordered, no row to contradict it)"
+  );
 
   // 4b. FIRE on the REAL pre-repair brief file. v2 was repaired in place by the 05:27 Morning
   //     Truth Gate, but daily-briefs/2026-08-07-v1.5.md still carries "Ohio answered with
@@ -273,64 +346,98 @@ function selftest(): number {
   const v15 = path.join(root, 'daily-briefs/2026-08-07-v1.5.md');
   if (fs.existsSync(v15)) {
     const onV15 = causalSequence(fs.readFileSync(v15, 'utf8'), realDates);
-    t(onV15.some((f) => f.check === 'causal-sequence' && f.severity === 'FAIL'),
-      'FIRES on the REAL pre-repair file daily-briefs/2026-08-07-v1.5.md (whole brief, not a snippet)');
+    t(
+      onV15.some(f => f.check === 'causal-sequence' && f.severity === 'FAIL'),
+      'FIRES on the REAL pre-repair file daily-briefs/2026-08-07-v1.5.md (whole brief, not a snippet)'
+    );
   } else t(true, '[skip] v1.5 not on disk');
 
   // 5. SILENT on the whole real published brief — no false-positive storm.
   const pub = path.join(root, 'content/daily-updates/2026-08-07.md');
   if (fs.existsSync(pub)) {
-    const truth = loadTruth(path.join(root, 'daily-briefs/2026-08-07-truth.json'));
+    const truth = loadTruth(
+      path.join(root, 'daily-briefs/2026-08-07-truth.json')
+    );
     const onReal = causalSequence(fs.readFileSync(pub, 'utf8'), truth);
-    const realFails = onReal.filter((f) => f.severity === 'FAIL');
-    t(realFails.length === 0,
-      `SILENT (no FAIL) across the entire real published 2026-08-07.md — ${onReal.length} advisory flag(s), 0 FAIL`);
+    const realFails = onReal.filter(f => f.severity === 'FAIL');
+    t(
+      realFails.length === 0,
+      `SILENT (no FAIL) across the entire real published 2026-08-07.md — ${onReal.length} advisory flag(s), 0 FAIL`
+    );
   } else t(true, '[skip] published 08-07 brief not on disk');
 
   // 6. The anteriority exemption must not be a blanket mute: a response claim that ALSO
   //    contains a date word still fires when it carries no anteriority marker.
-  t(causalSequence('Beijing retaliated with export controls two days after the tariff took effect.', {}).length === 1,
-    'the exemption is scoped: a response verb with no anteriority marker still FIRES');
+  t(
+    causalSequence(
+      'Beijing retaliated with export controls two days after the tariff took effect.',
+      {}
+    ).length === 1,
+    'the exemption is scoped: a response verb with no anteriority marker still FIRES'
+  );
 
-  console.log(`\ncausal-sequence-gate selftest — ${8 - fails}/8 assertions passed`);
-  if (fails) { console.error('✗ SELFTEST FAILED'); return 1; }
-  console.log('✓ causal-sequence-gate verified in BOTH directions on real 2026-08-07 text.');
+  console.log(
+    `\ncausal-sequence-gate selftest — ${8 - fails}/8 assertions passed`
+  );
+  if (fails) {
+    console.error('✗ SELFTEST FAILED');
+    return 1;
+  }
+  console.log(
+    '✓ causal-sequence-gate verified in BOTH directions on real 2026-08-07 text.'
+  );
   return 0;
 }
 
 function main(): number {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
-  const briefPath = args.find((a) => !a.startsWith('--'));
+  const briefPath = args.find(a => !a.startsWith('--'));
   if (!briefPath || !fs.existsSync(briefPath)) {
-    console.error('usage: causal-sequence-gate.ts <brief.md> [--truth <path>] [--require-resolved]');
+    console.error(
+      'usage: causal-sequence-gate.ts <brief.md> [--truth <path>] [--require-resolved]'
+    );
     return 2;
   }
   const ti = args.indexOf('--truth');
   const date = path.basename(briefPath).match(/(\d{4}-\d{2}-\d{2})/)?.[1] ?? '';
-  const truthPath = ti > -1 && args[ti + 1]
-    ? args[ti + 1]!
-    : [`daily-briefs/${date}-truth.json`, `content/daily-updates/${date}-truth.json`]
-        .map((p) => path.join(process.cwd(), p)).find((p) => fs.existsSync(p)) ?? null;
+  const truthPath =
+    ti > -1 && args[ti + 1]
+      ? args[ti + 1]!
+      : ([
+          `daily-briefs/${date}-truth.json`,
+          `content/daily-updates/${date}-truth.json`,
+        ]
+          .map(p => path.join(process.cwd(), p))
+          .find(p => fs.existsSync(p)) ?? null);
 
   const truth = loadTruth(truthPath);
   const findings = causalSequence(fs.readFileSync(briefPath, 'utf8'), truth, {
     requireResolved: args.includes('--require-resolved'),
   });
   console.log(`causal-sequence-gate — ${path.basename(briefPath)}`);
-  console.log(`  truth file: ${truthPath ? path.basename(truthPath) : 'NONE'} · causal rows: ${Object.keys(truth).length}`);
-  const fails = findings.filter((f) => f.severity === 'FAIL');
-  const flags = findings.filter((f) => f.severity === 'FLAG');
-  for (const f of flags) console.log(`  ⚠ [${f.check}] ${f.message}\n      "${f.sentence}"`);
-  for (const f of fails) console.error(`  ✗ [${f.check}] ${f.message}\n      "${f.sentence}"`);
+  console.log(
+    `  truth file: ${truthPath ? path.basename(truthPath) : 'NONE'} · causal rows: ${Object.keys(truth).length}`
+  );
+  const fails = findings.filter(f => f.severity === 'FAIL');
+  const flags = findings.filter(f => f.severity === 'FLAG');
+  for (const f of flags)
+    console.log(`  ⚠ [${f.check}] ${f.message}\n      "${f.sentence}"`);
+  for (const f of fails)
+    console.error(`  ✗ [${f.check}] ${f.message}\n      "${f.sentence}"`);
   if (fails.length) {
-    console.error(`\n❌ CAUSAL-SEQUENCE FAIL — ${fails.length} sentence(s) assert a response that its own dates contradict.`);
+    console.error(
+      `\n❌ CAUSAL-SEQUENCE FAIL — ${fails.length} sentence(s) assert a response that its own dates contradict.`
+    );
     return 1;
   }
-  console.log(`\n✅ CAUSAL-SEQUENCE PASS — ${flags.length} advisory flag(s), 0 inverted sequence(s).`);
+  console.log(
+    `\n✅ CAUSAL-SEQUENCE PASS — ${flags.length} advisory flag(s), 0 inverted sequence(s).`
+  );
   return 0;
 }
 
 // Only take over the process when RUN, not when IMPORTED — otherwise any test or sibling
 // gate that reuses these detectors inherits an exit(2) on import.
-if (/causal-sequence-gate\.ts$/.test(process.argv[1] ?? '')) process.exit(main());
+if (/causal-sequence-gate\.ts$/.test(process.argv[1] ?? ''))
+  process.exit(main());

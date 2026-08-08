@@ -41,7 +41,14 @@ export const DXY_COMPONENTS: DXYComponent[] = [
   { pair: 'OANDA:USD_CHF', symbol: 'USDCHF', weight: 0.036, type: 'direct' },
 ];
 
-const REQUIRED_PAIRS = ['EURUSD', 'USDJPY', 'GBPUSD', 'USDCAD', 'USDSEK', 'USDCHF'];
+const REQUIRED_PAIRS = [
+  'EURUSD',
+  'USDJPY',
+  'GBPUSD',
+  'USDCAD',
+  'USDSEK',
+  'USDCHF',
+];
 
 // ─── CALCULATION ─────────────────────────────────────────────────────────────
 
@@ -69,7 +76,10 @@ export function calculateDXY(rates: ForexRates): number | null {
 /**
  * Fetch all 6 forex pairs from Finnhub and calculate DXY
  */
-export async function fetchDXY(finnhubKey: string, timeout = 4000): Promise<DXYResult | null> {
+export async function fetchDXY(
+  finnhubKey: string,
+  timeout = 4000
+): Promise<DXYResult | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
 
@@ -83,11 +93,15 @@ export async function fetchDXY(finnhubKey: string, timeout = 4000): Promise<DXYR
       if (!res.ok) {
         const status = res.status;
         const body = await res.text().catch(() => '');
-        throw new Error(`Finnhub ${symbol}: HTTP ${status} — ${body.slice(0, 100)}`);
+        throw new Error(
+          `Finnhub ${symbol}: HTTP ${status} — ${body.slice(0, 100)}`
+        );
       }
       const data = await res.json();
       if (!data.c || data.c <= 0) {
-        throw new Error(`Finnhub ${symbol}: returned invalid rate c=${data.c} (full response: ${JSON.stringify(data).slice(0, 100)})`);
+        throw new Error(
+          `Finnhub ${symbol}: returned invalid rate c=${data.c} (full response: ${JSON.stringify(data).slice(0, 100)})`
+        );
       }
       return { symbol, rate: data.c as number };
     });
@@ -102,12 +116,17 @@ export async function fetchDXY(finnhubKey: string, timeout = 4000): Promise<DXYR
         rates[result.value.symbol] = result.value.rate;
       } else {
         failedPairs.push(DXY_COMPONENTS[i]!.symbol);
-        console.warn(`DXY forex fetch failed [${DXY_COMPONENTS[i]!.symbol}]:`, result.reason?.message);
+        console.warn(
+          `DXY forex fetch failed [${DXY_COMPONENTS[i]!.symbol}]:`,
+          result.reason?.message
+        );
       }
     }
 
     if (failedPairs.length > 0) {
-      console.warn(`DXY: ${failedPairs.length}/6 forex pairs failed: ${failedPairs.join(', ')}. Cannot calculate DXY.`);
+      console.warn(
+        `DXY: ${failedPairs.length}/6 forex pairs failed: ${failedPairs.join(', ')}. Cannot calculate DXY.`
+      );
       return null;
     }
 
@@ -131,12 +150,15 @@ export async function fetchDXY(finnhubKey: string, timeout = 4000): Promise<DXYR
  * Fallback: Fetch DXY directly from Yahoo Finance (DX-Y.NYB)
  * Used when Finnhub forex pairs fail (rate limits, timeouts, etc.)
  */
-export async function fetchDXYFromYahoo(timeout = 5000): Promise<DXYResult | null> {
+export async function fetchDXYFromYahoo(
+  timeout = 5000
+): Promise<DXYResult | null> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
 
-    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?range=1d&interval=1m';
+    const url =
+      'https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?range=1d&interval=1m';
     const res = await fetch(url, {
       signal: controller.signal,
       headers: { 'User-Agent': 'Mozilla/5.0' },
@@ -158,7 +180,11 @@ export async function fetchDXYFromYahoo(timeout = 5000): Promise<DXYResult | nul
     }
 
     console.log(`DXY Yahoo fallback: ${price.toFixed(2)}`);
-    return { value: Math.round(price * 100) / 100, rates: {}, timestamp: Date.now() };
+    return {
+      value: Math.round(price * 100) / 100,
+      rates: {},
+      timestamp: Date.now(),
+    };
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') {
       console.warn('DXY Yahoo fallback: timed out');

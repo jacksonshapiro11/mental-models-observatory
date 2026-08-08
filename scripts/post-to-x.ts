@@ -20,7 +20,10 @@ import path from 'path';
 
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 dotenv.config();
-import { generateThreadFromDate, generateThreadForLatest } from '../lib/social/thread-generator';
+import {
+  generateThreadFromDate,
+  generateThreadForLatest,
+} from '../lib/social/thread-generator';
 import {
   hasXPostingCredentials,
   loadXOAuthTokens,
@@ -53,7 +56,7 @@ function parseArgs(): Args {
 async function getTwitterClient(): Promise<InstanceType<typeof TwitterClient>> {
   if (!(await hasXPostingCredentials())) {
     throw new Error(
-      'Twitter OAuth 2.0 not configured. Set TWITTER_CLIENT_ID + tokens, or run /api/x-auth.',
+      'Twitter OAuth 2.0 not configured. Set TWITTER_CLIENT_ID + tokens, or run /api/x-auth.'
     );
   }
 
@@ -102,7 +105,9 @@ async function main() {
 
   // 2. Preview
   tweets.forEach((tweet, i) => {
-    console.log(`── Tweet ${i + 1}/${tweets.length} (${tweet.text.length} chars) ──`);
+    console.log(
+      `── Tweet ${i + 1}/${tweets.length} (${tweet.text.length} chars) ──`
+    );
     console.log(tweet.text);
     console.log('');
   });
@@ -117,25 +122,31 @@ async function main() {
 
   console.log('🚀 Posting to X...\n');
 
-  const tweetTexts = tweets.map((t) => t.text);
+  const tweetTexts = tweets.map(t => t.text);
   const result = await client.postThread(tweetTexts);
 
   if (result.success) {
     console.log(`✅ Thread posted successfully`);
-    result.results.forEach((r: { tweetId: string; text: string }, i: number) => {
-      console.log(`   Tweet ${i + 1}: https://x.com/i/status/${r.tweetId}`);
-    });
+    result.results.forEach(
+      (r: { tweetId: string; text: string }, i: number) => {
+        console.log(`   Tweet ${i + 1}: https://x.com/i/status/${r.tweetId}`);
+      }
+    );
   } else {
     console.error(`❌ Thread posting failed: ${result.error}`);
     if (result.results) {
-      const posted = result.results.filter((r: { success: boolean }) => r.success).length;
-      console.error(`   ${posted}/${tweets.length} tweets posted before failure`);
+      const posted = result.results.filter(
+        (r: { success: boolean }) => r.success
+      ).length;
+      console.error(
+        `   ${posted}/${tweets.length} tweets posted before failure`
+      );
     }
     process.exit(1);
   }
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error('❌ X posting failed:', err);
   process.exit(1);
 });

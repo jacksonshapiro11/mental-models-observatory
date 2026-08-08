@@ -6,9 +6,9 @@ import { sendWelcomeEmail } from '@/lib/email/welcome';
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 5; // max 5 requests per IP per minute
-const REDIS_KEY_SUBSCRIBERS = 'subscribers:emails';       // Redis Set of emails
-const REDIS_KEY_SUB_META = 'subscribers:meta:';           // Hash per email
-const REDIS_KEY_RATE_LIMIT = 'subscribers:ratelimit:';    // Rate limit per IP
+const REDIS_KEY_SUBSCRIBERS = 'subscribers:emails'; // Redis Set of emails
+const REDIS_KEY_SUB_META = 'subscribers:meta:'; // Hash per email
+const REDIS_KEY_RATE_LIMIT = 'subscribers:ratelimit:'; // Rate limit per IP
 
 // ─── Redis singleton ──────────────────────────────────────────────────────────
 
@@ -45,9 +45,14 @@ async function isRateLimited(ip: string): Promise<boolean> {
 
 // ─── Email validation ──────────────────────────────────────────────────────────
 
-const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+const EMAIL_REGEX =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
-function validateEmail(email: unknown): { valid: boolean; sanitized: string; error?: string } {
+function validateEmail(email: unknown): {
+  valid: boolean;
+  sanitized: string;
+  error?: string;
+} {
   if (typeof email !== 'string') {
     return { valid: false, sanitized: '', error: 'Email is required.' };
   }
@@ -67,19 +72,37 @@ function validateEmail(email: unknown): { valid: boolean; sanitized: string; err
   }
 
   if (!EMAIL_REGEX.test(sanitized)) {
-    return { valid: false, sanitized: '', error: 'Please enter a valid email address.' };
+    return {
+      valid: false,
+      sanitized: '',
+      error: 'Please enter a valid email address.',
+    };
   }
 
   // Block disposable/throwaway domains
   const domain = sanitized.split('@')[1] ?? '';
   const disposable = [
-    'mailinator.com', 'guerrillamail.com', 'tempmail.com', 'throwaway.email',
-    'yopmail.com', 'sharklasers.com', 'guerrillamailblock.com', 'grr.la',
-    'dispostable.com', 'tempail.com', 'fakeinbox.com', 'trashmail.com',
-    'maildrop.cc', '10minutemail.com',
+    'mailinator.com',
+    'guerrillamail.com',
+    'tempmail.com',
+    'throwaway.email',
+    'yopmail.com',
+    'sharklasers.com',
+    'guerrillamailblock.com',
+    'grr.la',
+    'dispostable.com',
+    'tempail.com',
+    'fakeinbox.com',
+    'trashmail.com',
+    'maildrop.cc',
+    '10minutemail.com',
   ];
   if (disposable.includes(domain)) {
-    return { valid: false, sanitized: '', error: 'Please use a permanent email address.' };
+    return {
+      valid: false,
+      sanitized: '',
+      error: 'Please use a permanent email address.',
+    };
   }
 
   return { valid: true, sanitized };
@@ -91,7 +114,7 @@ function hashIP(ip: string): string {
   let hash = 0;
   for (let i = 0; i < ip.length; i++) {
     const char = ip.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
   return `ip_${Math.abs(hash).toString(36)}`;
@@ -99,16 +122,20 @@ function hashIP(ip: string): string {
 
 function sanitizeAttribution(value: unknown): string | undefined {
   if (typeof value !== 'string' || value.length === 0) return undefined;
-  const cleaned = value.trim().slice(0, 100).replace(/[^\w-]/g, '');
+  const cleaned = value
+    .trim()
+    .slice(0, 100)
+    .replace(/[^\w-]/g, '');
   return cleaned.length > 0 ? cleaned : undefined;
 }
 
 // ─── POST handler ──────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    || request.headers.get('x-real-ip')
-    || 'unknown';
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown';
 
   if (await isRateLimited(ip)) {
     return NextResponse.json(
@@ -120,7 +147,7 @@ export async function POST(request: NextRequest) {
   // Parse body
   let body: Record<string, unknown>;
   try {
-    body = await request.json() as Record<string, unknown>;
+    body = (await request.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json(
       { error: 'Invalid request body.' },
@@ -129,7 +156,11 @@ export async function POST(request: NextRequest) {
   }
 
   // Honeypot check — if the hidden field has a value, it's a bot
-  if (body.website && typeof body.website === 'string' && body.website.length > 0) {
+  if (
+    body.website &&
+    typeof body.website === 'string' &&
+    body.website.length > 0
+  ) {
     // Silently accept but don't store — don't tip off the bot
     return NextResponse.json({ success: true, message: "You're in." });
   }
@@ -141,9 +172,10 @@ export async function POST(request: NextRequest) {
   }
 
   // Source tracking
-  const source = typeof body.source === 'string' && body.source.length < 50
-    ? body.source
-    : 'unknown';
+  const source =
+    typeof body.source === 'string' && body.source.length < 50
+      ? body.source
+      : 'unknown';
 
   // Referral attribution (?ref= on subscribe links)
   const attribution = sanitizeAttribution(body.attribution ?? body.ref);
@@ -172,10 +204,16 @@ export async function POST(request: NextRequest) {
     await pipeline.exec();
 
     // Redis is the sole subscriber store. Emails sent via Resend at publish time.
-    console.log('[subscribe] new subscriber:', sanitized, 'source:', source, attribution ? `ref:${attribution}` : '');
+    console.log(
+      '[subscribe] new subscriber:',
+      sanitized,
+      'source:',
+      source,
+      attribution ? `ref:${attribution}` : ''
+    );
 
     // Welcome email — best-effort, never fail subscribe
-    sendWelcomeEmail(sanitized).catch((err) => {
+    sendWelcomeEmail(sanitized).catch(err => {
       console.error('[subscribe] welcome email failed:', err);
     });
 

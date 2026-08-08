@@ -25,10 +25,22 @@
  * Exit: 0 pass (may warn) · 1 violation (blocks ship) · 2 usage error
  */
 import * as fs from 'fs';
-import { checkRepetition, formatRepetitionFindings } from '../lib/repetition-check.ts';
+import {
+  checkRepetition,
+  formatRepetitionFindings,
+} from '../lib/repetition-check.ts';
 
-const BANNED = ['buckle up', "let's talk about", 'let us talk about', "here's where it gets interesting", 'dive in', 'in this piece', 'we unpack'];
-const SUPERLATIVE = /\b(record (?:high|low)|all-time (?:high|low)|new (?:high|low)|biggest ever|largest ever|first ever|highest ever)\b/gi;
+const BANNED = [
+  'buckle up',
+  "let's talk about",
+  'let us talk about',
+  "here's where it gets interesting",
+  'dive in',
+  'in this piece',
+  'we unpack',
+];
+const SUPERLATIVE =
+  /\b(record (?:high|low)|all-time (?:high|low)|new (?:high|low)|biggest ever|largest ever|first ever|highest ever)\b/gi;
 
 // TWO-TIER EPOCH (2026-08): briefs dated on/after this use the v2 contract —
 // 1,450-1,750-word target, 4-5 deep stories + THE LINE, and a real THE TAKE
@@ -65,15 +77,28 @@ function sectionBody(lines: string[], headerRe: RegExp): string {
   const start = lines.findIndex(l => headerRe.test(l));
   if (start < 0) return '';
   let end = lines.length;
-  for (let i = start + 1; i < lines.length; i++) { if (/^##\s*▸/.test(lines[i]!)) { end = i; break; } }
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^##\s*▸/.test(lines[i]!)) {
+      end = i;
+      break;
+    }
+  }
   return lines.slice(start + 1, end).join('\n');
 }
 
 function main(): number {
   const file = process.argv[2];
   const fullFile = process.argv[3];
-  if (!file) { console.error('usage: brief-light-craft-gate.ts <light.md> [full-brief.md]'); return 2; }
-  if (!fs.existsSync(file)) { console.error(`FAIL: file not found: ${file}`); return 2; }
+  if (!file) {
+    console.error(
+      'usage: brief-light-craft-gate.ts <light.md> [full-brief.md]'
+    );
+    return 2;
+  }
+  if (!fs.existsSync(file)) {
+    console.error(`FAIL: file not found: ${file}`);
+    return 2;
+  }
   const md = fs.readFileSync(file, 'utf-8');
   const lines = md.split('\n');
   const fails: string[] = [];
@@ -82,11 +107,14 @@ function main(): number {
   const isV2 = briefDate !== '' && briefDate >= LIGHT_V2_EPOCH;
   const weeklyKey = weeklyFromPath(file);
   const isWeeklyV2 = weeklyKey !== '' && weeklyKey >= WEEKLY_V2_EPOCH;
-  const isTwoTierEra = isV2 || isWeeklyV2;   // structural v2: daily or weekly
+  const isTwoTierEra = isV2 || isWeeklyV2; // structural v2: daily or weekly
 
   // 1. Em-dashes — zero tolerance.
   const em = (md.match(/—/g) || []).length;
-  if (em > 0) fails.push(`${em} em-dash(es) found. Zero tolerance; replace with commas or periods.`);
+  if (em > 0)
+    fails.push(
+      `${em} em-dash(es) found. Zero tolerance; replace with commas or periods.`
+    );
 
   // 2. Word budget.
   // v2 (two-tier): LENGTH HAS ONE HOME — scripts/brief-light-format-gate.ts
@@ -97,24 +125,44 @@ function main(): number {
   // Pre-epoch: original bounds, unchanged — the archive is read, never condemned.
   const words = (md.match(/\S+/g) || []).length;
   if (isV2) {
-    if (words < 1300 || words > 1600) warns.push(`Total words ${words} outside two-tier target 1,450-1,750 (enforcement lives in brief-light-format-gate.ts --enforce-length; never blocking here).`);
+    if (words < 1300 || words > 1600)
+      warns.push(
+        `Total words ${words} outside two-tier target 1,450-1,750 (enforcement lives in brief-light-format-gate.ts --enforce-length; never blocking here).`
+      );
   } else if (isWeeklyV2) {
-    if (words < 2000 || words > 2400) warns.push(`Total words ${words} outside weekly two-tier target 2,000-2,400 (enforcement lives in brief-light-format-gate.ts --enforce-length; never blocking here).`);
+    if (words < 2000 || words > 2400)
+      warns.push(
+        `Total words ${words} outside weekly two-tier target 2,000-2,400 (enforcement lives in brief-light-format-gate.ts --enforce-length; never blocking here).`
+      );
   } else {
-    if (words < 1500 || words > 2400) fails.push(`Total words ${words} outside hard bounds 1,500-2,400.`);
-    else if (words < 1700 || words > 2200) warns.push(`Total words ${words} outside target 1,700-2,200.`);
+    if (words < 1500 || words > 2400)
+      fails.push(`Total words ${words} outside hard bounds 1,500-2,400.`);
+    else if (words < 1700 || words > 2200)
+      warns.push(`Total words ${words} outside target 1,700-2,200.`);
   }
 
   // 3. THE UPDATE story count (selection format; v2 = 4-5 deep + THE LINE carries the rest).
   const updateBody = sectionBody(lines, /^##\s*▸\s*THE UPDATE/i);
   if (updateBody) {
-    const stories = updateBody.split('\n').filter(l => /^\*\*[^*].*[^*]\*\*\s*$/.test(l.trim())).length;
+    const stories = updateBody
+      .split('\n')
+      .filter(l => /^\*\*[^*].*[^*]\*\*\s*$/.test(l.trim())).length;
     if (isTwoTierEra) {
-      if (stories < 4) fails.push(`THE UPDATE has ${stories} stories; two-tier needs 4-5 deep (min 4).`);
-      else if (stories > 5) warns.push(`THE UPDATE has ${stories} stories (two-tier target 4-5 deep; move the extras to THE LINE).`);
+      if (stories < 4)
+        fails.push(
+          `THE UPDATE has ${stories} stories; two-tier needs 4-5 deep (min 4).`
+        );
+      else if (stories > 5)
+        warns.push(
+          `THE UPDATE has ${stories} stories (two-tier target 4-5 deep; move the extras to THE LINE).`
+        );
     } else {
-      if (stories < 4 || stories > 8) fails.push(`THE UPDATE has ${stories} stories; selection format needs 5-7 (hard bounds 4-8).`);
-      else if (stories < 5 || stories > 7) warns.push(`THE UPDATE has ${stories} stories (target 5-7).`);
+      if (stories < 4 || stories > 8)
+        fails.push(
+          `THE UPDATE has ${stories} stories; selection format needs 5-7 (hard bounds 4-8).`
+        );
+      else if (stories < 5 || stories > 7)
+        warns.push(`THE UPDATE has ${stories} stories (target 5-7).`);
     }
   }
 
@@ -122,45 +170,73 @@ function main(): number {
   const mmBody = sectionBody(lines, /^##\s*▸\s*MARKETS MINUTE/i);
   if (mmBody) {
     const sc = sentenceCount(mmBody);
-    if (sc !== 4) warns.push(`Markets Minute has ${sc} sentences (spec: exactly 4).`);
+    if (sc !== 4)
+      warns.push(`Markets Minute has ${sc} sentences (spec: exactly 4).`);
   }
 
   // 5. Banned filler.
   const lower = md.toLowerCase();
-  for (const b of BANNED) if (lower.includes(b)) fails.push(`Banned filler phrase: "${b}".`);
+  for (const b of BANNED)
+    if (lower.includes(b)) fails.push(`Banned filler phrase: "${b}".`);
 
   // 6. Superlatives — warn (the critic verifies provenance against the full brief).
   const sup = md.match(SUPERLATIVE);
-  if (sup) warns.push(`Superlative(s) present (${[...new Set(sup.map(s => s.toLowerCase()))].join(', ')}); confirm each is verified in the full brief — no false superlatives.`);
+  if (sup)
+    warns.push(
+      `Superlative(s) present (${[...new Set(sup.map(s => s.toLowerCase()))].join(', ')}); confirm each is verified in the full brief — no false superlatives.`
+    );
 
   // 7. Landing — each ## ▸ section ends on terminal punctuation.
-  const secHeaders = lines.map((l, i) => ({ l, i })).filter(x => /^##\s*▸/.test(x.l));
+  const secHeaders = lines
+    .map((l, i) => ({ l, i }))
+    .filter(x => /^##\s*▸/.test(x.l));
   for (let s = 0; s < secHeaders.length; s++) {
     const start = secHeaders[s]!.i;
     const end = s + 1 < secHeaders.length ? secHeaders[s + 1]!.i : lines.length;
-    const body = lines.slice(start + 1, end).map(l => l.trim()).filter(l => l.length > 0 && !/^[-*_]{3,}$/.test(l));
+    const body = lines
+      .slice(start + 1, end)
+      .map(l => l.trim())
+      .filter(l => l.length > 0 && !/^[-*_]{3,}$/.test(l));
     const last = body[body.length - 1] || '';
-    if (last && !/[.!?)\]"”]$/.test(last)) warns.push(`Section "${secHeaders[s]!.l.trim()}" may end mid-thought: "...${last.slice(-40)}".`);
+    if (last && !/[.!?)\]"”]$/.test(last))
+      warns.push(
+        `Section "${secHeaders[s]!.l.trim()}" may end mid-thought: "...${last.slice(-40)}".`
+      );
   }
 
   // 8. NO NEW ATOMS — number provenance vs the full brief.
   if (fullFile && fs.existsSync(fullFile)) {
-    const norm = (s: string) => s.replace(/[,$]/g, '').replace(/\bpercent\b/gi, '%').toLowerCase();
+    const norm = (s: string) =>
+      s
+        .replace(/[,$]/g, '')
+        .replace(/\bpercent\b/gi, '%')
+        .toLowerCase();
     const fullN = norm(fs.readFileSync(fullFile, 'utf-8'));
     const body = md.replace(/\[[^\]]*\]\([^)]+\)/g, ' '); // drop links (slugs/urls)
-    const nums = body.match(/\$?\d[\d,]*(?:\.\d+)?\s?(?:percent|%|million|billion|trillion|gigawatt|gw)?/gi) || [];
+    const nums =
+      body.match(
+        /\$?\d[\d,]*(?:\.\d+)?\s?(?:percent|%|million|billion|trillion|gigawatt|gw)?/gi
+      ) || [];
     const orphans: string[] = [];
     for (const raw of nums) {
-      const core = raw.replace(/[,$]/g, '').replace(/\s?(?:percent|%|million|billion|trillion|gigawatt|gw)/i, '').trim();
+      const core = raw
+        .replace(/[,$]/g, '')
+        .replace(/\s?(?:percent|%|million|billion|trillion|gigawatt|gw)/i, '')
+        .trim();
       const n = parseFloat(core);
       if (isNaN(n)) continue;
-      if (Number.isInteger(n) && n >= 1900 && n <= 2099) continue;   // years
+      if (Number.isInteger(n) && n >= 1900 && n <= 2099) continue; // years
       if (Number.isInteger(n) && core.replace('.', '').length <= 2) continue; // small counts / ordinals
       if (!fullN.includes(core.toLowerCase())) orphans.push(raw.trim());
     }
-    if (orphans.length) warns.push(`Numbers not found in the full brief (verify NO NEW ATOMS): ${[...new Set(orphans)].slice(0, 12).join(' · ')}`);
+    if (orphans.length)
+      warns.push(
+        `Numbers not found in the full brief (verify NO NEW ATOMS): ${[...new Set(orphans)].slice(0, 12).join(' · ')}`
+      );
   } else {
-    warns.push('Full brief not provided; skipped NO-NEW-ATOMS number-provenance check. Pass the full brief path as arg 2.');
+    warns.push(
+      'Full brief not provided; skipped NO-NEW-ATOMS number-provenance check. Pass the full brief path as arg 2.'
+    );
   }
 
   // 10. STANDALONE LEGIBILITY — no cross-product references (Jackson 2026-07-05).
@@ -180,7 +256,10 @@ function main(): number {
     [/\bthe full (?:daily )?(?:brief|weekly)\b/i, 'the full brief/weekly'],
   ];
   for (const [re, label] of CROSS_PRODUCT_REFS) {
-    if (re.test(md)) fails.push(`Cross-product reference: "${label}" — the light has no such section; restate the point standalone or cut it.`);
+    if (re.test(md))
+      fails.push(
+        `Cross-product reference: "${label}" — the light has no such section; restate the point standalone or cut it.`
+      );
   }
 
   // 11. INTERESTING THINGS structure — differentiated bold-led items, never a blob.
@@ -188,15 +267,22 @@ function main(): number {
   // wall. Each item = "**Bold lead.** body" (or bold headline own-line).
   const itBody = sectionBody(lines, /^##\s*▸\s*INTERESTING THINGS/i);
   if (itBody.trim()) {
-    const itItems = itBody.split('\n').filter(l => /^\*\*[^*]/.test(l.trim())).length;
-    if (itItems < 2) fails.push(`INTERESTING THINGS has ${itItems} bold-led item(s); needs 2+ differentiated items ("**Bold lead.** body" per item), never a run-on paragraph.`);
+    const itItems = itBody
+      .split('\n')
+      .filter(l => /^\*\*[^*]/.test(l.trim())).length;
+    if (itItems < 2)
+      fails.push(
+        `INTERESTING THINGS has ${itItems} bold-led item(s); needs 2+ differentiated items ("**Bold lead.** body" per item), never a run-on paragraph.`
+      );
   }
 
   // 12. THE MODEL format — "### [Model Name]" header (the viewer's title), not an
   // inline-bold blob. Every daily light uses this; W27's self-heal shipped without it.
   const modelBody = sectionBody(lines, /^##\s*▸\s*THE MODEL/i);
   if (modelBody.trim() && !/^###\s+\S/m.test(modelBody)) {
-    fails.push('THE MODEL is missing its "### [Model Name]" header line (the website renders it as the model title).');
+    fails.push(
+      'THE MODEL is missing its "### [Model Name]" header line (the website renders it as the model title).'
+    );
   }
 
   // 9. DATA-POINT REPETITION — the "at most twice" rule (Jackson 2026-07-01).
@@ -222,17 +308,22 @@ function main(): number {
   let repSource = md;
   if (isTwoTierEra) {
     const trimmed = lines.map(l => l.trim());
-    const titleIdx = trimmed.findIndex(l => /^###(\s|$)/.test(l) && !l.includes('▸'));
+    const titleIdx = trimmed.findIndex(
+      l => /^###(\s|$)/.test(l) && !l.includes('▸')
+    );
     const firstSecIdx = lines.findIndex(l => /^##\s*▸/.test(l));
     if (titleIdx >= 0 && titleIdx < firstSecIdx) {
-      repSource = [...lines.slice(0, titleIdx), ...lines.slice(firstSecIdx)].join('\n');
+      repSource = [
+        ...lines.slice(0, titleIdx),
+        ...lines.slice(firstSecIdx),
+      ].join('\n');
     }
   }
   const repIgnore = ['THE MODEL', 'INNER GAME', 'THE MEDITATION', 'DISCOVERY'];
   const rep = checkRepetition(repSource, { ignoreSections: repIgnore });
   if (!rep.ok) {
     fails.push(
-      `Data-point repetition — ${rep.findings.length} figure(s) appear in 3+ sections (rule: at most twice):\n${formatRepetitionFindings(rep.findings)}`,
+      `Data-point repetition — ${rep.findings.length} figure(s) appear in 3+ sections (rule: at most twice):\n${formatRepetitionFindings(rep.findings)}`
     );
   }
 
@@ -240,8 +331,13 @@ function main(): number {
   if (fails.length) {
     console.error(`\n✗ CRAFT GATE FAILED — ${name}  (${words} words)\n`);
     for (const f of fails) console.error(`  ✗ ${f}`);
-    if (warns.length) { console.error('\n  warnings:'); for (const w of warns) console.error(`  ⚠ ${w}`); }
-    console.error('\n  Fix the blocking items, then re-run. Judgment checks: run system/Brief_Light_Critic.md.\n');
+    if (warns.length) {
+      console.error('\n  warnings:');
+      for (const w of warns) console.error(`  ⚠ ${w}`);
+    }
+    console.error(
+      '\n  Fix the blocking items, then re-run. Judgment checks: run system/Brief_Light_Critic.md.\n'
+    );
     return 1;
   }
   // ── Style diagnostics (added 2026-08-07). PRINT ONLY. Never affects the exit code.
@@ -249,27 +345,48 @@ function main(): number {
   // while the brief got SHORTER. They failed as targets and succeeded as instruments, so they are
   // reported and never enforced. The bar is the read-back, not these numbers.
   {
-    const prose = md.replace(/\[[^\]]*\]\([^)]+\)/g, ' ').replace(/^#.*$/gm, '');
-    const sents = prose.split(/(?<=[.!?])\s+/).map(x => x.trim()).filter(x => x.split(/\s+/).length > 3);
+    const prose = md
+      .replace(/\[[^\]]*\]\([^)]+\)/g, ' ')
+      .replace(/^#.*$/gm, '');
+    const sents = prose
+      .split(/(?<=[.!?])\s+/)
+      .map(x => x.trim())
+      .filter(x => x.split(/\s+/).length > 3);
     if (sents.length) {
       const wl = sents.map(x => x.split(/\s+/).length);
       const mean = wl.reduce((a, b) => a + b, 0) / wl.length;
       const long = wl.filter(w => w > 30).length;
-      const neg = sents.filter(x => /\b(is not|are not|was not|were not|does not|do not|did not|is never|was never|not a |not the |rather than|instead of)\b/i.test(x)).length;
+      const neg = sents.filter(x =>
+        /\b(is not|are not|was not|were not|does not|do not|did not|is never|was never|not a |not the |rather than|instead of)\b/i.test(
+          x
+        )
+      ).length;
       const over45 = sents.filter(x => x.split(/\s+/).length > 45);
       console.log(`\n📊 STYLE DIAGNOSTICS (print-only, never blocking)`);
-      console.log(`   mean sentence ${mean.toFixed(1)}w · >30w ${Math.round(100 * long / wl.length)}% · negation-framed ${Math.round(100 * neg / sents.length)}% · longest ${Math.max(...wl)}w`);
-      console.log(`   reference: May lights ran 17.1 / 10% / 10%. 2026-08-07 ran 23.0 / 30% / 29%.`);
+      console.log(
+        `   mean sentence ${mean.toFixed(1)}w · >30w ${Math.round((100 * long) / wl.length)}% · negation-framed ${Math.round((100 * neg) / sents.length)}% · longest ${Math.max(...wl)}w`
+      );
+      console.log(
+        `   reference: May lights ran 17.1 / 10% / 10%. 2026-08-07 ran 23.0 / 30% / 29%.`
+      );
       if (over45.length) {
-        console.log(`   ⚠ ${over45.length} sentence(s) over 45 words in a SPOKEN product (tripwire — working memory, not style):`);
-        for (const x of over45.slice(0, 3)) console.log(`     · ${x.split(/\s+/).length}w — ${x.slice(0, 90)}…`);
+        console.log(
+          `   ⚠ ${over45.length} sentence(s) over 45 words in a SPOKEN product (tripwire — working memory, not style):`
+        );
+        for (const x of over45.slice(0, 3))
+          console.log(`     · ${x.split(/\s+/).length}w — ${x.slice(0, 90)}…`);
       }
     }
   }
 
   console.log(`\n✓ CRAFT GATE PASSED — ${name}  (${words} words, 0 em-dashes)`);
-  if (warns.length) { console.log('  warnings (non-blocking):'); for (const w of warns) console.log(`  ⚠ ${w}`); }
-  console.log('  Next: run the judgment pass in system/Brief_Light_Critic.md (breadth/two-tier contract, NO NEW ATOMS, title coherence — prose craft is decided by the read-back, not re-judged).');
+  if (warns.length) {
+    console.log('  warnings (non-blocking):');
+    for (const w of warns) console.log(`  ⚠ ${w}`);
+  }
+  console.log(
+    '  Next: run the judgment pass in system/Brief_Light_Critic.md (breadth/two-tier contract, NO NEW ATOMS, title coherence — prose craft is decided by the read-back, not re-judged).'
+  );
   console.log('');
   return 0;
 }

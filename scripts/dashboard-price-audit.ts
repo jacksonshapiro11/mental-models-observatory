@@ -23,16 +23,33 @@ import {
 
 // Mirrors ASSETS in app/api/dashboard/snapshot/route.ts.
 // changeYahoo: continuous proxy for % changes only (NATGAS spot stays NG=F; horizons use UNG).
-const ASSETS: Record<string, { yahoo: string; crypto?: boolean; changeYahoo?: string }> = {
-  SPX: { yahoo: '%5EGSPC' }, NDX: { yahoo: '%5ENDX' }, DJI: { yahoo: '%5EDJI' }, RUT: { yahoo: '%5ERUT' },
-  IGV: { yahoo: 'IGV' }, SMH: { yahoo: 'SMH' }, IWF: { yahoo: 'IWF' }, IWD: { yahoo: 'IWD' },
-  XLE: { yahoo: 'XLE' }, ARKK: { yahoo: 'ARKK' },
-  BTC: { yahoo: 'BTC-USD', crypto: true }, ETH: { yahoo: 'ETH-USD', crypto: true },
-  SOL: { yahoo: 'SOL-USD', crypto: true }, AAVE: { yahoo: 'AAVE-USD', crypto: true },
-  UNI: { yahoo: 'UNI7083-USD', crypto: true }, LINK: { yahoo: 'LINK-USD', crypto: true },
-  GOLD: { yahoo: 'GC%3DF' }, SILVER: { yahoo: 'SI%3DF' }, BRENT: { yahoo: 'BZ%3DF' },
-  COPPER: { yahoo: 'HG%3DF' }, NATGAS: { yahoo: 'NG%3DF', changeYahoo: 'UNG' },
-  US10Y: { yahoo: '%5ETNX' }, DXY: { yahoo: 'DX-Y.NYB' },
+const ASSETS: Record<
+  string,
+  { yahoo: string; crypto?: boolean; changeYahoo?: string }
+> = {
+  SPX: { yahoo: '%5EGSPC' },
+  NDX: { yahoo: '%5ENDX' },
+  DJI: { yahoo: '%5EDJI' },
+  RUT: { yahoo: '%5ERUT' },
+  IGV: { yahoo: 'IGV' },
+  SMH: { yahoo: 'SMH' },
+  IWF: { yahoo: 'IWF' },
+  IWD: { yahoo: 'IWD' },
+  XLE: { yahoo: 'XLE' },
+  ARKK: { yahoo: 'ARKK' },
+  BTC: { yahoo: 'BTC-USD', crypto: true },
+  ETH: { yahoo: 'ETH-USD', crypto: true },
+  SOL: { yahoo: 'SOL-USD', crypto: true },
+  AAVE: { yahoo: 'AAVE-USD', crypto: true },
+  UNI: { yahoo: 'UNI7083-USD', crypto: true },
+  LINK: { yahoo: 'LINK-USD', crypto: true },
+  GOLD: { yahoo: 'GC%3DF' },
+  SILVER: { yahoo: 'SI%3DF' },
+  BRENT: { yahoo: 'BZ%3DF' },
+  COPPER: { yahoo: 'HG%3DF' },
+  NATGAS: { yahoo: 'NG%3DF', changeYahoo: 'UNG' },
+  US10Y: { yahoo: '%5ETNX' },
+  DXY: { yahoo: 'DX-Y.NYB' },
 };
 
 async function fetchSeries(symbol: string, crypto: boolean) {
@@ -48,17 +65,25 @@ async function fetchSeries(symbol: string, crypto: boolean) {
   const series = seriesFromYahooChart(result, { crypto });
   let tradingDate: string | null = null;
   if (meta?.regularMarketTime) {
-    tradingDate = new Intl.DateTimeFormat('en-CA', { timeZone: crypto ? 'UTC' : meta?.exchangeTimezoneName || 'America/New_York' }).format(new Date(meta.regularMarketTime * 1000));
+    tradingDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: crypto
+        ? 'UTC'
+        : meta?.exchangeTimezoneName || 'America/New_York',
+    }).format(new Date(meta.regularMarketTime * 1000));
   }
   return { series, price: meta?.regularMarketPrice as number, tradingDate };
 }
 
 (async () => {
   const only = process.argv.slice(2).map(s => s.toUpperCase());
-  const names = Object.keys(ASSETS).filter(n => only.length === 0 || only.includes(n));
+  const names = Object.keys(ASSETS).filter(
+    n => only.length === 0 || only.includes(n)
+  );
   let fails = 0;
 
-  console.log('asset   price        1D       5D       1M       1Y      bars  flags');
+  console.log(
+    'asset   price        1D       5D       1M       1Y      bars  flags'
+  );
   for (const name of names) {
     const a = ASSETS[name]!;
     try {
@@ -70,24 +95,42 @@ async function fetchSeries(symbol: string, crypto: boolean) {
         changeSrc = await fetchSeries(a.changeYahoo, !!a.crypto);
         await new Promise(res => setTimeout(res, 350));
       }
-      const merged = mergeLatestIntoSeries(changeSrc.series, changeSrc.price, changeSrc.tradingDate);
+      const merged = mergeLatestIntoSeries(
+        changeSrc.series,
+        changeSrc.price,
+        changeSrc.tradingDate
+      );
       const breaks = detectScaleBreaks(merged, a.crypto ? 1.6 : 1.5);
       const r = calculateChangesChecked(merged.dates, merged.prices);
       const flags: string[] = [];
-      if (breaks.length) { flags.push(`SCALE-BREAK[${breaks.map(b => `${b.date}×${b.ratio}`).join(',')}]`); fails++; }
-      if (r.staleBaselines.length) { flags.push(`STALE[${r.staleBaselines.join(',')}]`); fails++; }
+      if (breaks.length) {
+        flags.push(
+          `SCALE-BREAK[${breaks.map(b => `${b.date}×${b.ratio}`).join(',')}]`
+        );
+        fails++;
+      }
+      if (r.staleBaselines.length) {
+        flags.push(`STALE[${r.staleBaselines.join(',')}]`);
+        fails++;
+      }
       if (a.changeYahoo) flags.push(`chg=${a.changeYahoo}`);
       const f = (v?: number) => (v == null ? '     —' : String(v).padStart(6));
       console.log(
-        `${name.padEnd(7)} ${String(spot.price).padStart(9)}  ${f(r.changes['1D'])}%  ${f(r.changes['5D'])}%  ${f(r.changes['1M'])}%  ${f(r.changes['1Y'])}%   ${String(merged.prices.length).padStart(4)}  ${flags.join(' ') || 'ok'}`,
+        `${name.padEnd(7)} ${String(spot.price).padStart(9)}  ${f(r.changes['1D'])}%  ${f(r.changes['5D'])}%  ${f(r.changes['1M'])}%  ${f(r.changes['1Y'])}%   ${String(merged.prices.length).padStart(4)}  ${flags.join(' ') || 'ok'}`
       );
     } catch (err) {
-      console.log(`${name.padEnd(7)} FETCH FAILED: ${err instanceof Error ? err.message : err}`);
+      console.log(
+        `${name.padEnd(7)} FETCH FAILED: ${err instanceof Error ? err.message : err}`
+      );
       fails++;
     }
     await new Promise(res => setTimeout(res, 350));
   }
 
-  console.log(fails ? `\n✗ ${fails} problem(s) — do not trust the affected rows` : '\n✅ all assets clean (no scale breaks, no stale baselines)');
+  console.log(
+    fails
+      ? `\n✗ ${fails} problem(s) — do not trust the affected rows`
+      : '\n✅ all assets clean (no scale breaks, no stale baselines)'
+  );
   process.exit(fails ? 1 : 0);
 })();

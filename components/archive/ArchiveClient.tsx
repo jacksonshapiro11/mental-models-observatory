@@ -16,11 +16,34 @@ export interface ArchiveBrief {
 
 type ArchiveKind = 'brief' | 'super' | 'weekly' | 'weekly-super';
 
-const KIND_META: Record<ArchiveKind, { label: string; href: string; badge: string; noun: string }> = {
-  brief: { label: 'Full Brief', href: '/daily-update', badge: 'FULL BRIEF', noun: 'brief' },
-  super: { label: 'Super Brief', href: '/super-brief', badge: 'SUPER BRIEF', noun: 'super brief' },
-  weekly: { label: 'Weekly', href: '/weekly', badge: 'THE WEEKLY', noun: 'weekly' },
-  'weekly-super': { label: 'Weekly Super', href: '/weekly-super', badge: 'WEEKLY LIGHT', noun: 'weekly super brief' },
+const KIND_META: Record<
+  ArchiveKind,
+  { label: string; href: string; badge: string; noun: string }
+> = {
+  brief: {
+    label: 'Full Brief',
+    href: '/daily-update',
+    badge: 'FULL BRIEF',
+    noun: 'brief',
+  },
+  super: {
+    label: 'Super Brief',
+    href: '/super-brief',
+    badge: 'SUPER BRIEF',
+    noun: 'super brief',
+  },
+  weekly: {
+    label: 'Weekly',
+    href: '/weekly',
+    badge: 'THE WEEKLY',
+    noun: 'weekly',
+  },
+  'weekly-super': {
+    label: 'Weekly Super',
+    href: '/weekly-super',
+    badge: 'WEEKLY LIGHT',
+    noun: 'weekly super brief',
+  },
 };
 
 interface ArchiveClientProps {
@@ -58,9 +81,12 @@ export default function ArchiveClient({
   const months = useMemo(() => {
     if (isWeeklyKind) return [] as string[];
     const monthSet = new Set<string>();
-    activeBriefs.forEach((b) => {
+    activeBriefs.forEach(b => {
       const date = new Date(b.date);
-      const monthStr = date.toLocaleString('en-US', { year: 'numeric', month: 'long' });
+      const monthStr = date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+      });
       monthSet.add(monthStr);
     });
     return Array.from(monthSet).sort().reverse();
@@ -71,21 +97,25 @@ export default function ArchiveClient({
     let result = activeBriefs;
 
     if (selectedMonth) {
-      result = result.filter((b) => {
+      result = result.filter(b => {
         const date = new Date(b.date);
-        const monthStr = date.toLocaleString('en-US', { year: 'numeric', month: 'long' });
+        const monthStr = date.toLocaleString('en-US', {
+          year: 'numeric',
+          month: 'long',
+        });
         return monthStr === selectedMonth;
       });
     }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter((b) =>
-        b.displayDate.toLowerCase().includes(q) ||
-        b.dailyTitle.toLowerCase().includes(q) ||
-        b.epigraph.toLowerCase().includes(q) ||
-        b.lede.toLowerCase().includes(q) ||
-        b.sections.some((s) => s.toLowerCase().includes(q))
+      result = result.filter(
+        b =>
+          b.displayDate.toLowerCase().includes(q) ||
+          b.dailyTitle.toLowerCase().includes(q) ||
+          b.epigraph.toLowerCase().includes(q) ||
+          b.lede.toLowerCase().includes(q) ||
+          b.sections.some(s => s.toLowerCase().includes(q))
       );
     }
 
@@ -100,10 +130,10 @@ export default function ArchiveClient({
   return (
     <>
       {/* Brief kind toggle */}
-      <div className="mb-6 inline-flex rounded overflow-hidden border-2 border-ct-dark flex-wrap">
+      <div className='mb-6 inline-flex rounded overflow-hidden border-2 border-ct-dark flex-wrap'>
         {(['brief', 'super', 'weekly', 'weekly-super'] as ArchiveKind[])
           .filter(
-            (k) =>
+            k =>
               (k === 'brief'
                 ? briefs
                 : k === 'super'
@@ -111,7 +141,7 @@ export default function ArchiveClient({
                   : k === 'weekly'
                     ? weeklyBriefs
                     : weeklyLightBriefs
-              ).length > 0,
+              ).length > 0
           )
           .map((k, i) => (
             <button
@@ -120,7 +150,9 @@ export default function ArchiveClient({
               className={`px-4 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${
                 i > 0 ? 'border-l-2 border-ct-dark' : ''
               } ${
-                kind === k ? 'bg-ct-dark text-ct-yellow' : 'bg-white text-text-primary hover:bg-surface-warm'
+                kind === k
+                  ? 'bg-ct-dark text-ct-yellow'
+                  : 'bg-white text-text-primary hover:bg-surface-warm'
               }`}
             >
               {KIND_META[k].label}
@@ -129,21 +161,21 @@ export default function ArchiveClient({
       </div>
 
       {/* Search Bar */}
-      <div className="mb-8">
-        <div className="relative border-b-2 border-ct-dark bg-white">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+      <div className='mb-8'>
+        <div className='relative border-b-2 border-ct-dark bg-white'>
+          <Search className='absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted' />
           <input
-            type="text"
+            type='text'
             placeholder={`Search ${noun}s by date, title, or content...`}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 pr-4 py-3 w-full text-sm focus:outline-none bg-white"
+            onChange={e => setSearchQuery(e.target.value)}
+            className='pl-12 pr-4 py-3 w-full text-sm focus:outline-none bg-white'
           />
         </div>
       </div>
 
       {/* Month Filter Chips */}
-      <div className="mb-8 flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+      <div className='mb-8 flex gap-2 overflow-x-auto pb-2 no-scrollbar'>
         <button
           onClick={() => setSelectedMonth('')}
           className={`px-3 py-1.5 text-xs font-medium whitespace-nowrap rounded transition-colors ${
@@ -154,7 +186,7 @@ export default function ArchiveClient({
         >
           All
         </button>
-        {months.map((month) => (
+        {months.map(month => (
           <button
             key={month}
             onClick={() => setSelectedMonth(month)}
@@ -171,39 +203,44 @@ export default function ArchiveClient({
 
       {/* Briefs List */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <Search className="w-12 h-12 text-text-muted mx-auto mb-4" />
-          <p className="text-text-secondary">
-            {searchQuery ? `No ${noun}s match your search.` : `No ${noun}s published yet.`}
+        <div className='text-center py-16'>
+          <Search className='w-12 h-12 text-text-muted mx-auto mb-4' />
+          <p className='text-text-secondary'>
+            {searchQuery
+              ? `No ${noun}s match your search.`
+              : `No ${noun}s published yet.`}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {filtered.map((brief) => {
-            const title = brief.dailyTitle || brief.epigraph || brief.lede.replace(/\*\*/g, '').substring(0, 60);
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-6'>
+          {filtered.map(brief => {
+            const title =
+              brief.dailyTitle ||
+              brief.epigraph ||
+              brief.lede.replace(/\*\*/g, '').substring(0, 60);
 
             return (
               <Link
                 key={brief.date}
                 href={`${hrefBase}/${brief.date}`}
-                className="group bg-[#FAFAF6] border border-[#e8e8e4] rounded-md p-4 hover:shadow-medium transition-all duration-300 hover:border-text-secondary"
+                className='group bg-[#FAFAF6] border border-[#e8e8e4] rounded-md p-4 hover:shadow-medium transition-all duration-300 hover:border-text-secondary'
               >
-                <p className="text-[9px] font-mono text-text-muted uppercase tracking-wider mb-2">
+                <p className='text-[9px] font-mono text-text-muted uppercase tracking-wider mb-2'>
                   {brief.displayDate || brief.date}
                 </p>
-                <h3 className="text-sm font-bold text-text-primary mb-2 group-hover:text-ct-pink transition-colors line-clamp-2">
+                <h3 className='text-sm font-bold text-text-primary mb-2 group-hover:text-ct-pink transition-colors line-clamp-2'>
                   {title}
                 </h3>
                 {brief.lede && (
-                  <p className="text-[11px] text-text-secondary mb-3 line-clamp-2">
+                  <p className='text-[11px] text-text-secondary mb-3 line-clamp-2'>
                     {brief.lede.replace(/\*\*/g, '')}
                   </p>
                 )}
-                <div className="flex items-center justify-between">
-                  <span className="px-2 py-0.5 bg-ct-pink text-white text-[8px] font-bold rounded">
+                <div className='flex items-center justify-between'>
+                  <span className='px-2 py-0.5 bg-ct-pink text-white text-[8px] font-bold rounded'>
                     {badgeLabel}
                   </span>
-                  <span className="text-[9px] text-text-muted font-mono">
+                  <span className='text-[9px] text-text-muted font-mono'>
                     {brief.sectionCount} sections
                   </span>
                 </div>
@@ -215,9 +252,11 @@ export default function ArchiveClient({
 
       {/* Results count */}
       {filtered.length > 0 && (
-        <div className="text-center pt-8">
-          <span className="text-xs text-text-muted font-mono">
-            {filtered.length} {noun}{filtered.length !== 1 ? 's' : ''} {searchQuery ? 'found' : 'displayed'}
+        <div className='text-center pt-8'>
+          <span className='text-xs text-text-muted font-mono'>
+            {filtered.length} {noun}
+            {filtered.length !== 1 ? 's' : ''}{' '}
+            {searchQuery ? 'found' : 'displayed'}
           </span>
         </div>
       )}

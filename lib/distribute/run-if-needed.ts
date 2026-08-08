@@ -2,12 +2,18 @@
  * Idempotent distribute — skips channels already confirmed in Redis.
  */
 
-import { runDistribute, type DistributeResults } from '@/lib/distribute/handler';
+import {
+  runDistribute,
+  type DistributeResults,
+} from '@/lib/distribute/handler';
 import {
   emailWasActuallySent,
   xWasActuallyPosted,
 } from '@/lib/marketing/pipeline-status';
-import { readDistributeLog, writeStepLog } from '@/lib/marketing/distribute-log';
+import {
+  readDistributeLog,
+  writeStepLog,
+} from '@/lib/marketing/distribute-log';
 
 export interface RunDistributeIfNeededOptions {
   dateSlug: string;
@@ -18,15 +24,17 @@ export interface RunDistributeIfNeededOptions {
 }
 
 export async function runDistributeIfNeeded(
-  options: RunDistributeIfNeededOptions,
+  options: RunDistributeIfNeededOptions
 ): Promise<DistributeResults> {
   const { dateSlug, weeklySlug, dryRun = false, channel = null } = options;
   const existingLog = await readDistributeLog(dateSlug);
   const results: DistributeResults = {};
 
   const skipEmail =
-    emailWasActuallySent(existingLog?.email) && (!channel || channel === 'email');
-  const skipX = xWasActuallyPosted(existingLog?.x) && (!channel || channel === 'x');
+    emailWasActuallySent(existingLog?.email) &&
+    (!channel || channel === 'email');
+  const skipX =
+    xWasActuallyPosted(existingLog?.x) && (!channel || channel === 'x');
 
   if (skipEmail) {
     results.email = { success: true, details: 'skipped — already sent' };
@@ -43,7 +51,11 @@ export async function runDistributeIfNeeded(
   }
 
   const runChannel = needsEmail && needsX ? null : needsEmail ? 'email' : 'x';
-  const distributeOpts: Parameters<typeof runDistribute>[0] = { dateSlug, dryRun, channel: runChannel };
+  const distributeOpts: Parameters<typeof runDistribute>[0] = {
+    dateSlug,
+    dryRun,
+    channel: runChannel,
+  };
   if (weeklySlug) distributeOpts.weeklySlug = weeklySlug;
   const fresh = await runDistribute(distributeOpts);
 

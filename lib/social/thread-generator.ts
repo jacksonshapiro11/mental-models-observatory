@@ -94,7 +94,11 @@ function parseBriefForThread(markdown: string, dateSlug: string): ParsedBrief {
     }
     if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
       if (!result.dailyTitle && !result.epigraph) {
-        result.epigraph = line.slice(1, -1).replace(/^[""“”]+/, '').replace(/[""“”]+$/, '').trim();
+        result.epigraph = line
+          .slice(1, -1)
+          .replace(/^[""“”]+/, '')
+          .replace(/[""“”]+$/, '')
+          .trim();
       } else if (result.dailyTitle && !result.lede) {
         result.lede = line.slice(1, -1);
       }
@@ -131,7 +135,9 @@ function parseBriefForThread(markdown: string, dateSlug: string): ParsedBrief {
       let match;
       while ((match = headlineRegex.exec(content)) !== null) {
         const headline = match[1]!;
-        const afterHeadline = content.slice(match.index + match[0].length).trim();
+        const afterHeadline = content
+          .slice(match.index + match[0].length)
+          .trim();
         const firstParagraph = afterHeadline.split(/\n\s*\n/)[0]?.trim() || '';
 
         if (sec.type === 'update') {
@@ -149,12 +155,15 @@ function parseBriefForThread(markdown: string, dateSlug: string): ParsedBrief {
     if (sec.type === 'model') {
       const modelMatch = content.match(/^### (.+)$/m);
       if (modelMatch) result.modelName = modelMatch[1]!;
-      const afterHeading = content.slice(content.indexOf(result.modelName) + result.modelName.length).trim();
+      const afterHeading = content
+        .slice(content.indexOf(result.modelName) + result.modelName.length)
+        .trim();
       result.modelBody = afterHeading.split(/\n\s*\n/)[0]?.trim() || '';
     }
 
     if (sec.type === 'meditation') {
-      const quoteMatch = content.match(/^\*"(.+?)"\*/m) || content.match(/^> (.+)/m);
+      const quoteMatch =
+        content.match(/^\*"(.+?)"\*/m) || content.match(/^> (.+)/m);
       if (quoteMatch) result.meditationQuote = quoteMatch[1]!;
     }
   }
@@ -166,11 +175,11 @@ function parseBriefForThread(markdown: string, dateSlug: string): ParsedBrief {
 
 function stripMarkdown(text: string): string {
   return text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')   // links
-    .replace(/\*\*([^*]+)\*\*/g, '$1')           // bold
-    .replace(/\*([^*]+)\*/g, '$1')               // italic
-    .replace(/\n/g, ' ')                         // newlines
-    .replace(/\s+/g, ' ')                        // collapse whitespace
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // bold
+    .replace(/\*([^*]+)\*/g, '$1') // italic
+    .replace(/\n/g, ' ') // newlines
+    .replace(/\s+/g, ' ') // collapse whitespace
     .trim();
 }
 
@@ -247,7 +256,9 @@ function compressToFit(body: string, availableChars: number): string {
       break;
     }
   }
-  return result || truncateToFit(clauses[0] || stripMarkdown(body), availableChars);
+  return (
+    result || truncateToFit(clauses[0] || stripMarkdown(body), availableChars)
+  );
 }
 
 function truncate(text: string, maxLen: number = MAX_TWEET_LENGTH): string {
@@ -288,7 +299,10 @@ function truncate(text: string, maxLen: number = MAX_TWEET_LENGTH): string {
  * number-rich, surprising single insight. The daily title is the
  * frame, but the hook line is what stops the scroll.
  */
-export function generateThread(markdown: string, dateSlug: string): GeneratedThread {
+export function generateThread(
+  markdown: string,
+  dateSlug: string
+): GeneratedThread {
   const brief = parseBriefForThread(markdown, dateSlug);
   const superBriefUrl = `${SITE_URL}/super-brief`;
   const tweets: Tweet[] = [];
@@ -309,15 +323,19 @@ export function generateThread(markdown: string, dateSlug: string): GeneratedThr
   const allKillerLines: { line: string; source: string }[] = [];
   for (let i = 0; i < brief.updateBodies.length; i++) {
     const line = extractKillerLine(brief.updateBodies[i] || '');
-    if (line) allKillerLines.push({ line, source: brief.updateHeadlines[i] || '' });
+    if (line)
+      allKillerLines.push({ line, source: brief.updateHeadlines[i] || '' });
   }
   for (let i = 0; i < brief.interestingBodies.length; i++) {
     const line = extractKillerLine(brief.interestingBodies[i] || '');
-    if (line) allKillerLines.push({ line, source: brief.interestingThings[i] || '' });
+    if (line)
+      allKillerLines.push({ line, source: brief.interestingThings[i] || '' });
   }
   allKillerLines.sort((a, b) => {
-    const scoreA = (a.line.match(/\$|%|billion|million|trillion/gi) || []).length;
-    const scoreB = (b.line.match(/\$|%|billion|million|trillion/gi) || []).length;
+    const scoreA = (a.line.match(/\$|%|billion|million|trillion/gi) || [])
+      .length;
+    const scoreB = (b.line.match(/\$|%|billion|million|trillion/gi) || [])
+      .length;
     return scoreB - scoreA;
   });
 
@@ -366,7 +384,9 @@ export function generateThread(markdown: string, dateSlug: string): GeneratedThr
   // (weird science, surprising discoveries — things people RT to look smart).
   // 2 updates show breadth, the interesting thing is the share magnet.
   const usedSource = allKillerLines[0]?.source || '';
-  const remainingHeadlines = brief.updateHeadlines.filter(h => h !== usedSource);
+  const remainingHeadlines = brief.updateHeadlines.filter(
+    h => h !== usedSource
+  );
   for (let i = 0; i < Math.min(remainingHeadlines.length, 2); i++) {
     depthLines.push(`→ ${remainingHeadlines[i]}`);
   }
@@ -423,7 +443,8 @@ export function generateThread(markdown: string, dateSlug: string): GeneratedThr
 
     if (ctaText.length > MAX_TWEET_LENGTH) {
       // Shorten the quote further
-      const veryShort = shortQuote.slice(0, MAX_TWEET_LENGTH - superBriefUrl.length - 50) + '…';
+      const veryShort =
+        shortQuote.slice(0, MAX_TWEET_LENGTH - superBriefUrl.length - 50) + '…';
       ctaText = `"${veryShort}"\n\nFull brief — free, every morning:\n${superBriefUrl}`;
     }
 
@@ -442,11 +463,17 @@ export function generateThread(markdown: string, dateSlug: string): GeneratedThr
 
 // ─── File accessors ───────────────────────────────────────────────────────
 
-export function generateThreadFromDate(dateSlug: string): GeneratedThread | null {
+export function generateThreadFromDate(
+  dateSlug: string
+): GeneratedThread | null {
   // Prefer the light brief (its section markers match our parser: ## ▸ THE UPDATE, etc.)
   // The full brief uses different markers (# ▸ THE SIX) that this parser doesn't handle.
   const lightPublished = path.join(CONTENT_DIR, `${dateSlug}-light.md`);
-  const lightDraft = path.join(process.cwd(), 'daily-briefs', `${dateSlug}-light.md`);
+  const lightDraft = path.join(
+    process.cwd(),
+    'daily-briefs',
+    `${dateSlug}-light.md`
+  );
   const fullPath = path.join(CONTENT_DIR, `${dateSlug}.md`);
 
   let filePath: string;
@@ -468,8 +495,9 @@ export function generateThreadForLatest(): GeneratedThread | null {
   if (!fs.existsSync(CONTENT_DIR)) return null;
 
   // Try light briefs first — they match our parser's section markers
-  const lightFiles = fs.readdirSync(CONTENT_DIR)
-    .filter((f) => f.endsWith('-light.md'))
+  const lightFiles = fs
+    .readdirSync(CONTENT_DIR)
+    .filter(f => f.endsWith('-light.md'))
     .sort()
     .reverse();
 
@@ -479,8 +507,9 @@ export function generateThreadForLatest(): GeneratedThread | null {
   }
 
   // Fall back to full briefs
-  const fullFiles = fs.readdirSync(CONTENT_DIR)
-    .filter((f) => f.endsWith('.md') && !f.includes('-light'))
+  const fullFiles = fs
+    .readdirSync(CONTENT_DIR)
+    .filter(f => f.endsWith('.md') && !f.includes('-light'))
     .sort()
     .reverse();
 

@@ -3,8 +3,13 @@
 @tailwind utilities;
 
 /* Hide scrollbar for horizontal nav sections */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 /* ==========================================================================
    ZINE TERMINAL DESIGN SYSTEM
@@ -14,19 +19,19 @@
 @layer base {
   /* ZINE TERMINAL COLOR PALETTE */
   :root {
-    --ct-dark: #0D0D0D;
-    --ct-yellow: #FFE600;
-    --ct-pink: #FF2E63;
-    --ct-green-data: #00FF41;
+    --ct-dark: #0d0d0d;
+    --ct-yellow: #ffe600;
+    --ct-pink: #ff2e63;
+    --ct-green-data: #00ff41;
     --ct-green-disc: #00885a;
-    --ct-bg-terminal: #0D0D0D;
-    --ct-bg-reading: #FFFFFF;
-    --ct-bg-take: #FFFDF0;
-    --ct-bg-surface: #F8F8F4;
+    --ct-bg-terminal: #0d0d0d;
+    --ct-bg-reading: #ffffff;
+    --ct-bg-take: #fffdf0;
+    --ct-bg-surface: #f8f8f4;
     --ct-text-primary: #111111;
     --ct-text-secondary: #555555;
     --ct-text-muted: #999999;
-    --ct-text-on-dark: #DDDDDD;
+    --ct-text-on-dark: #dddddd;
     --ct-text-on-dark-muted: #888888;
     --ct-font-display: 'Fraunces', Georgia, serif;
     --ct-font-body: var(--font-body), 'Inter', system-ui, sans-serif;
@@ -35,11 +40,11 @@
     --ct-body-size: 16px;
     --ct-body-size-mobile: 17px;
     --ct-body-leading: 1.6;
-    --border-thin: 1px solid #E5E5E0;
+    --border-thin: 1px solid #e5e5e0;
     --border-dark: 1px solid #333333;
-    --border-section: 2px solid #FFE600;
-    --border-accent: 2px solid #FF2E63;
-    --border-alert: 2px solid #00FF41;
+    --border-section: 2px solid #ffe600;
+    --border-accent: 2px solid #ff2e63;
+    --border-alert: 2px solid #00ff41;
   }
 
   /* HTML & BODY FOUNDATIONAL STYLES */
@@ -105,7 +110,12 @@
   }
 
   /* HEADINGS */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--ct-font-display);
   }
 
@@ -252,7 +262,7 @@
   color: #fff;
 }
 .dark-section-text code {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
   color: #ddd;
 }
 
@@ -260,6 +270,6 @@
   color: var(--ct-text-primary, #111);
 }
 .light-section-text code {
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
   color: var(--ct-text-primary, #111);
 }

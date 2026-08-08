@@ -47,9 +47,9 @@ function collectChecks(editorMd: string): string[] {
 
 function listRecentLogs(): string[] {
   if (!fs.existsSync(LOG_DIR)) return [];
-  const files = fs.readdirSync(LOG_DIR).filter((f) => /-editor-log\.md$/.test(f));
+  const files = fs.readdirSync(LOG_DIR).filter(f => /-editor-log\.md$/.test(f));
   files.sort().reverse();
-  return files.slice(0, LOOKBACK_DAYS).map((f) => path.join(LOG_DIR, f));
+  return files.slice(0, LOOKBACK_DAYS).map(f => path.join(LOG_DIR, f));
 }
 
 function analyze() {
@@ -58,7 +58,8 @@ function analyze() {
   const logs = listRecentLogs();
 
   // For each check, count red/yellow mentions across the log window.
-  const stats: Record<string, { red: number; yellow: number; note: number }> = {};
+  const stats: Record<string, { red: number; yellow: number; note: number }> =
+    {};
   for (const c of checks) stats[c] = { red: 0, yellow: 0, note: 0 };
 
   for (const logPath of logs) {
@@ -92,24 +93,40 @@ function analyze() {
     else healthy.push(`${c} (🔴×${s.red} 🟡×${s.yellow} 📝×${s.note})`);
   }
 
-  console.log(`Retirement Audit — ${logs.length} editor log(s) scanned (window: last ${LOOKBACK_DAYS} days)`);
+  console.log(
+    `Retirement Audit — ${logs.length} editor log(s) scanned (window: last ${LOOKBACK_DAYS} days)`
+  );
   console.log(`Total checks discovered in Brief_Editor.md: ${checks.length}`);
   console.log('');
   console.log(`❓ Never-fired checks — AMBIGUOUS: ${neverFired.length}`);
-  console.log(`   For each, ask: did the failure mode not occur, OR did it occur but escape this check?`);
-  console.log(`   Cross-check against Jackson's feedback and morning updates before deciding.`);
-  console.log(`   If the failure occurred and was caught elsewhere → the trigger is miscalibrated, do NOT retire.`);
-  console.log(`   If the failure mode genuinely didn't occur in ${LOOKBACK_DAYS} days → candidate for retirement.`);
+  console.log(
+    `   For each, ask: did the failure mode not occur, OR did it occur but escape this check?`
+  );
+  console.log(
+    `   Cross-check against Jackson's feedback and morning updates before deciding.`
+  );
+  console.log(
+    `   If the failure occurred and was caught elsewhere → the trigger is miscalibrated, do NOT retire.`
+  );
+  console.log(
+    `   If the failure mode genuinely didn't occur in ${LOOKBACK_DAYS} days → candidate for retirement.`
+  );
   for (const c of neverFired) console.log(`   - Check ${c}`);
   console.log('');
-  console.log(`🟡 Low-yield checks (fired only as 🟡 or 📝, never 🔴 in window): ${lowYield.length}`);
-  console.log(`   Same ambiguity applies — low severity may mean low stakes OR low detection fidelity.`);
+  console.log(
+    `🟡 Low-yield checks (fired only as 🟡 or 📝, never 🔴 in window): ${lowYield.length}`
+  );
+  console.log(
+    `   Same ambiguity applies — low severity may mean low stakes OR low detection fidelity.`
+  );
   for (const c of lowYield) console.log(`   - Check ${c}`);
   console.log('');
   console.log(`✅ Healthy checks (fired 🔴 at least once): ${healthy.length}`);
   for (const c of healthy) console.log(`   - Check ${c}`);
   console.log('');
-  console.log(`Diagnostic only. No automatic retirement recommendations. Mechanical checks in scripts/validate-brief.ts are not in this audit's scope — they're code, they don't drift.`);
+  console.log(
+    `Diagnostic only. No automatic retirement recommendations. Mechanical checks in scripts/validate-brief.ts are not in this audit's scope — they're code, they don't drift.`
+  );
 }
 
 analyze();

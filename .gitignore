@@ -221,3 +221,7 @@ Podcast Picture.png
 
 # read-back loop working dir (2026-08-07) — prompts, raw read-backs, grades, diffs
 .readback/
+_to_delete/
+.worktrees/
+*.bak-*
+_to_delete2/

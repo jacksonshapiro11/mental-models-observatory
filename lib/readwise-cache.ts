@@ -22,22 +22,24 @@ export async function getCachedHighlight(
   // Check cache first
   const cached = highlightCache.get(highlightId);
   const now = Date.now();
-  
-  if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+
+  if (cached && now - cached.timestamp < CACHE_DURATION) {
     return cached.highlight;
   }
-  
+
   // Rate limiting - prevent too many API calls
   const timeSinceLastCall = now - lastApiCall;
   if (timeSinceLastCall < MIN_API_INTERVAL) {
-    await new Promise(resolve => setTimeout(resolve, MIN_API_INTERVAL - timeSinceLastCall));
+    await new Promise(resolve =>
+      setTimeout(resolve, MIN_API_INTERVAL - timeSinceLastCall)
+    );
   }
-  
+
   try {
     // Fetch fresh data
     lastApiCall = Date.now();
     const highlight = await fetchFunction(highlightId);
-    
+
     if (highlight) {
       // Clean cache if it's getting too large
       if (highlightCache.size >= MAX_CACHE_SIZE) {
@@ -52,14 +54,14 @@ export async function getCachedHighlight(
           }
         }
       }
-      
+
       // Cache the result
       highlightCache.set(highlightId, {
         highlight,
-        timestamp: now
+        timestamp: now,
       });
     }
-    
+
     return highlight;
   } catch (error) {
     console.error(`Error fetching highlight ${highlightId}:`, error);
@@ -73,9 +75,13 @@ export function clearHighlightCache(): void {
 }
 
 // Get cache stats (for monitoring)
-export function getCacheStats(): { size: number; maxSize: number; hitRate?: number } {
+export function getCacheStats(): {
+  size: number;
+  maxSize: number;
+  hitRate?: number;
+} {
   return {
     size: highlightCache.size,
-    maxSize: MAX_CACHE_SIZE
+    maxSize: MAX_CACHE_SIZE,
   };
 }

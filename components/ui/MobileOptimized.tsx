@@ -8,10 +8,10 @@ interface MobileOptimizedProps {
   breakpoint?: number; // pixels
 }
 
-export function MobileOptimized({ 
-  children, 
-  mobileComponent, 
-  breakpoint = 768 
+export function MobileOptimized({
+  children,
+  mobileComponent,
+  breakpoint = 768,
 }: MobileOptimizedProps) {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -70,7 +70,7 @@ export const touchOptimized = {
   button: 'min-h-[44px] min-w-[44px]', // Apple's minimum tap target size
   spacing: 'space-y-2 sm:space-y-1', // More spacing on mobile
   text: 'text-base sm:text-sm', // Larger text on mobile
-  padding: 'p-4 sm:p-3' // More padding on mobile
+  padding: 'p-4 sm:p-3', // More padding on mobile
 };
 
 export default MobileOptimized;

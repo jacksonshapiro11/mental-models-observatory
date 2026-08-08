@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { getDashboardPollIntervalMs, type MarketStatus } from '@/lib/market-hours';
+import {
+  getDashboardPollIntervalMs,
+  type MarketStatus,
+} from '@/lib/market-hours';
 
 const FALLBACK_INTERVAL_MS = 60_000;
 
@@ -17,7 +20,9 @@ type LiveMeta = {
 export function useDashboardLivePolling<T = unknown>() {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  );
   const intervalMsRef = useRef(FALLBACK_INTERVAL_MS);
 
   useEffect(() => {

@@ -29,7 +29,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isCronAuthorized } from '@/lib/cron-auth';
 import { getBriefLightByDate } from '@/lib/brief-light-parser';
 import { resolvePublishDate } from '@/lib/publish-date';
-import { runDistribute, type DistributeResults } from '@/lib/distribute/handler';
+import {
+  runDistribute,
+  type DistributeResults,
+} from '@/lib/distribute/handler';
 import { runDistributeIfNeeded } from '@/lib/distribute/run-if-needed';
 
 export async function POST(req: NextRequest) {
@@ -37,16 +40,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { date: dateSlug, manual } = resolvePublishDate(req.nextUrl.searchParams.get('date'));
-  const channel = req.nextUrl.searchParams.get('channel') as 'email' | 'x' | null;
+  const { date: dateSlug, manual } = resolvePublishDate(
+    req.nextUrl.searchParams.get('date')
+  );
+  const channel = req.nextUrl.searchParams.get('channel') as
+    | 'email'
+    | 'x'
+    | null;
   const dryRun = req.nextUrl.searchParams.get('dry-run') === 'true';
 
   if (!manual && !getBriefLightByDate(dateSlug)) {
-    console.warn(`[distribute] No brief for ${dateSlug} — skipping distribution (no stale fallback).`);
-    return NextResponse.json({ date: dateSlug, skipped: true, reason: `No brief published for ${dateSlug}` });
+    console.warn(
+      `[distribute] No brief for ${dateSlug} — skipping distribution (no stale fallback).`
+    );
+    return NextResponse.json({
+      date: dateSlug,
+      skipped: true,
+      reason: `No brief published for ${dateSlug}`,
+    });
   }
 
-  console.log(`[distribute] Starting — date=${dateSlug}, channel=${channel || 'all'}, dryRun=${dryRun}`);
+  console.log(
+    `[distribute] Starting — date=${dateSlug}, channel=${channel || 'all'}, dryRun=${dryRun}`
+  );
 
   let results: DistributeResults;
 
@@ -62,7 +78,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const allSuccess = Object.values(results).every((r) => r.success);
+  const allSuccess = Object.values(results).every(r => r.success);
 
   return NextResponse.json(
     {
@@ -71,7 +87,7 @@ export async function POST(req: NextRequest) {
       results,
       success: allSuccess,
     },
-    { status: allSuccess ? 200 : 207 },
+    { status: allSuccess ? 200 : 207 }
   );
 }
 

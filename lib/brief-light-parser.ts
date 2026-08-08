@@ -13,20 +13,20 @@ const CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates');
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface BriefLight {
-  date: string;           // "2026-04-06"
-  displayDate: string;    // "Monday, April 6, 2026"
-  dailyTitle: string;     // "The Bypass That Wasn't" — editorial headline
-  lede: string;           // Intro summary (2-3 italic sentences shared with full brief)
-  epigraph: string;       // Opening quote
+  date: string; // "2026-04-06"
+  displayDate: string; // "Monday, April 6, 2026"
+  dailyTitle: string; // "The Bypass That Wasn't" — editorial headline
+  lede: string; // Intro summary (2-3 italic sentences shared with full brief)
+  epigraph: string; // Opening quote
   sections: BriefLightSection[];
-  raw: string;            // Full markdown
+  raw: string; // Full markdown
 }
 
 export interface BriefLightSection {
   id: string;
   label: string;
   content: string;
-  title?: string;   // text after a colon in the header, e.g. "THE IDEA: <title>" or "THE MODEL: <name>"
+  title?: string; // text after a colon in the header, e.g. "THE IDEA: <title>" or "THE MODEL: <name>"
 }
 
 // ─── Section detection (header-driven) ──────────────────────────────────────
@@ -40,28 +40,56 @@ export interface BriefLightSection {
 
 const SECTION_HEADER_RE = /^##\s*▸\s*(.+?)\s*$/;
 
-function sectionMetaFor(rawHeader: string): { id: string; label: string; title: string } {
+function sectionMetaFor(rawHeader: string): {
+  id: string;
+  label: string;
+  title: string;
+} {
   const colonIdx = rawHeader.indexOf(':');
-  const head = (colonIdx >= 0 ? rawHeader.slice(0, colonIdx) : rawHeader).trim();
+  const head = (
+    colonIdx >= 0 ? rawHeader.slice(0, colonIdx) : rawHeader
+  ).trim();
   const title = colonIdx >= 0 ? rawHeader.slice(colonIdx + 1).trim() : '';
   const u = head.toUpperCase();
-  if (u.startsWith('THE UPDATE')) return { id: 'the-update', label: 'The Update', title };
-  if (u.startsWith('THE BIG IDEA') || u.startsWith('THE IDEA')) return { id: 'the-idea', label: title || 'Idea', title };
-  if (u.startsWith('ALSO MOVING')) return { id: 'also-moving', label: 'Also Moving', title };
-  if (u.startsWith('THE LINE')) return { id: 'the-line', label: 'The Line', title };      // two-tier breadth tier (v2, 2026-08)
-  if (u.startsWith('THE TAKE')) return { id: 'the-take', label: 'The Take', title };      // two-tier: the dated falsifiable call (v2, 2026-08)
-  if (u.startsWith('MARKETS MINUTE')) return { id: 'markets-minute', label: 'Markets Minute', title };
-  if (u.startsWith('TWO THINGS') || u.startsWith('INTERESTING THINGS')) return { id: 'interesting-things', label: 'Interesting Things', title };
-  if (u.startsWith('OUR CALLS')) return { id: 'our-calls', label: 'Our Calls', title };  // weekly-light-only — the predictions nod
-  if (u.startsWith('THE MEDITATION')) return { id: 'the-meditation', label: 'The Meditation', title };
-  if (u.startsWith('THE MODEL')) return { id: 'the-model', label: 'The Model', title };
-  if (u.startsWith('THE CLOSE')) return { id: 'the-close', label: 'The Close', title };
-  return { id: head.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'section', label: head, title };
+  if (u.startsWith('THE UPDATE'))
+    return { id: 'the-update', label: 'The Update', title };
+  if (u.startsWith('THE BIG IDEA') || u.startsWith('THE IDEA'))
+    return { id: 'the-idea', label: title || 'Idea', title };
+  if (u.startsWith('ALSO MOVING'))
+    return { id: 'also-moving', label: 'Also Moving', title };
+  if (u.startsWith('THE LINE'))
+    return { id: 'the-line', label: 'The Line', title }; // two-tier breadth tier (v2, 2026-08)
+  if (u.startsWith('THE TAKE'))
+    return { id: 'the-take', label: 'The Take', title }; // two-tier: the dated falsifiable call (v2, 2026-08)
+  if (u.startsWith('MARKETS MINUTE'))
+    return { id: 'markets-minute', label: 'Markets Minute', title };
+  if (u.startsWith('TWO THINGS') || u.startsWith('INTERESTING THINGS'))
+    return { id: 'interesting-things', label: 'Interesting Things', title };
+  if (u.startsWith('OUR CALLS'))
+    return { id: 'our-calls', label: 'Our Calls', title }; // weekly-light-only — the predictions nod
+  if (u.startsWith('THE MEDITATION'))
+    return { id: 'the-meditation', label: 'The Meditation', title };
+  if (u.startsWith('THE MODEL'))
+    return { id: 'the-model', label: 'The Model', title };
+  if (u.startsWith('THE CLOSE'))
+    return { id: 'the-close', label: 'The Close', title };
+  return {
+    id:
+      head
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'section',
+    label: head,
+    title,
+  };
 }
 
 // ─── Parser ─────────────────────────────────────────────────────────────────
 
-export function parseBriefLight(markdown: string, dateSlug: string): BriefLight {
+export function parseBriefLight(
+  markdown: string,
+  dateSlug: string
+): BriefLight {
   const lines = markdown.split('\n');
 
   // Extract epigraph, display date, daily title, and lede from header
@@ -79,9 +107,18 @@ export function parseBriefLight(markdown: string, dateSlug: string): BriefLight 
     if (line.startsWith('<!--')) continue;
 
     // Italic epigraph line: *"quote"* — appears before the date
-    if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && !epigraph && !foundTitle) {
+    if (
+      line.startsWith('*') &&
+      line.endsWith('*') &&
+      !line.startsWith('**') &&
+      !epigraph &&
+      !foundTitle
+    ) {
       epigraph = line.slice(1, -1);
-      epigraph = epigraph.replace(/^[""\u201C\u201D]+/, '').replace(/[""\u201C\u201D]+$/, '').trim();
+      epigraph = epigraph
+        .replace(/^[""\u201C\u201D]+/, '')
+        .replace(/[""\u201C\u201D]+$/, '')
+        .trim();
     }
 
     // Date heading: ## Monday, April 6, 2026
@@ -97,7 +134,13 @@ export function parseBriefLight(markdown: string, dateSlug: string): BriefLight 
 
     // Lede: italic summary paragraph(s) after the Daily Title, before first section
     // These are *italic text* lines that appear after ### title and before ## ▸
-    if (foundTitle && line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && !lede) {
+    if (
+      foundTitle &&
+      line.startsWith('*') &&
+      line.endsWith('*') &&
+      !line.startsWith('**') &&
+      !lede
+    ) {
       lede = line.slice(1, -1);
     }
 
@@ -117,16 +160,22 @@ export function parseBriefLight(markdown: string, dateSlug: string): BriefLight 
   for (let h = 0; h < headerLines.length; h++) {
     const { lineNo, raw } = headerLines[h]!;
     const meta = sectionMetaFor(raw);
-    const endLine = h + 1 < headerLines.length ? headerLines[h + 1]!.lineNo : lines.length;
+    const endLine =
+      h + 1 < headerLines.length ? headerLines[h + 1]!.lineNo : lines.length;
     const content = lines
       .slice(lineNo + 1, endLine)
       .join('\n')
-      .replace(/^---\s*$/gm, '')      // Strip horizontal rules
+      .replace(/^---\s*$/gm, '') // Strip horizontal rules
       .trim();
 
     // Keep the section if it has content (the close may be just a sign-off line).
     if (content || meta.id === 'the-close') {
-      sections.push({ id: meta.id, label: meta.label, title: meta.title, content });
+      sections.push({
+        id: meta.id,
+        label: meta.label,
+        title: meta.title,
+        content,
+      });
     }
   }
 
@@ -154,7 +203,8 @@ export function getBriefLightByDate(dateSlug: string): BriefLight | null {
 export function getLatestBriefLight(): BriefLight | null {
   if (!fs.existsSync(CONTENT_DIR)) return null;
 
-  const files = fs.readdirSync(CONTENT_DIR)
+  const files = fs
+    .readdirSync(CONTENT_DIR)
     .filter(f => f.endsWith('-light.md'))
     .sort()
     .reverse();
@@ -175,7 +225,8 @@ export function hasBriefLight(dateSlug: string): boolean {
 // All published super-brief dates, newest first (mirrors getAllBriefDates for the full brief).
 export function getAllBriefLightDates(): string[] {
   if (!fs.existsSync(CONTENT_DIR)) return [];
-  return fs.readdirSync(CONTENT_DIR)
+  return fs
+    .readdirSync(CONTENT_DIR)
     .filter(f => f.endsWith('-light.md'))
     .map(f => f.replace('-light.md', ''))
     .sort()

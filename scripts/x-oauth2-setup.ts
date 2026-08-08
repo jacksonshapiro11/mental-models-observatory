@@ -33,7 +33,9 @@ const CALLBACK_URL = `http://127.0.0.1:${CALLBACK_PORT}/callback`;
 
 async function main() {
   if (!CLIENT_ID || !CLIENT_SECRET) {
-    console.error('❌ TWITTER_CLIENT_ID and TWITTER_CLIENT_SECRET must be set in .env.local');
+    console.error(
+      '❌ TWITTER_CLIENT_ID and TWITTER_CLIENT_SECRET must be set in .env.local'
+    );
     process.exit(1);
   }
 
@@ -46,9 +48,12 @@ async function main() {
   });
 
   // Generate auth link with PKCE
-  const { url, codeVerifier, state } = client.generateOAuth2AuthLink(CALLBACK_URL, {
-    scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'],
-  });
+  const { url, codeVerifier, state } = client.generateOAuth2AuthLink(
+    CALLBACK_URL,
+    {
+      scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'],
+    }
+  );
 
   console.log('1. Opening your browser to authorize the app...\n');
   console.log(`   If it doesn't open, go to:\n   ${url}\n`);
@@ -56,7 +61,12 @@ async function main() {
   // Open browser
   const { spawn } = await import('child_process');
   const platform = process.platform;
-  const openCmd = platform === 'darwin' ? 'open' : platform === 'win32' ? 'start' : 'xdg-open';
+  const openCmd =
+    platform === 'darwin'
+      ? 'open'
+      : platform === 'win32'
+        ? 'start'
+        : 'xdg-open';
   spawn(openCmd, [url], { detached: true, stdio: 'ignore' }).unref();
 
   // Start local server to capture callback
@@ -70,7 +80,8 @@ async function main() {
         return;
       }
 
-      const params = new URL(req.url, `http://127.0.0.1:${CALLBACK_PORT}`).searchParams;
+      const params = new URL(req.url, `http://127.0.0.1:${CALLBACK_PORT}`)
+        .searchParams;
       const returnedState = params.get('state');
       const authCode = params.get('code');
       const error = params.get('error');
@@ -100,7 +111,9 @@ async function main() {
       }
 
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end('<h2>Authorization successful!</h2><p>You can close this tab and return to your terminal.</p>');
+      res.end(
+        '<h2>Authorization successful!</h2><p>You can close this tab and return to your terminal.</p>'
+      );
       server.close();
       resolve(authCode);
     });
@@ -142,10 +155,10 @@ async function main() {
   // Test posting capability
   console.log('🧪 Testing tweet capability (will NOT post)...');
   console.log('   Write access scope: ✅ included\n');
-  console.log('You\'re all set! Run npm run distribute to go live.\n');
+  console.log("You're all set! Run npm run distribute to go live.\n");
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error('❌ Setup failed:', err.message);
   process.exit(1);
 });

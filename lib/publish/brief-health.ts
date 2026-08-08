@@ -25,7 +25,9 @@ export interface GitHubBriefStatus {
   tokenAvailable: boolean;
 }
 
-export function checkDeployedBriefHealth(date: string = todayET()): BriefHealth {
+export function checkDeployedBriefHealth(
+  date: string = todayET()
+): BriefHealth {
   const fullBrief = !!getBriefByDate(date);
   const lightBrief = !!getBriefLightByDate(date);
   return {
@@ -62,7 +64,9 @@ async function githubFileExists(path: string, token: string): Promise<boolean> {
   return resp.ok;
 }
 
-export async function checkGitHubBriefHealth(date: string): Promise<GitHubBriefStatus> {
+export async function checkGitHubBriefHealth(
+  date: string
+): Promise<GitHubBriefStatus> {
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
     return { fullBrief: null, lightBrief: null, tokenAvailable: false };
@@ -82,7 +86,9 @@ export interface BackupStatus extends BriefHealth {
   recommendations: string[];
 }
 
-export async function evaluatePublishBackup(date: string = todayET()): Promise<BackupStatus> {
+export async function evaluatePublishBackup(
+  date: string = todayET()
+): Promise<BackupStatus> {
   const deployed = checkDeployedBriefHealth(date);
   const github = await checkGitHubBriefHealth(date);
   const issues: string[] = [];
@@ -97,29 +103,35 @@ export async function evaluatePublishBackup(date: string = todayET()): Promise<B
 
   if (github.tokenAvailable) {
     if (github.fullBrief && !deployed.fullBrief) {
-      issues.push('Full brief exists on GitHub main but not yet deployed — possible Vercel deploy lag');
-      recommendations.push('Wait a few minutes for Vercel deploy, or check Vercel dashboard');
+      issues.push(
+        'Full brief exists on GitHub main but not yet deployed — possible Vercel deploy lag'
+      );
+      recommendations.push(
+        'Wait a few minutes for Vercel deploy, or check Vercel dashboard'
+      );
     } else if (github.fullBrief === false) {
       issues.push('Full brief missing on GitHub main');
       recommendations.push(
-        'Re-run publish.py locally or trigger brief-morning-verify scheduled task: publish.py --verify',
+        'Re-run publish.py locally or trigger brief-morning-verify scheduled task: publish.py --verify'
       );
     }
 
     if (github.lightBrief && !deployed.lightBrief) {
-      issues.push('Super brief exists on GitHub main but not yet deployed — possible Vercel deploy lag');
+      issues.push(
+        'Super brief exists on GitHub main but not yet deployed — possible Vercel deploy lag'
+      );
     } else if (github.lightBrief === false) {
       issues.push('Super brief missing on GitHub main');
       recommendations.push(
-        'Re-run publish.py locally or trigger brief-morning-verify: publish.py --verify --content-dir content/daily-updates',
+        'Re-run publish.py locally or trigger brief-morning-verify: publish.py --verify --content-dir content/daily-updates'
       );
     }
   } else if (!deployed.ready) {
     recommendations.push(
-      'Set GITHUB_TOKEN on Vercel for remote verification, or run publish.py --verify locally',
+      'Set GITHUB_TOKEN on Vercel for remote verification, or run publish.py --verify locally'
     );
     recommendations.push(
-      'Cannot auto-push from Vercel — brief files must be published via publish.py from a machine with local copies',
+      'Cannot auto-push from Vercel — brief files must be published via publish.py from a machine with local copies'
     );
   }
 

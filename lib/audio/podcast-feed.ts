@@ -11,13 +11,13 @@ import { Redis } from '@upstash/redis';
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface EpisodeMetadata {
-  date: string;           // "2026-03-02"
-  title: string;          // "Daily Brief — Monday, March 2, 2026"
-  description: string;    // Brief lede / summary
-  audioUrl: string;       // Vercel Blob CDN URL
-  duration: number;       // Seconds
-  fileSize: number;       // Bytes
-  generatedAt: string;    // ISO timestamp
+  date: string; // "2026-03-02"
+  title: string; // "Daily Brief — Monday, March 2, 2026"
+  description: string; // Brief lede / summary
+  audioUrl: string; // Vercel Blob CDN URL
+  duration: number; // Seconds
+  fileSize: number; // Bytes
+  generatedAt: string; // ISO timestamp
 }
 
 // ─── Redis keys ─────────────────────────────────────────────────────────────
@@ -55,7 +55,10 @@ function parseEpisodeJson(raw: unknown): EpisodeMetadata | null {
   }
 }
 
-async function readEpisodeManifest(manifestKey: string, limit: number): Promise<EpisodeMetadata[] | null> {
+async function readEpisodeManifest(
+  manifestKey: string,
+  limit: number
+): Promise<EpisodeMetadata[] | null> {
   try {
     const r = getRedis();
     const raw = await r.get(manifestKey);
@@ -64,32 +67,44 @@ async function readEpisodeManifest(manifestKey: string, limit: number): Promise<
     if (!Array.isArray(parsed)) return null;
     return (parsed as EpisodeMetadata[]).slice(0, limit);
   } catch (err) {
-    console.error(`[podcast-feed] readEpisodeManifest failed for ${manifestKey}:`, err);
+    console.error(
+      `[podcast-feed] readEpisodeManifest failed for ${manifestKey}:`,
+      err
+    );
     return null;
   }
 }
 
-async function upsertEpisodeManifest(manifestKey: string, episode: EpisodeMetadata, limit = 100): Promise<void> {
+async function upsertEpisodeManifest(
+  manifestKey: string,
+  episode: EpisodeMetadata,
+  limit = 100
+): Promise<void> {
   try {
     const r = getRedis();
     const existing = (await readEpisodeManifest(manifestKey, limit)) || [];
-    const without = existing.filter((e) => e.date !== episode.date);
+    const without = existing.filter(e => e.date !== episode.date);
     const updated = [episode, ...without]
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, limit);
     await r.set(manifestKey, JSON.stringify(updated));
   } catch (err) {
-    console.error(`[podcast-feed] upsertEpisodeManifest failed for ${manifestKey}:`, err);
+    console.error(
+      `[podcast-feed] upsertEpisodeManifest failed for ${manifestKey}:`,
+      err
+    );
   }
 }
 
 async function loadEpisodesFromIndex(
   indexKey: string,
   prefix: string,
-  limit: number,
+  limit: number
 ): Promise<EpisodeMetadata[]> {
   const r = getRedis();
-  const dates = (await r.zrange(indexKey, 0, limit - 1, { rev: true })) as string[];
+  const dates = (await r.zrange(indexKey, 0, limit - 1, {
+    rev: true,
+  })) as string[];
   if (dates.length === 0) return [];
 
   const pipeline = r.pipeline();
@@ -99,7 +114,7 @@ async function loadEpisodesFromIndex(
   const results = await pipeline.exec();
 
   return results
-    .map((raw) => parseEpisodeJson(raw))
+    .map(raw => parseEpisodeJson(raw))
     .filter((ep): ep is EpisodeMetadata => ep !== null);
 }
 
@@ -118,12 +133,16 @@ function scoreForEpisodeDate(date: string): number {
   const t = new Date(isoCandidate).getTime();
   if (Number.isFinite(t)) return t;
   // Last resort: use now() so the write still succeeds instead of crashing the pipeline.
-  console.warn(`[podcast-feed] Unparseable episode date "${date}", using Date.now() as score`);
+  console.warn(
+    `[podcast-feed] Unparseable episode date "${date}", using Date.now() as score`
+  );
   return Date.now();
 }
 
 /** Store episode metadata after audio generation */
-export async function writeEpisodeMetadata(episode: EpisodeMetadata): Promise<void> {
+export async function writeEpisodeMetadata(
+  episode: EpisodeMetadata
+): Promise<void> {
   try {
     const r = getRedis();
     const key = AUDIO_KEYS.EPISODE_PREFIX + episode.date;
@@ -135,13 +154,18 @@ export async function writeEpisodeMetadata(episode: EpisodeMetadata): Promise<vo
       upsertEpisodeManifest(AUDIO_KEYS.EPISODE_MANIFEST, episode),
     ]);
   } catch (err) {
-    console.error(`[podcast-feed] writeEpisodeMetadata failed for ${episode.date}:`, err);
+    console.error(
+      `[podcast-feed] writeEpisodeMetadata failed for ${episode.date}:`,
+      err
+    );
     throw err;
   }
 }
 
 /** Read episode metadata for a specific date */
-export async function readEpisodeMetadata(date: string): Promise<EpisodeMetadata | null> {
+export async function readEpisodeMetadata(
+  date: string
+): Promise<EpisodeMetadata | null> {
   try {
     const r = getRedis();
     const key = AUDIO_KEYS.EPISODE_PREFIX + date;
@@ -149,7 +173,10 @@ export async function readEpisodeMetadata(date: string): Promise<EpisodeMetadata
     if (!raw) return null;
     return typeof raw === 'string' ? JSON.parse(raw) : (raw as EpisodeMetadata);
   } catch (err) {
-    console.error(`[podcast-feed] readEpisodeMetadata failed for ${date}:`, err);
+    console.error(
+      `[podcast-feed] readEpisodeMetadata failed for ${date}:`,
+      err
+    );
     return null;
   }
 }
@@ -157,7 +184,9 @@ export async function readEpisodeMetadata(date: string): Promise<EpisodeMetadata
 // ─── Brief Light episode helpers ────────────────────────────────────────────
 
 /** Store Brief Light episode metadata after audio generation */
-export async function writeLightEpisodeMetadata(episode: EpisodeMetadata): Promise<void> {
+export async function writeLightEpisodeMetadata(
+  episode: EpisodeMetadata
+): Promise<void> {
   const r = getRedis();
   const key = AUDIO_KEYS.LIGHT_EPISODE_PREFIX + episode.date;
   const score = scoreForEpisodeDate(episode.date);
@@ -170,7 +199,9 @@ export async function writeLightEpisodeMetadata(episode: EpisodeMetadata): Promi
 }
 
 /** Read Brief Light episode metadata for a specific date */
-export async function readLightEpisodeMetadata(date: string): Promise<EpisodeMetadata | null> {
+export async function readLightEpisodeMetadata(
+  date: string
+): Promise<EpisodeMetadata | null> {
   try {
     const r = getRedis();
     const key = AUDIO_KEYS.LIGHT_EPISODE_PREFIX + date;
@@ -178,7 +209,10 @@ export async function readLightEpisodeMetadata(date: string): Promise<EpisodeMet
     if (!raw) return null;
     return typeof raw === 'string' ? JSON.parse(raw) : (raw as EpisodeMetadata);
   } catch (err) {
-    console.error(`[podcast-feed] readLightEpisodeMetadata failed for ${date}:`, err);
+    console.error(
+      `[podcast-feed] readLightEpisodeMetadata failed for ${date}:`,
+      err
+    );
     return null;
   }
 }
@@ -187,7 +221,9 @@ export async function readLightEpisodeMetadata(date: string): Promise<EpisodeMet
 export async function getAllEpisodeDates(limit = 100): Promise<string[]> {
   try {
     const r = getRedis();
-    const dates = await r.zrange(AUDIO_KEYS.EPISODE_INDEX, 0, limit - 1, { rev: true });
+    const dates = await r.zrange(AUDIO_KEYS.EPISODE_INDEX, 0, limit - 1, {
+      rev: true,
+    });
     return dates as string[];
   } catch (err) {
     console.error('[podcast-feed] getAllEpisodeDates failed:', err);
@@ -198,7 +234,10 @@ export async function getAllEpisodeDates(limit = 100): Promise<string[]> {
 /** Get all episodes with full metadata, most recent first */
 export async function getAllEpisodes(limit = 50): Promise<EpisodeMetadata[]> {
   try {
-    const fromManifest = await readEpisodeManifest(AUDIO_KEYS.EPISODE_MANIFEST, limit);
+    const fromManifest = await readEpisodeManifest(
+      AUDIO_KEYS.EPISODE_MANIFEST,
+      limit
+    );
     if (fromManifest && fromManifest.length > 0) {
       return fromManifest;
     }
@@ -206,10 +245,12 @@ export async function getAllEpisodes(limit = 50): Promise<EpisodeMetadata[]> {
     const episodes = await loadEpisodesFromIndex(
       AUDIO_KEYS.EPISODE_INDEX,
       AUDIO_KEYS.EPISODE_PREFIX,
-      limit,
+      limit
     );
     if (episodes.length > 0) {
-      await getRedis().set(AUDIO_KEYS.EPISODE_MANIFEST, JSON.stringify(episodes)).catch(() => {});
+      await getRedis()
+        .set(AUDIO_KEYS.EPISODE_MANIFEST, JSON.stringify(episodes))
+        .catch(() => {});
     }
     return episodes;
   } catch (err) {
@@ -222,7 +263,9 @@ export async function getAllEpisodes(limit = 50): Promise<EpisodeMetadata[]> {
 export async function getAllLightEpisodeDates(limit = 100): Promise<string[]> {
   try {
     const r = getRedis();
-    const dates = await r.zrange(AUDIO_KEYS.LIGHT_EPISODE_INDEX, 0, limit - 1, { rev: true });
+    const dates = await r.zrange(AUDIO_KEYS.LIGHT_EPISODE_INDEX, 0, limit - 1, {
+      rev: true,
+    });
     return dates as string[];
   } catch (err) {
     console.error('[podcast-feed] getAllLightEpisodeDates failed:', err);
@@ -231,9 +274,14 @@ export async function getAllLightEpisodeDates(limit = 100): Promise<string[]> {
 }
 
 /** Get all Brief Light episodes with full metadata, most recent first */
-export async function getAllLightEpisodes(limit = 50): Promise<EpisodeMetadata[]> {
+export async function getAllLightEpisodes(
+  limit = 50
+): Promise<EpisodeMetadata[]> {
   try {
-    const fromManifest = await readEpisodeManifest(AUDIO_KEYS.LIGHT_EPISODE_MANIFEST, limit);
+    const fromManifest = await readEpisodeManifest(
+      AUDIO_KEYS.LIGHT_EPISODE_MANIFEST,
+      limit
+    );
     if (fromManifest && fromManifest.length > 0) {
       return fromManifest;
     }
@@ -241,7 +289,7 @@ export async function getAllLightEpisodes(limit = 50): Promise<EpisodeMetadata[]
     const episodes = await loadEpisodesFromIndex(
       AUDIO_KEYS.LIGHT_EPISODE_INDEX,
       AUDIO_KEYS.LIGHT_EPISODE_PREFIX,
-      limit,
+      limit
     );
     if (episodes.length > 0) {
       await getRedis()
@@ -299,7 +347,8 @@ interface FeedConfig {
 
 const DEFAULT_CONFIG: FeedConfig = {
   title: 'Markets, Meditations, and Mental Models',
-  description: 'Your daily guide to an increasingly complex world. Markets, crypto, AI, geopolitics, and the mental models that connect them — from Cosmic Trex, where ancient wisdom meets the cutting edge.',
+  description:
+    'Your daily guide to an increasingly complex world. Markets, crypto, AI, geopolitics, and the mental models that connect them — from Cosmic Trex, where ancient wisdom meets the cutting edge.',
   siteUrl: 'https://cosmictrex.com',
   feedUrl: 'https://cosmictrex.com/api/podcast/feed',
   coverImageUrl: 'https://cosmictrex.com/podcast-cover.jpg',
@@ -311,7 +360,11 @@ const DEFAULT_CONFIG: FeedConfig = {
   explicit: false,
 };
 
-function generateEpisodeXml(episode: EpisodeMetadata, coverImageUrl: string, variant: 'brief' | 'super-brief' = 'brief'): string {
+function generateEpisodeXml(
+  episode: EpisodeMetadata,
+  coverImageUrl: string,
+  variant: 'brief' | 'super-brief' = 'brief'
+): string {
   const pubDate = toRfc2822Date(episode.date, episode.generatedAt);
   const duration = formatDuration(episode.duration);
   const isWeeklyFull = /^weekly-\d{4}-W\d/i.test(episode.date);
@@ -347,7 +400,9 @@ function generateEpisodeXml(episode: EpisodeMetadata, coverImageUrl: string, var
 /**
  * Generate the full RSS 2.0 podcast feed XML.
  */
-export async function generatePodcastFeed(config?: Partial<FeedConfig>): Promise<string> {
+export async function generatePodcastFeed(
+  config?: Partial<FeedConfig>
+): Promise<string> {
   const cfg = { ...DEFAULT_CONFIG, ...config };
 
   // Fetch both full and super brief episodes
@@ -357,7 +412,10 @@ export async function generatePodcastFeed(config?: Partial<FeedConfig>): Promise
   ]);
 
   // Tag each with variant and merge
-  const tagged: Array<{ ep: EpisodeMetadata; variant: 'brief' | 'super-brief' }> = [
+  const tagged: Array<{
+    ep: EpisodeMetadata;
+    variant: 'brief' | 'super-brief';
+  }> = [
     ...fullEpisodes.map(ep => ({ ep, variant: 'brief' as const })),
     ...lightEpisodes.map(ep => ({ ep, variant: 'super-brief' as const })),
   ];
@@ -369,11 +427,16 @@ export async function generatePodcastFeed(config?: Partial<FeedConfig>): Promise
     return a.variant === 'brief' ? -1 : 1;
   });
 
-  const lastBuildDate = tagged.length > 0
-    ? toRfc2822Date(tagged[0]!.ep.date, tagged[0]!.ep.generatedAt)
-    : new Date().toUTCString();
+  const lastBuildDate =
+    tagged.length > 0
+      ? toRfc2822Date(tagged[0]!.ep.date, tagged[0]!.ep.generatedAt)
+      : new Date().toUTCString();
 
-  const episodeXml = tagged.map(({ ep, variant }) => generateEpisodeXml(ep, cfg.coverImageUrl, variant)).join('\n');
+  const episodeXml = tagged
+    .map(({ ep, variant }) =>
+      generateEpisodeXml(ep, cfg.coverImageUrl, variant)
+    )
+    .join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"
@@ -394,9 +457,13 @@ export async function generatePodcastFeed(config?: Partial<FeedConfig>): Promise
       <itunes:email>${escapeXml(cfg.email)}</itunes:email>
     </itunes:owner>
     <itunes:image href="${escapeXml(cfg.coverImageUrl)}" />
-    <itunes:category text="${escapeXml(cfg.category)}"${cfg.subcategory ? `>
+    <itunes:category text="${escapeXml(cfg.category)}"${
+      cfg.subcategory
+        ? `>
       <itunes:category text="${escapeXml(cfg.subcategory)}" />
-    </itunes:category>` : ' />'}
+    </itunes:category>`
+        : ' />'
+    }
     <itunes:explicit>${cfg.explicit ? 'yes' : 'no'}</itunes:explicit>
     <itunes:type>episodic</itunes:type>
 

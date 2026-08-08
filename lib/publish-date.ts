@@ -25,7 +25,9 @@
  * the older `toLocaleString → new Date → toISOString` helpers were exposed to.
  */
 export function todayET(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+  }).format(new Date());
 }
 
 /**
@@ -38,8 +40,12 @@ export function todayET(): string {
  *    `manual: false` (if the file is missing the caller should SKIP cleanly and
  *    never fall back to an older brief).
  */
-export function resolvePublishDate(override?: string | null): { date: string; manual: boolean } {
-  if (override && override.trim()) return { date: override.trim(), manual: true };
+export function resolvePublishDate(override?: string | null): {
+  date: string;
+  manual: boolean;
+} {
+  if (override && override.trim())
+    return { date: override.trim(), manual: true };
   return { date: todayET(), manual: false };
 }
 
@@ -48,6 +54,9 @@ export function resolvePublishDate(override?: string | null): { date: string; ma
  * that the auto path is about to ship is NOT today's — which can only happen if a
  * stale "latest" fallback gets reintroduced. Manual backfills are exempt.
  */
-export function isStaleForAutoPublish(briefDate: string, manual: boolean): boolean {
+export function isStaleForAutoPublish(
+  briefDate: string,
+  manual: boolean
+): boolean {
   return !manual && briefDate !== todayET();
 }

@@ -15,7 +15,7 @@ async function convertWordToBlog(docxPath, outputDir = './blog/posts') {
     const AdmZip = require('adm-zip');
     const zip = new AdmZip(docxPath);
     const zipEntries = zip.getEntries();
-    
+
     const imagesDir = path.join(outputDir, 'images');
     if (!fs.existsSync(imagesDir)) {
       fs.mkdirSync(imagesDir, { recursive: true });
@@ -23,7 +23,7 @@ async function convertWordToBlog(docxPath, outputDir = './blog/posts') {
 
     // Extract all images and create a mapping
     const imageMap = new Map();
-    zipEntries.forEach((entry) => {
+    zipEntries.forEach(entry => {
       if (entry.entryName.startsWith('word/media/')) {
         const imageName = path.basename(entry.entryName);
         const imagePath = path.join(imagesDir, imageName);
@@ -35,30 +35,34 @@ async function convertWordToBlog(docxPath, outputDir = './blog/posts') {
     });
 
     // Create image converter for mammoth
-    const imageConverter = (image) => {
-      return image.read('base64').then((imageBuffer) => {
+    const imageConverter = image => {
+      return image.read('base64').then(imageBuffer => {
         // Find the image in our map
         let imageName = null;
         const imageSrc = image.src || '';
         for (const [entryName, name] of imageMap.entries()) {
-          if (entryName.includes(imageSrc) || (imageSrc && imageSrc.includes(entryName))) {
+          if (
+            entryName.includes(imageSrc) ||
+            (imageSrc && imageSrc.includes(entryName))
+          ) {
             imageName = name;
             break;
           }
         }
-        
+
         // If not found, generate a name
         if (!imageName) {
-          const ext = (image.contentType && image.contentType.split('/')[1]) || 'png';
+          const ext =
+            (image.contentType && image.contentType.split('/')[1]) || 'png';
           imageName = `image-${Date.now()}.${ext}`;
           const imagePath = path.join(imagesDir, imageName);
           const buffer = Buffer.from(imageBuffer, 'base64');
           fs.writeFileSync(imagePath, buffer);
           console.log(`Extracted image (from base64): ${imageName}`);
         }
-        
+
         return {
-          src: `./images/${imageName}`
+          src: `./images/${imageName}`,
         };
       });
     };
@@ -77,13 +81,13 @@ async function convertWordToBlog(docxPath, outputDir = './blog/posts') {
 
     // Convert HTML to markdown with intelligent header detection
     let markdown = html;
-    
+
     // First, handle existing headers
     markdown = markdown
       .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
       .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
       .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
-    
+
     // Handle formatting BEFORE paragraph processing to avoid issues
     markdown = markdown
       .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '$1') // Remove bold, just keep text
@@ -92,20 +96,20 @@ async function convertWordToBlog(docxPath, outputDir = './blog/posts') {
       .replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, (match, src) => {
         return `![Image](${src})\n\n`;
       });
-    
+
     // Detect short paragraphs that look like headers (short, no ending punctuation)
     markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gi, (match, content) => {
       const textOnly = content.replace(/<[^>]+>/g, '').trim();
       const words = textOnly.split(/\s+/).length;
       const hasEndingPunct = /[.!?]$/.test(textOnly);
-      
+
       // If it's short (< 15 words) and doesn't end with punctuation, treat as header
       if (words < 15 && !hasEndingPunct && textOnly.length > 0) {
         return `## ${content}\n\n`;
       }
       return `${content}\n\n`;
     });
-    
+
     // Clean up HTML entities and formatting
     markdown = markdown
       .replace(/<[^>]+>/g, '') // Remove remaining HTML tags
@@ -127,7 +131,9 @@ async function convertWordToBlog(docxPath, outputDir = './blog/posts') {
     const filename = `${date}-${slug}.md`;
 
     // Create frontmatter
-    const title = docName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const title = docName
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
     const frontmatter = `---
 title: ${title}
 date: '${date}'
@@ -160,7 +166,8 @@ aiSummary:
 }
 
 // Main execution
-const docxPath = process.argv[2] || './Blog Post Word Docs/Positive mindset.docx';
+const docxPath =
+  process.argv[2] || './Blog Post Word Docs/Positive mindset.docx';
 const outputDir = process.argv[3] || './blog/posts';
 
 if (!fs.existsSync(docxPath)) {
@@ -172,8 +179,7 @@ convertWordToBlog(docxPath, outputDir)
   .then(() => {
     console.log('✅ Conversion complete!');
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('❌ Conversion failed:', error);
     process.exit(1);
   });
-

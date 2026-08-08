@@ -42,9 +42,22 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-interface Claim { value?: string; source?: string; resolved?: boolean; [k: string]: unknown }
-interface TruthFile { date?: string; claims?: Record<string, Claim> }
-interface Warn { key: string; reason: string; sources: number; excerpt: string }
+interface Claim {
+  value?: string;
+  source?: string;
+  resolved?: boolean;
+  [k: string]: unknown;
+}
+interface TruthFile {
+  date?: string;
+  claims?: Record<string, Claim>;
+}
+interface Warn {
+  key: string;
+  reason: string;
+  sources: number;
+  excerpt: string;
+}
 
 // ---------- extraordinary-magnitude detection ----------
 // (a) An increase/change of >=300% — a >=4x multiplier. Commas stripped so "1,300%" reads 1300.
@@ -61,8 +74,11 @@ function hasExtraordinaryMultiplier(value: string): boolean {
 }
 // (b) A share-of-national-whole superlative: "15% of total US corporate IG supply",
 //     "15% of all US corporate bond issuance", "a fifth of the entire ... market".
-const SHARE_RE = /\b\d{1,3}(?:\.\d+)?\s*(?:%|percent)\s+of\s+(?:all|total|the total|the entire|every)\b[^.]*\b(issuance|supply|market|debt|bonds?|economy|gdp|lending|deposits?|reserves?)\b/i;
-function hasShareOfWhole(value: string): boolean { return SHARE_RE.test(value); }
+const SHARE_RE =
+  /\b\d{1,3}(?:\.\d+)?\s*(?:%|percent)\s+of\s+(?:all|total|the total|the entire|every)\b[^.]*\b(issuance|supply|market|debt|bonds?|economy|gdp|lending|deposits?|reserves?)\b/i;
+function hasShareOfWhole(value: string): boolean {
+  return SHARE_RE.test(value);
+}
 
 function isExtraordinary(value: string): boolean {
   return hasExtraordinaryMultiplier(value) || hasShareOfWhole(value);
@@ -74,7 +90,7 @@ function isExtraordinary(value: string): boolean {
 function countSources(source: string | undefined): number {
   if (!source) return 0;
   const urls = source.match(/https?:\/\/[^\s,;)"']+/gi) || [];
-  return new Set(urls.map((u) => u.replace(/[.,;]+$/, ''))).size;
+  return new Set(urls.map(u => u.replace(/[.,;]+$/, ''))).size;
 }
 
 // ---------- the gate ----------
@@ -104,7 +120,8 @@ export function scan(truth: TruthFile): Warn[] {
 }
 
 function resolveTruthPath(arg: string): string {
-  if (arg.endsWith('.json')) return path.isAbsolute(arg) ? arg : path.join(process.cwd(), arg);
+  if (arg.endsWith('.json'))
+    return path.isAbsolute(arg) ? arg : path.join(process.cwd(), arg);
   // a bare YYYY-MM-DD
   return path.join(process.cwd(), 'daily-briefs', `${arg}-truth.json`);
 }
@@ -116,14 +133,17 @@ const FIXTURE_BAD: TruthFile = {
   date: '2026-07-29',
   claims: {
     'yoy:ai-giants-ig-bonds': {
-      value: 'Six hyperscalers issued a COMBINED ~$182 billion of IG bonds in 2026, a ~1,300% increase from the prior year and ~15% of all US corporate bond issuance YTD. Brief VERIFIED.',
+      value:
+        'Six hyperscalers issued a COMBINED ~$182 billion of IG bonds in 2026, a ~1,300% increase from the prior year and ~15% of all US corporate bond issuance YTD. Brief VERIFIED.',
       resolved: true,
-      source: 'https://www.benzinga.com/markets/equities/26/07/60490919/big-techs-182-billion-ai-debt-spree',
+      source:
+        'https://www.benzinga.com/markets/equities/26/07/60490919/big-techs-182-billion-ai-debt-spree',
     },
-    'sp500': {
+    sp500: {
       value: 'S&P 500 CLOSED +0.21% to 7,428.78 on Tuesday. Brief VERIFIED.',
       resolved: true,
-      source: 'https://www.cnbc.com/2026/07/27/stock-market-today-live-updates.html',
+      source:
+        'https://www.cnbc.com/2026/07/27/stock-market-today-live-updates.html',
     },
   },
 };
@@ -132,19 +152,23 @@ const FIXTURE_GOOD: TruthFile = {
   claims: {
     // same extraordinary claim, now corroborated by a SECOND independent source -> SILENT
     'yoy:ai-giants-ig-bonds': {
-      value: 'Six hyperscalers issued a COMBINED ~$182 billion of IG bonds in 2026, a ~1,300% increase and ~15% of all US corporate bond issuance YTD.',
+      value:
+        'Six hyperscalers issued a COMBINED ~$182 billion of IG bonds in 2026, a ~1,300% increase and ~15% of all US corporate bond issuance YTD.',
       resolved: true,
-      source: 'https://www.benzinga.com/... https://www.bloomberg.com/news/big-tech-ig-supply',
+      source:
+        'https://www.benzinga.com/... https://www.bloomberg.com/news/big-tech-ig-supply',
     },
     // a share-of-whole superlative, two sources -> SILENT
     'aggregate:tokenized-treasuries': {
-      value: 'On-chain tokenized Treasuries reached 22% of the total tokenized-RWA market.',
+      value:
+        'On-chain tokenized Treasuries reached 22% of the total tokenized-RWA market.',
       resolved: true,
       source: 'https://rwa.xyz/a ; https://dune.com/b',
     },
     // an ORDINARY YoY (47%), one source -> SILENT (below the 300% bar)
     'yoy:hyperscaler-5mo': {
-      value: 'Five cloud firms sold $159 billion of bonds in the first five months, 47% more than a year earlier.',
+      value:
+        'Five cloud firms sold $159 billion of bonds in the first five months, 47% more than a year earlier.',
       resolved: true,
       source: 'https://cryptobriefing.com/ai-hyperscalers-159b-debt-issuance/',
     },
@@ -160,64 +184,113 @@ const FIXTURE_GOOD: TruthFile = {
 function selftest(): number {
   let fails = 0;
   const bad = scan(FIXTURE_BAD);
-  const firesOn182 = bad.some((w) => w.key === 'yoy:ai-giants-ig-bonds' && w.sources < 2);
-  console.log(`  ${firesOn182 ? 'PASS' : 'FAIL'} — FIRES on the real 07-29 $182B/+1,300%/15% single-source claim`);
+  const firesOn182 = bad.some(
+    w => w.key === 'yoy:ai-giants-ig-bonds' && w.sources < 2
+  );
+  console.log(
+    `  ${firesOn182 ? 'PASS' : 'FAIL'} — FIRES on the real 07-29 $182B/+1,300%/15% single-source claim`
+  );
   if (!firesOn182) fails++;
 
-  const spared = !bad.some((w) => w.key === 'sp500');
-  console.log(`  ${spared ? 'PASS' : 'FAIL'} — SILENT on an ordinary single-source price (S&P +0.21%)`);
+  const spared = !bad.some(w => w.key === 'sp500');
+  console.log(
+    `  ${spared ? 'PASS' : 'FAIL'} — SILENT on an ordinary single-source price (S&P +0.21%)`
+  );
   if (!spared) fails++;
 
   const good = scan(FIXTURE_GOOD);
-  const silentTwoSource = !good.some((w) => w.key === 'yoy:ai-giants-ig-bonds');
-  console.log(`  ${silentTwoSource ? 'PASS' : 'FAIL'} — SILENT once the extraordinary claim carries a 2nd source (self-clears)`);
+  const silentTwoSource = !good.some(w => w.key === 'yoy:ai-giants-ig-bonds');
+  console.log(
+    `  ${silentTwoSource ? 'PASS' : 'FAIL'} — SILENT once the extraordinary claim carries a 2nd source (self-clears)`
+  );
   if (!silentTwoSource) fails++;
 
-  const silentShareTwo = !good.some((w) => w.key === 'aggregate:tokenized-treasuries');
-  console.log(`  ${silentShareTwo ? 'PASS' : 'FAIL'} — SILENT on a share-of-whole superlative with 2 sources`);
+  const silentShareTwo = !good.some(
+    w => w.key === 'aggregate:tokenized-treasuries'
+  );
+  console.log(
+    `  ${silentShareTwo ? 'PASS' : 'FAIL'} — SILENT on a share-of-whole superlative with 2 sources`
+  );
   if (!silentShareTwo) fails++;
 
-  const silentOrdinaryYoy = !good.some((w) => w.key === 'yoy:hyperscaler-5mo');
-  console.log(`  ${silentOrdinaryYoy ? 'PASS' : 'FAIL'} — SILENT on an ordinary 47% YoY (below the >=300% bar)`);
+  const silentOrdinaryYoy = !good.some(w => w.key === 'yoy:hyperscaler-5mo');
+  console.log(
+    `  ${silentOrdinaryYoy ? 'PASS' : 'FAIL'} — SILENT on an ordinary 47% YoY (below the >=300% bar)`
+  );
   if (!silentOrdinaryYoy) fails++;
 
-  const silentUnresolved = !good.some((w) => w.key === 'yoy:speculative');
-  console.log(`  ${silentUnresolved ? 'PASS' : 'FAIL'} — SILENT on an UNRESOLVED extraordinary claim (fact-gate --require-resolved owns it)`);
+  const silentUnresolved = !good.some(w => w.key === 'yoy:speculative');
+  console.log(
+    `  ${silentUnresolved ? 'PASS' : 'FAIL'} — SILENT on an UNRESOLVED extraordinary claim (fact-gate --require-resolved owns it)`
+  );
   if (!silentUnresolved) fails++;
 
   // direct predicate checks
   const p1 = isExtraordinary('up more than 1,300% year-over-year') === true;
-  const p2 = isExtraordinary('about 15% of total US corporate IG supply') === true;
+  const p2 =
+    isExtraordinary('about 15% of total US corporate IG supply') === true;
   const p3 = isExtraordinary('rose 47% from a year earlier') === false;
   const p4 = isExtraordinary('the stock fell 8 percent') === false;
-  for (const [ok, label] of [[p1, '"1,300%" is extraordinary'], [p2, '"15% of total US IG supply" is extraordinary'], [p3, '"47%" is NOT extraordinary'], [p4, '"fell 8 percent" is NOT extraordinary']] as [boolean, string][]) {
+  for (const [ok, label] of [
+    [p1, '"1,300%" is extraordinary'],
+    [p2, '"15% of total US IG supply" is extraordinary'],
+    [p3, '"47%" is NOT extraordinary'],
+    [p4, '"fell 8 percent" is NOT extraordinary'],
+  ] as [boolean, string][]) {
     console.log(`  ${ok ? 'PASS' : 'FAIL'} — predicate: ${label}`);
     if (!ok) fails++;
   }
 
   const total = 10;
-  console.log(`\ntruth-corroboration-gate selftest — ${total - fails}/${total} assertions passed`);
-  if (fails) { console.error('✗ SELFTEST FAILED — the extraordinary-claim corroboration guard no longer bites both directions.'); return 1; }
-  console.log('✓ Extraordinary-claim corroboration guard verified in both directions.');
+  console.log(
+    `\ntruth-corroboration-gate selftest — ${total - fails}/${total} assertions passed`
+  );
+  if (fails) {
+    console.error(
+      '✗ SELFTEST FAILED — the extraordinary-claim corroboration guard no longer bites both directions.'
+    );
+    return 1;
+  }
+  console.log(
+    '✓ Extraordinary-claim corroboration guard verified in both directions.'
+  );
   return 0;
 }
 
 function main() {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) process.exit(selftest());
-  const arg = args.find((a) => !a.startsWith('--'));
-  if (!arg) { console.error('Usage: truth-corroboration-gate.ts <truth.json | YYYY-MM-DD> | --selftest'); process.exit(2); }
-  const p = resolveTruthPath(arg);
-  if (!fs.existsSync(p)) { console.error(`Truth file not found: ${p}`); process.exit(2); }
-  let truth: TruthFile;
-  try { truth = JSON.parse(fs.readFileSync(p, 'utf8')); }
-  catch (e) { console.error(`Could not parse ${p}: ${(e as Error).message}`); process.exit(2); }
-  const warns = scan(truth);
-  console.log(`truth-corroboration-gate — ${path.basename(p)} — ${warns.length} SINGLE-SOURCE-EXTRAORDINARY warning${warns.length === 1 ? '' : 's'}`);
-  for (const w of warns) {
-    console.log(`  ⚠ SINGLE-SOURCE-EXTRAORDINARY [${w.key}] (${w.reason}, ${w.sources} source${w.sources === 1 ? '' : 's'}): "${w.excerpt}…" — add a 2nd independent corroborating source before resolved:true, or downgrade the figure to what two sources agree on.`);
+  const arg = args.find(a => !a.startsWith('--'));
+  if (!arg) {
+    console.error(
+      'Usage: truth-corroboration-gate.ts <truth.json | YYYY-MM-DD> | --selftest'
+    );
+    process.exit(2);
   }
-  console.log(`\n✅ TRUTH-CORROBORATION ${warns.length ? 'OK — advisory (brief always ships); the morning gate must source the flagged claim(s) twice' : 'CLEAN — every extraordinary resolved claim carries >=2 sources'}.`);
+  const p = resolveTruthPath(arg);
+  if (!fs.existsSync(p)) {
+    console.error(`Truth file not found: ${p}`);
+    process.exit(2);
+  }
+  let truth: TruthFile;
+  try {
+    truth = JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (e) {
+    console.error(`Could not parse ${p}: ${(e as Error).message}`);
+    process.exit(2);
+  }
+  const warns = scan(truth);
+  console.log(
+    `truth-corroboration-gate — ${path.basename(p)} — ${warns.length} SINGLE-SOURCE-EXTRAORDINARY warning${warns.length === 1 ? '' : 's'}`
+  );
+  for (const w of warns) {
+    console.log(
+      `  ⚠ SINGLE-SOURCE-EXTRAORDINARY [${w.key}] (${w.reason}, ${w.sources} source${w.sources === 1 ? '' : 's'}): "${w.excerpt}…" — add a 2nd independent corroborating source before resolved:true, or downgrade the figure to what two sources agree on.`
+    );
+  }
+  console.log(
+    `\n✅ TRUTH-CORROBORATION ${warns.length ? 'OK — advisory (brief always ships); the morning gate must source the flagged claim(s) twice' : 'CLEAN — every extraordinary resolved claim carries >=2 sources'}.`
+  );
   process.exit(0);
 }
 

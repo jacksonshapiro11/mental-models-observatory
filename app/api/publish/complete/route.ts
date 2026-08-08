@@ -29,7 +29,11 @@ import { readEpisodeMetadata } from '@/lib/audio/podcast-feed';
 import { runDistributeIfNeeded } from '@/lib/distribute/run-if-needed';
 import { generateDailyPack } from '@/lib/marketing/generate-daily-pack';
 import { audioNeedsRetry } from '@/lib/marketing/pipeline-status';
-import { readAudioLog, readMarketingPack, writeAudioLog } from '@/lib/marketing/distribute-log';
+import {
+  readAudioLog,
+  readMarketingPack,
+  writeAudioLog,
+} from '@/lib/marketing/distribute-log';
 import { runWeeklyPublishComplete } from '@/lib/publish/weekly-complete';
 
 /** Brief may land mid-request when cron races a deploy — wait before 409. */
@@ -37,7 +41,7 @@ const BRIEF_WAIT_MS = 90_000;
 const BRIEF_POLL_MS = 5_000;
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function waitForLightBrief(dateSlug: string): Promise<boolean> {
@@ -47,11 +51,13 @@ async function waitForLightBrief(dateSlug: string): Promise<boolean> {
   while (Date.now() < deadline) {
     attempt += 1;
     console.warn(
-      `[publish/complete] light brief missing for ${dateSlug} — waiting (${attempt}, up to ${BRIEF_WAIT_MS / 1000}s)`,
+      `[publish/complete] light brief missing for ${dateSlug} — waiting (${attempt}, up to ${BRIEF_WAIT_MS / 1000}s)`
     );
     await sleep(BRIEF_POLL_MS);
     if (getBriefLightByDate(dateSlug)) {
-      console.log(`[publish/complete] light brief appeared for ${dateSlug} after wait`);
+      console.log(
+        `[publish/complete] light brief appeared for ${dateSlug} after wait`
+      );
       return true;
     }
   }
@@ -61,7 +67,9 @@ async function waitForLightBrief(dateSlug: string): Promise<boolean> {
 export async function POST(req: NextRequest) {
   const authPath = getCronAuthPath(req);
   if (!authPath) {
-    console.warn('[publish/complete] Unauthorized — no matching cron auth path');
+    console.warn(
+      '[publish/complete] Unauthorized — no matching cron auth path'
+    );
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   console.log(`[publish/complete] auth=${authPath}`);
@@ -73,7 +81,7 @@ export async function POST(req: NextRequest) {
     console.error('[publish/complete] Unhandled error:', err);
     return NextResponse.json(
       { error: 'Publish pipeline failed', detail: message },
-      { status: 503 },
+      { status: 503 }
     );
   }
 }
@@ -84,12 +92,14 @@ async function runPublishComplete(req: NextRequest) {
     return runWeeklyPublishComplete(weeklySlug);
   }
 
-  const { date: dateSlug, manual } = resolvePublishDate(req.nextUrl.searchParams.get('date'));
+  const { date: dateSlug, manual } = resolvePublishDate(
+    req.nextUrl.searchParams.get('date')
+  );
 
   if (!(await waitForLightBrief(dateSlug))) {
     console.error(
       `[publish/complete] SKIPPED — No brief published for ${dateSlug} on deployed filesystem after ${BRIEF_WAIT_MS / 1000}s wait. ` +
-        `Caller should poll /api/publish/health?date=${dateSlug} until lightBrief=true before retrying.`,
+        `Caller should poll /api/publish/health?date=${dateSlug} until lightBrief=true before retrying.`
     );
     return NextResponse.json(
       {
@@ -99,44 +109,55 @@ async function runPublishComplete(req: NextRequest) {
         waitedMs: BRIEF_WAIT_MS,
         success: false,
       },
-      { status: 409 },
+      { status: 409 }
     );
   }
 
   console.log(`[publish/complete] Starting parallel pipeline for ${dateSlug}`);
 
-  const [existingAudioLog, existingFullEpisode, existingMarketingPack] = await Promise.all([
-    readAudioLog(dateSlug),
-    readEpisodeMetadata(dateSlug),
-    readMarketingPack(dateSlug),
-  ]);
+  const [existingAudioLog, existingFullEpisode, existingMarketingPack] =
+    await Promise.all([
+      readAudioLog(dateSlug),
+      readEpisodeMetadata(dateSlug),
+      readMarketingPack(dateSlug),
+    ]);
 
   const shouldRunLightAudio = audioNeedsRetry(existingAudioLog);
   const shouldRunFullAudio = !existingFullEpisode && !!getBriefByDate(dateSlug);
 
-  const [fullAudioSettled, lightAudioSettled, distributeSettled, marketingSettled] =
-    await Promise.allSettled([
-      shouldRunFullAudio
-        ? generateFullBriefAudio({ date: dateSlug, manual })
-        : Promise.resolve({
-            status: existingFullEpisode ? ('exists' as const) : ('skipped' as const),
-            date: dateSlug,
-            details: existingFullEpisode
-              ? 'skipped — full podcast already completed'
-              : 'skipped — no full brief on site',
-          }),
-      shouldRunLightAudio
-        ? generateLightAudio({ date: dateSlug, manual })
-        : Promise.resolve({
-            status: 'exists' as const,
-            date: dateSlug,
-            details: 'skipped — light audio already completed',
-          }),
-      runDistributeIfNeeded({ dateSlug }),
-      existingMarketingPack
-        ? Promise.resolve({ success: true, pack: existingMarketingPack, skipped: true })
-        : generateDailyPack(dateSlug),
-    ]);
+  const [
+    fullAudioSettled,
+    lightAudioSettled,
+    distributeSettled,
+    marketingSettled,
+  ] = await Promise.allSettled([
+    shouldRunFullAudio
+      ? generateFullBriefAudio({ date: dateSlug, manual })
+      : Promise.resolve({
+          status: existingFullEpisode
+            ? ('exists' as const)
+            : ('skipped' as const),
+          date: dateSlug,
+          details: existingFullEpisode
+            ? 'skipped — full podcast already completed'
+            : 'skipped — no full brief on site',
+        }),
+    shouldRunLightAudio
+      ? generateLightAudio({ date: dateSlug, manual })
+      : Promise.resolve({
+          status: 'exists' as const,
+          date: dateSlug,
+          details: 'skipped — light audio already completed',
+        }),
+    runDistributeIfNeeded({ dateSlug }),
+    existingMarketingPack
+      ? Promise.resolve({
+          success: true,
+          pack: existingMarketingPack,
+          skipped: true,
+        })
+      : generateDailyPack(dateSlug),
+  ]);
 
   const at = new Date().toISOString();
   const summary: Record<string, unknown> = { date: dateSlug, at };
@@ -156,7 +177,9 @@ async function runPublishComplete(req: NextRequest) {
     summary.lightAudio = audio;
 
     if (audio.status === 'skipped') {
-      console.warn(`[publish/complete] Light audio skipped for ${dateSlug}: ${audio.details}`);
+      console.warn(
+        `[publish/complete] Light audio skipped for ${dateSlug}: ${audio.details}`
+      );
     } else {
       const audioOk = audio.status === 'success' || audio.status === 'exists';
       const audioLog: Parameters<typeof writeAudioLog>[1] = {
@@ -217,7 +240,10 @@ async function runPublishComplete(req: NextRequest) {
     revalidatePath('/api/podcast/feed');
   }
 
-  return NextResponse.json({ ...summary, success: allOk }, { status: allOk ? 200 : 207 });
+  return NextResponse.json(
+    { ...summary, success: allOk },
+    { status: allOk ? 200 : 207 }
+  );
 }
 
 export async function GET(req: NextRequest) {

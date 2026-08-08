@@ -18,9 +18,13 @@ const insertAfterLine = 6045; // 0-indexed, so line 6046 is index 6045
 function formatModel(model) {
   const escapedDescription = model.description.replace(/"/g, '\\"');
   const escapedName = model.name.replace(/"/g, '\\"');
-  const escapedPrinciples = model.principles.map(p => `      "${p.replace(/"/g, '\\"')}"`).join(',\n');
-  const escapedApplications = model.applications.map(a => `      "${a.replace(/"/g, '\\"')}"`).join(',\n');
-  
+  const escapedPrinciples = model.principles
+    .map(p => `      "${p.replace(/"/g, '\\"')}"`)
+    .join(',\n');
+  const escapedApplications = model.applications
+    .map(a => `      "${a.replace(/"/g, '\\"')}"`)
+    .join(',\n');
+
   return `  {
     "id": "${model.domainSlug}-${model.code.toLowerCase()}",
     "code": "${model.code}",
@@ -62,5 +66,3 @@ fs.writeFileSync(dataPath, lines.join('\n'));
 
 console.log(`\n✅ Successfully added ${models.length} models!`);
 console.log(`Total lines in file: ${lines.length}`);
-
-

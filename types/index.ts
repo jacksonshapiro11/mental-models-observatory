@@ -1,10 +1,5 @@
 // Re-export types from lib modules for convenience
-export type {
-  MentalModel,
-  Domain,
-  Source,
-  SearchResult
-} from '@/lib/data';
+export type { MentalModel, Domain, Source, SearchResult } from '@/lib/data';
 
 export type {
   ReadwiseHighlight,
@@ -15,7 +10,7 @@ export type {
   GetBooksParams,
   ReadwiseError,
   CacheEntry,
-  RequestOptions
+  RequestOptions,
 } from '@/types/readwise';
 
 // Additional types for the application
@@ -253,7 +248,14 @@ export interface SeoProps {
 export interface FormField {
   name: string;
   label: string;
-  type: 'text' | 'email' | 'password' | 'textarea' | 'select' | 'checkbox' | 'radio';
+  type:
+    | 'text'
+    | 'email'
+    | 'password'
+    | 'textarea'
+    | 'select'
+    | 'checkbox'
+    | 'radio';
   placeholder?: string;
   required?: boolean;
   validation?: {

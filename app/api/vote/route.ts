@@ -38,7 +38,7 @@ async function getRedisClient() {
 async function getUserVote(
   briefDate: string,
   sectionId: string,
-  userId: string,
+  userId: string
 ) {
   const redis = await getRedisClient();
   const userVoteKey = `votes:user:${userId}:${briefDate}:${sectionId}`;
@@ -48,7 +48,10 @@ async function getUserVote(
       const vote = await redis.get(userVoteKey);
       return vote ?? null;
     } catch (error) {
-      console.error('Redis get failed, falling back to in-memory store:', error);
+      console.error(
+        'Redis get failed, falling back to in-memory store:',
+        error
+      );
     }
   }
 
@@ -70,7 +73,10 @@ async function getVoteCounts(briefDate: string, sectionId: string) {
         down: typeof down === 'number' ? down : 0,
       };
     } catch (error) {
-      console.error('Redis get failed, falling back to in-memory store:', error);
+      console.error(
+        'Redis get failed, falling back to in-memory store:',
+        error
+      );
       // Fall through to in-memory store
     }
   }
@@ -86,7 +92,7 @@ async function updateVote(
   sectionId: string,
   direction: 'up' | 'down' | null,
   oldDirection: 'up' | 'down' | null,
-  userId: string,
+  userId: string
 ) {
   const redis = await getRedisClient();
 
@@ -124,7 +130,10 @@ async function updateVote(
         down: typeof down === 'number' ? down : 0,
       };
     } catch (error) {
-      console.error('Redis update failed, falling back to in-memory store:', error);
+      console.error(
+        'Redis update failed, falling back to in-memory store:',
+        error
+      );
       // Fall through to in-memory store
     }
   }
@@ -168,7 +177,7 @@ export async function GET(request: NextRequest) {
   if (!briefDate || !sectionId) {
     return NextResponse.json(
       { error: 'Missing briefDate or sectionId' },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -179,7 +188,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching vote counts:', error);
     return NextResponse.json(
       { error: 'Failed to fetch vote counts' },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
@@ -194,24 +203,24 @@ export async function POST(request: NextRequest) {
     if (!briefDate || !sectionId) {
       return NextResponse.json(
         { error: 'Missing briefDate or sectionId' },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     if (direction !== null && direction !== 'up' && direction !== 'down') {
-      return NextResponse.json(
-        { error: 'Invalid direction' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Invalid direction' }, { status: 400 });
     }
 
     // Generate a simple user ID from request headers (IP + user agent)
     // In production, use proper authentication (session, JWT, etc.)
-    const userIp = request.headers.get('x-forwarded-for') ||
-                   request.headers.get('x-real-ip') ||
-                   'unknown';
+    const userIp =
+      request.headers.get('x-forwarded-for') ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
-    const userId = Buffer.from(`${userIp}:${userAgent}`).toString('base64').substring(0, 32);
+    const userId = Buffer.from(`${userIp}:${userAgent}`)
+      .toString('base64')
+      .substring(0, 32);
 
     // Check the user's existing vote
     const oldVote = await getUserVote(briefDate, sectionId, userId);
@@ -222,7 +231,7 @@ export async function POST(request: NextRequest) {
       sectionId,
       direction,
       oldVote || null,
-      userId,
+      userId
     );
 
     return NextResponse.json(counts);
@@ -230,7 +239,7 @@ export async function POST(request: NextRequest) {
     console.error('Error processing vote:', error);
     return NextResponse.json(
       { error: 'Failed to process vote' },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
