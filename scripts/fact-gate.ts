@@ -1022,7 +1022,19 @@ function srcSlug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
 }
 
-export function sourceConclusionClaims(body: string, _briefDate: string | null): Claim[] {
+/**
+ * NO RETROACTIVE CONDEMNATION OF THE ARCHIVE — IMP-125's lesson, and this check tripped it within
+ * minutes of being written. `verify-improvements` went RED on IMP-045, whose acceptance fixture is
+ * `content/daily-updates/2026-07-13.md --require-resolved`: the new extractor found ChinaTalk's
+ * analysis in a brief published three weeks before this rule existed, and no truth row for it can
+ * ever exist. A new claim class that back-dates itself does not raise the standard; it invalidates
+ * the record and red-lights every gate whose fixture is a published file. The rule binds from the
+ * day it ships forward. A null date means the caller handed us a fragment and has already chosen it.
+ */
+const SRC_EFFECTIVE_FROM = '2026-08-08';
+
+export function sourceConclusionClaims(body: string, briefDate: string | null): Claim[] {
+  if (briefDate && briefDate < SRC_EFFECTIVE_FROM) return [];
   const claims: Claim[] = [];
   const stripped = stripComments(body);
   const seen = new Set<string>();
@@ -2586,8 +2598,18 @@ function selftest(): number {
   const scRates = ['2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-08']
     .map((d) => path.join(process.cwd(), 'daily-briefs', `${d}-v2.md`))
     .filter((p) => fs.existsSync(p))
-    .map((p) => sourceConclusionClaims(fs.readFileSync(p, 'utf8'), null).length);
+    .map((p) => sourceConclusionClaims(fs.readFileSync(p, 'utf8'), path.basename(p).slice(0, 10)).length);
   const okScNoStorm = scRates.length > 0 && Math.max(...scRates) <= 3;
+  // ARCHIVE SAFETY (IMP-125's lesson — this check tripped it in-session): a new claim class must
+  // NOT back-date itself onto published briefs, whose truth rows can never be written. Asserted on
+  // the exact file that went RED: IMP-045's acceptance fixture.
+  const jul13pub = path.join(process.cwd(), 'content/daily-updates/2026-07-13.md');
+  const okScNoRetro = !fs.existsSync(jul13pub)
+    || sourceConclusionClaims(fs.readFileSync(jul13pub, 'utf8'), '2026-07-13').length === 0;
+  // …and the guard must not be a blanket off-switch: the SAME text dated today still extracts.
+  const okScRetroNotBlanket = !fs.existsSync(jul13pub)
+    || sourceConclusionClaims(fs.readFileSync(jul13pub, 'utf8'), '2026-08-08').length > 0;
+
   // INVERSION LEG, both directions: the literal 08-07 defect — the brief negating what its own
   // source asserts — with every number in the sentence still true.
   const invClaim: Claim = {
@@ -2758,6 +2780,8 @@ function selftest(): number {
   console.log(`  [IMP-143] SILENT on a bare citation / bare count (C&EN, Epoch AI): ${okScSilentBare ? '✓' : '✗'}`);
   console.log(`  [IMP-143] SILENT on a passing mention with no conclusion verb: ${okScSilentMention ? '✓' : '✗'}`);
   console.log(`  [IMP-143] NO STORM — per-brief claims across 08-04…08-08: [${scRates.join(', ')}] (max 3): ${okScNoStorm ? '✓' : '✗'}`);
+  console.log(`  [IMP-143] does NOT back-date onto the published 2026-07-13 archive (IMP-125's lesson): ${okScNoRetro ? '✓' : '✗'}`);
+  console.log(`  [IMP-143] …and the date guard is not a blanket off-switch — same text, today's date, still extracts: ${okScRetroNotBlanket ? '✓' : '✗'}`);
   console.log(`  [IMP-143] SOURCE CONCLUSION INVERTED fires when the brief negates its source: ${okScInvFire ? '✓' : '✗'}`);
   console.log(`  [IMP-143] …silent when the brief AGREES with the recorded conclusion: ${okScInvSilent ? '✓' : '✗'}`);
   console.log(`  [IMP-143] …silent when no conclusion was recorded (no phantom findings): ${okScInvNoRow ? '✓' : '✗'}`);
@@ -2956,7 +2980,7 @@ function selftest(): number {
     okEcFire && okEcSilent && okEcReal && okEcPubResolvable &&
     okEdFire && okEdSilentDeadline && okEdSilentBare && okEdReal &&
     okScFireReal && okScUnresolvedReal && okScResolves && okScSilentBare && okScSilentMention &&
-    okScNoStorm && okScInvFire && okScInvSilent && okScInvNoRow &&
+    okScNoStorm && okScInvFire && okScInvSilent && okScInvNoRow && okScNoRetro && okScRetroNotBlanket &&
     okAiFireMsft && okAiFireAtlas && okAiSilentHedgeMsft && okAiSilentPlanAtlas &&
     okAiSilentHedgeVerb && okAiSilentAnalysis && okAiSilentOther && okAiRealCorrected &&
     okYoyGmFire && okYoyStldFire && okYoyResolves && okYoySilentRatio && okYoySilentMove && okYoyScopeSignal && okYoyReal &&
