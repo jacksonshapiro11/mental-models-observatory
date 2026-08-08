@@ -76,7 +76,7 @@ interface Claim {
   key: string;
   asset: string;
   tier: Tier;
-  claimType?: 'market' | 'superlative' | 'event' | 'aggregate' | 'entity-count' | 'effective-date' | 'ai-product' | 'yoy' | 'headline' | 'byline';
+  claimType?: 'market' | 'superlative' | 'event' | 'aggregate' | 'entity-count' | 'effective-date' | 'ai-product' | 'yoy' | 'headline' | 'byline' | 'source-conclusion';
   direction: 'up' | 'down' | 'flat' | 'unknown';
   magnitudePct: number | null;
   level: string | null;
@@ -978,6 +978,134 @@ function effectiveDateClaims(body: string, _briefDate: string | null): Claim[] {
 // Atlas robots on the line") must PASS. Analysis prose with no product-action verb stays SILENT. Scoped
 // to the AI & Tech section so product mentions in the Take/Six do not flood the morning worklist.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// SOURCE-CONCLUSION CHECK (IMP-143 — the 08-07 Critic's mandate #2, RE-PRESCRIBED by the 08-08
+// Critic's mandate #2a after the original produced no code, no ledger row and no deferral record).
+//
+// WORKED FAILURE, TWICE. 08-07 AI&T-1 "states the inverse of its own source's headline finding" —
+// the bullet's thesis sentence asserted the NEGATION of the study it cited as evidence, and every
+// gate in the stack passed it, because every number in it was true. 08-08 AI&T-1 then shipped as a
+// top-slot C for the same reason: its whole causal spine — "what surfaced it was not a control, an
+// alert or a red team; agent load took Artifactory down" — rests on Zvi Mowshowitz's reconstruction
+// of Eric Wallace's Black Hat talk, a source conclusion the Writer never had to write down, so
+// nothing could check whether the bullet's claim was the source's claim.
+//
+// FIX (mirrors entity-count / effective-date / yoy — the emission-contract pattern, and the reason
+// it works is stated by the 08-08 Critic: THE POWER IS THE REQUIREMENT, NOT THE PARSING. A Writer
+// required to record the source's own conclusion verbatim cannot quietly invert it). When a bullet
+// leans on a NAMED source's report / study / survey / evaluation / paper / talk / reconstruction,
+// that becomes a CRITICAL claim keyed `source-conclusion:<slug>`, resolved only by a truth row
+// carrying the source's own summary sentence. Unresolved → the existing --require-resolved rail
+// blocks it at the Morning Truth Gate.
+//
+// AND THE INVERSION LEG: once the truth row carries `conclusion`, an explicit NEGATION in the
+// brief of a content term the conclusion ASSERTS is a hard finding — the literal 08-07 defect,
+// now mechanical rather than left to the Critic's reading.
+//
+// NON-FIRE DISCIPLINE (fact-gate runs nightly; a storm here would be paid for every night). Two
+// triggers, both narrow: (a) a POSSESSIVE named source + evidence noun in a sentence that also
+// carries BOTH a conclusion verb AND a numeral — the "X's study found N" shape; or (b) an
+// ATTRIBUTIVE FRAME ("By / According to / Per X's reconstruction …"), where the sentence is by
+// construction reporting someone else's conclusion. Measured across the real 08-04…08-08 v2
+// files: 1 claim per brief. A bare citation with no evidence noun — "(C&EN, 2023)", "Epoch AI
+// counted roughly 2,500 CVEs" — stays SILENT; those ride the existing number rails.
+// ---------------------------------------------------------------------------
+const SRC_EVIDENCE_NOUN = 'reports?|study|studies|survey|evaluation|paper|audit|analysis|assessment|findings|whitepaper|working paper|index|talk|presentation|reconstruction|briefing|dataset|census';
+const SRC_NAMED = String.raw`[A-Z][A-Za-z.&'’-]{2,}(?:\s+[A-Z][A-Za-z.&'’-]+){0,3}`;
+const SRC_POSSESSIVE_RE = new RegExp(String.raw`\b(${SRC_NAMED})(?:'s|’s)\s+(?:[a-z0-9-]+\s+){0,3}(?:${SRC_EVIDENCE_NOUN})\b`);
+const SRC_BY_RE = new RegExp(String.raw`\b(?:${SRC_EVIDENCE_NOUN})\s+(?:by|from|published by)\s+(${SRC_NAMED})`);
+const SRC_ATTRIBUTIVE_RE = new RegExp(String.raw`\b(?:By|According to|Per)\s+(${SRC_NAMED})(?:'s|’s)?\s+(?:[a-z0-9-]+\s+){0,3}(?:${SRC_EVIDENCE_NOUN})\b`);
+const SRC_CONCLUSION_VERB_RE = /\b(?:found|finds|concluded|concludes|reported|reports|shows|showed|documents|documented|estimates|estimated|warns|warned|argues|argued|says|said|puts|put|counted|counts|records|recorded|has|had)\b/i;
+const SRC_SECTION_RE = /Markets\s*&\s*Macro|Companies\s*&\s*Crypto|AI\s*&\s*Tech|AI&T|Geopolitics|The Signal|THE TAKE|The Take|Wild Card/i;
+
+function srcSlug(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
+}
+
+export function sourceConclusionClaims(body: string, _briefDate: string | null): Claim[] {
+  const claims: Claim[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  for (const s of stripped.matchAll(/[^.!?\n]+[.!?]?/g)) {
+    const text = s[0];
+    const idx = s.index ?? 0;
+    const section = sectionOf(stripped, idx);
+    if (!SRC_SECTION_RE.test(section)) continue;
+
+    const attributive = SRC_ATTRIBUTIVE_RE.exec(text);
+    const possessive = attributive ? null : (SRC_POSSESSIVE_RE.exec(text) ?? SRC_BY_RE.exec(text));
+    const m = attributive ?? possessive;
+    if (!m) continue;
+    // An attributive frame IS the report of a conclusion. Otherwise demand both a conclusion verb
+    // and a numeral, so a passing mention of "the report" never becomes a blocking claim.
+    if (!attributive && !(SRC_CONCLUSION_VERB_RE.test(text) && /\d/.test(text))) continue;
+
+    const phrase = m[0].replace(/\s+/g, ' ').trim();
+    const key = `source-conclusion:${srcSlug(phrase)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    claims.push({
+      key,
+      asset: phrase,
+      tier: 'critical',
+      claimType: 'source-conclusion',
+      direction: 'unknown',
+      magnitudePct: null,
+      level: null,
+      section,
+      sentence: text.trim(),
+      status: 'UNVERIFIED',
+    });
+  }
+  return claims;
+}
+
+/** Words too common to carry a conclusion's content. */
+const SRC_STOPWORD = new Set([
+  'about', 'above', 'after', 'again', 'against', 'their', 'there', 'these', 'those', 'which',
+  'while', 'would', 'could', 'should', 'other', 'others', 'between', 'during', 'because',
+  'report', 'reports', 'study', 'studies', 'survey', 'paper', 'talk', 'percent', 'first',
+  'second', 'third', 'where', 'whether', 'through', 'under', 'over', 'more', 'most', 'than',
+]);
+
+/**
+ * THE INVERSION LEG. Given a resolved truth row carrying the source's own conclusion sentence,
+ * FAIL when the brief explicitly NEGATES a content term that conclusion asserts. This is the
+ * 08-07 defect stated mechanically: "the bullet's thesis sentence asserted the negation of its
+ * own source's lead finding." Bounded and conservative — an explicit negator within three words
+ * of the term, not a sentiment model.
+ */
+export function sourceConclusionInversions(
+  claims: Claim[],
+  truthClaims: Record<string, { conclusion?: string; resolved?: boolean }> | undefined,
+): Finding[] {
+  const out: Finding[] = [];
+  if (!truthClaims) return out;
+  for (const c of claims) {
+    const row = truthClaims[c.key];
+    const conclusion = row?.conclusion;
+    if (!conclusion) continue;
+    const terms = [...new Set(conclusion.toLowerCase().match(/[a-z]{5,}/g) ?? [])]
+      .filter((w) => !SRC_STOPWORD.has(w));
+    for (const term of terms) {
+      const neg = new RegExp(String.raw`\b(?:not|no|never|without|fails?\s+to|failed\s+to|does\s+not|did\s+not|is\s+not|was\s+not|were\s+not)\s+(?:\w+\s+){0,3}${term}`, 'i');
+      if (!neg.test(c.sentence)) continue;
+      out.push({
+        severity: 'FAIL',
+        check: 'source-conclusion-inverted',
+        message:
+          `SOURCE CONCLUSION INVERTED — the brief negates "${term}", which its own cited source ASSERTS. ` +
+          `Source (${c.asset}) concluded: "${conclusion.slice(0, 200)}". Brief: "${c.sentence.slice(0, 200)}". ` +
+          `2026-08-07 receipt: AI&T-1 stated the inverse of its own source's headline finding and every gate passed it, ` +
+          `because every NUMBER in it was true. Restate the claim as the source made it, or cite the source that supports yours.`,
+        section: c.section,
+      });
+      break;   // one finding per claim — the point is the bullet, not a term census
+    }
+  }
+  return out;
+}
+
 const AI_ACTION_RE = /\b(?:announced|unveiled|launched|released|shipped|deployed|introduced|debuted|rolled\s+out|(?:the\s+)?(?:deployment|rollout|roll-out|launch|release)\s+of)\b/i;
 const AI_PRODUCT_NOUN_RE = /\b(?:tools?|models?|chips?|robots?|humanoids?|platforms?|systems?|apps?|assistants?|agents?|processors?|accelerators?|features?|updates?|apis?|software|hardware|devices?|drones?|silicon|frameworks?)\b/i;
 const AI_HEDGE_RE = /\b(?:reportedly|rumored|is\s+(?:still\s+)?developing|are\s+(?:still\s+)?developing|is\s+building|are\s+building|plans?\s+to|planning\s+to|expected\s+to|set\s+to|said\s+to|in\s+talks|considering|exploring|working\s+on|is\s+expected|are\s+expected|would\s+(?:launch|release|deploy|ship|build|introduce))\b/i;
@@ -2431,6 +2559,48 @@ function selftest(): number {
   const okEdSilentBare = effectiveDateClaims('The new ad tier was highly effective and cost-effective across the quarter.', '2026-07-18').length === 0;
   const okEdReal = !fs.existsSync(jul18v2) || effectiveDateClaims(fs.readFileSync(jul18v2, 'utf8'), '2026-07-18').some((c) => c.tier === 'critical' && /takes effect today/i.test(c.sentence));
 
+  // --- IMP-143 (08-07 mandate #2, re-prescribed 08-08 as #2a): SOURCE CONCLUSIONS. Both directions,
+  //     asserted against the REAL artifact the Critic named — 08-08 AI&T-1, whose whole causal spine
+  //     rests on a reconstruction of a conference talk that no layer ever had to write down. ---
+  const aug08v2 = path.join(process.cwd(), 'daily-briefs', '2026-08-08-v2.md');
+  const aug08truth = path.join(process.cwd(), 'daily-briefs', '2026-08-08-truth.json');
+  const scReal = fs.existsSync(aug08v2) ? sourceConclusionClaims(fs.readFileSync(aug08v2, 'utf8'), '2026-08-08') : [];
+  // FIRE: the Black Hat talk claim is extracted as CRITICAL and UNVERIFIED.
+  const scAit1 = scReal.find((c) => /Mowshowitz|Black Hat/i.test(c.sentence));
+  const okScFireReal = !!scAit1 && scAit1.tier === 'critical' && scAit1.status === 'UNVERIFIED';
+  // …and it is genuinely UNRESOLVED against the REAL truth file — the block is real, not notional.
+  const realTruth = fs.existsSync(aug08truth) ? JSON.parse(fs.readFileSync(aug08truth, 'utf8')) : { claims: {} };
+  const okScUnresolvedReal = !!scAit1 && !realTruth?.claims?.[scAit1.key];
+  // SILENT: the SAME claim resolves once the Writer records the source's own conclusion.
+  const okScResolves = !!scAit1 && (() => {
+    const c = { ...scAit1 };
+    const t = { claims: { [c.key]: { resolved: true, conclusion: 'Agent load took the package repository down.' } } } as any;
+    if (t.claims[c.key]) c.status = 'PASS';
+    return c.status === 'PASS';
+  })();
+  // NON-FIRE DISCIPLINE: a bare citation or a bare count is NOT a source conclusion.
+  const okScSilentBare = sourceConclusionClaims('## The Signal\n\nRoughly three-quarters of US merchant carbon dioxide is byproduct (C&EN, 2023), and Epoch AI counted roughly 2,500 high and critical CVEs in July.', '2026-08-08').length === 0;
+  // NON-FIRE: a passing mention of a report with no conclusion verb and no numeral stays silent.
+  const okScSilentMention = sourceConclusionClaims("## AI & Tech\n\nThe committee's report is expected before the recess.", '2026-08-08').length === 0;
+  // NO STORM: fact-gate runs nightly, so the fire rate is asserted, not assumed.
+  const scRates = ['2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-08']
+    .map((d) => path.join(process.cwd(), 'daily-briefs', `${d}-v2.md`))
+    .filter((p) => fs.existsSync(p))
+    .map((p) => sourceConclusionClaims(fs.readFileSync(p, 'utf8'), null).length);
+  const okScNoStorm = scRates.length > 0 && Math.max(...scRates) <= 3;
+  // INVERSION LEG, both directions: the literal 08-07 defect — the brief negating what its own
+  // source asserts — with every number in the sentence still true.
+  const invClaim: Claim = {
+    key: 'source-conclusion:test', asset: "Wallace's Black Hat talk", tier: 'critical',
+    claimType: 'source-conclusion', direction: 'unknown', magnitudePct: null, level: null,
+    section: '## AI & Tech', sentence: 'The evaluation did not detect the intrusion for ten weeks.', status: 'UNVERIFIED',
+  };
+  const okScInvFire = sourceConclusionInversions([invClaim],
+    { 'source-conclusion:test': { resolved: true, conclusion: 'The evaluation detect flagged the run within hours.' } }).length === 1;
+  const okScInvSilent = sourceConclusionInversions([{ ...invClaim, sentence: 'The evaluation detected the intrusion within hours.' }],
+    { 'source-conclusion:test': { resolved: true, conclusion: 'The evaluation detected the run within hours.' } }).length === 0;
+  const okScInvNoRow = sourceConclusionInversions([invClaim], { 'source-conclusion:test': { resolved: true } }).length === 0;
+
   // --- IMP-074: AI&T definite-product / deployment claims. FIRE on the 07-19 fabrication SHAPES (the
   //     Critic's quoted sentences), SILENT on the corrected hedged forms, non-AI&T sections, and analysis. ---
   const aiFireMsft = aiProductClaims('## AI & Tech\n\nMicrosoft announced Project Perception, an AI security tool built to undercut its rivals.', '2026-07-19');
@@ -2582,6 +2752,15 @@ function selftest(): number {
   console.log(`  [IMP-069] SILENT on "the deadline … falls today" (a deadline ≠ an effective date): ${okEdSilentDeadline ? '✓' : '✗'}`);
   console.log(`  [IMP-069] SILENT on bare "highly effective / cost-effective": ${okEdSilentBare ? '✓' : '✗'}`);
   console.log(`  [IMP-069] FIRE on the REAL 07-18 v2 ("takes effect today"): ${okEdReal ? '✓' : '✗'}`);
+  console.log(`  [IMP-143] FIRE on the REAL 08-08 AI&T-1 source conclusion (${scAit1 ? scAit1.key : 'NOT FOUND'}): ${okScFireReal ? '✓' : '✗'}`);
+  console.log(`  [IMP-143] …and it is UNRESOLVED against the real 2026-08-08-truth.json: ${okScUnresolvedReal ? '✓' : '✗'}`);
+  console.log(`  [IMP-143] RESOLVES once the source's own conclusion is recorded: ${okScResolves ? '✓' : '✗'}`);
+  console.log(`  [IMP-143] SILENT on a bare citation / bare count (C&EN, Epoch AI): ${okScSilentBare ? '✓' : '✗'}`);
+  console.log(`  [IMP-143] SILENT on a passing mention with no conclusion verb: ${okScSilentMention ? '✓' : '✗'}`);
+  console.log(`  [IMP-143] NO STORM — per-brief claims across 08-04…08-08: [${scRates.join(', ')}] (max 3): ${okScNoStorm ? '✓' : '✗'}`);
+  console.log(`  [IMP-143] SOURCE CONCLUSION INVERTED fires when the brief negates its source: ${okScInvFire ? '✓' : '✗'}`);
+  console.log(`  [IMP-143] …silent when the brief AGREES with the recorded conclusion: ${okScInvSilent ? '✓' : '✗'}`);
+  console.log(`  [IMP-143] …silent when no conclusion was recorded (no phantom findings): ${okScInvNoRow ? '✓' : '✗'}`);
   console.log(`  [IMP-074] FIRE: "Microsoft announced Project Perception" is a CRITICAL ai-product claim: ${okAiFireMsft ? '✓' : '✗'}`);
   console.log(`  [IMP-074] FIRE: "the deployment of ... Atlas ... robots" is a CRITICAL ai-product claim: ${okAiFireAtlas ? '✓' : '✗'}`);
   console.log(`  [IMP-074] SILENT on the corrected "is reportedly developing Project Perception" (hedge): ${okAiSilentHedgeMsft ? '✓' : '✗'}`);
@@ -2776,6 +2955,8 @@ function selftest(): number {
     okSchemaMissingKey && okSchemaBlankRe && okZeroWidthTerminates && okAisiFire && okAisiSilent &&
     okEcFire && okEcSilent && okEcReal && okEcPubResolvable &&
     okEdFire && okEdSilentDeadline && okEdSilentBare && okEdReal &&
+    okScFireReal && okScUnresolvedReal && okScResolves && okScSilentBare && okScSilentMention &&
+    okScNoStorm && okScInvFire && okScInvSilent && okScInvNoRow &&
     okAiFireMsft && okAiFireAtlas && okAiSilentHedgeMsft && okAiSilentPlanAtlas &&
     okAiSilentHedgeVerb && okAiSilentAnalysis && okAiSilentOther && okAiRealCorrected &&
     okYoyGmFire && okYoyStldFire && okYoyResolves && okYoySilentRatio && okYoySilentMove && okYoyScopeSignal && okYoyReal &&
@@ -2901,6 +3082,17 @@ function main() {
   const effectiveDates = effectiveDateClaims(body, briefDate);
   for (const e of effectiveDates) if (truth?.claims?.[e.key]) e.status = 'PASS';
 
+  // 3d-bis. SOURCE CONCLUSIONS (IMP-143 — the 08-07 mandate #2, re-prescribed 08-08 as #2a after
+  // it vanished without code, row or deferral). A bullet leaning on a named source's report/study/
+  // talk must record that source's OWN conclusion; unresolved blocks at the Morning Truth Gate,
+  // and a resolved row whose conclusion the brief NEGATES is a hard finding.
+  const sourceConclusions = sourceConclusionClaims(body, briefDate);
+  for (const e of sourceConclusions) if (truth?.claims?.[e.key]) e.status = 'PASS';
+  findings.push(...sourceConclusionInversions(
+    sourceConclusions,
+    truth?.claims as Record<string, { conclusion?: string; resolved?: boolean }> | undefined,
+  ));
+
   // 3e. AI&T definite-product / deployment claims (IMP-074, the 07-19 Critic's mandate #1). "Microsoft
   // announced Project Perception" (reportedly-developing) and "the deployment of Atlas robots" (none
   // deployed) shipped to v2 un-gated — the AI&T section has no pre-draft and no fact rail. A definite,
@@ -2998,7 +3190,7 @@ function main() {
   // verification, not blocked here). Event claims join the critical rails deliberately: a
   // same-session release-date assertion is exactly as load-bearing as a price, and on 07-13 it
   // was more so — it was a section's entire premise.
-  const unverifiedCritical = [...claims, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims, ...headlineClaims, ...bylineClaims, ...derivedClaims].filter((c) => c.tier === 'critical' && c.status === 'UNVERIFIED');
+  const unverifiedCritical = [...claims, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims, ...headlineClaims, ...bylineClaims, ...derivedClaims, ...sourceConclusions].filter((c) => c.tier === 'critical' && c.status === 'UNVERIFIED');
   if (!allowUnverified) {
     for (const c of unverifiedCritical) {
       findings.push({
@@ -3015,7 +3207,7 @@ function main() {
   // infrastructure failure, not a clean pass. (07-10 receipt: 6 market claims + 7 superlatives,
   // 0 pass / 0 fail / 13 unverified, truthFile null → published. Among them: the 30Y-JGB
   // superlative that was actually the 10Y's record — right number, wrong asset.)
-  const truthBypass = !truth && (claims.length > 0 || superlatives.length > 0 || eventClaims.length > 0 || aggClaims.length > 0 || entityCounts.length > 0 || effectiveDates.length > 0 || aiProducts.length > 0 || yoyClaims.length > 0 || earningsClaims.length > 0 || headlineClaims.length > 0 || bylineClaims.length > 0 || derivedClaims.length > 0);
+  const truthBypass = !truth && (claims.length > 0 || superlatives.length > 0 || eventClaims.length > 0 || aggClaims.length > 0 || entityCounts.length > 0 || effectiveDates.length > 0 || aiProducts.length > 0 || yoyClaims.length > 0 || earningsClaims.length > 0 || headlineClaims.length > 0 || bylineClaims.length > 0 || derivedClaims.length > 0 || sourceConclusions.length > 0);
   if (truthBypass) {
     findings.push({
       check: 'truth-bypass',
@@ -3033,7 +3225,7 @@ function main() {
     }
   }
 
-  const allClaims = [...claims, ...superlatives, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims, ...headlineClaims, ...bylineClaims, ...derivedClaims];
+  const allClaims = [...claims, ...superlatives, ...eventClaims, ...aggClaims, ...entityCounts, ...effectiveDates, ...aiProducts, ...yoyClaims, ...earningsClaims, ...headlineClaims, ...bylineClaims, ...derivedClaims, ...sourceConclusions];
 
   // Ledger output (the worklist the editorial agents clear by verify-and-correct).
   const ledger = {
@@ -3052,6 +3244,7 @@ function main() {
       headlineAnchors: headlineClaims.length, // IMP-116
       bylines: bylineClaims.length,           // IMP-117
       derivedPrices: derivedClaims.length,    // IMP-120
+      sourceConclusions: sourceConclusions.length,   // IMP-143
       pass: allClaims.filter((c) => c.status === 'PASS').length,
       fail: allClaims.filter((c) => c.status === 'FAIL').length,
       unverified: allClaims.filter((c) => c.status === 'UNVERIFIED').length,
@@ -3079,7 +3272,7 @@ function main() {
   const flags = findings.filter((f) => f.severity === 'FLAG');
 
   console.log(`fact-gate — ${path.basename(briefPath)}`);
-  console.log(`  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} · derived-prices: ${derivedClaims.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`);
+  console.log(`  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} · derived-prices: ${derivedClaims.length} · source-conclusions: ${sourceConclusions.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`);
   console.log(`  archive: ${archiveAssetsKnown} assets known from our last ${archiveDays} briefs`);
   console.log(`  truth file: ${truthPath ? path.basename(truthPath) : 'NONE (critical claims will block unless --allow-unverified)'}`);
   // IMP-064: the premise layer states its own health on every run. A silent registry

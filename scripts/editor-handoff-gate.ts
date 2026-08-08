@@ -59,6 +59,20 @@ export const MIN_WAIT_MIN = 45;
 export const NO_ARTIFACT_WAIT_MIN = 60;
 /** The never-deadlock ceiling. The brief always ships: past this, promotion is FORCED and logged. */
 export const HARD_CEILING_MIN = 120;
+/** IMP-141 (2026-08-08 Critic mandate #3, 🔴, RC2). A working file smaller than this is not a brief.
+ *  THE FAILURE: twenty minutes after `brief-editor … SUCCESS` on 08-08, `2026-08-08-v2.working.md`
+ *  sat on disk at 0 BYTES — Brief_Editor rule 6 requires the working file be DELETED on promotion and
+ *  it was TRUNCATED instead — and `--liveness 2026-08-08` answered
+ *      "state: ALIVE — written 9.4 min ago (< 20 min) — the Editor is STILL WRITING IT".
+ *  This file is IMP-048 with its own assumption inverted: liveness was correctly moved off a countdown
+ *  and onto the working file's mtime, and NOTHING ever checked that the file has CONTENT. On any night
+ *  v2 is genuinely absent the path runs: false ALIVE (20 min) → mtime ages → QUIET → "quiet file, no
+ *  hold, past the floor ⇒ the Editor crashed, promote its working file" → A 0-BYTE BRIEF IS PROMOTED,
+ *  or the 120-min ceiling forces the same thing. NEVER-DEADLOCK MUST NOT MEAN NEVER-SANITY-CHECK:
+ *  forcing the promotion of nothing is not shipping the brief, it is shipping the absence of one.
+ *  CALIBRATED, NOT CHOSEN: the selftest re-derives the smallest real v2 on disk from the trailing
+ *  boards and fails if this floor has crept up toward it, so it can never start eating real briefs. */
+export const MIN_PLAUSIBLE_BRIEF_BYTES = 4000;
 
 type Violation = { check: string; message: string };
 const DB = (root: string) => path.join(root, 'daily-briefs');
@@ -99,6 +113,7 @@ export interface Liveness {
   canaryAgeMin: number | null;
   workingPath: string;
   reason: string;
+  bytes: number | null;      // IMP-141: null = nothing on disk. 0 = a truncated scratch file.
 }
 
 /** THE LOAD-BEARING FUNCTION. Liveness is mtime, not a stopwatch. */
@@ -110,14 +125,29 @@ export function liveness(root: string, date: string, now = new Date()): Liveness
 
   if (!fs.existsSync(working)) {
     return {
-      state: 'ABSENT', quietMin: null, canaryAgeMin, workingPath: working,
+      state: 'ABSENT', quietMin: null, canaryAgeMin, workingPath: working, bytes: null,
       reason: `no ${date}-v2.working.md on disk${canaryAgeMin !== null ? ` (CANARY ${canaryAgeMin.toFixed(0)} min old)` : ''}`,
     };
   }
-  const quietMin = (now.getTime() - fs.statSync(working).mtimeMs) / 60000;
+  const st = fs.statSync(working);
+  const bytes = st.size;
+  const quietMin = (now.getTime() - st.mtimeMs) / 60000;
+
+  // IMP-141: AN EMPTY FILE IS NOT A LIVE EDITOR. A fresh mtime on a 0-byte file is a truncate, a
+  // `touch`, or a promotion that failed to delete its scratch — never a pass in progress. Reporting
+  // ALIVE here burns 20 minutes and then hands a QUIET empty file to the promotion path. Reporting
+  // ABSENT is both true and safe: ABSENT makes promotion IMPOSSIBLE (see canPromote), and the
+  // self-heal path it opens is independently held shut by the CANARY guard in canSelfHeal for
+  // NO_ARTIFACT_WAIT_MIN — so an Editor that has genuinely only just started is still protected.
+  if (bytes < MIN_PLAUSIBLE_BRIEF_BYTES) {
+    return {
+      state: 'ABSENT', quietMin, canaryAgeMin, workingPath: working, bytes,
+      reason: `${date}-v2.working.md exists but is ${bytes} byte(s) — below the ${MIN_PLAUSIBLE_BRIEF_BYTES}-byte floor, so it is a truncated or empty scratch file, NOT an Editor artifact (last written ${quietMin.toFixed(1)} min ago). 2026-08-08 receipt: this exact file sat at 0 bytes and the gate called it ALIVE.`,
+    };
+  }
   return {
     state: quietMin < QUIET_MIN ? 'ALIVE' : 'QUIET',
-    quietMin, canaryAgeMin, workingPath: working,
+    quietMin, canaryAgeMin, workingPath: working, bytes,
     reason: quietMin < QUIET_MIN
       ? `${date}-v2.working.md was written ${quietMin.toFixed(1)} min ago (< ${QUIET_MIN} min) — the Editor is STILL WRITING IT`
       : `${date}-v2.working.md has not changed for ${quietMin.toFixed(0)} min (≥ ${QUIET_MIN}) — the Editor has stopped`,
@@ -131,6 +161,19 @@ export function canPromote(root: string, date: string, now = new Date()): Violat
   const lines = editorLines(root, date);
   const failed = lines.some((x) => x.kind === 'FAIL');
   const forced = l.canaryAgeMin !== null && l.canaryAgeMin >= HARD_CEILING_MIN;
+
+  // IMP-141 — FIRST, AND IT OUTRANKS `forced`. Every other refusal below can be overridden by the
+  // 120-minute never-deadlock ceiling; this one cannot, because the thing the ceiling exists to
+  // guarantee — that a brief ships — is precisely what promoting an empty file destroys. Read the
+  // size directly rather than trusting the state above, so that a future reordering of liveness()
+  // cannot silently reopen the hole.
+  if (l.bytes !== null && l.bytes < MIN_PLAUSIBLE_BRIEF_BYTES) {
+    v.push({
+      check: 'promote-empty-artifact',
+      message: `PROMOTION REFUSED — ${path.basename(l.workingPath)} is ${l.bytes} byte(s), below the ${MIN_PLAUSIBLE_BRIEF_BYTES}-byte plausible-brief floor. THIS REFUSAL SURVIVES THE ${HARD_CEILING_MIN}-MINUTE HARD CEILING${forced ? ' (which is currently ACTIVE — canary ' + l.canaryAgeMin?.toFixed(0) + ' min old)' : ''}: never-deadlock means the brief always ships, and a 0-byte v2 is not a brief that shipped, it is the absence of one wearing the filename. 2026-08-08 receipt: this file sat at 0 bytes 20 minutes after brief-editor SUCCESS (Brief_Editor rule 6 requires DELETION on promotion; it was truncated instead) and --liveness answered ALIVE. If v2 is genuinely missing, run --can-self-heal and rebuild from v1.5 — do not promote a husk.`,
+    });
+    return v;
+  }
 
   if (l.state === 'ABSENT') {
     v.push({ check: 'promote-nothing', message: `PROMOTION IMPOSSIBLE — ${l.reason}. There is no Editor artifact to promote.` });
@@ -394,7 +437,12 @@ export function auditHandoff(root: string, date: string): Violation[] {
 // ---------- selftest ----------
 
 /** Build a throwaway pipeline dir with REAL mtimes — the only honest way to test a liveness rule. */
-function fixture(name: string, opts: { canaryMinAgo: number; workingQuietMin: number | null; hold?: string }): string {
+/** IMP-141: a plausible brief body. The old fixture wrote 10 bytes, which the new emptiness floor
+ *  would classify ABSENT — every liveness assertion in this file would have "passed" for the wrong
+ *  reason. A guard whose own fixtures trip it teaches nothing. */
+const PLAUSIBLE_BODY = `# Daily Update — fixture\n\n## Markets & Macro\n\n${'- **A bullet with a hook.** Body sentence carrying a number, 4.1 percent, and a source.\n'.repeat(60)}`;
+
+function fixture(name: string, opts: { canaryMinAgo: number; workingQuietMin: number | null; hold?: string; workingBody?: string }): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), `ehg-${name}-`));
   fs.mkdirSync(path.join(root, 'daily-briefs'), { recursive: true });
   const date = '2026-01-01';
@@ -404,7 +452,7 @@ function fixture(name: string, opts: { canaryMinAgo: number; workingQuietMin: nu
     `${canaryTs} | brief-editor | CANARY | WRITE-OK\n`);
   if (opts.workingQuietMin !== null) {
     const w = path.join(root, 'daily-briefs', `${date}-v2.working.md`);
-    fs.writeFileSync(w, '# working\n');
+    fs.writeFileSync(w, opts.workingBody ?? PLAUSIBLE_BODY);
     const t = new Date(now - opts.workingQuietMin * 60000);
     fs.utimesSync(w, t, t);
   }
@@ -530,9 +578,57 @@ function selftest(): number {
   fs.rmSync(qgRoot, { recursive: true, force: true });
   fs.rmSync(crashRoot, { recursive: true, force: true });
 
-  for (const d of [alive, dead, early, held, ceiling]) fs.rmSync(d, { recursive: true, force: true });
+  // --- IMP-141 (2026-08-08 Critic mandate #3, RC2): AN EMPTY WORKING FILE IS NOT A LIVE EDITOR.
+  //     Leg (a) is asserted against the REAL artifact the Critic found on disk, not a fixture.
+  const realEmpty = path.join(root, 'daily-briefs', '2026-08-08-v2.working.md');
+  const realEmptyExists = fs.existsSync(realEmpty) && fs.statSync(realEmpty).size < MIN_PLAUSIBLE_BRIEF_BYTES;
+  //     Evaluated at the REAL decision moment the Critic quoted: 9.4 min after the file's mtime, the
+  //     instant the old gate answered "ALIVE — the Editor is STILL WRITING IT".
+  const realMoment = realEmptyExists
+    ? new Date(fs.statSync(realEmpty).mtimeMs + 9.4 * 60000)
+    : new Date();
+  const okRealAbsent = realEmptyExists && liveness(root, '2026-08-08', realMoment).state === 'ABSENT';
+  //     …and --can-promote must refuse it WITH THE CEILING ACTIVE. The real 08-08 canary is hours
+  //     old, so `forced` is already true against the live board — the strongest form of the test.
+  const realPromo = realEmptyExists ? canPromote(root, '2026-08-08') : [];
+  const okRealRefused = realPromo.some((x) => x.check === 'promote-empty-artifact');
+
+  // (b) SYNTHETIC MINIMAL PAIR — same mtime, same canary, differing ONLY in content.
+  const husk = fixture('husk', { canaryMinAgo: HARD_CEILING_MIN + 30, workingQuietMin: 0.5, workingBody: '' });
+  const okHuskAbsent = liveness(husk, D).state === 'ABSENT';
+  const okHuskRefusedPastCeiling = canPromote(husk, D).some((x) => x.check === 'promote-empty-artifact');
+  const full = fixture('full', { canaryMinAgo: HARD_CEILING_MIN + 30, workingQuietMin: 0.5 });
+  const okFullAlive = liveness(full, D).state === 'ALIVE';
+  const okFullPromotable = canPromote(full, D).length === 0;   // never-deadlock still works
+
+  // (c) THE GUARD MUST NOT OPEN THE 07-13 HOLE. An empty file now reads ABSENT, which is the state
+  //     that permits a self-heal — so prove the CANARY guard independently holds it shut while a
+  //     just-started Editor could still be writing.
+  const huskEarly = fixture('husk-early', { canaryMinAgo: 5, workingQuietMin: 0.2, workingBody: '' });
+  const okHuskEarlyNoSelfHeal = canSelfHeal(huskEarly, D).some((x) => x.check === 'self-heal-over-live-editor');
+
+  // (d) THE FLOOR IS CALIBRATED, NOT CHOSEN (the IMP-121 discipline): re-derive the smallest REAL v2
+  //     on disk and fail if the floor has crept up toward it. A floor that eats real briefs is worse
+  //     than no floor — it would refuse to promote a short but genuine Editor pass.
+  const v2Sizes = fs.existsSync(dbDir)
+    ? fs.readdirSync(dbDir).filter((f) => /^\d{4}-\d{2}-\d{2}-v2\.md$/.test(f))
+        .map((f) => fs.statSync(path.join(dbDir, f)).size).filter((s) => s > 0)
+    : [];
+  const smallestRealV2 = v2Sizes.length ? Math.min(...v2Sizes) : 0;
+  const okFloorCalibrated = smallestRealV2 > 0 && MIN_PLAUSIBLE_BRIEF_BYTES < smallestRealV2 / 2;
+  console.log(`  [IMP-141] real v2 sizes on disk: n=${v2Sizes.length}, smallest ${smallestRealV2}B → floor ${MIN_PLAUSIBLE_BRIEF_BYTES}B is ${(smallestRealV2 / (MIN_PLAUSIBLE_BRIEF_BYTES || 1)).toFixed(1)}× below it`);
+
+  for (const d of [alive, dead, early, held, ceiling, husk, full, huskEarly]) fs.rmSync(d, { recursive: true, force: true });
 
   const rows: [string, boolean][] = [
+    ['IMP-141 the REAL 0-byte 2026-08-08-v2.working.md reads ABSENT at the moment it read ALIVE', okRealAbsent],
+    ['IMP-141 --can-promote REFUSES that real husk with the 120-min ceiling already active', okRealRefused],
+    ['IMP-141 an empty working file reads ABSENT, never ALIVE (synthetic minimal pair)', okHuskAbsent],
+    ['IMP-141 …and promotion is refused PAST the hard ceiling (never-deadlock ≠ never-sanity-check)', okHuskRefusedPastCeiling],
+    ['IMP-141 SILENT on the same fixture with a plausible body: still ALIVE', okFullAlive],
+    ['IMP-141 …and still promotable past the ceiling — the never-deadlock path survives the guard', okFullPromotable],
+    ['IMP-141 an empty file at minute 5 still FORBIDS a self-heal (the 07-13 hole stays shut)', okHuskEarlyNoSelfHeal],
+    [`IMP-141 the ${MIN_PLAUSIBLE_BRIEF_BYTES}B floor stays far under the smallest real v2 (${smallestRealV2}B)`, okFloorCalibrated],
     ['IMP-121 QG ALIVE at 23:57:43Z on the REAL 08-03 board (the moment the guard said EXPIRED)', okQgAlive],
     ['IMP-121 QG QUIET only after the real 00:12:33Z SUCCESS line', okQgQuietAfter],
     ['IMP-121 the board\'s `-0400` timestamp form parses (else the guard deadlocks ALIVE)', okQgOffsetParsed],

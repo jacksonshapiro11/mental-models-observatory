@@ -138,6 +138,70 @@ export function anchorForensics(file: string, needle: string, cwd?: string, run:
   return `\n      FORENSICS: git log -S finds NO commit that ever added this string to ${file}, in a FULL (non-shallow) history. Either the enforcement never landed, or it lives in a gitignored path. Treat as NEVER-LANDED, not as a revert.`;
 }
 
+// ── IMP-142 (2026-08-08 Critic mandate #2b, RC3): MANDATE COVERAGE ───────────────────────────
+// THE FAILURE: the 08-07 Critic issued three mandates. #1 and #3 shipped as IMP-137/IMP-138.
+// #2 produced NO code, NO ledger row and NO deferral record — it simply evaporated, and the
+// defect it targeted shipped the next night as a top-slot C. The registry could not see it:
+// every check it ran was on rows that EXIST, so a mandate with no row is invisible by
+// construction. As the 08-08 Critic put it: **a mandate that disappears silently is worse than
+// one that fails, because failure is visible.**
+//
+// The fix is an ABSENCE check, the kind this file previously had none of: enumerate the
+// mandates the Critic actually issued, and require each to be discharged by a row — APPLIED
+// (a row referencing it) or DEFERRED (a row whose `applied` cell says so, per the new
+// MANDATE-DEFERRAL rule in system/Apply_Improvements.md). Anything else is UNCOVERED and RED.
+//
+// WHY IT GRADES YESTERDAY, NOT TODAY: the Critic for date D is written the evening of D-1; the
+// session that discharges it runs 10:03 on D. pipeline-health-check runs BEFORE that. Grading
+// the freshest critic would paint the registry red every single morning for a cycle that has
+// not had its turn yet — a false-positive storm, and the fastest way to make a gate ignored.
+// So this grades the most recent critic dated STRICTLY BEFORE today: one fully elapsed cycle.
+
+/** Mandate numbers under the Critic's MUST BE BETTER TOMORROW heading. */
+export function parseMandates(criticMd: string): number[] {
+  const lines = criticMd.split('\n');
+  // The 08-07 report carries the heading TWICE; the mandates follow the LAST one.
+  let start = -1;
+  lines.forEach((l, i) => { if (/^#{1,6}\s*MUST BE BETTER TOMORROW\s*$/i.test(l.trim())) start = i; });
+  if (start === -1) return [];
+  const nums = new Set<number>();
+  for (const l of lines.slice(start + 1)) {
+    if (/^#{1,3}\s+\w/.test(l) && !/^#{4,6}/.test(l)) break;   // next top-level section ends it
+    const m = l.match(/^\*\*(\d+)[.)]/);
+    if (m) nums.add(parseInt(m[1]!, 10));
+  }
+  return [...nums].sort((a, b) => a - b);
+}
+
+export interface Coverage { applied: number[]; deferred: number[]; uncovered: number[] }
+
+/** Which of `mandates` (issued by the {MM-DD} critic) has a ledger row discharging it? */
+export function mandateCoverage(rows: Row[], criticDate: string, mandates: number[]): Coverage {
+  const mmdd = criticDate.slice(5);                       // 2026-08-07 → 08-07
+  const out: Coverage = { applied: [], deferred: [], uncovered: [] };
+  for (const n of mandates) {
+    // The established citation form, already used by 20+ rows: "(08-07 Critic mandate #3, 🔴)".
+    // Sub-lettered mandates (#1a/#1b) discharge the parent number.
+    const re = new RegExp(`${mmdd}\\s+Critic\\s+mandate\\s+#${n}(?![0-9])`, 'i');
+    const hit = rows.filter(r => re.test(r.summary));
+    if (!hit.length) { out.uncovered.push(n); continue; }
+    if (hit.every(r => /deferred/i.test(r.applied))) out.deferred.push(n);
+    else out.applied.push(n);
+  }
+  return out;
+}
+
+/** The most recent critic report for a FULLY ELAPSED improvement cycle (date < today). */
+export function latestElapsedCritic(dbDir: string, today: string): string | null {
+  if (!fs.existsSync(dbDir)) return null;
+  const dates = fs.readdirSync(dbDir)
+    .filter(f => /^\d{4}-\d{2}-\d{2}-critic\.md$/.test(f))   // never the -light-critic siblings
+    .map(f => f.slice(0, 10))
+    .filter(d => d < today)
+    .sort();
+  return dates.length ? dates[dates.length - 1]! : null;
+}
+
 /** Run ONE check leg. Returns null on pass, an error string on fail. */
 function runLeg(leg: string, id: string): string | null {
   leg = leg.trim();
@@ -249,6 +313,30 @@ function main(): number {
     if (checkFails.length) fails.push(...checkFails); else verified++;
   }
 
+  // 3b. IMP-142: MANDATE COVERAGE — the absence check. A Critic mandate with no row at all is
+  //     the one failure mode every check above is blind to, because they all grade rows.
+  const dbDir = path.join(process.cwd(), 'daily-briefs');
+  const today = new Date().toISOString().slice(0, 10);
+  const criticDate = latestElapsedCritic(dbDir, today);
+  let coverageLine = '';
+  if (criticDate) {
+    const criticMd = fs.readFileSync(path.join(dbDir, `${criticDate}-critic.md`), 'utf8');
+    const mandates = parseMandates(criticMd);
+    if (mandates.length) {
+      const cov = mandateCoverage(rows, criticDate, mandates);
+      coverageLine = `  mandates (${criticDate} critic, last elapsed cycle): ${cov.applied.length} applied · ${cov.deferred.length} deferred · ${cov.uncovered.length} uncovered`;
+      for (const n of cov.uncovered) {
+        fails.push(
+          `MANDATE #${n} of the ${criticDate} Critic is UNCOVERED — no ledger row cites "${criticDate.slice(5)} Critic mandate #${n}" and none is marked deferred. ` +
+          `A mandate that disappears silently is worse than one that fails, because failure is visible (08-08 receipt: the 08-07 mandate #2 vanished, and the defect it targeted shipped the next night as a top-slot C). ` +
+          `Apply it, or log an IMP row whose applied cell reads "deferred" with the reason and carry-forward date — per the MANDATE-DEFERRAL rule in system/Apply_Improvements.md.`,
+        );
+      }
+    } else {
+      coverageLine = `  mandates (${criticDate} critic): none parsed — check the MUST BE BETTER TOMORROW heading`;
+    }
+  }
+
   // 4. The theater report — behavior counts (informational, the accountability view).
   const counts = {
     rows: rows.length,
@@ -260,6 +348,7 @@ function main(): number {
 
   console.log(`verify-improvements — ${rows.length} rows · ${verified} checks passed · ${fails.length} FAIL · ${warns.length} warn`);
   console.log(`  behavior: ${counts.behaviorY} changed · ${counts.pending} pending · ${counts.recurred} recurred-open (theater candidates) · ${counts.closedByCode} closed-by-code`);
+  if (coverageLine) console.log(coverageLine);
   for (const w of warns) console.log(`  ⚠ ${w}`);
   for (const f of fails) console.error(`  ✗ ${f}`);
   if (fails.length) {
@@ -355,7 +444,57 @@ function selftest(): number {
     console.log(`  ${got === expect ? 'PASS' : 'FAIL'} — [IMP-140] ${label}`);
     if (got !== expect) fails++;
   }
-  const total = cases.length + forensicAssertions + closureCases.length;
+  // IMP-142 — MANDATE COVERAGE, both directions. The logic legs are HERMETIC (crafted rows, per
+  // IMP-130: a selftest that fails for reasons outside its subject is a tax on every session);
+  // the parse leg runs against the REAL critic reports, because "can it read the actual heading
+  // the Critic actually writes" is the only part a fixture cannot honestly answer.
+  let coverageAssertions = 0;
+  {
+    const mkRow = (id: string, summary: string, applied: string): Row => ({
+      id, date: '2026-08-07', source: 'improvement', rc: 'RC2', sev: 'High',
+      summary, targets: [], check: 'none', applied, verified: '', behavior: 'pending', recur: '0',
+    });
+    const fixtureRows = [
+      mkRow('IMP-901', 'a fix (08-07 Critic mandate #1, 🔴)', '2026-08-07'),
+      mkRow('IMP-902', 'another fix (08-07 Critic mandate #3, RC6)', '2026-08-07'),
+    ];
+    const bare = mandateCoverage(fixtureRows, '2026-08-07', [1, 2, 3]);
+    t2(bare.uncovered.length === 1 && bare.uncovered[0] === 2 && bare.applied.length === 2,
+      '[IMP-142] a mandate with NO row is UNCOVERED — the real 08-07 #2 shape, on crafted rows');
+
+    const withDeferral = [...fixtureRows, mkRow('IMP-903', 'skipped (08-07 Critic mandate #2)', 'deferred→2026-08-08')];
+    const def = mandateCoverage(withDeferral, '2026-08-07', [1, 2, 3]);
+    t2(def.uncovered.length === 0 && def.deferred.length === 1 && def.deferred[0] === 2,
+      '[IMP-142] …and a DEFERRED row discharges it: 0 uncovered, deferred count non-zero');
+
+    const applied = [...fixtureRows, mkRow('IMP-904', 'shipped (08-07 Critic mandate #2)', '2026-08-07')];
+    const all = mandateCoverage(applied, '2026-08-07', [1, 2, 3]);
+    t2(all.uncovered.length === 0 && all.deferred.length === 0 && all.applied.length === 3,
+      '[IMP-142] …and when all three land: 0 uncovered, 0 deferred (the green state)');
+
+    // #1 must not be satisfied by a row citing #10 — the off-by-substring trap.
+    const decoy = mandateCoverage([mkRow('IMP-905', 'x (08-07 Critic mandate #10)', '2026-08-07')], '2026-08-07', [1]);
+    t2(decoy.uncovered.length === 1, '[IMP-142] "#10" does not satisfy mandate #1 (no substring bleed)');
+
+    // …and the wrong DAY must not satisfy it either: this is how a stale row would launder a gap.
+    const wrongDay = mandateCoverage([mkRow('IMP-906', 'x (08-06 Critic mandate #1)', '2026-08-06')], '2026-08-07', [1]);
+    t2(wrongDay.uncovered.length === 1, '[IMP-142] a row citing a DIFFERENT day\'s mandate #1 does not cover this one');
+
+    // REAL PARSE: both live critic reports, including the 08-07 one that carries the heading twice.
+    const dbDir = path.join(process.cwd(), 'daily-briefs');
+    const realParse = (d: string) => fs.existsSync(path.join(dbDir, `${d}-critic.md`))
+      ? parseMandates(fs.readFileSync(path.join(dbDir, `${d}-critic.md`), 'utf8')) : [];
+    const m0807 = realParse('2026-08-07');
+    const m0808 = realParse('2026-08-08');
+    t2(JSON.stringify(m0807) === '[1,2,3]', `[IMP-142] parses 3 mandates from the REAL 2026-08-07 critic (got ${JSON.stringify(m0807)}; that report repeats the heading)`);
+    t2(JSON.stringify(m0808) === '[1,2,3]', `[IMP-142] parses 3 mandates from the REAL 2026-08-08 critic (got ${JSON.stringify(m0808)})`);
+    // …and never mistakes a -light-critic for the daily one.
+    const elapsed = latestElapsedCritic(dbDir, '2026-08-08');
+    t2(elapsed === '2026-08-07', `[IMP-142] the graded cycle is the last ELAPSED one, not today's (got ${elapsed})`);
+    coverageAssertions += 8;
+  }
+
+  const total = cases.length + forensicAssertions + closureCases.length + coverageAssertions;
   console.log(`\nverify-improvements selftest — ${total - fails}/${total} assertions passed`);
   if (fails) { console.error('✗ SELFTEST FAILED — compound-check logic no longer bites both directions.'); return 1; }
   console.log('✓ compound-check (run:<selftest> && grep:<anchor> && gitshow:<anchor>) verified — a reverted enforcement now goes RED.');
