@@ -3973,6 +3973,21 @@ function main() {
     'event-lead',
     'adjacent-sentence-dedup',
     'data-point-repetition',
+    // NAME-MISMATCH FIX (2026-08-07, brief-editor pass — E-OVERRIDE-PREFIX-MISMATCH-01, RC4).
+    // The comment above has declared `wildcard-staleness` override-eligible since 2026-07-05,
+    // but the check ACTUALLY EMITS `wild-card-entity-staleness`, which does not start with
+    // `wildcard-staleness` — so the eligibility never bound and the documented escape hatch was
+    // dead on arrival. RECEIPT: 2026-08-08 v2 fired `wild-card-entity-staleness` on the shared
+    // token "dna" vs 08-06, a demonstrable false positive (08-06 = Shroud of Turin metagenomics,
+    // U. Lancashire, Scientific Reports; 08-08 = variola genomes from Chilean mummies, Trinity
+    // College Dublin, Science — 'variola', 'smallpox', 'CAM9', 'mummies', 'Trinity College Dublin'
+    // all return 0 hits across the trailing 28 published briefs). With no eligible override, the
+    // ONLY mechanical remedy was to delete the phrase "DNA packaging protein" from an accurate
+    // scientific description — precisely the evasion edit the Gate 3 override rule exists to ban.
+    // A check that forces a content-degrading edit to clear a false positive is worse than the
+    // failure it guards. This restores the DOCUMENTED intent; it loosens nothing new.
+    'wild-card-entity-staleness',
+    'wild-card-staleness',
     // Rotation assignment (2026-07-24): override-eligible so a genuine editorial emergency has
     // a DECLARED path around the assignment — evidence in the editor log, never silence.
     'model-rotation',
