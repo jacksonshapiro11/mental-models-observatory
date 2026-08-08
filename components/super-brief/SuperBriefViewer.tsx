@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import type { BriefLight } from '@/lib/brief-light-parser';
+import { BRIEF_HERO_RENDER_ORDER } from '@/lib/brief-render-order';
 import SuperBriefAudioPlayer from '@/components/super-brief/SuperBriefAudioPlayer';
 import { SuperBriefDashboard } from '@/components/super-brief/SuperBriefDashboard';
 import { Footer } from '@/components/layout/Footer';
@@ -439,21 +440,39 @@ export default function SuperBriefViewer({
             Markets, Meditations &amp; Mental Models —{' '}
             {isWeekly ? 'Weekly Light' : 'Super Brief'}
           </div>
-          {brief.dailyTitle && (
-            <h1 className='text-[22px] font-medium text-ct-dark leading-[1.2] mb-2 font-serif'>
-              {brief.dailyTitle}
-            </h1>
-          )}
-          {brief.epigraph && (
-            <div className='font-serif italic text-[14px] text-[#333] leading-[1.5] mb-3'>
-              &ldquo;{brief.epigraph}&rdquo;
-            </div>
-          )}
-          {brief.lede && (
-            <p className='text-[13px] text-[#444] leading-[1.55] italic mb-2'>
-              <RichText text={brief.lede} />
-            </p>
-          )}
+          {BRIEF_HERO_RENDER_ORDER.map(block => {
+            if (block === 'epigraph' && brief.epigraph) {
+              return (
+                <div
+                  key={block}
+                  className='font-serif italic text-[14px] text-[#333] leading-[1.5] mb-3'
+                >
+                  &ldquo;{brief.epigraph}&rdquo;
+                </div>
+              );
+            }
+            if (block === 'dailyTitle' && brief.dailyTitle) {
+              return (
+                <h1
+                  key={block}
+                  className='text-[22px] font-medium text-ct-dark leading-[1.2] mb-2 font-serif'
+                >
+                  {brief.dailyTitle}
+                </h1>
+              );
+            }
+            if (block === 'lede' && brief.lede) {
+              return (
+                <p
+                  key={block}
+                  className='text-[13px] text-[#444] leading-[1.55] italic mb-2'
+                >
+                  <RichText text={brief.lede} />
+                </p>
+              );
+            }
+            return null;
+          })}
 
           {/* Audio player */}
           <div className='mt-3'>

@@ -10,6 +10,10 @@
  */
 
 import { BriefLight } from '../brief-light-parser';
+import {
+  BRIEF_HERO_RENDER_ORDER,
+  type BriefHeroBlock,
+} from '../brief-render-order';
 import { buildUnsubscribeUrl } from './unsubscribe-token';
 
 const SITE_URL = 'https://cosmictrex.com';
@@ -65,8 +69,7 @@ export function renderBriefEmail(
 <table role="presentation" width="620" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;width:100%;background-color:#ffffff;">
 
   ${renderMasthead(brief, webUrl, audioUrl, fullBriefUrl, options.mastheadLabel)}
-  ${renderEpigraph(brief)}
-  ${renderDailyHeader(brief)}
+  ${renderBriefHero(brief)}
   ${renderSections(brief)}
   ${renderShareBlock(brief, webUrl, options.subjectPrefix)}
   ${renderFooter(webUrl, unsubscribeUrl)}
@@ -98,6 +101,21 @@ function extractSubject(brief: BriefLight, prefix?: string): string {
 }
 
 // ─── Components ─────────────────────────────────────────────────────────────
+
+const BRIEF_HERO_RENDERERS: Record<
+  BriefHeroBlock,
+  (brief: BriefLight) => string
+> = {
+  epigraph: renderEpigraph,
+  dailyTitle: renderDailyTitle,
+  lede: renderLede,
+};
+
+function renderBriefHero(brief: BriefLight): string {
+  return BRIEF_HERO_RENDER_ORDER.map(block =>
+    BRIEF_HERO_RENDERERS[block](brief)
+  ).join('');
+}
 
 function renderMasthead(
   brief: BriefLight,
@@ -137,13 +155,23 @@ function renderEpigraph(brief: BriefLight): string {
   </td></tr>`;
 }
 
-function renderDailyHeader(brief: BriefLight): string {
+function renderDailyTitle(brief: BriefLight): string {
+  if (!brief.dailyTitle) return '';
   return `
   <tr><td style="padding:24px 40px 8px 40px;">
     <h1 style="margin:0 0 16px 0;font-family:Georgia,serif;font-size:28px;line-height:1.2;font-weight:700;color:#1a1a1a;">
       ${escapeHtml(brief.dailyTitle)}
     </h1>
-    ${brief.lede ? `<p style="margin:0;font-family:Georgia,serif;font-style:italic;font-size:15px;line-height:1.6;color:#3d3629;">${escapeInline(brief.lede)}</p>` : ''}
+  </td></tr>`;
+}
+
+function renderLede(brief: BriefLight): string {
+  if (!brief.lede) return '';
+  return `
+  <tr><td style="padding:0 40px 8px 40px;">
+    <p style="margin:0;font-family:Georgia,serif;font-style:italic;font-size:15px;line-height:1.6;color:#3d3629;">
+      ${escapeInline(brief.lede)}
+    </p>
   </td></tr>`;
 }
 

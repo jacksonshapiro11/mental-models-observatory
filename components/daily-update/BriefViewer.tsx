@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import type { DailyBrief, BriefSection } from '@/lib/daily-update-parser';
 import { isIsoWeekSlug } from '@/lib/brief-date';
+import { BRIEF_HERO_RENDER_ORDER } from '@/lib/brief-render-order';
 import LiveDashboard from '@/components/dashboard/LiveDashboard';
 import { MobileKPICards } from '@/components/dashboard/MobileKPICards';
 import AudioPlayer from '@/components/daily-update/AudioPlayer';
@@ -1937,23 +1938,39 @@ export default function BriefViewer({ brief }: { brief: DailyBrief }) {
             Markets, Meditations &amp; Mental Models — {productLabel}
           </div>
 
-          {brief.dailyTitle && (
-            <h1 className='text-[22px] font-medium text-ct-dark leading-[1.2] mb-2 font-serif'>
-              {brief.dailyTitle}
-            </h1>
-          )}
-
-          {brief.epigraph && (
-            <div className='font-serif italic text-[14px] text-[#333] leading-[1.5] mb-3'>
-              &ldquo;{brief.epigraph}&rdquo;
-            </div>
-          )}
-
-          {brief.lede && (
-            <p className='text-[13px] text-[#444] leading-[1.55] mb-3'>
-              <RichText text={brief.lede} />
-            </p>
-          )}
+          {BRIEF_HERO_RENDER_ORDER.map(block => {
+            if (block === 'epigraph' && brief.epigraph) {
+              return (
+                <div
+                  key={block}
+                  className='font-serif italic text-[14px] text-[#333] leading-[1.5] mb-3'
+                >
+                  &ldquo;{brief.epigraph}&rdquo;
+                </div>
+              );
+            }
+            if (block === 'dailyTitle' && brief.dailyTitle) {
+              return (
+                <h1
+                  key={block}
+                  className='text-[22px] font-medium text-ct-dark leading-[1.2] mb-2 font-serif'
+                >
+                  {brief.dailyTitle}
+                </h1>
+              );
+            }
+            if (block === 'lede' && brief.lede) {
+              return (
+                <p
+                  key={block}
+                  className='text-[13px] text-[#444] leading-[1.55] mb-3'
+                >
+                  <RichText text={brief.lede} />
+                </p>
+              );
+            }
+            return null;
+          })}
 
           <div className='mt-3'>
             <AudioPlayer date={brief.date} />
