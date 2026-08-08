@@ -446,7 +446,7 @@ export function getAllBriefDates(): string[] {
 
   return fs
     .readdirSync(CONTENT_DIR)
-    .filter(f => f.endsWith('.md') && !f.includes('-light'))
+    .filter(f => /^\d{4}-\d{2}-\d{2}\.md$/.test(f))
     .map(f => f.replace('.md', ''))
     .sort()
     .reverse();
