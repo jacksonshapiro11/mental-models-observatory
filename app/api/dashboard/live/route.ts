@@ -40,40 +40,43 @@ const TIMEOUT = 5000;
 // Indices fetched directly from Yahoo Finance (actual prices, no multiplier)
 const INDEX_SYMBOLS = [
   { yahoo: '%5EGSPC', name: 'SPX', decimals: 0 },
-  { yahoo: '%5ENDX',  name: 'NDX', decimals: 0 },
-  { yahoo: '%5EDJI',  name: 'DJI', decimals: 0 },
-  { yahoo: '%5ERUT',  name: 'RUT', decimals: 0 },  // Russell 2000
+  { yahoo: '%5ENDX', name: 'NDX', decimals: 0 },
+  { yahoo: '%5EDJI', name: 'DJI', decimals: 0 },
+  { yahoo: '%5ERUT', name: 'RUT', decimals: 0 }, // Russell 2000
 ] as const;
 
 // ETFs fetched from Finnhub (direct prices, no multiplier needed)
 const ETF_PROXIES = [
-  { symbol: 'IGV', name: 'IGV' },   // SaaS/Software ETF (Thesis 1)
-  { symbol: 'SMH', name: 'SMH' },   // Semiconductor ETF (Thesis 4, BS #7)
-  { symbol: 'IWF', name: 'IWF' },   // Russell 1000 Growth
-  { symbol: 'IWD', name: 'IWD' },   // Russell 1000 Value
-  { symbol: 'XLE', name: 'XLE' },   // Energy Select SPDR (Iran/oil)
+  { symbol: 'IGV', name: 'IGV' }, // SaaS/Software ETF (Thesis 1)
+  { symbol: 'SMH', name: 'SMH' }, // Semiconductor ETF (Thesis 4, BS #7)
+  { symbol: 'IWF', name: 'IWF' }, // Russell 1000 Growth
+  { symbol: 'IWD', name: 'IWD' }, // Russell 1000 Value
+  { symbol: 'XLE', name: 'XLE' }, // Energy Select SPDR (Iran/oil)
   { symbol: 'ARKK', name: 'ARKK' }, // ARK Innovation (speculative tech)
 ] as const;
 
 // All equity names (indices + ETFs) for response building
-const ALL_EQUITY_NAMES = [...INDEX_SYMBOLS.map(i => i.name), ...ETF_PROXIES.map(e => e.name)];
+const ALL_EQUITY_NAMES = [
+  ...INDEX_SYMBOLS.map(i => i.name),
+  ...ETF_PROXIES.map(e => e.name),
+];
 
 // Commodity futures — Yahoo Finance direct (actual futures prices, no ETF tracking error)
 const COMMODITY_FUTURES = [
-  { yahoo: 'GC%3DF', name: 'GOLD' },     // Gold futures
-  { yahoo: 'SI%3DF', name: 'SILVER' },    // Silver futures
-  { yahoo: 'BZ%3DF', name: 'BRENT' },     // Brent crude futures
-  { yahoo: 'HG%3DF', name: 'COPPER' },    // Copper futures
-  { yahoo: 'NG%3DF', name: 'NATGAS' },    // Natural gas futures
+  { yahoo: 'GC%3DF', name: 'GOLD' }, // Gold futures
+  { yahoo: 'SI%3DF', name: 'SILVER' }, // Silver futures
+  { yahoo: 'BZ%3DF', name: 'BRENT' }, // Brent crude futures
+  { yahoo: 'HG%3DF', name: 'COPPER' }, // Copper futures
+  { yahoo: 'NG%3DF', name: 'NATGAS' }, // Natural gas futures
 ] as const;
 
 const CRYPTO_PAIRS = [
   { symbol: 'BTCUSDT', name: 'BTC' },
   { symbol: 'ETHUSDT', name: 'ETH' },
   { symbol: 'SOLUSDT', name: 'SOL' },
-  { symbol: 'AAVEUSDT', name: 'AAVE' },   // DeFi lending infra (Thesis 3)
-  { symbol: 'UNIUSDT', name: 'UNI' },     // DEX infra (Thesis 3)
-  { symbol: 'LINKUSDT', name: 'LINK' },    // Oracle infra (Thesis 3)
+  { symbol: 'AAVEUSDT', name: 'AAVE' }, // DeFi lending infra (Thesis 3)
+  { symbol: 'UNIUSDT', name: 'UNI' }, // DEX infra (Thesis 3)
+  { symbol: 'LINKUSDT', name: 'LINK' }, // Oracle infra (Thesis 3)
 ] as const;
 
 // ─── GET HANDLER ─────────────────────────────────────────────────────────────
@@ -85,32 +88,44 @@ export async function GET() {
       readSnapshot(),
       readManualFields(),
     ]);
-    const snapshotData = snapshotResult.status === 'fulfilled' ? snapshotResult.value : null;
-    const manualData = manualResult.status === 'fulfilled' ? manualResult.value : {};
+    const snapshotData =
+      snapshotResult.status === 'fulfilled' ? snapshotResult.value : null;
+    const manualData =
+      manualResult.status === 'fulfilled' ? manualResult.value : {};
 
     // Log snapshot status for debugging
     if (!snapshotData) {
-      console.warn('[live] No snapshot found in Redis — changes/MAs will be empty');
+      console.warn(
+        '[live] No snapshot found in Redis — changes/MAs will be empty'
+      );
       if (snapshotResult.status === 'rejected') {
         console.error('[live] Snapshot read failed:', snapshotResult.reason);
       }
     } else {
-      console.log(`[live] Snapshot loaded: ${snapshotData.date}, equities=${Object.keys(snapshotData.equities || {}).length}, crypto=${Object.keys(snapshotData.crypto || {}).length}`);
+      console.log(
+        `[live] Snapshot loaded: ${snapshotData.date}, equities=${Object.keys(snapshotData.equities || {}).length}, crypto=${Object.keys(snapshotData.crypto || {}).length}`
+      );
     }
 
     // Now fetch live data in parallel
     // - Indices (SPX/NDX/DJI): Yahoo Finance actual index prices (no ETF proxy math)
     // - ETFs: Finnhub real-time quotes (direct prices, multiplier=1)
     // - Commodities: Yahoo Finance futures (actual futures prices, ~15min delay but no ETF tracking error)
-    const [cryptoPrices, indexPrices, etfPrices, commodityPrices, dxyResult, coinGeckoGlobal] =
-      await Promise.allSettled([
-        fetchCryptoPrices(),
-        fetchIndexPrices(),
-        fetchETFPrices(),
-        fetchCommodityPrices(),
-        fetchDXY(FINNHUB_KEY, TIMEOUT),
-        fetchCoinGeckoGlobalCached(),
-      ]);
+    const [
+      cryptoPrices,
+      indexPrices,
+      etfPrices,
+      commodityPrices,
+      dxyResult,
+      coinGeckoGlobal,
+    ] = await Promise.allSettled([
+      fetchCryptoPrices(),
+      fetchIndexPrices(),
+      fetchETFPrices(),
+      fetchCommodityPrices(),
+      fetchDXY(FINNHUB_KEY, TIMEOUT),
+      fetchCoinGeckoGlobalCached(),
+    ]);
 
     // Merge index prices (Yahoo) and ETF prices (Finnhub) into one equityPrices map
     const mergedEquityPrices = {
@@ -119,12 +134,16 @@ export async function GET() {
     };
 
     // DXY: try Finnhub first, fall back to Yahoo Finance if Finnhub fails
-    let dxyData: DXYResult | null = dxyResult.status === 'fulfilled' ? dxyResult.value : null;
+    let dxyData: DXYResult | null =
+      dxyResult.status === 'fulfilled' ? dxyResult.value : null;
     if (!dxyData) {
-      console.log('[live] DXY Finnhub failed, trying Yahoo Finance fallback...');
+      console.log(
+        '[live] DXY Finnhub failed, trying Yahoo Finance fallback...'
+      );
       try {
         dxyData = await fetchDXYFromYahoo(TIMEOUT);
-        if (dxyData) console.log(`[live] DXY Yahoo fallback succeeded: ${dxyData.value}`);
+        if (dxyData)
+          console.log(`[live] DXY Yahoo fallback succeeded: ${dxyData.value}`);
       } catch (err) {
         console.warn('[live] DXY Yahoo fallback also failed:', err);
       }
@@ -135,11 +154,14 @@ export async function GET() {
     const cacheSeconds = getLiveDashboardCacheSeconds(marketStatus);
 
     const response = buildResponse({
-      cryptoPrices: cryptoPrices.status === 'fulfilled' ? cryptoPrices.value : {},
+      cryptoPrices:
+        cryptoPrices.status === 'fulfilled' ? cryptoPrices.value : {},
       equityPrices: mergedEquityPrices,
-      commodityPrices: commodityPrices.status === 'fulfilled' ? commodityPrices.value : {},
+      commodityPrices:
+        commodityPrices.status === 'fulfilled' ? commodityPrices.value : {},
       dxy: dxyData,
-      coinGecko: coinGeckoGlobal.status === 'fulfilled' ? coinGeckoGlobal.value : null,
+      coinGecko:
+        coinGeckoGlobal.status === 'fulfilled' ? coinGeckoGlobal.value : null,
       snapshot: snapshotData,
       manual: manualData,
       marketStatus,
@@ -163,9 +185,18 @@ export async function GET() {
 // ─── BUILD RESPONSE ──────────────────────────────────────────────────────────
 
 interface BuildResponseArgs {
-  cryptoPrices: Record<string, { price: number; prevClose: number; source: string }>;
-  equityPrices: Record<string, { price: number; prevClose: number; source: string }>;
-  commodityPrices: Record<string, { price: number; prevClose: number; source: string }>;
+  cryptoPrices: Record<
+    string,
+    { price: number; prevClose: number; source: string }
+  >;
+  equityPrices: Record<
+    string,
+    { price: number; prevClose: number; source: string }
+  >;
+  commodityPrices: Record<
+    string,
+    { price: number; prevClose: number; source: string }
+  >;
   dxy: DXYResult | null;
   coinGecko: CoinGeckoGlobal | null;
   snapshot: DashboardSnapshot | null;
@@ -204,7 +235,8 @@ function buildResponse({
     const live = cryptoPrices[pair.name];
     const ref = snapshot?.crypto?.[pair.name];
     // Use Binance prevClosePrice (midnight UTC) for 1D; fall back to snapshot if unavailable
-    const prevClose = (live?.prevClose && live.prevClose > 0) ? live.prevClose : undefined;
+    const prevClose =
+      live?.prevClose && live.prevClose > 0 ? live.prevClose : undefined;
     crypto[pair.name] = {
       price: live?.price ?? ref?.latestClose ?? null,
       changes: mergeChanges(live?.price ?? null, ref ?? null, prevClose),
@@ -280,7 +312,10 @@ function buildResponse({
       yoyChange: snapshot?.dxy?.yoyChange ?? null,
     };
   } else if (snapshot?.dxy) {
-    meta.dxy = { value: snapshot.dxy.value, yoyChange: snapshot.dxy.yoyChange ?? null };
+    meta.dxy = {
+      value: snapshot.dxy.value,
+      yoyChange: snapshot.dxy.yoyChange ?? null,
+    };
   }
 
   if (manual.fedWatch) meta.fedWatch = manual.fedWatch;
@@ -303,7 +338,7 @@ function buildResponse({
 function mergeChanges(
   livePrice: number | null,
   snapshotRef: AssetSnapshot | null,
-  prevClose?: number | null,
+  prevClose?: number | null
 ): Record<string, number> {
   if (!snapshotRef) return {};
 
@@ -317,11 +352,16 @@ function mergeChanges(
   }
 
   const baselines = snapshotRef.baselines;
-  if (livePrice && livePrice > 0 && baselines && Object.keys(baselines).length > 0) {
+  if (
+    livePrice &&
+    livePrice > 0 &&
+    baselines &&
+    Object.keys(baselines).length > 0
+  ) {
     return recomputeChangesFromLive(
       livePrice,
       baselines,
-      prevClose === undefined ? undefined : { prevClose },
+      prevClose === undefined ? undefined : { prevClose }
     );
   }
 
@@ -346,8 +386,13 @@ const COINGECKO_IDS: Record<string, string> = {
   LINK: 'chainlink',
 };
 
-async function fetchCryptoPrices(): Promise<Record<string, { price: number; prevClose: number; source: string }>> {
-  const results: Record<string, { price: number; prevClose: number; source: string }> = {};
+async function fetchCryptoPrices(): Promise<
+  Record<string, { price: number; prevClose: number; source: string }>
+> {
+  const results: Record<
+    string,
+    { price: number; prevClose: number; source: string }
+  > = {};
 
   // Try Binance first (real-time, no API key needed)
   // Use /ticker/24hr instead of /ticker/price to get prevClosePrice (midnight UTC close)
@@ -362,24 +407,32 @@ async function fetchCryptoPrices(): Promise<Record<string, { price: number; prev
       const data = await res.json();
       results[name] = {
         price: parseFloat(data.lastPrice),
-        prevClose: parseFloat(data.prevClosePrice),  // midnight UTC close
+        prevClose: parseFloat(data.prevClosePrice), // midnight UTC close
         source: 'binance',
       };
     });
 
     await Promise.allSettled(fetches);
   } catch (err: unknown) {
-    if (err instanceof Error && err.name !== 'AbortError') console.error('Binance fetch error:', err);
+    if (err instanceof Error && err.name !== 'AbortError')
+      console.error('Binance fetch error:', err);
   } finally {
     clearTimeout(timer);
   }
 
   // Fallback: if any coins are missing, try CoinGecko simple/price
-  const missing = CRYPTO_PAIRS.filter(({ name }) => !results[name]).map(({ name }) => name);
+  const missing = CRYPTO_PAIRS.filter(({ name }) => !results[name]).map(
+    ({ name }) => name
+  );
   if (missing.length > 0) {
-    console.warn(`[live] Binance missing ${missing.join(', ')} — falling back to CoinGecko`);
+    console.warn(
+      `[live] Binance missing ${missing.join(', ')} — falling back to CoinGecko`
+    );
     try {
-      const ids = missing.map(name => COINGECKO_IDS[name]).filter(Boolean).join(',');
+      const ids = missing
+        .map(name => COINGECKO_IDS[name])
+        .filter(Boolean)
+        .join(',');
       const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&x_cg_demo_key=${COINGECKO_KEY}`;
       const res = await fetchWithTimeout(url, TIMEOUT);
       if (res.ok) {
@@ -387,7 +440,11 @@ async function fetchCryptoPrices(): Promise<Record<string, { price: number; prev
         for (const name of missing) {
           const cgId = COINGECKO_IDS[name];
           if (cgId && data[cgId]?.usd) {
-            results[name] = { price: data[cgId].usd, prevClose: 0, source: 'coingecko' };
+            results[name] = {
+              price: data[cgId].usd,
+              prevClose: 0,
+              source: 'coingecko',
+            };
           }
         }
       }
@@ -397,7 +454,9 @@ async function fetchCryptoPrices(): Promise<Record<string, { price: number; prev
   }
 
   // Log what we got
-  const sources = Object.entries(results).map(([k, v]) => `${k}:${v.source}`).join(', ');
+  const sources = Object.entries(results)
+    .map(([k, v]) => `${k}:${v.source}`)
+    .join(', ');
   console.log(`[live] Crypto prices: ${sources || 'NONE — will use snapshot'}`);
 
   return results;
@@ -407,8 +466,13 @@ async function fetchCryptoPrices(): Promise<Record<string, { price: number; prev
 // SPX, NDX, DJI fetched directly. ~15min delay on Yahoo free tier,
 // but 100% accurate prices (no multiplier drift or ETF tracking error).
 
-async function fetchIndexPrices(): Promise<Record<string, { price: number; prevClose: number; source: string }>> {
-  const results: Record<string, { price: number; prevClose: number; source: string }> = {};
+async function fetchIndexPrices(): Promise<
+  Record<string, { price: number; prevClose: number; source: string }>
+> {
+  const results: Record<
+    string,
+    { price: number; prevClose: number; source: string }
+  > = {};
 
   try {
     const fetches = INDEX_SYMBOLS.map(async ({ yahoo, name, decimals }) => {
@@ -422,7 +486,9 @@ async function fetchIndexPrices(): Promise<Record<string, { price: number; prevC
       if (price && price > 0) {
         results[name] = {
           price: round(price, decimals),
-          prevClose: prevClose ? round(prevClose, decimals) : round(price, decimals),
+          prevClose: prevClose
+            ? round(prevClose, decimals)
+            : round(price, decimals),
           source: 'yahoo',
         };
       }
@@ -432,7 +498,9 @@ async function fetchIndexPrices(): Promise<Record<string, { price: number; prevC
     console.error('Index fetch error:', err);
   }
 
-  const sources = Object.entries(results).map(([k, v]) => `${k}:${v.price}`).join(', ');
+  const sources = Object.entries(results)
+    .map(([k, v]) => `${k}:${v.price}`)
+    .join(', ');
   console.log(`[live] Index prices: ${sources || 'NONE — using snapshot'}`);
 
   return results;
@@ -441,8 +509,13 @@ async function fetchIndexPrices(): Promise<Record<string, { price: number; prevC
 // ─── ETF PRICES (Finnhub — direct quotes, no multiplier) ────────────────────
 // ETFs like IGV, SMH, IWM etc. — their price IS the price, multiplier=1.
 
-async function fetchETFPrices(): Promise<Record<string, { price: number; prevClose: number; source: string }>> {
-  const results: Record<string, { price: number; prevClose: number; source: string }> = {};
+async function fetchETFPrices(): Promise<
+  Record<string, { price: number; prevClose: number; source: string }>
+> {
+  const results: Record<
+    string,
+    { price: number; prevClose: number; source: string }
+  > = {};
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT);
 
@@ -461,7 +534,8 @@ async function fetchETFPrices(): Promise<Record<string, { price: number; prevClo
 
     await Promise.allSettled(fetches);
   } catch (err: unknown) {
-    if (err instanceof Error && err.name !== 'AbortError') console.error('ETF fetch error:', err);
+    if (err instanceof Error && err.name !== 'AbortError')
+      console.error('ETF fetch error:', err);
   } finally {
     clearTimeout(timer);
   }
@@ -474,8 +548,13 @@ async function fetchETFPrices(): Promise<Record<string, { price: number; prevClo
 // without ETF tracking error, contango drag, or expense ratio distortion.
 // ~15 minute delay on Yahoo free tier, but far more accurate than ETF proxies.
 
-async function fetchCommodityPrices(): Promise<Record<string, { price: number; prevClose: number; source: string }>> {
-  const results: Record<string, { price: number; prevClose: number; source: string }> = {};
+async function fetchCommodityPrices(): Promise<
+  Record<string, { price: number; prevClose: number; source: string }>
+> {
+  const results: Record<
+    string,
+    { price: number; prevClose: number; source: string }
+  > = {};
 
   try {
     const fetches = COMMODITY_FUTURES.map(async ({ yahoo, name }) => {
@@ -487,7 +566,11 @@ async function fetchCommodityPrices(): Promise<Record<string, { price: number; p
       const price = meta?.regularMarketPrice ?? meta?.previousClose;
       const prevClose = meta?.chartPreviousClose ?? meta?.previousClose;
       if (price && price > 0) {
-        results[name] = { price: round(price, 2), prevClose: prevClose ? round(prevClose, 2) : round(price, 2), source: 'yahoo' };
+        results[name] = {
+          price: round(price, 2),
+          prevClose: prevClose ? round(prevClose, 2) : round(price, 2),
+          source: 'yahoo',
+        };
       }
     });
 
@@ -496,7 +579,9 @@ async function fetchCommodityPrices(): Promise<Record<string, { price: number; p
     console.error('Commodity fetch error:', err);
   }
 
-  const sources = Object.entries(results).map(([k, v]) => `${k}:${v.price}`).join(', ');
+  const sources = Object.entries(results)
+    .map(([k, v]) => `${k}:${v.price}`)
+    .join(', ');
   console.log(`[live] Commodity prices: ${sources || 'NONE — using snapshot'}`);
 
   return results;
@@ -530,13 +615,29 @@ async function fetchCoinGeckoGlobalCached(): Promise<CoinGeckoGlobal | null> {
 
   try {
     // Fetch all 5 endpoints in parallel (~5 calls/hour = ~3,600/month, well within 10K)
-    const [globalRes, defiRes, trendingRes, derivRes, treasuryRes] = await Promise.allSettled([
-      fetchWithTimeout(`https://api.coingecko.com/api/v3/global?x_cg_demo_key=${key}`, TIMEOUT),
-      fetchWithTimeout(`https://api.coingecko.com/api/v3/global/decentralized_finance_defi?x_cg_demo_key=${key}`, TIMEOUT),
-      fetchWithTimeout(`https://api.coingecko.com/api/v3/search/trending?x_cg_demo_key=${key}`, TIMEOUT),
-      fetchWithTimeout(`https://api.coingecko.com/api/v3/derivatives?x_cg_demo_key=${key}`, TIMEOUT),
-      fetchWithTimeout(`https://api.coingecko.com/api/v3/companies/public_treasury/bitcoin?x_cg_demo_key=${key}`, TIMEOUT),
-    ]);
+    const [globalRes, defiRes, trendingRes, derivRes, treasuryRes] =
+      await Promise.allSettled([
+        fetchWithTimeout(
+          `https://api.coingecko.com/api/v3/global?x_cg_demo_key=${key}`,
+          TIMEOUT
+        ),
+        fetchWithTimeout(
+          `https://api.coingecko.com/api/v3/global/decentralized_finance_defi?x_cg_demo_key=${key}`,
+          TIMEOUT
+        ),
+        fetchWithTimeout(
+          `https://api.coingecko.com/api/v3/search/trending?x_cg_demo_key=${key}`,
+          TIMEOUT
+        ),
+        fetchWithTimeout(
+          `https://api.coingecko.com/api/v3/derivatives?x_cg_demo_key=${key}`,
+          TIMEOUT
+        ),
+        fetchWithTimeout(
+          `https://api.coingecko.com/api/v3/companies/public_treasury/bitcoin?x_cg_demo_key=${key}`,
+          TIMEOUT
+        ),
+      ]);
 
     // 1. Global market data
     if (globalRes.status === 'fulfilled') {
@@ -553,14 +654,25 @@ async function fetchCoinGeckoGlobalCached(): Promise<CoinGeckoGlobal | null> {
     if (defiRes.status === 'fulfilled') {
       const json = await defiRes.value.json();
       if (json.data) {
-        const defiMcap = json.data.defi_market_cap ? parseFloat(json.data.defi_market_cap) : null;
-        const ethMcap = json.data.eth_market_cap ? parseFloat(json.data.eth_market_cap) : null;
+        const defiMcap = json.data.defi_market_cap
+          ? parseFloat(json.data.defi_market_cap)
+          : null;
+        const ethMcap = json.data.eth_market_cap
+          ? parseFloat(json.data.eth_market_cap)
+          : null;
         result.defiMarketCap = defiMcap;
         // Calculate actual ratio: DeFi market cap / ETH market cap
         // Rising = DeFi infra growing faster than ETH itself (validates Thesis 3)
-        result.defiToEthRatio = (defiMcap && ethMcap && ethMcap > 0) ? round((defiMcap / ethMcap) * 100, 1) : null;
-        result.defiVolume24h = json.data.trading_volume_24h ? parseFloat(json.data.trading_volume_24h) : null;
-        result.defiDominance = json.data.defi_dominance ? parseFloat(json.data.defi_dominance) : null;
+        result.defiToEthRatio =
+          defiMcap && ethMcap && ethMcap > 0
+            ? round((defiMcap / ethMcap) * 100, 1)
+            : null;
+        result.defiVolume24h = json.data.trading_volume_24h
+          ? parseFloat(json.data.trading_volume_24h)
+          : null;
+        result.defiDominance = json.data.defi_dominance
+          ? parseFloat(json.data.defi_dominance)
+          : null;
       }
     }
 
@@ -568,12 +680,24 @@ async function fetchCoinGeckoGlobalCached(): Promise<CoinGeckoGlobal | null> {
     if (trendingRes.status === 'fulfilled') {
       const json = await trendingRes.value.json();
       if (json.coins && Array.isArray(json.coins)) {
-        result.trending = json.coins.slice(0, 7).map((c: { item: { name: string; symbol: string; market_cap_rank: number; price_btc?: number } }, i: number) => ({
-          name: c.item?.name ?? 'Unknown',
-          symbol: c.item?.symbol ?? '?',
-          rank: c.item?.market_cap_rank ?? i + 1,
-          price_btc: c.item?.price_btc ?? undefined,
-        }));
+        result.trending = json.coins.slice(0, 7).map(
+          (
+            c: {
+              item: {
+                name: string;
+                symbol: string;
+                market_cap_rank: number;
+                price_btc?: number;
+              };
+            },
+            i: number
+          ) => ({
+            name: c.item?.name ?? 'Unknown',
+            symbol: c.item?.symbol ?? '?',
+            rank: c.item?.market_cap_rank ?? i + 1,
+            price_btc: c.item?.price_btc ?? undefined,
+          })
+        );
       }
     }
 
@@ -582,22 +706,33 @@ async function fetchCoinGeckoGlobalCached(): Promise<CoinGeckoGlobal | null> {
       const json = await derivRes.value.json();
       if (Array.isArray(json)) {
         // Find BTC perpetual contracts and average funding rates
-        const btcPerps = json.filter((d: { symbol: string; contract_type?: string }) =>
-          d.symbol?.toUpperCase().includes('BTC') &&
-          (d.contract_type === 'perpetual' || d.symbol?.includes('PERP'))
+        const btcPerps = json.filter(
+          (d: { symbol: string; contract_type?: string }) =>
+            d.symbol?.toUpperCase().includes('BTC') &&
+            (d.contract_type === 'perpetual' || d.symbol?.includes('PERP'))
         );
         if (btcPerps.length > 0) {
           const rates = btcPerps
             .map((d: { funding_rate?: number }) => d.funding_rate)
-            .filter((r: number | undefined): r is number => r != null && !isNaN(r));
+            .filter(
+              (r: number | undefined): r is number => r != null && !isNaN(r)
+            );
           if (rates.length > 0) {
-            result.btcFundingRate = round(rates.reduce((s: number, r: number) => s + r, 0) / rates.length, 6);
+            result.btcFundingRate = round(
+              rates.reduce((s: number, r: number) => s + r, 0) / rates.length,
+              6
+            );
           }
           const ois = btcPerps
             .map((d: { open_interest?: number }) => d.open_interest)
-            .filter((o: number | undefined): o is number => o != null && !isNaN(o));
+            .filter(
+              (o: number | undefined): o is number => o != null && !isNaN(o)
+            );
           if (ois.length > 0) {
-            result.btcOpenInterest = round(ois.reduce((s: number, o: number) => s + o, 0), 0);
+            result.btcOpenInterest = round(
+              ois.reduce((s: number, o: number) => s + o, 0),
+              0
+            );
           }
         }
       }
@@ -628,5 +763,7 @@ function round(value: number, decimals: number): number {
 function fetchWithTimeout(url: string, timeout: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
-  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+  return fetch(url, { signal: controller.signal }).finally(() =>
+    clearTimeout(timer)
+  );
 }

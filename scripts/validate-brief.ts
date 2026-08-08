@@ -34,7 +34,9 @@ function getModelBySlug(slug: string) {
   return READWISE_MODELS.find((m: any) => m.slug === slug);
 }
 // M2 (July 5): domain slug set for slug-type disambiguation
-const DOMAIN_SLUGS = new Set((READWISE_DOMAINS as any[]).map((d: any) => d.slug));
+const DOMAIN_SLUGS = new Set(
+  (READWISE_DOMAINS as any[]).map((d: any) => d.slug)
+);
 
 type Failure = { check: string; message: string };
 
@@ -90,20 +92,28 @@ function extractDisplayDateFromHeader(body: string): string | null {
   return null;
 }
 
-function checkDisplayDateMatchesSlug(body: string, briefDate: string): Failure[] {
+function checkDisplayDateMatchesSlug(
+  body: string,
+  briefDate: string
+): Failure[] {
   const displayDate = extractDisplayDateFromHeader(body);
   if (!displayDate) {
-    return [{
-      check: 'display-date-slug',
-      message: `No display date line in brief header (expected **Weekday, Month D, YYYY** or ## Weekday, Month D, YYYY matching ${briefDate}).`,
-    }];
+    return [
+      {
+        check: 'display-date-slug',
+        message: `No display date line in brief header (expected **Weekday, Month D, YYYY** or ## Weekday, Month D, YYYY matching ${briefDate}).`,
+      },
+    ];
   }
   const result = validateDisplayDateMatchesSlug(displayDate, briefDate);
   if (!result.ok) {
-    return [{
-      check: 'display-date-slug',
-      message: result.message ?? `displayDate does not match slug ${briefDate}.`,
-    }];
+    return [
+      {
+        check: 'display-date-slug',
+        message:
+          result.message ?? `displayDate does not match slug ${briefDate}.`,
+      },
+    ];
   }
   return [];
 }
@@ -154,15 +164,20 @@ function checkModelLink(body: string): Failure[] {
   const out: Failure[] = [];
   const section = extractModelSection(body);
   if (!section) {
-    out.push({ check: 'model-link', message: 'Model section missing — cannot check link.' });
+    out.push({
+      check: 'model-link',
+      message: 'Model section missing — cannot check link.',
+    });
     return out;
   }
-  const re = /\*\*\[→ Explore this model\]\(https:\/\/www\.cosmictrex\.com\/models\/([a-z0-9-]+)\)\*\*/;
+  const re =
+    /\*\*\[→ Explore this model\]\(https:\/\/www\.cosmictrex\.com\/models\/([a-z0-9-]+)\)\*\*/;
   const m = section.match(re);
   if (!m) {
     out.push({
       check: 'model-link',
-      message: 'Model section does not end with the required link. Expected `**[→ Explore this model](https://www.cosmictrex.com/models/{slug})**`.',
+      message:
+        'Model section does not end with the required link. Expected `**[→ Explore this model](https://www.cosmictrex.com/models/{slug})**`.',
     });
     return out;
   }
@@ -195,7 +210,8 @@ function checkModelRecency(body: string, briefDate: string): Failure[] {
   const out: Failure[] = [];
   const section = extractModelSection(body);
   if (!section) return out;
-  const re = /\*\*\[→ Explore this model\]\(https:\/\/www\.cosmictrex\.com\/models\/([a-z0-9-]+)\)\*\*/;
+  const re =
+    /\*\*\[→ Explore this model\]\(https:\/\/www\.cosmictrex\.com\/models\/([a-z0-9-]+)\)\*\*/;
   const m = section.match(re);
   if (!m) return out; // checkModelLink will catch this
   const slug = m[1];
@@ -212,7 +228,9 @@ function checkModelRecency(body: string, briefDate: string): Failure[] {
   const cutoff = new Date(bd.getTime() - 30 * 24 * 60 * 60 * 1000);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
 
-  const files = fs.readdirSync(dir).filter(n => /^\d{4}-\d{2}-\d{2}\.md$/.test(n));
+  const files = fs
+    .readdirSync(dir)
+    .filter(n => /^\d{4}-\d{2}-\d{2}\.md$/.test(n));
   for (const f of files) {
     const d = f.slice(0, 10);
     if (d >= cutoffStr && d < briefDate) {
@@ -233,7 +251,10 @@ function checkModelRecency(body: string, briefDate: string): Failure[] {
         const modelStart = content.indexOf('## 🧠 The Model');
         if (modelStart !== -1) {
           const modelEnd = content.indexOf('\n# ', modelStart + 1);
-          const pubModelSection = modelEnd !== -1 ? content.slice(modelStart, modelEnd) : content.slice(modelStart);
+          const pubModelSection =
+            modelEnd !== -1
+              ? content.slice(modelStart, modelEnd)
+              : content.slice(modelStart);
           if (pubModelSection.includes(conceptName)) {
             out.push({
               check: 'model-recency-name',
@@ -268,7 +289,9 @@ function checkModelAssigned(body: string, briefDate: string): Failure[] {
   }
 
   const section = extractModelSection(body);
-  const m = section?.match(/\*\*\[→ Explore this model\]\(https:\/\/www\.cosmictrex\.com\/models\/([a-z0-9-]+)\)\*\*/);
+  const m = section?.match(
+    /\*\*\[→ Explore this model\]\(https:\/\/www\.cosmictrex\.com\/models\/([a-z0-9-]+)\)\*\*/
+  );
   if (!m) return out; // checkModelLink owns the missing-link failure
   if (m[1] !== assigned.slug) {
     const skipBit = assigned.skipNote
@@ -304,8 +327,16 @@ function checkAISectionMinBullets(body: string): Failure[] {
   // brief at the 7:00 PM mechanical gate. A ceiling that goes blind ships bloat; a FLOOR that goes
   // blind halts the pipeline. Units are blocks separated by blank lines, the same split
   // checkSixSectionWordBudget uses, so both directions stay honest about markup.
-  const units = section.split(/\n\s*\n/).map((u: string) => u.trim())
-    .filter((u: string) => u.length > 0 && !/^#{1,6} /.test(u) && !/^<!--/.test(u) && !/^-{3,}$/.test(u));
+  const units = section
+    .split(/\n\s*\n/)
+    .map((u: string) => u.trim())
+    .filter(
+      (u: string) =>
+        u.length > 0 &&
+        !/^#{1,6} /.test(u) &&
+        !/^<!--/.test(u) &&
+        !/^-{3,}$/.test(u)
+    );
   const bullets = units.length;
   if (bullets < 2) {
     out.push({
@@ -315,13 +346,63 @@ function checkAISectionMinBullets(body: string): Failure[] {
   }
   // AI two-bullet distinctness advisory (added June 15 — RC4, strengthens June-14 floor)
   if (bullets === 2) {
-    const leads = (section.match(/^(?:- )?\*\*(.+?)\*\*/gm) || []).map((s: string) => s.toLowerCase());
+    const leads = (section.match(/^(?:- )?\*\*(.+?)\*\*/gm) || []).map(
+      (s: string) => s.toLowerCase()
+    );
     if (leads.length === 2) {
       // Extract capitalized tokens (proper nouns) from each lead, excluding common stopwords
-      const stopwords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'it', 'its', 'as', 'that', 'this', 'how', 'why', 'what', 'when', 'where', 'who', 'which', 'not', 'no', 'new', 'just', 'now', 'out', 'up', 'all']);
+      const stopwords = new Set([
+        'the',
+        'a',
+        'an',
+        'and',
+        'or',
+        'but',
+        'in',
+        'on',
+        'at',
+        'to',
+        'for',
+        'of',
+        'with',
+        'by',
+        'from',
+        'is',
+        'are',
+        'was',
+        'were',
+        'it',
+        'its',
+        'as',
+        'that',
+        'this',
+        'how',
+        'why',
+        'what',
+        'when',
+        'where',
+        'who',
+        'which',
+        'not',
+        'no',
+        'new',
+        'just',
+        'now',
+        'out',
+        'up',
+        'all',
+      ]);
       const extractEntities = (s: string) => {
         const raw = s.replace(/^(?:- )?\*\*/, '').replace(/\*\*.*/, '');
-        return raw.split(/\s+/).filter((w: string) => w.length > 2 && /^[A-Z]/.test(w) && !stopwords.has(w.toLowerCase())).map((w: string) => w.toLowerCase().replace(/[^a-z]/g, ''));
+        return raw
+          .split(/\s+/)
+          .filter(
+            (w: string) =>
+              w.length > 2 &&
+              /^[A-Z]/.test(w) &&
+              !stopwords.has(w.toLowerCase())
+          )
+          .map((w: string) => w.toLowerCase().replace(/[^a-z]/g, ''));
       };
       const e1 = new Set(extractEntities(leads[0]));
       const e2 = new Set(extractEntities(leads[1]));
@@ -345,7 +426,7 @@ function checkCandCBalance(body: string): Failure[] {
   const rest = body.slice(start + 1);
   const nextHeader = rest.search(/\n## /);
   const section = nextHeader === -1 ? rest : rest.slice(0, nextHeader);
-  const bullets = section.split('\n').filter((l) => /^\s*[-*]\s/.test(l));
+  const bullets = section.split('\n').filter(l => /^\s*[-*]\s/.test(l));
   if (bullets.length < 2) {
     out.push({
       check: 'candc-balance',
@@ -377,7 +458,8 @@ function checkDashboardNoTables(body: string): Failure[] {
   if (/\*\[.+?\]\*/.test(section)) {
     out.push({
       check: 'dashboard-no-placeholders',
-      message: 'Dashboard contains bracket-placeholder text (e.g. *[Dashboard component renders ...]*). Strip before publish.',
+      message:
+        'Dashboard contains bracket-placeholder text (e.g. *[Dashboard component renders ...]*). Strip before publish.',
     });
   }
   return out;
@@ -396,11 +478,9 @@ function checkInnerGameStructure(body: string, raw: string = body): Failure[] {
   const section = body.slice(start, end);
 
   // Get non-empty content lines after the header, in order.
-  const lines = section.split('\n').map((l) => l.trim());
-  const headerIdx = lines.findIndex((l) => l === '# ▸ INNER GAME');
-  const content = lines
-    .slice(headerIdx + 1)
-    .filter((l) => l.length > 0);
+  const lines = section.split('\n').map(l => l.trim());
+  const headerIdx = lines.findIndex(l => l === '# ▸ INNER GAME');
+  const content = lines.slice(headerIdx + 1).filter(l => l.length > 0);
 
   // QUOTE-FIRST, ALWAYS (Jackson, 2026-07-06 — RESCINDS the April 29 multi-form
   // validation and the June 12 A-E taxonomy). The 2026-07-06 brief shipped an
@@ -425,7 +505,8 @@ function checkInnerGameStructure(body: string, raw: string = body): Failure[] {
   // A rule that leaves fabrication as the only compliant path is a broken rule. FIGURE-FIRST is now
   // the sanctioned escape: name the thinker, state the argument in our own voice, no quotation
   // marks — DECLARED, never silent, so the rotation stays honest and the drift is visible.
-  const figureFirst = /<!--\s*(?:INNER-GAME-)?FIGURE-FIRST:[\s\S]{15,}?-->/i.test(raw);
+  const figureFirst =
+    /<!--\s*(?:INNER-GAME-)?FIGURE-FIRST:[\s\S]{15,}?-->/i.test(raw);
   if (figureFirst) {
     // The declaration must be true: an unquoted section may not smuggle a quotation back in.
     const smuggled = section.match(/^\*["“][^"”]{40,}["”]\*$/m);
@@ -436,7 +517,10 @@ function checkInnerGameStructure(body: string, raw: string = body): Failure[] {
       });
     }
     if (!hasAction) {
-      out.push({ check: 'inner-game', message: `Inner Game must carry a **Today's practice** line.` });
+      out.push({
+        check: 'inner-game',
+        message: `Inner Game must carry a **Today's practice** line.`,
+      });
     }
     return out;
   }
@@ -466,7 +550,8 @@ function checkInnerGameStructure(body: string, raw: string = body): Failure[] {
   // THE FALLBACK IS FIGURE-FIRST, not a hedged quote: name the thinker, state the argument in our
   // own voice, no quotation marks. We lose the quote, not the truth. (Four-part test: TRUE is
   // disqualifying — it outranks the form.)
-  const HEDGED_ATTRIBUTION_RE = /\b(paraphras\w*|attributed to|adapted from|as rendered|characteriz\w*|loosely|in substance|after the manner)\b/i;
+  const HEDGED_ATTRIBUTION_RE =
+    /\b(paraphras\w*|attributed to|adapted from|as rendered|characteriz\w*|loosely|in substance|after the manner)\b/i;
   if (quoteLineRe.test(line1) && HEDGED_ATTRIBUTION_RE.test(line2)) {
     out.push({
       check: 'inner-game-quote-unverifiable',
@@ -477,7 +562,8 @@ function checkInnerGameStructure(body: string, raw: string = body): Failure[] {
   if (!hasAction) {
     out.push({
       check: 'inner-game',
-      message: "Inner Game missing bold action line (**Today's practice:** or **Today's action:**).",
+      message:
+        "Inner Game missing bold action line (**Today's practice:** or **Today's action:**).",
     });
   }
 
@@ -491,10 +577,98 @@ function checkInnerGameStructure(body: string, raw: string = body): Failure[] {
 // Mechanical test: distinctive repeated phrases from today's Inner Game must not
 // be load-bearing in any prior published brief. A phrase is "load-bearing" when
 // it appears 2+ times on both sides — rare enough to avoid stopword collisions.
-const IG_STOPWORDS = new Set(['the','a','an','and','or','but','of','to','in','on','for','with','that','this','your','you','it','is','are','was','were','be','not','have','has','they','them','their','its','as','at','by','from','into','than','then','when','where','what','who','how','all','one','own','same','more','most','other','some','can','will','just','do','does','did','no','yes','we','our','us','again','over','under','out','up','down','off','about','because','so','if','any','every','each','both','very','too','only','never','always','keep','keeps','kept'])
+const IG_STOPWORDS = new Set([
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'but',
+  'of',
+  'to',
+  'in',
+  'on',
+  'for',
+  'with',
+  'that',
+  'this',
+  'your',
+  'you',
+  'it',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'not',
+  'have',
+  'has',
+  'they',
+  'them',
+  'their',
+  'its',
+  'as',
+  'at',
+  'by',
+  'from',
+  'into',
+  'than',
+  'then',
+  'when',
+  'where',
+  'what',
+  'who',
+  'how',
+  'all',
+  'one',
+  'own',
+  'same',
+  'more',
+  'most',
+  'other',
+  'some',
+  'can',
+  'will',
+  'just',
+  'do',
+  'does',
+  'did',
+  'no',
+  'yes',
+  'we',
+  'our',
+  'us',
+  'again',
+  'over',
+  'under',
+  'out',
+  'up',
+  'down',
+  'off',
+  'about',
+  'because',
+  'so',
+  'if',
+  'any',
+  'every',
+  'each',
+  'both',
+  'very',
+  'too',
+  'only',
+  'never',
+  'always',
+  'keep',
+  'keeps',
+  'kept',
+]);
 
 function distinctivePhrases(text: string): string[] {
-  const words = text.toLowerCase().replace(/[^a-z\s'-]/g, ' ').split(/\s+/).filter(Boolean);
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z\s'-]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
   const counts = new Map<string, number>();
   for (let n = 2; n <= 3; n++) {
     for (let i = 0; i + n <= words.length; i++) {
@@ -513,7 +687,10 @@ function distinctivePhrases(text: string): string[] {
     .map(([ph]) => ph);
 }
 
-function checkInnerGameConceptReuse(body: string, briefPath: string): Failure[] {
+function checkInnerGameConceptReuse(
+  body: string,
+  briefPath: string
+): Failure[] {
   const out: Failure[] = [];
   const start = body.indexOf('# \u25b8 INNER GAME');
   const end = body.indexOf('# \u25b8 THE MODEL');
@@ -524,8 +701,10 @@ function checkInnerGameConceptReuse(body: string, briefPath: string): Failure[] 
 
   const archiveDir = path.join(process.cwd(), 'content/daily-updates');
   if (!fs.existsSync(archiveDir)) return out;
-  const selfDate = path.basename(briefPath).match(/(\d{4}-\d{2}-\d{2})/)?.[1] ?? '';
-  const priorFiles = fs.readdirSync(archiveDir)
+  const selfDate =
+    path.basename(briefPath).match(/(\d{4}-\d{2}-\d{2})/)?.[1] ?? '';
+  const priorFiles = fs
+    .readdirSync(archiveDir)
     .filter(f => /^\d{4}-\d{2}-\d{2}\.md$/.test(f) && !f.startsWith(selfDate));
 
   // Two-pass with a CORPUS-RARITY gate (calibrated 2026-07-06 on real data):
@@ -533,15 +712,21 @@ function checkInnerGameConceptReuse(body: string, briefPath: string): Failure[] 
   // VOCABULARY scatters across many ("open question": all over the corpus).
   // Only rare phrases (present in <=4 prior briefs) can trigger, and the prior
   // use must be load-bearing (2+ occurrences somewhere in that brief).
-  const presence = new Map<string, string[]>();          // phrase -> briefs containing it
+  const presence = new Map<string, string[]>(); // phrase -> briefs containing it
   const loadBearing = new Map<string, [string, number]>(); // phrase -> [brief, hits]
   for (const f of priorFiles) {
     let txt: string;
-    try { txt = fs.readFileSync(path.join(archiveDir, f), 'utf8').toLowerCase(); } catch { continue; }
+    try {
+      txt = fs.readFileSync(path.join(archiveDir, f), 'utf8').toLowerCase();
+    } catch {
+      continue;
+    }
     for (const phrase of phrases) {
       const hits = txt.split(phrase).length - 1;
-      if (hits >= 1) (presence.get(phrase) ?? presence.set(phrase, []).get(phrase)!).push(f);
-      if (hits >= 2 && !loadBearing.has(phrase)) loadBearing.set(phrase, [f, hits]);
+      if (hits >= 1)
+        (presence.get(phrase) ?? presence.set(phrase, []).get(phrase)!).push(f);
+      if (hits >= 2 && !loadBearing.has(phrase))
+        loadBearing.set(phrase, [f, hits]);
     }
   }
   for (const phrase of phrases) {
@@ -573,14 +758,16 @@ function checkInnerGameWordBudget(body: string): Failure[] {
   const quoteLineRe = /^\*["“][^"”]+["”]\*$/;
   const attributionLineRe = /^—\s+[A-Z].+$/;
 
-  const lines = section.split('\n').map((l) => l.trim());
-  const headerIdx = lines.findIndex((l) => l === '# ▸ INNER GAME');
+  const lines = section.split('\n').map(l => l.trim());
+  const headerIdx = lines.findIndex(l => l === '# ▸ INNER GAME');
   const bodyWords = lines
     .slice(headerIdx + 1)
-    .filter((l) => l.length > 0 && !quoteLineRe.test(l) && !attributionLineRe.test(l))
+    .filter(
+      l => l.length > 0 && !quoteLineRe.test(l) && !attributionLineRe.test(l)
+    )
     .join(' ')
     .split(/\s+/)
-    .filter((w) => w.length > 0).length;
+    .filter(w => w.length > 0).length;
 
   const CEILING = 350;
   const HARD_FAIL = 450;
@@ -643,7 +830,10 @@ function checkEmDashes(body: string): Failure[] {
     }
   });
   if (hits.length > 0) {
-    const sample = hits.slice(0, 5).map((h) => `L${h.line}: ${h.text}`).join('\n    ');
+    const sample = hits
+      .slice(0, 5)
+      .map(h => `L${h.line}: ${h.text}`)
+      .join('\n    ');
     out.push({
       check: 'em-dash',
       message: `Em-dash usage detected (${hits.length} line(s)). Zero-tolerance rule. Replace with period+sentence, comma, or restructure.\n    ${sample}${hits.length > 5 ? `\n    ... +${hits.length - 5} more` : ''}`,
@@ -669,11 +859,11 @@ const HYPE_PHRASES = [
 function checkHypePhrases(body: string): Failure[] {
   const out: Failure[] = [];
   const lower = body.toLowerCase();
-  const hits = HYPE_PHRASES.filter((p) => lower.includes(p));
+  const hits = HYPE_PHRASES.filter(p => lower.includes(p));
   if (hits.length > 0) {
     out.push({
       check: 'hype-phrases',
-      message: `Hype phrases detected: ${hits.map((h) => `"${h}"`).join(', ')}. These are banned per Editor Check 16b.`,
+      message: `Hype phrases detected: ${hits.map(h => `"${h}"`).join(', ')}. These are banned per Editor Check 16b.`,
     });
   }
   return out;
@@ -694,7 +884,10 @@ function checkInternalTagLeak(body: string): Failure[] {
     // sections first with a placeholder intro and MUST replace it before the Validator.
     // A surviving placeholder is a floor failure — the front door of the product is broken.
     // This is the mechanical leg of the written-last rule (prose-only rules are unenforced).
-    { name: 'PAYOFF placeholder (intro was never written last)', re: /\[PAYOFF[^\]]*\]/i },
+    {
+      name: 'PAYOFF placeholder (intro was never written last)',
+      re: /\[PAYOFF[^\]]*\]/i,
+    },
   ];
   const out: Failure[] = [];
   for (const p of patterns) {
@@ -728,9 +921,18 @@ function checkAnchorLinks(body: string): Failure[] {
   // GitHub slugifies "Markets & Macro" → "markets--macro" (ampersand dropped,
   // spaces around it become double-dash). Site renderer mirrors this.
   const knownAnchors = [
-    'dashboard', 'the-six', 'the-take', 'inner-game', 'the-model', 'discovery',
-    'markets--macro', 'companies--crypto', 'ai--tech', 'geopolitics',
-    'the-wild-card', 'the-signal',
+    'dashboard',
+    'the-six',
+    'the-take',
+    'inner-game',
+    'the-model',
+    'discovery',
+    'markets--macro',
+    'companies--crypto',
+    'ai--tech',
+    'geopolitics',
+    'the-wild-card',
+    'the-signal',
   ];
   for (const a of knownAnchors) slugSet.add(a);
 
@@ -761,13 +963,16 @@ function checkAnchorLinks(body: string): Failure[] {
  * Extract Six subsection bullets as { section, leadEntity, leadSentence }[].
  * A "lead entity" is the bold text at the start of each bullet.
  */
-function extractSixBullets(body: string): { section: string; leadSentence: string; boldLead: string }[] {
+function extractSixBullets(
+  body: string
+): { section: string; leadSentence: string; boldLead: string }[] {
   const sixStart = body.indexOf('# ▸ THE SIX');
   const sixEnd = body.indexOf('# ▸ THE TAKE');
   if (sixStart === -1 || sixEnd === -1) return [];
   const sixBody = body.slice(sixStart, sixEnd);
 
-  const results: { section: string; leadSentence: string; boldLead: string }[] = [];
+  const results: { section: string; leadSentence: string; boldLead: string }[] =
+    [];
   let currentSection = '';
 
   for (const line of sixBody.split('\n')) {
@@ -810,25 +1015,94 @@ function checkEntityLeadSingleHome(body: string): Failure[] {
   // days/months, sentence starters, and analyst names (people aren't "entities" in this check —
   // the check targets companies, protocols, assets, and organizations).
   const SKIP_WORDS = new Set([
-    'The', 'A', 'An', 'If', 'When', 'But', 'And', 'Or', 'This', 'That', 'Its', 'For',
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
-    'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
-    'September', 'October', 'November', 'December',
-    'What', 'Why', 'How', 'Where', 'Who', 'Not', 'More', 'Most', 'After', 'Before',
+    'The',
+    'A',
+    'An',
+    'If',
+    'When',
+    'But',
+    'And',
+    'Or',
+    'This',
+    'That',
+    'Its',
+    'For',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+    'What',
+    'Why',
+    'How',
+    'Where',
+    'Who',
+    'Not',
+    'More',
+    'Most',
+    'After',
+    'Before',
     // Geopolitical topics — these naturally appear across M&M and Geopolitics.
     // Entity dedup targets SPECIFIC entities (companies, protocols, people-as-subjects),
     // not broad geopolitical topics. Topic saturation is checked by Check 3a.
-    'Iran', 'Iraq', 'China', 'Russia', 'Ukraine', 'Israel', 'Gaza', 'Taiwan',
-    'Trump', 'Biden', 'Putin', 'Zelensky', 'Vance',
-    'NATO', 'OPEC', 'American', 'European', 'Gulf', 'Asian', 'Round',
-    'Congress', 'Pentagon', 'Treasury', 'Fed', 'White House',
+    'Iran',
+    'Iraq',
+    'China',
+    'Russia',
+    'Ukraine',
+    'Israel',
+    'Gaza',
+    'Taiwan',
+    'Trump',
+    'Biden',
+    'Putin',
+    'Zelensky',
+    'Vance',
+    'NATO',
+    'OPEC',
+    'American',
+    'European',
+    'Gulf',
+    'Asian',
+    'Round',
+    'Congress',
+    'Pentagon',
+    'Treasury',
+    'Fed',
+    'White House',
     // Generic financial/descriptive terms
-    'Wall Street', 'Main Street', 'Scientists', 'Earnings',
+    'Wall Street',
+    'Main Street',
+    'Scientists',
+    'Earnings',
     // Analyst names (tracked by source dedup, not entity dedup)
-    'Goldman Sachs', 'Charlie Bilello', 'Peter Zeihan', 'Brad Setser',
-    'Luke Gromen', 'Ryan Cummings', 'Robin Brooks', 'Jim Bianco',
-    'Stanford', 'MIT', 'Harvard',
-    'Philadelphia', 'Washington',
+    'Goldman Sachs',
+    'Charlie Bilello',
+    'Peter Zeihan',
+    'Brad Setser',
+    'Luke Gromen',
+    'Ryan Cummings',
+    'Robin Brooks',
+    'Jim Bianco',
+    'Stanford',
+    'MIT',
+    'Harvard',
+    'Philadelphia',
+    'Washington',
   ]);
 
   for (const b of bullets) {
@@ -871,12 +1145,21 @@ function checkEventLeadSingleHome(body: string): Failure[] {
 
   // Extract key event phrases from bold leads (3+ word sequences)
   // Compare all pairs of section leads for shared event descriptions
-  interface LeadItem { section: string; text: string }
-  const allLeads: LeadItem[] = bullets.map(b => ({ section: b.section, text: b.boldLead.toLowerCase() }));
+  interface LeadItem {
+    section: string;
+    text: string;
+  }
+  const allLeads: LeadItem[] = bullets.map(b => ({
+    section: b.section,
+    text: b.boldLead.toLowerCase(),
+  }));
 
   // Add Signal items
   if (signalStart !== -1) {
-    const sigBody = body.slice(signalStart, signalEnd > signalStart ? signalEnd : undefined);
+    const sigBody = body.slice(
+      signalStart,
+      signalEnd > signalStart ? signalEnd : undefined
+    );
     const sigBolds = sigBody.matchAll(/\*\*(.+?)\*\*/g);
     let sigIdx = 1;
     for (const m of sigBolds) {
@@ -935,8 +1218,10 @@ function checkEventLeadSingleHome(body: string): Failure[] {
 // satisfied "has an argument". 'holds' removed: in a markets brief it almost always means a level
 // holding, not "holds that". Contractions added: isn't/aren't never matched is not/are not, so
 // natural prose was punished.
-const CC_ARGUMENT = /\b(because|argues?|contends?|maintains?|incentive|mistaken|however|the objection|would nod|is ?n[o']t|are ?n[o']t|is not|are not|reads? as|on that reading|the strongest|strawman|overstates?|understates?)\b/i;
-const CC_OBSERVABLE_ONLY = /\*\*\s*Watch\b|\bthe tell\b|\bwatch (for |whether |the )/i;
+const CC_ARGUMENT =
+  /\b(because|argues?|contends?|maintains?|incentive|mistaken|however|the objection|would nod|is ?n[o']t|are ?n[o']t|is not|are not|reads? as|on that reading|the strongest|strawman|overstates?|understates?)\b/i;
+const CC_OBSERVABLE_ONLY =
+  /\*\*\s*Watch\b|\bthe tell\b|\bwatch (for |whether |the )/i;
 const CC_FIRST_PERSON = /\b(I|my|I'd|I'm)\b/;
 
 function counterCaseAdvisories(block: string, label: string): void {
@@ -946,15 +1231,23 @@ function counterCaseAdvisories(block: string, label: string): void {
   // Scope the argument test to the observable's NEIGHBOURHOOD. Testing the whole block meant a thesis
   // containing "is not" hundreds of words earlier silenced the advisory on a Watch-only closer.
   const om = block.match(CC_OBSERVABLE_ONLY);
-  const near = om && om.index !== undefined
-    ? block.slice(Math.max(0, om.index - 220), Math.min(block.length, om.index + 320))
-    : block;
+  const near =
+    om && om.index !== undefined
+      ? block.slice(
+          Math.max(0, om.index - 220),
+          Math.min(block.length, om.index + 320)
+        )
+      : block;
   if (om && !CC_ARGUMENT.test(near)) {
-    console.log(`  \ud83d\udfe1 [counter-case] ${label}: names an OBSERVABLE with no argument beside it. "Watch X" is a closing beat, never the objection \u2014 system/Counter_Case_Standard.md.`);
+    console.log(
+      `  \ud83d\udfe1 [counter-case] ${label}: names an OBSERVABLE with no argument beside it. "Watch X" is a closing beat, never the objection \u2014 system/Counter_Case_Standard.md.`
+    );
   }
   // FIRST PERSON: the counter is about the claim, not the author. This is news, not a column.
   if (CC_FIRST_PERSON.test(block)) {
-    console.log(`  \ud83d\udfe1 [counter-case] ${label}: FIRST PERSON. State the error, not the author\u2019s uncertainty \u2014 "the signal was timing, not structure".`);
+    console.log(
+      `  \ud83d\udfe1 [counter-case] ${label}: FIRST PERSON. State the error, not the author\u2019s uncertainty \u2014 "the signal was timing, not structure".`
+    );
   }
 }
 
@@ -969,21 +1262,36 @@ function checkCounterCaseEverywhere(body: string): Failure[] {
   const sigIdx = six.indexOf('## The Signal');
   if (sigIdx !== -1) {
     const sig = six.slice(sigIdx);
-    const blocks = sig.split(/\n\s*\n/).map((b) => b.trim())
-      .filter((b) => b.length > 0 && !/^#{1,6} /.test(b) && b.split(/\s+/).length > 60);
-    blocks.forEach((b, i) => counterCaseAdvisories(b, `The Signal idea ${i + 1}`));
+    const blocks = sig
+      .split(/\n\s*\n/)
+      .map(b => b.trim())
+      .filter(
+        b => b.length > 0 && !/^#{1,6} /.test(b) && b.split(/\s+/).length > 60
+      );
+    blocks.forEach((b, i) =>
+      counterCaseAdvisories(b, `The Signal idea ${i + 1}`)
+    );
   }
 
   // The Six \u2014 only units that actually project forward carry a counter-case obligation.
-  for (const name of ['Markets & Macro', 'Companies & Crypto', 'AI & Tech', 'Geopolitics']) {
+  for (const name of [
+    'Markets & Macro',
+    'Companies & Crypto',
+    'AI & Tech',
+    'Geopolitics',
+  ]) {
     const m = six.match(new RegExp(`## ${name.replace(/&/g, '&')}\\b`));
     if (!m || m.index === undefined) continue;
     const rest = six.slice(m.index + m[0].length);
     const nx = rest.search(/\n#{1,2} /);
     const text = nx === -1 ? rest : rest.slice(0, nx);
-    text.split(/\n\s*\n/).map((u) => u.trim())
-      .filter((u) => u.split(/\s+/).length > 60 && CC_OBSERVABLE_ONLY.test(u))
-      .forEach((u, i) => counterCaseAdvisories(u, `${name} forward read ${i + 1}`));
+    text
+      .split(/\n\s*\n/)
+      .map(u => u.trim())
+      .filter(u => u.split(/\s+/).length > 60 && CC_OBSERVABLE_ONLY.test(u))
+      .forEach((u, i) =>
+        counterCaseAdvisories(u, `${name} forward read ${i + 1}`)
+      );
   }
   return [];
 }
@@ -1009,32 +1317,53 @@ function checkTakeCounterCase(body: string): Failure[] {
   const takeEnd = body.indexOf('# \u25b8 INNER GAME');
   if (takeStart === -1 || takeEnd === -1) return out;
   const takeBody = body.slice(takeStart, takeEnd);
-  const totalWords = takeBody.split(/\s+/).filter((w) => w.length > 0).length;
+  const totalWords = takeBody.split(/\s+/).filter(w => w.length > 0).length;
 
   // BOUNDARY IS LOAD-BEARING (fixed 2026-08-05, found by Cursor). Without it, "no real COUNTERparty
   // risk" matched "no real counter" and early-returned -- switching off the blocking presence gate and
   // every advisory below it. counterweight and counterfactual did the same. A blocker disabled by an
   // unrelated noun is the worst failure shape in this file.
-  const NONE_RE = /\bno (serious|real|strong) (argument|objection|counter)(?![-\w])/i;
+  const NONE_RE =
+    /\bno (serious|real|strong) (argument|objection|counter)(?![-\w])/i;
   if (NONE_RE.test(takeBody)) {
-    console.log('  \u26aa TAKE COUNTER-CASE: declared none ("no serious argument"). Legal and preferred when true \u2014 rate-tracked.');
+    console.log(
+      '  \u26aa TAKE COUNTER-CASE: declared none ("no serious argument"). Legal and preferred when true \u2014 rate-tracked.'
+    );
     return out;
   }
 
-  const counterHeaders = ['where this might be wrong', 'where this breaks', 'where this could be wrong',
-    'the counter-case', 'counter-case', 'what could go wrong', 'the case against', 'against it'];
+  const counterHeaders = [
+    'where this might be wrong',
+    'where this breaks',
+    'where this could be wrong',
+    'the counter-case',
+    'counter-case',
+    'what could go wrong',
+    'the case against',
+    'against it',
+  ];
   const takeLower = takeBody.toLowerCase();
   let counterStart = -1;
-  for (const h of counterHeaders) { const idx = takeLower.indexOf(h); if (idx !== -1) { counterStart = idx; break; } }
+  for (const h of counterHeaders) {
+    const idx = takeLower.indexOf(h);
+    if (idx !== -1) {
+      counterStart = idx;
+      break;
+    }
+  }
 
   if (counterStart === -1) {
-    out.push({ check: 'take-counter-case',
-      message: `\ud83d\udd34 No counter-case in The Take, and no declared "no serious argument against this one". One or the other is required \u2014 see system/Counter_Case_Standard.md.` });
+    out.push({
+      check: 'take-counter-case',
+      message: `\ud83d\udd34 No counter-case in The Take, and no declared "no serious argument against this one". One or the other is required \u2014 see system/Counter_Case_Standard.md.`,
+    });
     return out;
   }
 
   const counterBody = takeBody.slice(counterStart);
-  const counterWords = counterBody.split(/\s+/).filter((w) => w.length > 0).length;
+  const counterWords = counterBody
+    .split(/\s+/)
+    .filter(w => w.length > 0).length;
   const caseWords = totalWords - counterWords;
   const pct = ((counterWords / totalWords) * 100).toFixed(1);
 
@@ -1044,11 +1373,17 @@ function checkTakeCounterCase(body: string): Failure[] {
   // (c) PROPORTION \u2014 a CEILING, replacing the old floor. If the objection needs more room than
   // the argument, there is no read; there is a question.
   if (counterWords > caseWords) {
-    console.log(`  \ud83d\udfe1 [take-counter-case] Counter (${counterWords}w) runs LONGER than the case (${caseWords}w). The objection should never outweigh the argument.`);
-  } else if (counterWords / totalWords > 0.40) {
-    console.log(`  \ud83d\udfe1 [take-counter-case] Counter is ${pct}% of The Take (ceiling ~40%).`);
+    console.log(
+      `  \ud83d\udfe1 [take-counter-case] Counter (${counterWords}w) runs LONGER than the case (${caseWords}w). The objection should never outweigh the argument.`
+    );
+  } else if (counterWords / totalWords > 0.4) {
+    console.log(
+      `  \ud83d\udfe1 [take-counter-case] Counter is ${pct}% of The Take (ceiling ~40%).`
+    );
   }
-  console.log(`  \u2139 TAKE COUNTER-CASE: ${counterWords}w counter / ${caseWords}w case (${pct}%). Advisory pending a gate-replay sweep \u2014 thresholds are taste until measured.`);
+  console.log(
+    `  \u2139 TAKE COUNTER-CASE: ${counterWords}w counter / ${caseWords}w case (${pct}%). Advisory pending a gate-replay sweep \u2014 thresholds are taste until measured.`
+  );
   return out;
 }
 
@@ -1069,20 +1404,104 @@ function checkSignalNamedEntities(body: string): Failure[] {
   if (start === -1) return out;
   const rest = body.slice(start);
   const nextSection = rest.indexOf('\n---', 1);
-  const section = nextSection === -1 ? rest.slice(0, 3000) : rest.slice(0, nextSection);
+  const section =
+    nextSection === -1 ? rest.slice(0, 3000) : rest.slice(0, nextSection);
   // Split into individual Signal items by bold-lead pattern (**bold opener at start of line or - **)
-  const bulletMatches = section.split(/(?=^(?:- )?\*\*[A-Z])/m).filter(b => /^(?:- )?\*\*[A-Z]/.test(b));
+  const bulletMatches = section
+    .split(/(?=^(?:- )?\*\*[A-Z])/m)
+    .filter(b => /^(?:- )?\*\*[A-Z]/.test(b));
   for (let i = 0; i < bulletMatches.length; i++) {
     const bullet = bulletMatches[i];
     // Count distinct capitalized tickers (1-5 uppercase letters) and proper-noun company names
-    const stopwords = new Set(['the', 'signal', 'six', 'take', 'model', 'inner', 'game', 'discovery', 'wild', 'card', 'dashboard', 'markets', 'macro', 'companies', 'crypto', 'geopolitics', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december', 'essential', 'bloomberg', 'reuters', 'then', 'when', 'what', 'this', 'that', 'these', 'those', 'their', 'there', 'here', 'more', 'most', 'some', 'first', 'second', 'third', 'last', 'next', 'both', 'each', 'every', 'other', 'another', 'between', 'from', 'into', 'over', 'under', 'after', 'before', 'since', 'until', 'while', 'with', 'about', 'against', 'during']);
+    const stopwords = new Set([
+      'the',
+      'signal',
+      'six',
+      'take',
+      'model',
+      'inner',
+      'game',
+      'discovery',
+      'wild',
+      'card',
+      'dashboard',
+      'markets',
+      'macro',
+      'companies',
+      'crypto',
+      'geopolitics',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday',
+      'january',
+      'february',
+      'march',
+      'april',
+      'may',
+      'june',
+      'july',
+      'august',
+      'september',
+      'october',
+      'november',
+      'december',
+      'essential',
+      'bloomberg',
+      'reuters',
+      'then',
+      'when',
+      'what',
+      'this',
+      'that',
+      'these',
+      'those',
+      'their',
+      'there',
+      'here',
+      'more',
+      'most',
+      'some',
+      'first',
+      'second',
+      'third',
+      'last',
+      'next',
+      'both',
+      'each',
+      'every',
+      'other',
+      'another',
+      'between',
+      'from',
+      'into',
+      'over',
+      'under',
+      'after',
+      'before',
+      'since',
+      'until',
+      'while',
+      'with',
+      'about',
+      'against',
+      'during',
+    ]);
     // Match tickers (2-5 uppercase) and proper nouns (capitalized words not at sentence start after ". ")
     const tickerPattern = /\b[A-Z]{2,5}\b/g;
     const tickers = new Set<string>();
     let m;
     while ((m = tickerPattern.exec(bullet)) !== null) {
       const t = m[0];
-      if (!stopwords.has(t.toLowerCase()) && !/^(GDP|CPI|PCE|PPI|PMI|ETF|IPO|DPO|SEC|FDA|FCC|BOJ|ECB|IMF|NATO|FOMC|OPEC|NYSE|USDA|BTC|ETH|SOL|USD|EUR|GBP|JPY|CNY|API|CEO|CFO|COO|CTO|AI|US|UK|EU|G7|Q[1-4]|MT|MW|GW|TWh|ARPU|CLO|CRE|REIT|DeFi|LME|COMEX|DRC|EV|EVs|COVID|OECD|WTO|WHO|UN|ESG|PE|VC|YoY|MoM|QoQ|YTD|IPOs|SPR|CAGR|TAM|SAM|SOM|EBITDA|P\/E|EPS|ROE|ROA|ROIC|R&D|M&A|EM|DM|CMBS|ABS|MBS|SOFR|OTC|OIS|YCC|QE|QT|ISM|WTI|NYMEX|ICE|TTM|URA|SMR|NRC|DOE|EPA|FTC|CFPB|IRS|FDIC|OCC|DOJ|GAO|CBO|NSA|DEA|CBP|ICB|IEA|EBRD|ADB|AIIB|IMO|ICC|CAB|BIS|PBOC|RBI|RBA|BOE|SNB|RBNZ|BOC|CBR|SAMA|BRICS)$/.test(t)) {
+      if (
+        !stopwords.has(t.toLowerCase()) &&
+        !/^(GDP|CPI|PCE|PPI|PMI|ETF|IPO|DPO|SEC|FDA|FCC|BOJ|ECB|IMF|NATO|FOMC|OPEC|NYSE|USDA|BTC|ETH|SOL|USD|EUR|GBP|JPY|CNY|API|CEO|CFO|COO|CTO|AI|US|UK|EU|G7|Q[1-4]|MT|MW|GW|TWh|ARPU|CLO|CRE|REIT|DeFi|LME|COMEX|DRC|EV|EVs|COVID|OECD|WTO|WHO|UN|ESG|PE|VC|YoY|MoM|QoQ|YTD|IPOs|SPR|CAGR|TAM|SAM|SOM|EBITDA|P\/E|EPS|ROE|ROA|ROIC|R&D|M&A|EM|DM|CMBS|ABS|MBS|SOFR|OTC|OIS|YCC|QE|QT|ISM|WTI|NYMEX|ICE|TTM|URA|SMR|NRC|DOE|EPA|FTC|CFPB|IRS|FDIC|OCC|DOJ|GAO|CBO|NSA|DEA|CBP|ICB|IEA|EBRD|ADB|AIIB|IMO|ICC|CAB|BIS|PBOC|RBI|RBA|BOE|SNB|RBNZ|BOC|CBR|SAMA|BRICS)$/.test(
+          t
+        )
+      ) {
         tickers.add(t);
       }
     }
@@ -1099,7 +1518,11 @@ function checkSignalNamedEntities(body: string): Failure[] {
 // --- Deterministic ledger-truth check (June 17, 2026) ---
 // E-WRITER-LEDGER-INTEGRITY-01 🔴: Writer fabricated "no take-draft existed" on 06-12, 06-13, 06-17 (4th+).
 // Prose-integrity rules don't constrain the fabrication. This mechanical check catches it.
-function checkLedgerTruth(body: string, briefDir: string, absPath: string): Failure[] {
+function checkLedgerTruth(
+  body: string,
+  briefDir: string,
+  absPath: string
+): Failure[] {
   const out: Failure[] = [];
   const briefDateMatch = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
   if (!briefDateMatch) return out;
@@ -1132,7 +1555,11 @@ function checkLedgerTruth(body: string, briefDir: string, absPath: string): Fail
   return out;
 }
 
-function checkSignalStaleness(body: string, briefDir: string, absPathForSignal: string): Failure[] {
+function checkSignalStaleness(
+  body: string,
+  briefDir: string,
+  absPathForSignal: string
+): Failure[] {
   const out: Failure[] = [];
 
   // Find yesterday's published brief.
@@ -1142,10 +1569,13 @@ function checkSignalStaleness(body: string, briefDir: string, absPathForSignal: 
   if (!fs.existsSync(publishedDir)) return out; // Can't check without published briefs
 
   // Extract brief date from the file being validated
-  const briefDateMatch = path.basename(absPathForSignal).match(/(\d{4}-\d{2}-\d{2})/);
+  const briefDateMatch = path
+    .basename(absPathForSignal)
+    .match(/(\d{4}-\d{2}-\d{2})/);
   const briefDate = briefDateMatch ? briefDateMatch[1] : '';
 
-  const publishedFiles = fs.readdirSync(publishedDir)
+  const publishedFiles = fs
+    .readdirSync(publishedDir)
     .filter(f => f.endsWith('.md') && !f.includes('-light'))
     .sort()
     .reverse();
@@ -1173,20 +1603,27 @@ function checkSignalStaleness(body: string, briefDir: string, absPathForSignal: 
   const yesterdaySignalStart = yesterdayBody.indexOf('## The Signal');
   if (yesterdaySignalStart === -1) return out;
   // Signal ends at the next --- or # header
-  const yesterdaySignalEnd = yesterdayBody.indexOf('\n---', yesterdaySignalStart + 1);
-  const yesterdaySignal = yesterdayBody.slice(
-    yesterdaySignalStart,
-    yesterdaySignalEnd > -1 ? yesterdaySignalEnd : yesterdaySignalStart + 3000
-  ).toLowerCase();
+  const yesterdaySignalEnd = yesterdayBody.indexOf(
+    '\n---',
+    yesterdaySignalStart + 1
+  );
+  const yesterdaySignal = yesterdayBody
+    .slice(
+      yesterdaySignalStart,
+      yesterdaySignalEnd > -1 ? yesterdaySignalEnd : yesterdaySignalStart + 3000
+    )
+    .toLowerCase();
 
   // Extract Signal content from today
   const todaySignalStart = body.indexOf('## The Signal');
   if (todaySignalStart === -1) return out;
   const todaySignalEnd = body.indexOf('\n---', todaySignalStart + 1);
-  const todaySignal = body.slice(
-    todaySignalStart,
-    todaySignalEnd > -1 ? todaySignalEnd : todaySignalStart + 3000
-  ).toLowerCase();
+  const todaySignal = body
+    .slice(
+      todaySignalStart,
+      todaySignalEnd > -1 ? todaySignalEnd : todaySignalStart + 3000
+    )
+    .toLowerCase();
 
   // Extract bold leads from both
   const extractBolds = (text: string): string[] => {
@@ -1200,9 +1637,10 @@ function checkSignalStaleness(body: string, briefDir: string, absPathForSignal: 
   // Also check yesterday's full Six section for Signal topic overlap
   const yesterdaySixStart = yesterdayBody.indexOf('# ▸ THE SIX');
   const yesterdaySixEnd = yesterdayBody.indexOf('# ▸ THE TAKE');
-  const yesterdaySix = yesterdaySixStart > -1 && yesterdaySixEnd > -1
-    ? yesterdayBody.slice(yesterdaySixStart, yesterdaySixEnd).toLowerCase()
-    : '';
+  const yesterdaySix =
+    yesterdaySixStart > -1 && yesterdaySixEnd > -1
+      ? yesterdayBody.slice(yesterdaySixStart, yesterdaySixEnd).toLowerCase()
+      : '';
 
   // Check for shared 3-word sequences between today's Signal and yesterday's Signal
   for (const todayBold of todayBolds) {
@@ -1230,12 +1668,30 @@ function checkSignalStaleness(body: string, briefDir: string, absPathForSignal: 
   for (const todayBold of todayBolds) {
     const todayWords = todayBold.split(/\s+/);
     // Look for key topic words from today's Signal in yesterday's Six
-    const keyWords = todayWords.filter(w =>
-      w.length > 4 &&
-      !['which', 'their', 'about', 'these', 'those', 'would', 'could', 'should',
-        'after', 'before', 'between', 'under', 'through', 'global', 'percent',
-        'billion', 'million', 'market', 'trade',
-      ].includes(w)
+    const keyWords = todayWords.filter(
+      w =>
+        w.length > 4 &&
+        ![
+          'which',
+          'their',
+          'about',
+          'these',
+          'those',
+          'would',
+          'could',
+          'should',
+          'after',
+          'before',
+          'between',
+          'under',
+          'through',
+          'global',
+          'percent',
+          'billion',
+          'million',
+          'market',
+          'trade',
+        ].includes(w)
     );
     // If 6+ key topic words from a Signal bold also appear in yesterday's Six, flag
     // (threshold raised from 4 to 6 to reduce false positives from generic financial vocabulary)
@@ -1268,10 +1724,14 @@ function checkDashboardSentenceCeiling(body: string): Failure[] {
   for (let i = 0; i < subsections.length; i++) {
     const secStart = dashBody.indexOf(subsections[i]);
     if (secStart === -1) continue;
-    const secEnd = i < subsections.length - 1
-      ? dashBody.indexOf(subsections[i + 1], secStart)
-      : dashBody.length;
-    const secBody = dashBody.slice(secStart + subsections[i].length, secEnd > secStart ? secEnd : undefined);
+    const secEnd =
+      i < subsections.length - 1
+        ? dashBody.indexOf(subsections[i + 1], secStart)
+        : dashBody.length;
+    const secBody = dashBody.slice(
+      secStart + subsections[i].length,
+      secEnd > secStart ? secEnd : undefined
+    );
 
     // Extract italic commentary (content between * markers)
     const italicMatch = secBody.match(/\*([^*]+)\*/);
@@ -1280,9 +1740,11 @@ function checkDashboardSentenceCeiling(body: string): Failure[] {
 
     // Count sentences: protect abbreviations (D.R., U.S., decimals), then split on . ! ? followed by space or end
     const cleaned = commentary
-      .replace(/\b([A-Z])\.([A-Z])\./g, '$1$2_ABBR')  // D.R. → DR_ABBR, U.S. → US_ABBR
-      .replace(/\d+\.\d+/g, 'NUM_ABBR');               // 7,109.25 → NUM_ABBR
-    const sentences = cleaned.split(/[.!?]+(?:\s|$)/).filter(s => s.trim().length > 0);
+      .replace(/\b([A-Z])\.([A-Z])\./g, '$1$2_ABBR') // D.R. → DR_ABBR, U.S. → US_ABBR
+      .replace(/\d+\.\d+/g, 'NUM_ABBR'); // 7,109.25 → NUM_ABBR
+    const sentences = cleaned
+      .split(/[.!?]+(?:\s|$)/)
+      .filter(s => s.trim().length > 0);
     if (sentences.length > 2) {
       out.push({
         check: 'dashboard-sentence-ceiling',
@@ -1299,7 +1761,11 @@ function checkDashboardSentenceCeiling(body: string): Failure[] {
  * Wild Cards have a history of repeating from 1-3 days ago, so we check a wider window.
  * Requires access to the content/daily-updates/ directory.
  */
-function checkWildCardStaleness(body: string, briefDir: string, absPath: string): Failure[] {
+function checkWildCardStaleness(
+  body: string,
+  briefDir: string,
+  absPath: string
+): Failure[] {
   const out: Failure[] = [];
 
   // Find the Wild Card section
@@ -1324,7 +1790,8 @@ function checkWildCardStaleness(body: string, briefDir: string, absPath: string)
   const briefDateMatch = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
   const briefDate = briefDateMatch ? briefDateMatch[1] : '';
 
-  const publishedFiles = fs.readdirSync(publishedDir)
+  const publishedFiles = fs
+    .readdirSync(publishedDir)
     .filter(f => f.endsWith('.md') && !f.includes('-light'))
     .sort()
     .reverse();
@@ -1347,7 +1814,9 @@ function checkWildCardStaleness(body: string, briefDir: string, absPath: string)
   const recentWildCards: { filename: string; content: string }[] = [];
   for (const brief of recentBriefs) {
     const briefPath = path.join(publishedDir, brief.filename);
-    const briefContent = stripComments(fs.readFileSync(briefPath, 'utf8')).toLowerCase();
+    const briefContent = stripComments(
+      fs.readFileSync(briefPath, 'utf8')
+    ).toLowerCase();
     const wcStartInBrief = briefContent.indexOf('## the wild card');
     if (wcStartInBrief === -1) continue;
     const wcEndInBrief = briefContent.indexOf('## the signal', wcStartInBrief);
@@ -1355,28 +1824,85 @@ function checkWildCardStaleness(body: string, briefDir: string, absPath: string)
       wcStartInBrief,
       wcEndInBrief > -1 ? wcEndInBrief : wcStartInBrief + 3000
     );
-    recentWildCards.push({ filename: brief.filename, content: wcSectionContent });
+    recentWildCards.push({
+      filename: brief.filename,
+      content: wcSectionContent,
+    });
   }
 
   // For each today's Wild Card bold, extract significant keywords and check against recent briefs
   const commonWords = new Set([
-    'which', 'their', 'about', 'these', 'those', 'would', 'could', 'should',
-    'after', 'before', 'between', 'under', 'through', 'global', 'percent',
-    'billion', 'million', 'market', 'scientists', 'researchers', 'system',
-    'from', 'with', 'that', 'this', 'have', 'been', 'more', 'some', 'other',
-    'being', 'most', 'what', 'than', 'only', 'just', 'also', 'new',
-    'energy', 'using', 'device', 'devices', 'without', 'material', 'materials',
-    'allows', 'first', 'single', 'found', 'discovery', 'finding', 'published',
-    'entire', 'across', 'breaking', 'making', 'including', 'currently',
-    'control', 'process', 'direct', 'directly', 'production', 'produce',
+    'which',
+    'their',
+    'about',
+    'these',
+    'those',
+    'would',
+    'could',
+    'should',
+    'after',
+    'before',
+    'between',
+    'under',
+    'through',
+    'global',
+    'percent',
+    'billion',
+    'million',
+    'market',
+    'scientists',
+    'researchers',
+    'system',
+    'from',
+    'with',
+    'that',
+    'this',
+    'have',
+    'been',
+    'more',
+    'some',
+    'other',
+    'being',
+    'most',
+    'what',
+    'than',
+    'only',
+    'just',
+    'also',
+    'new',
+    'energy',
+    'using',
+    'device',
+    'devices',
+    'without',
+    'material',
+    'materials',
+    'allows',
+    'first',
+    'single',
+    'found',
+    'discovery',
+    'finding',
+    'published',
+    'entire',
+    'across',
+    'breaking',
+    'making',
+    'including',
+    'currently',
+    'control',
+    'process',
+    'direct',
+    'directly',
+    'production',
+    'produce',
   ]);
 
   for (const todayBold of todayBolds) {
     const todayWords = todayBold.split(/\s+/);
     // Extract significant keywords: words >5 chars, not in common list
-    const significantKeywords = todayWords.filter(w =>
-      w.length > 5 &&
-      !commonWords.has(w)
+    const significantKeywords = todayWords.filter(
+      w => w.length > 5 && !commonWords.has(w)
     );
 
     if (significantKeywords.length === 0) continue;
@@ -1390,9 +1916,8 @@ function checkWildCardStaleness(body: string, briefDir: string, absPath: string)
       // If 6+ significant keywords match, it's likely a repeat
       // (raised from 5 to 6 to reduce false positives from generic science vocabulary)
       if (matchCount >= 6) {
-        const truncated = todayBold.length > 80
-          ? todayBold.slice(0, 80) + '...'
-          : todayBold;
+        const truncated =
+          todayBold.length > 80 ? todayBold.slice(0, 80) + '...' : todayBold;
         out.push({
           check: 'wild-card-staleness',
           message: `Wild Card item may be a repeat from recent brief (${recentWc.filename}). ${matchCount} key words from Wild Card lead "${truncated}" found in that brief's Wild Card section. Wild Card items must not repeat within a 3-day window.`,
@@ -1406,16 +1931,29 @@ function checkWildCardStaleness(body: string, briefDir: string, absPath: string)
   // The JWST 3I/ATLAS methane item ran 06-06, 06-11, and reached v1 on 06-13
   // labeled BREAKING. Bold-lead matching didn't catch it because the lead text
   // differed across days. Entity matching catches the underlying subject.)
-  const entityPattern = /\b(?:[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)+|[A-Z]{2,}[\w-]*|\d[A-Z]\/[A-Z]+)\b/g;
+  const entityPattern =
+    /\b(?:[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)+|[A-Z]{2,}[\w-]*|\d[A-Z]\/[A-Z]+)\b/g;
   const extractEntities = (text: string): Set<string> => {
     const raw = text.match(entityPattern) || [];
     const genericEntities = new Set([
-      'the', 'and', 'for', 'new', 'its', 'has', 'who', 'how',
-      'wild card', 'breaking', 'signal', 'discovery',
+      'the',
+      'and',
+      'for',
+      'new',
+      'its',
+      'has',
+      'who',
+      'how',
+      'wild card',
+      'breaking',
+      'signal',
+      'discovery',
     ]);
-    return new Set(raw
-      .filter(m => m.length >= 3 && !genericEntities.has(m.toLowerCase()))
-      .map(m => m.toLowerCase()));
+    return new Set(
+      raw
+        .filter(m => m.length >= 3 && !genericEntities.has(m.toLowerCase()))
+        .map(m => m.toLowerCase())
+    );
   };
 
   // Use the original (non-lowercased) Wild Card body for entity extraction
@@ -1424,17 +1962,24 @@ function checkWildCardStaleness(body: string, briefDir: string, absPath: string)
 
   for (const recentWC of recentWildCards) {
     // Read the original (non-lowercased) content for entity extraction
-    const briefPath2 = path.join(publishedDir, recentBriefs.find(b =>
-      recentWC.filename === b.filename)?.filename ?? '');
+    const briefPath2 = path.join(
+      publishedDir,
+      recentBriefs.find(b => recentWC.filename === b.filename)?.filename ?? ''
+    );
     let origRecentWc = recentWC.content; // fallback to lowercased
     try {
       const origContent = stripComments(fs.readFileSync(briefPath2, 'utf8'));
       const origWcStart = origContent.indexOf('## The Wild Card');
-      const origWcEnd = origContent.indexOf('## The Signal', origWcStart > -1 ? origWcStart : 0);
+      const origWcEnd = origContent.indexOf(
+        '## The Signal',
+        origWcStart > -1 ? origWcStart : 0
+      );
       if (origWcStart > -1 && origWcEnd > origWcStart) {
         origRecentWc = origContent.slice(origWcStart, origWcEnd);
       }
-    } catch { /* use fallback */ }
+    } catch {
+      /* use fallback */
+    }
 
     const recentEntities = extractEntities(origRecentWc);
     const overlap = [...todayEntities].filter(e => recentEntities.has(e));
@@ -1489,9 +2034,9 @@ const NAMED_SECTION_BUDGETS: Record<string, number> = {
   // The Signal and The Wild Card moved OUT of this table: they are Six subsections, now measured
   // per-unit by checkSixSectionWordBudget where the Signal ceiling lives (220/250 when this note was
   // written; retuned to 300/340 on 2026-08-04 — see SIGNAL_UNIT/SIGNAL_HARD, which are canonical).
-  '▸ THE TAKE':     640,  // July median 577
-  '▸ THE MODEL':    480,  // July median 414   (was 780)
-  '▸ DISCOVERY':    540,  // July median 478
+  '▸ THE TAKE': 640, // July median 577
+  '▸ THE MODEL': 480, // July median 414   (was 780)
+  '▸ DISCOVERY': 540, // July median 478
 };
 
 function checkNamedSectionWordBudget(body: string): Failure[] {
@@ -1505,11 +2050,15 @@ function checkNamedSectionWordBudget(body: string): Failure[] {
     const text = next === -1 ? rest : rest.slice(0, next);
     const words = text.split(/\s+/).filter(Boolean).length;
     if (words > Math.round(budget * 1.15)) {
-      out.push({ check: 'named-section-word-budget',
-        message: `OVER: ${name} is ${words} words against a ${budget}-word soft ceiling. Compress.` });
+      out.push({
+        check: 'named-section-word-budget',
+        message: `OVER: ${name} is ${words} words against a ${budget}-word soft ceiling. Compress.`,
+      });
     } else if (words > budget) {
-      out.push({ check: 'named-section-word-budget',
-        message: `NEAR: ${name} is ${words} words against a ${budget}-word soft ceiling.` });
+      out.push({
+        check: 'named-section-word-budget',
+        message: `NEAR: ${name} is ${words} words against a ${budget}-word soft ceiling.`,
+      });
     }
   }
   return out;
@@ -1525,9 +2074,19 @@ function checkSixSectionWordBudget(body: string): Failure[] {
   // 2026-08-03, which is why SIGNAL_UNIT/SIGNAL_HARD below were unreachable dead code: the
   // isSignal branch could never fire because sectionName could never be 'The Signal'. Jackson
   // caught the same omission once already (the first length fix covered four of six).
-  const SIX_SECTIONS = ['Markets & Macro', 'Companies & Crypto', 'AI & Tech', 'Geopolitics', 'The Wild Card', 'The Signal'];
+  const SIX_SECTIONS = [
+    'Markets & Macro',
+    'Companies & Crypto',
+    'AI & Tech',
+    'Geopolitics',
+    'The Wild Card',
+    'The Signal',
+  ];
   // Jackson, 2026-08-03: target ~160/bullet, hard ceiling 180. The Signal runs a little longer.
-  const UNIT = 160, UNIT_HARD = 180, DEPTH = 350, DEPTH_HARD = 400;
+  const UNIT = 160,
+    UNIT_HARD = 180,
+    DEPTH = 350,
+    DEPTH_HARD = 400;
   // Signal, retuned 2026-08-04 (Jackson). The Signal runs TWO IDEAS, each a bold one-line header
   // plus one body block. On 08-04 the bodies ran 393 and 426 words -- 2.5x a Six bullet, ~2.7 min of
   // audio on a single forming trend, and it dragged. July ran ~330/idea. 300/340 spends exactly the
@@ -1535,7 +2094,8 @@ function checkSixSectionWordBudget(body: string): Failure[] {
   // Craft_Standard's compression order; going below ~270 would start on the second explanation, and
   // in a Signal idea the second explanation IS the mechanism -- the thing that makes a forming trend
   // legible and separates a Signal from an Overnight item. That is the line where it stops being free.
-  const SIGNAL_UNIT = 300, SIGNAL_HARD = 340;
+  const SIGNAL_UNIT = 300,
+    SIGNAL_HARD = 340;
 
   for (const sectionName of SIX_SECTIONS) {
     const m = sixBody.match(new RegExp(`## ${sectionName}\\b`));
@@ -1544,26 +2104,35 @@ function checkSixSectionWordBudget(body: string): Failure[] {
     const nextHeader = rest.search(/\n#{1,2} /);
     const text = nextHeader === -1 ? rest : rest.slice(0, nextHeader);
 
-    const units = text.split(/\n\s*\n/)
+    const units = text
+      .split(/\n\s*\n/)
       .map(u => u.trim())
       .filter(u => u.length > 0 && !/^#{1,6} /.test(u) && !/^<!--/.test(u));
     if (units.length === 0) continue;
 
-    let total = 0, depthUnits = 0;
+    let total = 0,
+      depthUnits = 0;
     units.forEach((u, i) => {
       const words = u.split(/\s+/).filter(Boolean).length;
       total += words;
-      const depth = u.includes('<!-- DEPTH-TREATMENT -->') || u.includes('\u200Bdepth_treatment\u200B') || u.includes('INVESTMENT TARGET');
+      const depth =
+        u.includes('<!-- DEPTH-TREATMENT -->') ||
+        u.includes('\u200Bdepth_treatment\u200B') ||
+        u.includes('INVESTMENT TARGET');
       const isSignal = /Signal/i.test(sectionName);
       const ceil = depth ? DEPTH : isSignal ? SIGNAL_UNIT : UNIT;
       const hard = depth ? DEPTH_HARD : isSignal ? SIGNAL_HARD : UNIT_HARD;
       if (depth) depthUnits++;
       if (words > hard) {
-        out.push({ check: 'six-section-word-budget',
-          message: `OVER: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (hard ceiling ${hard}). Compress or split.${depth ? ' (DEPTH-TREATMENT)' : ''}` });
+        out.push({
+          check: 'six-section-word-budget',
+          message: `OVER: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (hard ceiling ${hard}). Compress or split.${depth ? ' (DEPTH-TREATMENT)' : ''}`,
+        });
       } else if (words > ceil) {
-        out.push({ check: 'six-section-word-budget',
-          message: `OVER: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (soft ceiling ${ceil}). Compress.${depth ? ' (DEPTH-TREATMENT)' : ''}` });
+        out.push({
+          check: 'six-section-word-budget',
+          message: `OVER: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (soft ceiling ${ceil}). Compress.${depth ? ' (DEPTH-TREATMENT)' : ''}`,
+        });
       }
     });
 
@@ -1572,17 +2141,24 @@ function checkSixSectionWordBudget(body: string): Failure[] {
     // Otherwise writing more units raises your own budget, which is the failure mode being fixed.
     // The section budget must use THIS section's unit ceiling, not the default: The Signal runs
     // to SIGNAL_HARD/unit (340 as of 2026-08-04), so 3 x UNIT_HARD would mis-budget a compliant Signal.
-    const sectionUnitHard = /Signal/i.test(sectionName) ? SIGNAL_HARD : UNIT_HARD;
+    const sectionUnitHard = /Signal/i.test(sectionName)
+      ? SIGNAL_HARD
+      : UNIT_HARD;
     // The Signal is 2 IDEAS, not 3 units, so the generic 3-unit budget would never bind on it
     // (3 x 340 = 1,020 against a section that should run ~665). Its two bold one-line headers are
     // real blocks but are not ideas, hence the small headline allowance.
     const isSignalSection = /Signal/i.test(sectionName);
     const allowedUnits = isSignalSection ? 2 : 3;
     const headlineAllowance = isSignalSection ? 80 : 0;
-    const budget = allowedUnits * sectionUnitHard + headlineAllowance + Math.min(depthUnits, 2) * (DEPTH - sectionUnitHard);
+    const budget =
+      allowedUnits * sectionUnitHard +
+      headlineAllowance +
+      Math.min(depthUnits, 2) * (DEPTH - sectionUnitHard);
     if (total > budget) {
-      out.push({ check: 'six-section-word-budget',
-        message: `OVER: ${sectionName} totals ${total} words across ${units.length} unit(s) against a ${budget}-word section budget (${allowedUnits} x ${sectionUnitHard}${depthUnits ? ` + ${Math.min(depthUnits, 2)} depth-treatment` : ''}). ${isSignalSection ? 'The Signal runs 2 IDEAS; compress them, do not add a third.' : 'The Six runs 2-3 units per section; compress or cut a unit.'}` });
+      out.push({
+        check: 'six-section-word-budget',
+        message: `OVER: ${sectionName} totals ${total} words across ${units.length} unit(s) against a ${budget}-word section budget (${allowedUnits} x ${sectionUnitHard}${depthUnits ? ` + ${Math.min(depthUnits, 2)} depth-treatment` : ''}). ${isSignalSection ? 'The Signal runs 2 IDEAS; compress them, do not add a third.' : 'The Six runs 2-3 units per section; compress or cut a unit.'}`,
+      });
     }
   }
   return out;
@@ -1610,7 +2186,8 @@ function checkEditorialPlaceholders(body: string): Failure[] {
   const out: Failure[] = [];
 
   // Hard fail: known editorial instruction patterns
-  const hardPatterns = /\[([A-Z][A-Z\s]*(NEEDED|NOTE|TODO|REPLACEMENT|INSERT))\]/gi;
+  const hardPatterns =
+    /\[([A-Z][A-Z\s]*(NEEDED|NOTE|TODO|REPLACEMENT|INSERT))\]/gi;
   let match: RegExpExecArray | null;
   while ((match = hardPatterns.exec(body)) !== null) {
     out.push({
@@ -1622,14 +2199,74 @@ function checkEditorialPlaceholders(body: string): Failure[] {
   // Soft flag: any bracket-enclosed text that is 3+ consecutive uppercase letters
   // (not on the acronym whitelist). This catches unknown instruction patterns.
   const acronymWhitelist = new Set([
-    'AI', 'US', 'UK', 'EU', 'GDP', 'CPI', 'ETF', 'IPO', 'CEO', 'CFO',
-    'FOMC', 'PBOC', 'OPEC', 'NATO', 'GCC', 'UAE', 'IMF', 'BIS', 'FSB',
-    'SEC', 'DOJ', 'FDA', 'EPA', 'TSMC', 'ASML', 'DRAM', 'IBIT', 'MOVE',
-    'BTC', 'ETH', 'SOL', 'DXY', 'WTI', 'YTD', 'MoM', 'YoY', 'QoQ',
-    'TIPS', 'PCE', 'PPI', 'NFP', 'BLS', 'BEA', 'CBOE', 'ICE', 'CME',
-    'TLDR', 'DVN', 'TVL', 'CCIP', 'OFT', 'SRT', 'CDS', 'TAM', 'JEPA',
-    'GGUF', 'RWA', 'EUV', 'NYT', 'CDC', 'ABA', 'CFR', 'CSIS', 'RAND',
-    'WASDE', 'USDA', 'CENTCOM', 'ICBM',
+    'AI',
+    'US',
+    'UK',
+    'EU',
+    'GDP',
+    'CPI',
+    'ETF',
+    'IPO',
+    'CEO',
+    'CFO',
+    'FOMC',
+    'PBOC',
+    'OPEC',
+    'NATO',
+    'GCC',
+    'UAE',
+    'IMF',
+    'BIS',
+    'FSB',
+    'SEC',
+    'DOJ',
+    'FDA',
+    'EPA',
+    'TSMC',
+    'ASML',
+    'DRAM',
+    'IBIT',
+    'MOVE',
+    'BTC',
+    'ETH',
+    'SOL',
+    'DXY',
+    'WTI',
+    'YTD',
+    'MoM',
+    'YoY',
+    'QoQ',
+    'TIPS',
+    'PCE',
+    'PPI',
+    'NFP',
+    'BLS',
+    'BEA',
+    'CBOE',
+    'ICE',
+    'CME',
+    'TLDR',
+    'DVN',
+    'TVL',
+    'CCIP',
+    'OFT',
+    'SRT',
+    'CDS',
+    'TAM',
+    'JEPA',
+    'GGUF',
+    'RWA',
+    'EUV',
+    'NYT',
+    'CDC',
+    'ABA',
+    'CFR',
+    'CSIS',
+    'RAND',
+    'WASDE',
+    'USDA',
+    'CENTCOM',
+    'ICBM',
   ]);
   const broadPattern = /\[([A-Z]{3,}[A-Z\s]*)\]/g;
   while ((match = broadPattern.exec(body)) !== null) {
@@ -1660,14 +2297,20 @@ function checkAdjacentSentenceDedup(body: string): Failure[] {
     const text = section.replace(/\n/g, ' ');
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
     for (let i = 0; i < sentences.length - 1; i++) {
-      const a = sentences[i].toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
-      const b = sentences[i + 1].toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+      const a = sentences[i]
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .trim();
+      const b = sentences[i + 1]
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .trim();
       // Check if one is substring of other
       if (a.length > 20 && b.length > 20) {
         if (b.includes(a) || a.includes(b)) {
           out.push({
             check: 'adjacent-sentence-dedup',
-            message: `Adjacent duplicate in ${sectionName}: "${sentences[i].trim().substring(0, 60)}..." is contained within the next sentence. Likely merge artifact.`
+            message: `Adjacent duplicate in ${sectionName}: "${sentences[i].trim().substring(0, 60)}..." is contained within the next sentence. Likely merge artifact.`,
           });
         }
         // Check 80% word overlap.
@@ -1681,13 +2324,56 @@ function checkAdjacentSentenceDedup(body: string): Failure[] {
         // Fix: compare UNIQUE CONTENT words only. The substring check above still catches the
         // real merge artifacts this gate exists for.
         const STOPWORDS = new Set([
-          'the', 'a', 'an', 'is', 'it', 'of', 'to', 'and', 'in', 'that', 'not', 'on', 'for',
-          'as', 'at', 'by', 'be', 'are', 'was', 'were', 'this', 'its', 'with', 'or', 'but',
-          'from', 'so', 'than', 'then', 'only', 'one', 'you', 'your', 'they', 'their', 'has',
-          'have', 'had', 'what', 'which', 'when', 'where', 'who', 'will', 'would', 'can',
+          'the',
+          'a',
+          'an',
+          'is',
+          'it',
+          'of',
+          'to',
+          'and',
+          'in',
+          'that',
+          'not',
+          'on',
+          'for',
+          'as',
+          'at',
+          'by',
+          'be',
+          'are',
+          'was',
+          'were',
+          'this',
+          'its',
+          'with',
+          'or',
+          'but',
+          'from',
+          'so',
+          'than',
+          'then',
+          'only',
+          'one',
+          'you',
+          'your',
+          'they',
+          'their',
+          'has',
+          'have',
+          'had',
+          'what',
+          'which',
+          'when',
+          'where',
+          'who',
+          'will',
+          'would',
+          'can',
         ]);
-        const contentWords = (s: string) =>
-          [...new Set(s.split(/\s+/).filter((w) => w && !STOPWORDS.has(w)))];
+        const contentWords = (s: string) => [
+          ...new Set(s.split(/\s+/).filter(w => w && !STOPWORDS.has(w))),
+        ];
         const wordsA = contentWords(a);
         const wordsB = contentWords(b);
         const shorter = Math.min(wordsA.length, wordsB.length);
@@ -1697,7 +2383,7 @@ function checkAdjacentSentenceDedup(body: string): Failure[] {
           if (overlap >= 0.8) {
             out.push({
               check: 'adjacent-sentence-dedup',
-              message: `Adjacent duplicate in ${sectionName}: ${Math.round(overlap * 100)}% word overlap between consecutive sentences. First: "${sentences[i].trim().substring(0, 50)}..."`
+              message: `Adjacent duplicate in ${sectionName}: ${Math.round(overlap * 100)}% word overlap between consecutive sentences. First: "${sentences[i].trim().substring(0, 50)}..."`,
             });
           }
         }
@@ -1710,7 +2396,11 @@ function checkAdjacentSentenceDedup(body: string): Failure[] {
 // --- Signal pair label presence-check (July 1, 2026) ---
 // E-SIGNAL-TOPIC-FAMILIARITY-01 🟡 Day 2. If the QG log's SIGNAL PAIR line shows
 // a consensus/INVALID Signal, assert the published brief contains a `Context signal:` label.
-function checkSignalPairLabel(body: string, briefDir: string, absPath: string): Failure[] {
+function checkSignalPairLabel(
+  body: string,
+  briefDir: string,
+  absPath: string
+): Failure[] {
   const out: Failure[] = [];
   const briefDateMatch = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
   if (!briefDateMatch) return out;
@@ -1719,12 +2409,17 @@ function checkSignalPairLabel(body: string, briefDir: string, absPath: string): 
   if (!fs.existsSync(qgLog)) return out;
   const qgContent = fs.readFileSync(qgLog, 'utf8');
   // Check if any Signal was marked INVALID or consensus in the QG log
-  const pairLine = qgContent.match(/SIGNAL PAIR:.*?(INVALID|consensus|well-covered|label)/i);
+  const pairLine = qgContent.match(
+    /SIGNAL PAIR:.*?(INVALID|consensus|well-covered|label)/i
+  );
   if (pairLine && /INVALID|consensus|well-covered/i.test(pairLine[0])) {
     // A consensus Signal exists — check if the brief has the Context signal: label
     const signalStart = body.indexOf('## The Signal');
     if (signalStart !== -1) {
-      const signalSection = body.slice(signalStart, body.indexOf('\n---', signalStart + 1));
+      const signalSection = body.slice(
+        signalStart,
+        body.indexOf('\n---', signalStart + 1)
+      );
       if (!signalSection.includes('Context signal:')) {
         out.push({
           check: 'signal-pair-unlabeled-consensus',
@@ -1742,11 +2437,16 @@ function checkSignalPairLabel(body: string, briefDir: string, absPath: string): 
     });
   }
   // Flag if a desk-quote hit was found but Signal lacks Context label
-  const deskHitMatch = qgContent.match(/SIGNAL DESK-QUOTE CHECK:.*?auto-INVALID/i);
+  const deskHitMatch = qgContent.match(
+    /SIGNAL DESK-QUOTE CHECK:.*?auto-INVALID/i
+  );
   if (deskHitMatch) {
     const signalStart = body.indexOf('## The Signal');
     if (signalStart !== -1) {
-      const signalSection = body.slice(signalStart, body.indexOf('\n---', signalStart + 1));
+      const signalSection = body.slice(
+        signalStart,
+        body.indexOf('\n---', signalStart + 1)
+      );
       if (!signalSection.includes('Context signal:')) {
         out.push({
           check: 'signal-desk-quote-hit-unlabeled',
@@ -1756,7 +2456,11 @@ function checkSignalPairLabel(body: string, briefDir: string, absPath: string): 
     }
   }
   // Flag prohibited qualifier verdict states (July 3, 2026)
-  if (/VALID\s*\(borderline\)|VALID\s*\(partial\)|VALID\s*\(weak\)/i.test(qgContent)) {
+  if (
+    /VALID\s*\(borderline\)|VALID\s*\(partial\)|VALID\s*\(weak\)/i.test(
+      qgContent
+    )
+  ) {
     out.push({
       check: 'signal-prohibited-verdict-qualifier',
       message: `🔴 FAIL: QG log contains a prohibited verdict qualifier (borderline/partial/weak). Warrant states must be exactly VALID or INVALID — qualifiers are prohibited per the ENUMERATED VERDICTS rule (July 3).`,
@@ -1809,10 +2513,18 @@ function checkQGInnerGameAudit(briefDir: string, absPath: string): Failure[] {
   // token is one of the 8 enumerated taxonomy tokens verbatim, (3) domain is not in the
   // trailing 7 entries from the ledger file, (4) ledger has a row for BRIEF_DATE.
   const DOMAIN_TAXONOMY = [
-    'decision-timing', 'attention-perception', 'body-somatic', 'social-relational',
-    'creative-process', 'emotional-regulation', 'identity-narrative', 'environment-design',
+    'decision-timing',
+    'attention-perception',
+    'body-somatic',
+    'social-relational',
+    'creative-process',
+    'emotional-regulation',
+    'identity-narrative',
+    'environment-design',
   ];
-  const domainLineMatch = qgContent.match(/RECOMMENDATION DOMAIN:\s*today='([^']+)'/);
+  const domainLineMatch = qgContent.match(
+    /RECOMMENDATION DOMAIN:\s*today='([^']+)'/
+  );
   if (!domainLineMatch) {
     out.push({
       check: 'qg-inner-game-recommendation-domain-missing',
@@ -1828,7 +2540,12 @@ function checkQGInnerGameAudit(briefDir: string, absPath: string): Failure[] {
       });
     }
     // (ii) Check trailing-7 in the ledger file
-    const igGenPath = path.resolve(briefDir, '..', 'system', 'Inner_Game_Generator.md');
+    const igGenPath = path.resolve(
+      briefDir,
+      '..',
+      'system',
+      'Inner_Game_Generator.md'
+    );
     if (fs.existsSync(igGenPath)) {
       const igContent = fs.readFileSync(igGenPath, 'utf8');
       // Parse ledger rows: | YYYY-MM-DD | domain |
@@ -1840,8 +2557,15 @@ function checkQGInnerGameAudit(briefDir: string, absPath: string): Failure[] {
         const ledgerSection = igContent.slice(ledgerStart);
         let m: RegExpExecArray | null;
         while ((m = ledgerRe.exec(ledgerSection)) !== null) {
-          const rowDomain = m[2].trim().replace(/\(.*\)/, '').trim(); // strip footnotes
-          if (rowDomain && rowDomain !== '(no brief)' && rowDomain !== 'Domain') {
+          const rowDomain = m[2]
+            .trim()
+            .replace(/\(.*\)/, '')
+            .trim(); // strip footnotes
+          if (
+            rowDomain &&
+            rowDomain !== '(no brief)' &&
+            rowDomain !== 'Domain'
+          ) {
             ledgerRows.push({ date: m[1], domain: rowDomain });
           }
         }
@@ -1849,7 +2573,10 @@ function checkQGInnerGameAudit(briefDir: string, absPath: string): Failure[] {
       // Check trailing-7 repeat (exclude today's own row — we want the 7 entries BEFORE today)
       const trailing7 = ledgerRows.filter(r => r.date !== bd).slice(-7);
       const trailing7Domains = trailing7.map(r => r.domain);
-      if (DOMAIN_TAXONOMY.includes(todayDomain) && trailing7Domains.includes(todayDomain)) {
+      if (
+        DOMAIN_TAXONOMY.includes(todayDomain) &&
+        trailing7Domains.includes(todayDomain)
+      ) {
         const repeatRow = trailing7.find(r => r.domain === todayDomain);
         out.push({
           check: 'qg-inner-game-recommendation-domain-trailing7-repeat',
@@ -1890,22 +2617,34 @@ function checkQGInnerGameAudit(briefDir: string, absPath: string): Failure[] {
 // brief back to the pre-drafts, logged none of it, and the brief scored MUST-READ: the worst
 // generation failure in tracking history was invisible in every artifact except a side-by-side
 // human read. On 07-09 the bypass was not repaired at all — it PUBLISHED. Silence is the bug.
-function checkPredraftBypassDisclosure(briefDir: string, absPath: string): Failure[] {
+function checkPredraftBypassDisclosure(
+  briefDir: string,
+  absPath: string
+): Failure[] {
   const out: Failure[] = [];
   const bd = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/)?.[1];
   if (!bd) return out;
 
   const v1 = ['-v1.md', '-v1-pre-quality-gate.md']
-    .map((s) => path.join(briefDir, `${bd}${s}`))
-    .find((p) => fs.existsSync(p));
+    .map(s => path.join(briefDir, `${bd}${s}`))
+    .find(p => fs.existsSync(p));
   if (!v1) return out; // no v1 on disk (published-file validation) → nothing to compare
 
-  const gate = path.join(process.cwd(), 'scripts', 'predraft-consumption-gate.ts');
+  const gate = path.join(
+    process.cwd(),
+    'scripts',
+    'predraft-consumption-gate.ts'
+  );
   if (!fs.existsSync(gate)) return out;
-  const res = spawnSync('node', ['--experimental-strip-types', gate, bd, '--advisory'],
-    { encoding: 'utf8', timeout: 60000 });
+  const res = spawnSync(
+    'node',
+    ['--experimental-strip-types', gate, bd, '--advisory'],
+    { encoding: 'utf8', timeout: 60000 }
+  );
   const stdout = res.stdout ?? '';
-  const bypassed = [...stdout.matchAll(/\[A\] (\w[\w&]*): PRE-DRAFT BYPASSED/g)].map((m) => m[1]);
+  const bypassed = [
+    ...stdout.matchAll(/\[A\] (\w[\w&]*): PRE-DRAFT BYPASSED/g),
+  ].map(m => m[1]);
   if (bypassed.length === 0) return out;
 
   // Disclosure may live in any artifact the humans and downstream gates actually read.
@@ -1916,13 +2655,17 @@ function checkPredraftBypassDisclosure(briefDir: string, absPath: string): Failu
     v1,
   ];
   const disclosed = disclosureFiles
-    .filter((f) => fs.existsSync(f))
-    .map((f) => fs.readFileSync(f, 'utf8'))
+    .filter(f => fs.existsSync(f))
+    .map(f => fs.readFileSync(f, 'utf8'))
     .join('\n');
 
   const undisclosed = bypassed.filter(
-    (c) => !new RegExp(`PREDRAFT-(BYPASS|OVERRIDE)[^\\n]*${c!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(disclosed)
-      && !new RegExp(`PREDRAFT-(BYPASS|OVERRIDE)`, 'i').test(disclosed),
+    c =>
+      !new RegExp(
+        `PREDRAFT-(BYPASS|OVERRIDE)[^\\n]*${c!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+        'i'
+      ).test(disclosed) &&
+      !new RegExp(`PREDRAFT-(BYPASS|OVERRIDE)`, 'i').test(disclosed)
   );
   if (undisclosed.length) {
     out.push({
@@ -1949,7 +2692,8 @@ function checkConvergenceClass(briefDir: string, absPath: string): Failure[] {
   const qgContent = fs.readFileSync(qgLog, 'utf8');
 
   // 1. Legacy drift: the retired body-threading gate executed.
-  const hasSynthesis = qgContent.includes('SYNTHESIS DESIGNATION:') &&
+  const hasSynthesis =
+    qgContent.includes('SYNTHESIS DESIGNATION:') &&
     !qgContent.includes('not triggered');
   if (hasSynthesis) {
     out.push({
@@ -1962,16 +2706,27 @@ function checkConvergenceClass(briefDir: string, absPath: string): Failure[] {
   const payoffLine = qgContent.match(/PAYOFF CLASS:\s*([^\n]*)/i);
   if (payoffLine) {
     const line = payoffLine[1];
-    const cls = /MECHANISM/i.test(line) ? 'MECHANISM' : /TENSION/i.test(line) ? 'TENSION'
-      : /THEME/i.test(line) ? 'THEME' : /INVENTORY/i.test(line) ? 'INVENTORY' : 'UNKNOWN';
-    const noRewrite = /action\s*=\s*\[?\s*(none-needed|already payoff-grade)/i.test(line);
+    const cls = /MECHANISM/i.test(line)
+      ? 'MECHANISM'
+      : /TENSION/i.test(line)
+        ? 'TENSION'
+        : /THEME/i.test(line)
+          ? 'THEME'
+          : /INVENTORY/i.test(line)
+            ? 'INVENTORY'
+            : 'UNKNOWN';
+    const noRewrite =
+      /action\s*=\s*\[?\s*(none-needed|already payoff-grade)/i.test(line);
     if ((cls === 'THEME' || cls === 'INVENTORY') && noRewrite) {
       out.push({
         check: 'payoff-theme-shipped-unrewritten',
         message: `🔴 FAIL: QG log classifies the intro payoff as ${cls} with action=none-needed/already-payoff-grade. PASS 1g step 4 REQUIRES the rewrite: a THEME label or headline inventory may not stand as the intro's conclusion — rewrite to the sweep's MECHANISM/TENSION candidate or to the parallel-tracks lead (strongest story + watch).`,
       });
     }
-    if ((cls === 'MECHANISM' || cls === 'TENSION') && !/PAYOFF EXECUTION:/i.test(qgContent)) {
+    if (
+      (cls === 'MECHANISM' || cls === 'TENSION') &&
+      !/PAYOFF EXECUTION:/i.test(qgContent)
+    ) {
       out.push({
         check: 'payoff-identified-not-executed',
         message: `🔴 FAIL: QG log has PAYOFF CLASS: ${cls} but no 'PAYOFF EXECUTION:' line — the payoff was identified but the execution checkpoint (classify → rewrite-if-owed → verify watch → log) did not run. Equivalent to not running the gate.`,
@@ -1987,11 +2742,16 @@ function checkConvergenceClass(briefDir: string, absPath: string): Failure[] {
 // sustainable floor for a 30-day cooldown.
 function checkModelPoolFloor(): Failure[] {
   const out: Failure[] = [];
-  const whitelistPath = path.join(process.cwd(), 'system', 'Model_Tier3_Whitelist.md');
+  const whitelistPath = path.join(
+    process.cwd(),
+    'system',
+    'Model_Tier3_Whitelist.md'
+  );
   if (!fs.existsSync(whitelistPath)) return out;
   const wl = fs.readFileSync(whitelistPath, 'utf8');
   // Count active rows (not demoted/quarantined) by matching table rows with slugs
-  const rows = wl.match(/^\|\s*\d+\s*\|(?!.*DEMOTED|.*QUARANTINED).*`[a-z0-9-]+`/gm) || [];
+  const rows =
+    wl.match(/^\|\s*\d+\s*\|(?!.*DEMOTED|.*QUARANTINED).*`[a-z0-9-]+`/gm) || [];
   // Extract unique resolving slugs (exclude the 3 known domain-only quarantined slugs)
   const domainOnly = new Set([
     'simple-rules-generating-complex-behavior',
@@ -2018,11 +2778,14 @@ function checkModelPoolFloor(): Failure[] {
 function checkModelStandalone(body: string): Failure[] {
   const out: Failure[] = [];
   // Extract Model section (between "## The Model" or "### The Model" and the next ## or ### heading)
-  const modelMatch = body.match(/#{2,3}\s+(?:The\s+)?Model[\s\S]*?(?=\n#{2,3}\s|\n## |$)/i);
+  const modelMatch = body.match(
+    /#{2,3}\s+(?:The\s+)?Model[\s\S]*?(?=\n#{2,3}\s|\n## |$)/i
+  );
   if (!modelMatch) return out;
   const modelText = modelMatch[0];
   // Check for temporal-anchor tokens
-  const temporalPattern = /\b(this week|this morning|today'?s|yesterday'?s|tonight|right now|this quarter)\b/gi;
+  const temporalPattern =
+    /\b(this week|this morning|today'?s|yesterday'?s|tonight|right now|this quarter)\b/gi;
   const temporalHits = modelText.match(temporalPattern);
   if (temporalHits && temporalHits.length > 0) {
     out.push({
@@ -2043,7 +2806,7 @@ function checkModelStandalone(body: string): Failure[] {
 // excluded — they may borrow a number for a standalone example.
 function checkDataPointRepetition(body: string): Failure[] {
   const rep = checkRepetition(body);
-  return rep.findings.map((f) => ({
+  return rep.findings.map(f => ({
     check: 'data-point-repetition',
     message: `"${f.display}" appears in ${f.sections.length} sections (rule: at most twice): ${f.sections.join(' · ')}. Keep it in the lede preview + its home story; reference it elsewhere without restating the figure.`,
   }));
@@ -2052,7 +2815,10 @@ function checkDataPointRepetition(body: string): Failure[] {
 // --- AI&T Differentiation check (July 5, 2026 — E-AI-SECTION-CONSENSUS-01) ---
 // Critic mandate #1: at least one AI&T bullet must carry a named non-wire element.
 // DARK-LAYER REROUTE off Brief_Architect.md, Day 32+.
-function checkQGAITDifferentiation(briefDir: string, absPath: string): Failure[] {
+function checkQGAITDifferentiation(
+  briefDir: string,
+  absPath: string
+): Failure[] {
   const out: Failure[] = [];
   const briefDateMatch = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
   if (!briefDateMatch) return out;
@@ -2068,7 +2834,9 @@ function checkQGAITDifferentiation(briefDir: string, absPath: string): Failure[]
     });
   } else {
     // Validate the line has proper structure: at least one DIFFERENTIATED token or a replacement action
-    const diffLine = qgContent.split('\n').find(l => l.includes('AI&T DIFFERENTIATION:'));
+    const diffLine = qgContent
+      .split('\n')
+      .find(l => l.includes('AI&T DIFFERENTIATION:'));
     if (diffLine) {
       const hasPass = /→\s*(PASS|🔴 all-consensus → replaced)/.test(diffLine);
       const hasDifferentiated = /DIFFERENTIATED\s*[:(]/.test(diffLine);
@@ -2104,14 +2872,23 @@ function checkQGAITDifferentiation(briefDir: string, absPath: string): Failure[]
 // an ordinary bullet is untouched, and the clear is satisfiable only by naming what was reported.
 // Override-eligible (evidence in the editor log) — a genuine "the wire reported nothing" case has a
 // DECLARED path, never silence.
-const COMPETING_FRAME_RE = /\btwo (?:available |possible |competing )?(?:explanations|readings|stories|interpretations)\b|\bthe two readings\b|\bopposite trades\b|\bthe other read\b|\bthe second reading\b|\btwo ways to read\b/i;
-const CATALYST_NAMED_FUND_RE = /\b(?:hedge fund|asset manager|the desk at)\s+[A-Z]|\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?\s+(?:Capital|Management|Partners|Advisors|Securities|Asset Management)\b/;
-const CATALYST_FLOW_RE = /\bnet (?:bought|sold|buying|selling|purchases|inflows?|outflows?)\b|\b(?:inflows?|outflows?|net flows?)\s+of\b|\bforeign (?:investors?|buying|selling)\b[^.]{0,60}\d/i;
-const CATALYST_EARNINGS_RE = /\b(?:reported|posted|printed)\s+(?:strong\s+|weak\s+|record\s+)?(?:earnings|results|revenue|profit|a beat|a miss)\b|\bearnings (?:beat|miss|report|print)\b|\bEPS\b/i;
-const CATALYST_WIRE_RE = /\b(?:Reuters|Bloomberg|Nikkei|Yonhap|Associated Press|Dow Jones|Wall Street Journal|WSJ|Financial Times|CNBC|AFP|Xinhua|Kyodo)\b/;
+const COMPETING_FRAME_RE =
+  /\btwo (?:available |possible |competing )?(?:explanations|readings|stories|interpretations)\b|\bthe two readings\b|\bopposite trades\b|\bthe other read\b|\bthe second reading\b|\btwo ways to read\b/i;
+const CATALYST_NAMED_FUND_RE =
+  /\b(?:hedge fund|asset manager|the desk at)\s+[A-Z]|\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?\s+(?:Capital|Management|Partners|Advisors|Securities|Asset Management)\b/;
+const CATALYST_FLOW_RE =
+  /\bnet (?:bought|sold|buying|selling|purchases|inflows?|outflows?)\b|\b(?:inflows?|outflows?|net flows?)\s+of\b|\bforeign (?:investors?|buying|selling)\b[^.]{0,60}\d/i;
+const CATALYST_EARNINGS_RE =
+  /\b(?:reported|posted|printed)\s+(?:strong\s+|weak\s+|record\s+)?(?:earnings|results|revenue|profit|a beat|a miss)\b|\bearnings (?:beat|miss|report|print)\b|\bEPS\b/i;
+const CATALYST_WIRE_RE =
+  /\b(?:Reuters|Bloomberg|Nikkei|Yonhap|Associated Press|Dow Jones|Wall Street Journal|WSJ|Financial Times|CNBC|AFP|Xinhua|Kyodo)\b/;
 function hasAttributedCatalyst(bullet: string): boolean {
-  return CATALYST_NAMED_FUND_RE.test(bullet) || CATALYST_FLOW_RE.test(bullet) ||
-         CATALYST_EARNINGS_RE.test(bullet) || CATALYST_WIRE_RE.test(bullet);
+  return (
+    CATALYST_NAMED_FUND_RE.test(bullet) ||
+    CATALYST_FLOW_RE.test(bullet) ||
+    CATALYST_EARNINGS_RE.test(bullet) ||
+    CATALYST_WIRE_RE.test(bullet)
+  );
 }
 export function checkCatalystEnumeration(body: string): Failure[] {
   const out: Failure[] = [];
@@ -2125,7 +2902,11 @@ export function checkCatalystEnumeration(body: string): Failure[] {
     const b = block.trim();
     if (!b) continue;
     const h = b.match(/^##\s+(.+)$/m);
-    if (h && /^##/.test(b)) { section = h[1]!.trim(); idx = 0; continue; }
+    if (h && /^##/.test(b)) {
+      section = h[1]!.trim();
+      idx = 0;
+      continue;
+    }
     if (!/^(?:-\s*)?\*\*/.test(b)) continue;
     idx++;
     if (!COMPETING_FRAME_RE.test(b)) continue;
@@ -2164,7 +2945,8 @@ export function checkCatalystEnumeration(body: string): Failure[] {
 // source that carried it — the check that was skipped becomes a check on the record.
 // FALSE-POSITIVE COST, measured: 0 trigger hits across the trailing 30 published briefs. This
 // shape appears roughly once a month; the declaration is cheap and the omission is not.
-const PRECEDENT_ANALOGY_RE = /\b(?:the )?base rate of\b|\breached (?:the|this) (?:order|same) stage (?:once )?before\b|\bthis same (?:option|play|sequence)\b|\bthe last time this\b|\bpaused it in\b|\bwithdrawn once\b/i;
+const PRECEDENT_ANALOGY_RE =
+  /\b(?:the )?base rate of\b|\breached (?:the|this) (?:order|same) stage (?:once )?before\b|\bthis same (?:option|play|sequence)\b|\bthe last time this\b|\bpaused it in\b|\bwithdrawn once\b/i;
 export function checkPrecedentAnalogy(body: string): Failure[] {
   const out: Failure[] = [];
   const sixStart = body.indexOf('# ▸ THE SIX');
@@ -2177,7 +2959,11 @@ export function checkPrecedentAnalogy(body: string): Failure[] {
     const b = block.trim();
     if (!b) continue;
     const h = b.match(/^##\s+(.+)$/m);
-    if (h && /^##/.test(b)) { section = h[1]!.trim(); idx = 0; continue; }
+    if (h && /^##/.test(b)) {
+      section = h[1]!.trim();
+      idx = 0;
+      continue;
+    }
     if (!/^(?:-\s*)?\*\*/.test(b)) continue;
     idx++;
     const m = b.match(PRECEDENT_ANALOGY_RE);
@@ -2209,10 +2995,14 @@ export function checkPrecedentAnalogy(body: string): Failure[] {
 // documents" carry nouns outside the set. Widening the set to catch them would buy false positives
 // on every count the body legitimately leaves as an aggregate. Override-eligible, so a genuinely
 // substantiated count that the regex cannot see has a DECLARED path, never silence.
-const HOOK_ENTITY_NOUN = 'organi[sz]ations?|companies|firms|systems|countries|agencies|banks';
+const HOOK_ENTITY_NOUN =
+  'organi[sz]ations?|companies|firms|systems|countries|agencies|banks';
 // `(?<![-\w])` is load-bearing, not decoration: without it the sweep flagged 2026-07-25's
 // "**Twenty-five** US tech companies" because `\bfive\b` matches inside a hyphenated compound.
-const HOOK_COUNT_RE = new RegExp(String.raw`(?<![-\w])(six|five|four|three|two|\d+)\s+(?:\w+\s+){0,2}?(${HOOK_ENTITY_NOUN})\b`, 'i');
+const HOOK_COUNT_RE = new RegExp(
+  String.raw`(?<![-\w])(six|five|four|three|two|\d+)\s+(?:\w+\s+){0,2}?(${HOOK_ENTITY_NOUN})\b`,
+  'i'
+);
 // THE ENUMERABLE RANGE. A hook count is a PROMISE only when the body could plausibly pay it item by
 // item. "Crypto venture participation fell to **150 firms** in July" (07-29) is a market statistic,
 // not an enumeration owed — demanding the body list 150 firms is a category error. Floor of 3 for
@@ -2226,8 +3016,21 @@ const HOOK_COUNT_MAX = 10;
  *  07-15 list "JPMorgan, Bank of America, Goldman, Wells, and Citi" counted 4 of its 5 members and
  *  the gate flagged a bullet that had named every bank it promised. */
 const NAMED_ITEM = String.raw`[A-Z][A-Za-z&.'’-]*(?:\s+(?:of|the|de|van|von|und|&)\s+[A-Z][A-Za-z&.'’-]*|\s+[A-Z][A-Za-z&.'’-]*){0,2}`;
-const NAMED_LIST_RE = new RegExp(String.raw`${NAMED_ITEM}(?:,\s+(?:and\s+)?${NAMED_ITEM}){2,}`, 'g');
-const CARDINAL: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+const NAMED_LIST_RE = new RegExp(
+  String.raw`${NAMED_ITEM}(?:,\s+(?:and\s+)?${NAMED_ITEM}){2,}`,
+  'g'
+);
+const CARDINAL: Record<string, number> = {
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+};
 const toCount = (s: string): number | null => {
   const w = CARDINAL[s.toLowerCase()];
   if (w) return w;
@@ -2252,7 +3055,11 @@ export function checkHookNumeratorSubstantiation(body: string): Failure[] {
     const b = block.trim();
     if (!b) continue;
     const h = b.match(/^##\s+(.+)$/m);
-    if (h && /^##/.test(b)) { section = h[1]!.trim(); idx = 0; continue; }
+    if (h && /^##/.test(b)) {
+      section = h[1]!.trim();
+      idx = 0;
+      continue;
+    }
     if (!/^(?:-\s*)?\*\*/.test(b)) continue;
     idx++;
     const parts = splitHook(b);
@@ -2260,7 +3067,12 @@ export function checkHookNumeratorSubstantiation(body: string): Failure[] {
     const m = parts.hook.match(HOOK_COUNT_RE);
     if (!m) continue;
     const claimed = toCount(m[1]!);
-    if (claimed === null || claimed < HOOK_COUNT_MIN || claimed > HOOK_COUNT_MAX) continue;
+    if (
+      claimed === null ||
+      claimed < HOOK_COUNT_MIN ||
+      claimed > HOOK_COUNT_MAX
+    )
+      continue;
     const noun = m[2]!;
     // THE BODY PAYS THE PROMISE two ways. (1) THE NUMERATOR REAPPEARS in the body's accounting —
     // deliberately not "bound to the same noun", and this was learned from the artifact: this
@@ -2268,19 +3080,34 @@ export function checkHookNumeratorSubstantiation(body: string): Failure[] {
     // with "Anthropic's **three** incidents out of 141,006 runs". A noun-bound test flags the fixed
     // bullet, which would make the gate an obstacle to its own repair. (2) An ENUMERATION SUMS to
     // it. Over-delivery is not a defect, so ≥ clears.
-    const numeralWord = Object.entries(CARDINAL).find(([, v]) => v === claimed)?.[0] ?? '';
-    const reappearsRe = new RegExp(String.raw`(?<![-\w])(?:${claimed}${numeralWord ? `|${numeralWord}` : ''})\b`, 'i');
-    const bodyCounts = [...parts.body.matchAll(
-      new RegExp(String.raw`(?<![-\w])(one|two|three|four|five|six|seven|eight|nine|ten|\d[\d,]*)\s+(?:\w+\s+){0,2}?(?:${HOOK_ENTITY_NOUN})\b`, 'gi'),
-    )].map((x) => toCount(x[1]!) ?? 0);
+    const numeralWord =
+      Object.entries(CARDINAL).find(([, v]) => v === claimed)?.[0] ?? '';
+    const reappearsRe = new RegExp(
+      String.raw`(?<![-\w])(?:${claimed}${numeralWord ? `|${numeralWord}` : ''})\b`,
+      'i'
+    );
+    const bodyCounts = [
+      ...parts.body.matchAll(
+        new RegExp(
+          String.raw`(?<![-\w])(one|two|three|four|five|six|seven|eight|nine|ten|\d[\d,]*)\s+(?:\w+\s+){0,2}?(?:${HOOK_ENTITY_NOUN})\b`,
+          'gi'
+        )
+      ),
+    ].map(x => toCount(x[1]!) ?? 0);
     const reappears = reappearsRe.test(parts.body);
-    const summed = bodyCounts.length > 1 && bodyCounts.reduce((a, c) => a + c, 0) >= claimed;
+    const summed =
+      bodyCounts.length > 1 && bodyCounts.reduce((a, c) => a + c, 0) >= claimed;
     // (3) ENUMERATION BY NAME — the well-written case, and the sweep's last two false positives
     // were both exactly it: 07-18's "six agencies" pays with "The OCC, FDIC, Fed, SEC, CFTC, and
     // Treasury", 07-15's "five largest US banks" with "JPMorgan, Bank of America, Goldman, Wells,
     // and Citi". A body that NAMES all N has paid the promise more completely than one that
     // restates the number, so this must clear or the gate punishes the best version of the bullet.
-    const named = Math.max(0, ...[...parts.body.matchAll(NAMED_LIST_RE)].map((x) => x[0].split(',').length));
+    const named = Math.max(
+      0,
+      ...[...parts.body.matchAll(NAMED_LIST_RE)].map(
+        x => x[0].split(',').length
+      )
+    );
     if (reappears || summed || named >= claimed) continue;
     out.push({
       check: 'hook-numerator',
@@ -2355,11 +3182,19 @@ export function checkMarkerPlacement(body: string): Failure[] {
 // is a part-of; C&C-1's $102.50/$12/$114.50 is never bound by a sum-to connective and reconciles
 // exactly in any case. Verified silent on the CORRECTED published 08-04, where the restored
 // "$241 million of stakes in Beast Industries and Eightco" makes the list reach its total.
-const SUM_TO_RE = /(?:,\s*)?\b(?:for|totall?ing|summing to|bringing[^,;]{0,40}?\bto)\s+\$\s?([\d][\d,]*(?:\.\d+)?)\s*(billion|million|trillion)\b/i;
-const QTY_AT_PRICE_RE = /\b([\d][\d,]{2,})\s+([a-z][a-z-]{2,})\s+(?:marked|priced|valued|carried|held|marked down|marked up)\s+at\s+\$\s?([\d][\d,]*(?:\.\d+)?)\b/gi;
-const BARE_MONEY_RE = /\$\s?([\d][\d,]*(?:\.\d+)?)\s*(billion|million|trillion)?\b/gi;
-const UNPRICED_QTY_RE = /\b([\d][\d,]*(?:\.\d+)?)\s+(bitcoin|ether|shares|units|tokens|coins|contracts)\b/gi;
-const MAG: Record<string, number> = { trillion: 1e12, billion: 1e9, million: 1e6 };
+const SUM_TO_RE =
+  /(?:,\s*)?\b(?:for|totall?ing|summing to|bringing[^,;]{0,40}?\bto)\s+\$\s?([\d][\d,]*(?:\.\d+)?)\s*(billion|million|trillion)\b/i;
+const QTY_AT_PRICE_RE =
+  /\b([\d][\d,]{2,})\s+([a-z][a-z-]{2,})\s+(?:marked|priced|valued|carried|held|marked down|marked up)\s+at\s+\$\s?([\d][\d,]*(?:\.\d+)?)\b/gi;
+const BARE_MONEY_RE =
+  /\$\s?([\d][\d,]*(?:\.\d+)?)\s*(billion|million|trillion)?\b/gi;
+const UNPRICED_QTY_RE =
+  /\b([\d][\d,]*(?:\.\d+)?)\s+(bitcoin|ether|shares|units|tokens|coins|contracts)\b/gi;
+const MAG: Record<string, number> = {
+  trillion: 1e12,
+  billion: 1e9,
+  million: 1e6,
+};
 
 // Sentence splitting over MARKDOWN, not prose. A bullet's bold hook sits between the previous
 // sentence's period and the next capital ("… or hardens.\n\n- **Treasury raised its estimate to
@@ -2391,7 +3226,8 @@ export function checkItemizationSum(body: string): Failure[] {
     if (!isFinite(aggregate) || aggregate <= 0) continue;
 
     let span = s.slice(0, aggIdx);
-    if (!/\b(alongside|plus|and|together with|as well as)\b/i.test(span)) continue;
+    if (!/\b(alongside|plus|and|together with|as well as)\b/i.test(span))
+      continue;
 
     // 1. quantity × unit-price pairs resolve to a value, and are CONSUMED so the unit price is
     //    never double-counted as a standalone component.
@@ -2426,7 +3262,8 @@ export function checkItemizationSum(body: string): Failure[] {
 
     UNPRICED_QTY_RE.lastIndex = 0;
     const unpriced = [...span.matchAll(UNPRICED_QTY_RE)].map(m => m[0]!.trim());
-    const fmt = (n: number) => n >= 1e9 ? `$${(n / 1e9).toFixed(3)}B` : `$${(n / 1e6).toFixed(1)}M`;
+    const fmt = (n: number) =>
+      n >= 1e9 ? `$${(n / 1e9).toFixed(3)}B` : `$${(n / 1e6).toFixed(1)}M`;
     out.push({
       check: 'itemization-sum',
       message: `🔴 FAIL: a sentence itemises components and binds them to a stated total of ${fmt(aggregate)}, and the components as printed reach only ${fmt(sum)} — short by ${fmt(shortfall)} against a ${fmt(tolerance)} tolerance (3× the total's own rounding envelope, floored at 1%). Components read: ${parts.map(p => `${p.label} = ${fmt(p.value)}`).join(' + ')}.${unpriced.length ? ` UNPRICED in-sentence and therefore not summed: ${unpriced.join(', ')}.` : ''} The usual cause is compression: a cut removed a member of an itemised list and left the total standing, so the brief prints a list short of its own sum. Restore the omitted component, or restate the total at the number the list reaches, or drop the itemisation. Omission is fine; SILENT omission is not — if the missing members are deliberate, declare FALSE-POSITIVE OVERRIDE: [itemization-sum] naming them. Receipt: 08-04 C&C-3 printed $11.073B of components against "for $11.3 billion" because Beast Industries and Eightco were cut in compression (Validator Check 11 said so in the same file).`,
@@ -2455,11 +3292,17 @@ export function checkItemizationSum(body: string): Failure[] {
 //     (Signal_Generator THE VINTAGE RULE) is where that judgment lives.
 // Verified silent on the corrected published 2026-08-04, and on the same brief's M&M-2 FactSet
 // figures, Signal-1's TCEQ testimony (no currency magnitude) and Signal-2's 63% (not currency).
-const INSTITUTION_RE = /\b(Employee Benefit Research Institute|EBRI|FactSet|Gartner|IDC|Forrester|IEA|EIA|CBO|BLS|BEA|OECD|IMF|World Bank|McKinsey|Deloitte|Pew(?: Research)?|Brookings|Conference Board|Peterson Institute|Urban Institute|Tax Foundation)\b/;
-const PRESENT_ESTIMATE_RE = /\b(puts?|pegs?|estimates?|projects?|calculates?|reckons?|values?|places?|sizes?)\b/i;
-const CURRENCY_MAG_RE = /\$\s?[\d][\d,]*(?:\.\d+)?\s*(?:billion|million|trillion)\b/;
+const INSTITUTION_RE =
+  /\b(Employee Benefit Research Institute|EBRI|FactSet|Gartner|IDC|Forrester|IEA|EIA|CBO|BLS|BEA|OECD|IMF|World Bank|McKinsey|Deloitte|Pew(?: Research)?|Brookings|Conference Board|Peterson Institute|Urban Institute|Tax Foundation)\b/;
+const PRESENT_ESTIMATE_RE =
+  /\b(puts?|pegs?|estimates?|projects?|calculates?|reckons?|values?|places?|sizes?)\b/i;
+const CURRENCY_MAG_RE =
+  /\$\s?[\d][\d,]*(?:\.\d+)?\s*(?:billion|million|trillion)\b/;
 
-export function checkInstitutionalEstimateVintage(body: string, briefDate: string): Failure[] {
+export function checkInstitutionalEstimateVintage(
+  body: string,
+  briefDate: string
+): Failure[] {
   const out: Failure[] = [];
   const briefYear = parseInt((briefDate || '').slice(0, 4), 10);
   for (const s of sentencesOf(body)) {
@@ -2469,7 +3312,9 @@ export function checkInstitutionalEstimateVintage(body: string, briefDate: strin
     if (!PRESENT_ESTIMATE_RE.test(s)) continue;
     const mag = CURRENCY_MAG_RE.exec(s);
     if (!mag) continue;
-    const years = [...s.matchAll(/\b(19\d{2}|20\d{2})\b/g)].map(m => parseInt(m[1]!, 10));
+    const years = [...s.matchAll(/\b(19\d{2}|20\d{2})\b/g)].map(m =>
+      parseInt(m[1]!, 10)
+    );
     if (years.length === 0) {
       out.push({
         check: 'estimate-vintage',
@@ -2478,7 +3323,9 @@ export function checkInstitutionalEstimateVintage(body: string, briefDate: strin
       continue;
     }
     if (isFinite(briefYear) && Math.max(...years) < briefYear - 2) {
-      console.log(`  🟡 [estimate-vintage] ADVISORY — ${inst[1]}'s ${mag[0].trim()} is dated ${Math.max(...years)}, ${briefYear - Math.max(...years)} years before this brief. Disclosed, so this does NOT block. If the unit's own mechanisms postdate it, the staleness is the argument and belongs in the sentence.`);
+      console.log(
+        `  🟡 [estimate-vintage] ADVISORY — ${inst[1]}'s ${mag[0].trim()} is dated ${Math.max(...years)}, ${briefYear - Math.max(...years)} years before this brief. Disclosed, so this does NOT block. If the unit's own mechanisms postdate it, the staleness is the argument and belongs in the sentence.`
+      );
     }
   }
   return out;
@@ -2487,59 +3334,118 @@ export function checkInstitutionalEstimateVintage(body: string, briefDate: strin
 // ── IMP-113 selftest — fixtures + the REAL 08-01 acceptance gate (fires on M&M-2, silent on M&M-3)
 function selftestValidator(): number {
   let fails = 0;
-  const t = (ok: boolean, label: string) => { console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`); if (!ok) fails++; };
-  const wrap = (mm: string) => `# ▸ THE SIX\n\n## Markets & Macro\n\n${mm}\n\n# ▸ THE TAKE\n\n**A take.** Body.\n`;
+  const t = (ok: boolean, label: string) => {
+    console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`);
+    if (!ok) fails++;
+  };
+  const wrap = (mm: string) =>
+    `# ▸ THE SIX\n\n## Markets & Macro\n\n${mm}\n\n# ▸ THE TAKE\n\n**A take.** Body.\n`;
   const BAD = `**A record move, and the two available explanations imply opposite trades.** Part of it is mechanical: the name had fallen 58% into the session. The other read is that a dated forecast came due, and the discriminator does not exist until August 7.`;
   const GOOD_WIRE = `**A record move, and the two available explanations imply opposite trades.** Reuters reported the forced seller had finished; the other read is that a dated forecast came due.`;
   const GOOD_FLOW = `**A record move, and the two available explanations imply opposite trades.** Foreign investors net bought 7.22 trillion won against retail selling; the other read is a dated forecast coming due.`;
   const ORDINARY = `**The Employment Cost Index landed Friday with private compensation up 3.3%.** Benefits ran 3.8% against wages at 3.1%, a 70bp gap.`;
-  t(checkCatalystEnumeration(wrap(BAD)).length === 1, '[IMP-113] FIRES on competing-explanation framing with no attributed catalyst');
-  t(checkCatalystEnumeration(wrap(GOOD_WIRE)).length === 0, '[IMP-113] SILENT when the bullet cites a wire source (Reuters)');
-  t(checkCatalystEnumeration(wrap(GOOD_FLOW)).length === 0, '[IMP-113] SILENT when the bullet carries a flow figure (net bought)');
-  t(checkCatalystEnumeration(wrap(ORDINARY)).length === 0, '[IMP-113] SILENT on an ordinary bullet with no competing-explanation framing');
+  t(
+    checkCatalystEnumeration(wrap(BAD)).length === 1,
+    '[IMP-113] FIRES on competing-explanation framing with no attributed catalyst'
+  );
+  t(
+    checkCatalystEnumeration(wrap(GOOD_WIRE)).length === 0,
+    '[IMP-113] SILENT when the bullet cites a wire source (Reuters)'
+  );
+  t(
+    checkCatalystEnumeration(wrap(GOOD_FLOW)).length === 0,
+    '[IMP-113] SILENT when the bullet carries a flow figure (net bought)'
+  );
+  t(
+    checkCatalystEnumeration(wrap(ORDINARY)).length === 0,
+    '[IMP-113] SILENT on an ordinary bullet with no competing-explanation framing'
+  );
   // ACCEPTANCE GATE, real artifact: fires on the published 08-01 M&M-2, silent on 08-01 M&M-3.
   const real = path.join(process.cwd(), 'content/daily-updates/2026-08-01.md');
   if (fs.existsSync(real)) {
-    const f = checkCatalystEnumeration(stripComments(fs.readFileSync(real, 'utf8')));
-    t(f.length === 1 && /bullet 2\b/.test(f[0]!.message), `[IMP-113] REAL 08-01: fires on M&M-2 and ONLY M&M-2 (got ${f.length}: ${f.map(x => x.message.slice(0, 40)).join('; ')})`);
-    const mm3 = fs.readFileSync(real, 'utf8').split(/\n\s*\n/).find(b => /Japan and Korea intervened jointly/.test(b)) || '';
-    t(!!mm3 && hasAttributedCatalyst(mm3), '[IMP-113] REAL 08-01 M&M-3 carries an attributed catalyst (Barraud, citing Reuters) → SILENT');
+    const f = checkCatalystEnumeration(
+      stripComments(fs.readFileSync(real, 'utf8'))
+    );
+    t(
+      f.length === 1 && /bullet 2\b/.test(f[0]!.message),
+      `[IMP-113] REAL 08-01: fires on M&M-2 and ONLY M&M-2 (got ${f.length}: ${f.map(x => x.message.slice(0, 40)).join('; ')})`
+    );
+    const mm3 =
+      fs
+        .readFileSync(real, 'utf8')
+        .split(/\n\s*\n/)
+        .find(b => /Japan and Korea intervened jointly/.test(b)) || '';
+    t(
+      !!mm3 && hasAttributedCatalyst(mm3),
+      '[IMP-113] REAL 08-01 M&M-3 carries an attributed catalyst (Barraud, citing Reuters) → SILENT'
+    );
   }
 
   // ── IMP-118 PRECEDENT ANALOGY — fixtures + the REAL 08-02 acceptance gate ───────────────────
   const PREC_BAD = `**The order lands in the one stretch of the week when nothing can take the other side.** The print is a bet on the base rate of non-execution, because this same option reached the order stage once before and Trump paused it in late March.`;
   const PREC_NONE = `**The Employment Cost Index landed Friday with private compensation up 3.3%.** Benefits ran 3.8% against wages at 3.1%, a 70bp gap that has not closed since 2022.`;
-  t(checkPrecedentAnalogy(wrap(PREC_BAD)).length === 1, '[IMP-118] FIRES on a precedent-analogy bullet pricing a base rate');
-  t(checkPrecedentAnalogy(wrap(PREC_NONE)).length === 0, '[IMP-118] SILENT on an ordinary bullet with no precedent framing');
+  t(
+    checkPrecedentAnalogy(wrap(PREC_BAD)).length === 1,
+    '[IMP-118] FIRES on a precedent-analogy bullet pricing a base rate'
+  );
+  t(
+    checkPrecedentAnalogy(wrap(PREC_NONE)).length === 0,
+    '[IMP-118] SILENT on an ordinary bullet with no precedent framing'
+  );
   // The IMP-113 fixtures must stay in their own lane — a competing-explanation frame is NOT a
   // precedent analogy, so the two gates never double-charge the same bullet.
-  t(checkPrecedentAnalogy(wrap(BAD)).length === 0, '[IMP-118] SILENT on the IMP-113 competing-explanation fixture (no double-jeopardy)');
+  t(
+    checkPrecedentAnalogy(wrap(BAD)).length === 0,
+    '[IMP-118] SILENT on the IMP-113 competing-explanation fixture (no double-jeopardy)'
+  );
   // ACCEPTANCE GATE, real artifacts: fires on the real 08-02 M&M-1; silent on the real 08-02 M&M-3
   // and on the real published 08-01 (whose M&M-2 is IMP-113's case, already fixed).
   const v2 = path.join(process.cwd(), 'daily-briefs/2026-08-02-v2.md');
   if (fs.existsSync(v2)) {
     const f = checkPrecedentAnalogy(stripComments(fs.readFileSync(v2, 'utf8')));
-    t(f.length === 1 && /bullet 1\b/.test(f[0]!.message),
-      `[IMP-118] REAL 08-02 v2: fires on M&M-1 and ONLY M&M-1 (got ${f.length}: ${f.map(x => x.message.slice(0, 46)).join('; ')})`);
-    const mm3 = fs.readFileSync(v2, 'utf8').split(/\n\s*\n/).find(b => /Japan spent roughly \$53 billion/.test(b)) || '';
-    t(!!mm3 && !PRECEDENT_ANALOGY_RE.test(mm3), '[IMP-118] REAL 08-02 M&M-3 (Setser/Pettis/BOJ) does NOT trigger → SILENT');
+    t(
+      f.length === 1 && /bullet 1\b/.test(f[0]!.message),
+      `[IMP-118] REAL 08-02 v2: fires on M&M-1 and ONLY M&M-1 (got ${f.length}: ${f.map(x => x.message.slice(0, 46)).join('; ')})`
+    );
+    const mm3 =
+      fs
+        .readFileSync(v2, 'utf8')
+        .split(/\n\s*\n/)
+        .find(b => /Japan spent roughly \$53 billion/.test(b)) || '';
+    t(
+      !!mm3 && !PRECEDENT_ANALOGY_RE.test(mm3),
+      '[IMP-118] REAL 08-02 M&M-3 (Setser/Pettis/BOJ) does NOT trigger → SILENT'
+    );
   }
   const pub01 = path.join(process.cwd(), 'content/daily-updates/2026-08-01.md');
   if (fs.existsSync(pub01)) {
-    t(checkPrecedentAnalogy(stripComments(fs.readFileSync(pub01, 'utf8'))).length === 0,
-      '[IMP-118] REAL published 08-01: SILENT (the IMP-113 bullet is not a precedent analogy)');
+    t(
+      checkPrecedentAnalogy(stripComments(fs.readFileSync(pub01, 'utf8')))
+        .length === 0,
+      '[IMP-118] REAL published 08-01: SILENT (the IMP-113 bullet is not a precedent analogy)'
+    );
   }
   // FALSE-POSITIVE SWEEP, on the record: 0 hits across the trailing 30 published briefs.
   {
     const dir = path.join(process.cwd(), 'content/daily-updates');
-    let hits = 0, swept = 0;
+    let hits = 0,
+      swept = 0;
     if (fs.existsSync(dir)) {
-      for (const f of fs.readdirSync(dir).filter(x => /^2026-\d\d-\d\d\.md$/.test(x)).sort().slice(-30)) {
+      for (const f of fs
+        .readdirSync(dir)
+        .filter(x => /^2026-\d\d-\d\d\.md$/.test(x))
+        .sort()
+        .slice(-30)) {
         swept++;
-        hits += checkPrecedentAnalogy(stripComments(fs.readFileSync(path.join(dir, f), 'utf8'))).length;
+        hits += checkPrecedentAnalogy(
+          stripComments(fs.readFileSync(path.join(dir, f), 'utf8'))
+        ).length;
       }
     }
-    t(hits === 0, `[IMP-118] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0)`);
+    t(
+      hits === 0,
+      `[IMP-118] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0)`
+    );
   }
 
   // ── IMP-122: THE HOOK'S NUMERATOR — a count in the hook is a promise the body must pay ────────
@@ -2548,81 +3454,158 @@ function selftestValidator(): number {
     if (fs.existsSync(v2_0803)) {
       const raw0803 = stripComments(fs.readFileSync(v2_0803, 'utf8'));
       const f = checkHookNumeratorSubstantiation(raw0803);
-      t(f.length === 1 && /count of 6 organi/i.test(f[0]!.message),
-        `[IMP-122] REAL 08-03 v2: fires on AI&T-3's "six real organizations" and ONLY it (got ${f.length}: ${f.map(x => x.message.slice(0, 60)).join('; ')})`);
+      t(
+        f.length === 1 && /count of 6 organi/i.test(f[0]!.message),
+        `[IMP-122] REAL 08-03 v2: fires on AI&T-3's "six real organizations" and ONLY it (got ${f.length}: ${f.map(x => x.message.slice(0, 60)).join('; ')})`
+      );
       // The three negatives the Critic named, asserted individually so a future widening of the
       // noun set cannot silently break them.
-      const blockWith = (needle: string) => raw0803.split(/\n\s*\n/).find(b => b.includes(needle)) || '';
+      const blockWith = (needle: string) =>
+        raw0803.split(/\n\s*\n/).find(b => b.includes(needle)) || '';
       for (const [needle, label] of [
-        ['49,000 people crossed', 'Geo-3 "About 49,000 people" (substantiated)'],
-        ['Nine American schools', 'Wild Card 2 "Nine American schools" (three states, eight districts)'],
-        ['Four position documents', 'AI&T-2 "Four position documents" (all four enumerated)'],
+        [
+          '49,000 people crossed',
+          'Geo-3 "About 49,000 people" (substantiated)',
+        ],
+        [
+          'Nine American schools',
+          'Wild Card 2 "Nine American schools" (three states, eight districts)',
+        ],
+        [
+          'Four position documents',
+          'AI&T-2 "Four position documents" (all four enumerated)',
+        ],
       ] as [string, string][]) {
         const blk = blockWith(needle);
         const parts = blk ? splitHook(blk) : null;
-        t(!!blk && (!parts || !HOOK_COUNT_RE.test(parts.hook)), `[IMP-122] SILENT on ${label}`);
+        t(
+          !!blk && (!parts || !HOOK_COUNT_RE.test(parts.hook)),
+          `[IMP-122] SILENT on ${label}`
+        );
       }
       // SUBSTANTIATION CLEARS: the same bullet with the body naming the remainder must go silent.
       const paid = `# ▸ THE SIX\n\n## AI & Tech\n\n- **Two frontier labs' own models breached six real organizations during safety evaluations.** Anthropic accounts for three organizations and OpenAI for three organizations, enumerated below.\n`;
-      t(checkHookNumeratorSubstantiation(paid).length === 0, '[IMP-122] SILENT once the body enumerates 3 + 3 = the hook\'s six');
+      t(
+        checkHookNumeratorSubstantiation(paid).length === 0,
+        "[IMP-122] SILENT once the body enumerates 3 + 3 = the hook's six"
+      );
       const restated = `# ▸ THE SIX\n\n## AI & Tech\n\n- **Models breached six real organizations.** All six organizations were notified.\n`;
-      t(checkHookNumeratorSubstantiation(restated).length === 0, '[IMP-122] SILENT when the body restates the same count against the same noun');
+      t(
+        checkHookNumeratorSubstantiation(restated).length === 0,
+        '[IMP-122] SILENT when the body restates the same count against the same noun'
+      );
     }
     // FALSE-POSITIVE SWEEP across the trailing 30 published briefs.
     const dir = path.join(process.cwd(), 'content/daily-updates');
-    let hits = 0, swept = 0;
+    let hits = 0,
+      swept = 0;
     if (fs.existsSync(dir)) {
-      for (const f of fs.readdirSync(dir).filter(x => /^2026-\d\d-\d\d\.md$/.test(x)).sort().slice(-30)) {
+      for (const f of fs
+        .readdirSync(dir)
+        .filter(x => /^2026-\d\d-\d\d\.md$/.test(x))
+        .sort()
+        .slice(-30)) {
         swept++;
-        hits += checkHookNumeratorSubstantiation(stripComments(fs.readFileSync(path.join(dir, f), 'utf8'))).length;
+        hits += checkHookNumeratorSubstantiation(
+          stripComments(fs.readFileSync(path.join(dir, f), 'utf8'))
+        ).length;
       }
     }
-    t(hits === 0, `[IMP-122] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0 — three substantiation paths: restated numeral, summed enumeration, named list)`);
+    t(
+      hits === 0,
+      `[IMP-122] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0 — three substantiation paths: restated numeral, summed enumeration, named list)`
+    );
   }
 
   // ── IMP-123: MARKER PLACEMENT — the line-1 marker that cost a publish attempt ──────────────────
   {
     const line1 = `<!-- take-move: orthogonal-compliance -->\n# MARKETS, MEDITATIONS & MENTAL MODELS\n\n# ▸ THE TAKE\n\nBody.\n`;
-    t(checkMarkerPlacement(line1).some(f => /BEFORE the document's first markdown heading/.test(f.message)),
-      '[IMP-123] FIRES on a marker above the first heading (the publish.py corruption signature)');
+    t(
+      checkMarkerPlacement(line1).some(f =>
+        /BEFORE the document's first markdown heading/.test(f.message)
+      ),
+      '[IMP-123] FIRES on a marker above the first heading (the publish.py corruption signature)'
+    );
     const inside = `# MARKETS, MEDITATIONS & MENTAL MODELS\n\n# ▸ THE TAKE\n\n<!-- take-move: effective-n-collapse -->\n\nBody.\n`;
-    t(checkMarkerPlacement(inside).length === 0, '[IMP-123] SILENT when take-move sits inside The Take (the 08-01 precedent)');
+    t(
+      checkMarkerPlacement(inside).length === 0,
+      '[IMP-123] SILENT when take-move sits inside The Take (the 08-01 precedent)'
+    );
     // The ARCHIVE'S OWN CONVENTION, asserted so a future session cannot "tidy" it into a failure:
     // take-move sits immediately ABOVE `# ▸ THE TAKE` (07-15, 07-16, 08-01) — that is CLEAN.
     const above = `# MARKETS, MEDITATIONS & MENTAL MODELS\n\nIntro.\n\n---\n\n<!-- take-move: effective-n-collapse -->\n\n# ▸ THE TAKE\n\nBody.\n`;
-    t(checkMarkerPlacement(above).length === 0,
-      '[IMP-123] SILENT when take-move sits just above `# ▸ THE TAKE` (the archive\'s actual convention, 3 of 4 occurrences)');
+    t(
+      checkMarkerPlacement(above).length === 0,
+      "[IMP-123] SILENT when take-move sits just above `# ▸ THE TAKE` (the archive's actual convention, 3 of 4 occurrences)"
+    );
     // ACCEPTANCE GATE on the REAL artifacts: fires on the 08-03 and 08-02 v2 files (both line 1),
     // and is SILENT on the PUBLISHED 08-03 where the morning pass moved it into The Take.
     for (const [p, want, label] of [
-      ['daily-briefs/2026-08-03-v2.md', true, 'REAL 08-03 v2 (marker on line 1 — cost a publish attempt)'],
-      ['daily-briefs/2026-08-02-v2.md', true, 'REAL 08-02 v2 (same marker, line 1 — this is Day 2, not Day 1)'],
-      ['content/daily-updates/2026-08-03.md', false, 'REAL published 08-03 (marker moved into The Take)'],
-      ['content/daily-updates/2026-08-01.md', false, 'REAL published 08-01 (clean)'],
+      [
+        'daily-briefs/2026-08-03-v2.md',
+        true,
+        'REAL 08-03 v2 (marker on line 1 — cost a publish attempt)',
+      ],
+      [
+        'daily-briefs/2026-08-02-v2.md',
+        true,
+        'REAL 08-02 v2 (same marker, line 1 — this is Day 2, not Day 1)',
+      ],
+      [
+        'content/daily-updates/2026-08-03.md',
+        false,
+        'REAL published 08-03 (marker moved into The Take)',
+      ],
+      [
+        'content/daily-updates/2026-08-01.md',
+        false,
+        'REAL published 08-01 (clean)',
+      ],
     ] as [string, boolean, string][]) {
       const abs = path.join(process.cwd(), p);
       if (!fs.existsSync(abs)) continue;
       const n = checkMarkerPlacement(fs.readFileSync(abs, 'utf8')).length;
-      t(want ? n > 0 : n === 0, `[IMP-123] ${want ? 'FIRES' : 'SILENT'} on ${label}${want ? '' : ` (got ${n})`}`);
+      t(
+        want ? n > 0 : n === 0,
+        `[IMP-123] ${want ? 'FIRES' : 'SILENT'} on ${label}${want ? '' : ` (got ${n})`}`
+      );
     }
     // FALSE-POSITIVE SWEEP: 0 of the trailing 60 published briefs carry a pre-heading comment.
     const dir = path.join(process.cwd(), 'content/daily-updates');
-    let hits = 0, swept = 0;
+    let hits = 0,
+      swept = 0;
     if (fs.existsSync(dir)) {
-      for (const f of fs.readdirSync(dir).filter(x => /^2026-\d\d-\d\d\.md$/.test(x)).sort().slice(-60)) {
+      for (const f of fs
+        .readdirSync(dir)
+        .filter(x => /^2026-\d\d-\d\d\.md$/.test(x))
+        .sort()
+        .slice(-60)) {
         swept++;
-        hits += checkMarkerPlacement(fs.readFileSync(path.join(dir, f), 'utf8')).length;
+        hits += checkMarkerPlacement(
+          fs.readFileSync(path.join(dir, f), 'utf8')
+        ).length;
       }
     }
-    t(hits === 0, `[IMP-123] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0)`);
+    t(
+      hits === 0,
+      `[IMP-123] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0)`
+    );
   }
 
   // ── IMP-126 itemization-sum — the REAL 08-04 acceptance gate, both directions ────────────────
   {
-    const REAL_BAD = 'BitMine disclosed Monday that as of Sunday afternoon it held 5,797,813 ether marked at $1,880, alongside 209 bitcoin and $173 million of cash and securities, for $11.3 billion.';
-    const REAL_FIXED = 'BitMine disclosed Monday that as of Sunday afternoon it held 5,797,813 ether marked at $1,880, alongside 209 bitcoin, $173 million of cash and securities, and $241 million of stakes in Beast Industries and Eightco, for $11.3 billion.';
-    t(checkItemizationSum(REAL_BAD).length === 1, '[IMP-126] FIRES on the real 08-04 C&C-3 (components $11.073B vs stated $11.3B)');
-    t(checkItemizationSum(REAL_FIXED).length === 0, '[IMP-126] SILENT on the CORRECTED published 08-04 (Beast/Eightco restored)');
+    const REAL_BAD =
+      'BitMine disclosed Monday that as of Sunday afternoon it held 5,797,813 ether marked at $1,880, alongside 209 bitcoin and $173 million of cash and securities, for $11.3 billion.';
+    const REAL_FIXED =
+      'BitMine disclosed Monday that as of Sunday afternoon it held 5,797,813 ether marked at $1,880, alongside 209 bitcoin, $173 million of cash and securities, and $241 million of stakes in Beast Industries and Eightco, for $11.3 billion.';
+    t(
+      checkItemizationSum(REAL_BAD).length === 1,
+      '[IMP-126] FIRES on the real 08-04 C&C-3 (components $11.073B vs stated $11.3B)'
+    );
+    t(
+      checkItemizationSum(REAL_FIXED).length === 0,
+      '[IMP-126] SILENT on the CORRECTED published 08-04 (Beast/Eightco restored)'
+    );
     // The Critic's three named negatives, verbatim from the same brief.
     const NEGATIVES = [
       "Alphabet's GAAP earnings of $9.11 a share against a $2.88 estimate carried a $98 billion gain. Amazon's $5.75 against $1.82 carried $53.4 billion of non-operating income it attributes primarily to its investments in Anthropic, a stake Amazon itself funded.",
@@ -2630,59 +3613,105 @@ function selftestValidator(): number {
       'The certain money is $102.50 a share; the other $12 is a contingent value right paying only if sales targets are hit by 2030, the part the buyer would not underwrite.',
       'Curium is buying Lantheus for up to $8 billion, and by Monday’s close the market was paying less than the certain cash.',
     ];
-    const negHits = NEGATIVES.reduce((a, s) => a + checkItemizationSum(s).length, 0);
-    t(negHits === 0, `[IMP-126] SILENT on the Critic's four named negatives (${negHits} flag(s), expected 0)`);
+    const negHits = NEGATIVES.reduce(
+      (a, s) => a + checkItemizationSum(s).length,
+      0
+    );
+    t(
+      negHits === 0,
+      `[IMP-126] SILENT on the Critic's four named negatives (${negHits} flag(s), expected 0)`
+    );
     const dir = path.join(process.cwd(), 'content/daily-updates');
-    let hits = 0, swept = 0;
+    let hits = 0,
+      swept = 0;
     if (fs.existsSync(dir)) {
-      for (const f of fs.readdirSync(dir).filter(x => /^2026-\d\d-\d\d\.md$/.test(x)).sort().slice(-40)) {
+      for (const f of fs
+        .readdirSync(dir)
+        .filter(x => /^2026-\d\d-\d\d\.md$/.test(x))
+        .sort()
+        .slice(-40)) {
         swept++;
-        hits += checkItemizationSum(fs.readFileSync(path.join(dir, f), 'utf8')).length;
+        hits += checkItemizationSum(
+          fs.readFileSync(path.join(dir, f), 'utf8')
+        ).length;
       }
     }
-    t(hits === 0, `[IMP-126] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0)`);
+    t(
+      hits === 0,
+      `[IMP-126] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (expected 0)`
+    );
   }
 
   // ── IMP-127 estimate-vintage — the REAL 08-04 acceptance gate, both directions ───────────────
   {
-    const REAL_BAD = 'The Employee Benefit Research Institute puts the annual cost at $92.4 billion, a number larger than most flows anyone tracks, and one set by inertia rather than prices or sentiment.';
-    const REAL_FIXED = 'The Employee Benefit Research Institute put the annual cost at $92.4 billion in its 2015 estimate, a number larger than most flows anyone tracks.';
-    t(checkInstitutionalEstimateVintage(REAL_BAD, '2026-08-04').length === 1, '[IMP-127] FIRES on the real 08-04 Signal-2 EBRI sentence (undated $92.4B)');
-    t(checkInstitutionalEstimateVintage(REAL_FIXED, '2026-08-04').length === 0, '[IMP-127] SILENT once the 2015 vintage is disclosed (advisory only, never blocking)');
+    const REAL_BAD =
+      'The Employee Benefit Research Institute puts the annual cost at $92.4 billion, a number larger than most flows anyone tracks, and one set by inertia rather than prices or sentiment.';
+    const REAL_FIXED =
+      'The Employee Benefit Research Institute put the annual cost at $92.4 billion in its 2015 estimate, a number larger than most flows anyone tracks.';
+    t(
+      checkInstitutionalEstimateVintage(REAL_BAD, '2026-08-04').length === 1,
+      '[IMP-127] FIRES on the real 08-04 Signal-2 EBRI sentence (undated $92.4B)'
+    );
+    t(
+      checkInstitutionalEstimateVintage(REAL_FIXED, '2026-08-04').length === 0,
+      '[IMP-127] SILENT once the 2015 vintage is disclosed (advisory only, never blocking)'
+    );
     const NEGATIVES: string[] = [
       "FactSet's John Butters published the blended figure July 31.",
       'Its members now cover roughly 63 percent of the defined contribution market, which means this stopped being a coalition and became close to a standard.',
       'A Texas Commission on Environmental Quality hearing put the disposal question back on the record.',
     ];
-    const negHits = NEGATIVES.reduce((a, s) => a + checkInstitutionalEstimateVintage(s, '2026-08-04').length, 0);
-    t(negHits === 0, `[IMP-127] SILENT on the Critic's three named negatives (${negHits} flag(s), expected 0)`);
+    const negHits = NEGATIVES.reduce(
+      (a, s) => a + checkInstitutionalEstimateVintage(s, '2026-08-04').length,
+      0
+    );
+    t(
+      negHits === 0,
+      `[IMP-127] SILENT on the Critic's three named negatives (${negHits} flag(s), expected 0)`
+    );
     const dir = path.join(process.cwd(), 'content/daily-updates');
-    let hits = 0, swept = 0;
+    let hits = 0,
+      swept = 0;
     if (fs.existsSync(dir)) {
-      for (const f of fs.readdirSync(dir).filter(x => /^2026-\d\d-\d\d\.md$/.test(x)).sort().slice(-40)) {
+      for (const f of fs
+        .readdirSync(dir)
+        .filter(x => /^2026-\d\d-\d\d\.md$/.test(x))
+        .sort()
+        .slice(-40)) {
         swept++;
-        hits += checkInstitutionalEstimateVintage(fs.readFileSync(path.join(dir, f), 'utf8'), f.slice(0, 10)).length;
+        hits += checkInstitutionalEstimateVintage(
+          fs.readFileSync(path.join(dir, f), 'utf8'),
+          f.slice(0, 10)
+        ).length;
       }
     }
     // The single expected hit is a TRUE positive and worth naming: the published 08-04 dated the
     // EBRI figure in the body (the Morning Updater's fix) and left the WATCH BASELINE undated —
     // "EBRI's next leakage estimate against the $92.4 billion baseline" — which is the half of the
     // Critic's receipt nobody corrected. A sweep of 1 here means the gate found the residue.
-    t(hits <= 1, `[IMP-127] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (≤1 expected — the undated EBRI Watch baseline in 08-04 is a TRUE positive)`);
+    t(
+      hits <= 1,
+      `[IMP-127] FALSE-POSITIVE SWEEP: ${hits} flag(s) across the trailing ${swept} published briefs (≤1 expected — the undated EBRI Watch baseline in 08-04 is a TRUE positive)`
+    );
   }
 
-  console.log(`\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration + precedent-analogy + hook-numerator + marker-placement + itemization-sum + estimate-vintage verified both directions)`);
+  console.log(
+    `\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration + precedent-analogy + hook-numerator + marker-placement + itemization-sum + estimate-vintage verified both directions)`
+  );
   return fails ? 1 : 0;
 }
 
 function main() {
-  if (process.argv.slice(2).includes('--selftest')) process.exit(selftestValidator());
+  if (process.argv.slice(2).includes('--selftest'))
+    process.exit(selftestValidator());
   const [, , argPath] = process.argv;
   if (!argPath) {
     console.error('Usage: validate-brief.ts <path-to-brief.md>');
     process.exit(2);
   }
-  const absPath = path.isAbsolute(argPath) ? argPath : path.join(process.cwd(), argPath);
+  const absPath = path.isAbsolute(argPath)
+    ? argPath
+    : path.join(process.cwd(), argPath);
   if (!fs.existsSync(absPath)) {
     console.error(`File not found: ${absPath}`);
     process.exit(2);
@@ -2732,9 +3761,15 @@ function main() {
   {
     // SOFT CEILING — advisory only, never blocks (Jackson, 2026-08-01: "I don't want a strict
     // word budget I just want a soft ceiling"). The Editor compresses on these; the brief ships.
-    const soft = [...checkSixSectionWordBudget(body), ...checkNamedSectionWordBudget(body)];
+    const soft = [
+      ...checkSixSectionWordBudget(body),
+      ...checkNamedSectionWordBudget(body),
+    ];
     for (const f of soft) console.log(`  🟡 [${f.check}] ${f.message}`);
-    if (soft.length) console.log(`🟡 LENGTH ADVISORY — ${soft.length} section(s) over their soft ceiling. Compress where you can; this does NOT block the brief.`);
+    if (soft.length)
+      console.log(
+        `🟡 LENGTH ADVISORY — ${soft.length} section(s) over their soft ceiling. Compress where you can; this does NOT block the brief.`
+      );
   }
   {
     // BRIEF LENGTH — the ONE blocking length rail (2026-08-03, Jackson).
@@ -2767,11 +3802,18 @@ function main() {
     // improvement loop counts overrides the same way it counts PREDRAFT-OVERRIDE.
     const w = body.split(/\s+/).filter(Boolean).length;
     const mins = Math.round(w / 160);
-    const LEN_TARGET = 4800, LEN_SOFT = 5000, LEN_HARD = 5500, LEN_EPOCH = '2026-08-04';
+    const LEN_TARGET = 4800,
+      LEN_SOFT = 5000,
+      LEN_HARD = 5500,
+      LEN_EPOCH = '2026-08-04';
     const lenDate = briefDateMatch ? briefDateMatch[1] : '';
-    const lenOverride = /<!--\s*LENGTH-OVERRIDE:\s*([^>]{20,}?)\s*-->/.exec(raw);
+    const lenOverride = /<!--\s*LENGTH-OVERRIDE:\s*([^>]{20,}?)\s*-->/.exec(
+      raw
+    );
     const mark = w > LEN_HARD ? '🔴' : w > LEN_SOFT ? '🟡' : '✅';
-    console.log(`${mark} BRIEF LENGTH: ${w.toLocaleString()} words ≈ ${mins} min audio (target 30 min ≈ ${LEN_TARGET.toLocaleString()} words, ceiling ${LEN_HARD.toLocaleString()})`);
+    console.log(
+      `${mark} BRIEF LENGTH: ${w.toLocaleString()} words ≈ ${mins} min audio (target 30 min ≈ ${LEN_TARGET.toLocaleString()} words, ceiling ${LEN_HARD.toLocaleString()})`
+    );
     // ── THE BRIEF ALWAYS SHIPS ────────────────────────────────────────────────────────────────
     // Length blocks ONLY under --enforce-length, which the EDITOR passes inside its own compression
     // loop (Gate 16). Everywhere else -- and specifically at the 7:00 PM `brief-validate-mechanical`
@@ -2788,9 +3830,15 @@ function main() {
       if (lenOverride) {
         console.log(`  ⚪ LENGTH-OVERRIDE accepted — ${lenOverride[1].trim()}`);
       } else if (!enforceLength) {
-        console.log(`  🔴 OVER BUDGET by ${(w - LEN_HARD).toLocaleString()} words (${mins} min vs 30). NOT BLOCKING — the brief always ships.`);
-        console.log(`     The Editor owns this at Gate 16 (\`validate-brief <file> --enforce-length\`). If you are seeing this`);
-        console.log(`     at the 7:00 PM gate, Gate 16 did not compress and did not declare — that is the thing to fix, not the brief.`);
+        console.log(
+          `  🔴 OVER BUDGET by ${(w - LEN_HARD).toLocaleString()} words (${mins} min vs 30). NOT BLOCKING — the brief always ships.`
+        );
+        console.log(
+          `     The Editor owns this at Gate 16 (\`validate-brief <file> --enforce-length\`). If you are seeing this`
+        );
+        console.log(
+          `     at the 7:00 PM gate, Gate 16 did not compress and did not declare — that is the thing to fix, not the brief.`
+        );
       } else {
         failures.push({
           check: 'brief-length',
@@ -2836,8 +3884,13 @@ function main() {
   // IMP-123 runs on the RAW file — the markers ARE the subject, and `body` has had them stripped.
   failures.push(...checkMarkerPlacement(raw));
   // --- August 4, 2026 — 08-04 Critic mandates #2 and #3 ---
-  failures.push(...checkItemizationSum(body));                                            // IMP-126
-  failures.push(...checkInstitutionalEstimateVintage(body, briefDateMatch ? briefDateMatch[1]! : '')); // IMP-127
+  failures.push(...checkItemizationSum(body)); // IMP-126
+  failures.push(
+    ...checkInstitutionalEstimateVintage(
+      body,
+      briefDateMatch ? briefDateMatch[1]! : ''
+    )
+  ); // IMP-127
 
   // --- QG-must-have-run integrity check (June 16, 2026) ---
   // E-PIPELINE-SEQUENCING-01: if validating a v2, assert that the quality gate ran.
@@ -2898,7 +3951,11 @@ function main() {
   for (const g of subGates) {
     const gp = path.join(scriptsDir, g.file);
     if (!fs.existsSync(gp)) continue;
-    const r = spawnSync(process.execPath, ['--experimental-strip-types', gp, absPath, ...g.extra], { encoding: 'utf8' });
+    const r = spawnSync(
+      process.execPath,
+      ['--experimental-strip-types', gp, absPath, ...g.extra],
+      { encoding: 'utf8' }
+    );
     if (r.stdout) console.log(`\n--- ${g.file} ---\n${r.stdout.trim()}`);
     if (r.stderr && r.stderr.trim()) console.error(r.stderr.trim());
     if (r.status !== 0) subGateFailed = true;
@@ -2910,8 +3967,12 @@ function main() {
   // Checks eligible for override: signal-staleness, wildcard-staleness, entity-lead-*,
   // adjacent-sentence-dedup, data-point-repetition.
   const overrideEligiblePrefixes = [
-    'signal-staleness', 'wildcard-staleness', 'entity-lead', 'event-lead',
-    'adjacent-sentence-dedup', 'data-point-repetition',
+    'signal-staleness',
+    'wildcard-staleness',
+    'entity-lead',
+    'event-lead',
+    'adjacent-sentence-dedup',
+    'data-point-repetition',
     // Rotation assignment (2026-07-24): override-eligible so a genuine editorial emergency has
     // a DECLARED path around the assignment — evidence in the editor log, never silence.
     'model-rotation',
@@ -2924,18 +3985,27 @@ function main() {
     'precedent-analogy',
   ];
   {
-    const dateMatchOverride = path.basename(absPath).match(/(\d{4}-\d{2}-\d{2})/);
+    const dateMatchOverride = path
+      .basename(absPath)
+      .match(/(\d{4}-\d{2}-\d{2})/);
     if (dateMatchOverride) {
-      const editorLog = path.join(briefDir, `${dateMatchOverride[1]}-editor-log.md`);
+      const editorLog = path.join(
+        briefDir,
+        `${dateMatchOverride[1]}-editor-log.md`
+      );
       if (fs.existsSync(editorLog)) {
         const elContent = fs.readFileSync(editorLog, 'utf8');
-        const overrideLines = elContent.split('\n').filter(l => l.includes('FALSE-POSITIVE OVERRIDE:'));
+        const overrideLines = elContent
+          .split('\n')
+          .filter(l => l.includes('FALSE-POSITIVE OVERRIDE:'));
         if (overrideLines.length > 0) {
           // For each override, check if it names a check that has a matching failure
           const overriddenChecks: string[] = [];
           for (const ol of overrideLines) {
             // Extract check name: FALSE-POSITIVE OVERRIDE: [check-name] [evidence]
-            const checkMatch = ol.match(/FALSE-POSITIVE OVERRIDE:\s*\[([^\]]+)\]/);
+            const checkMatch = ol.match(
+              /FALSE-POSITIVE OVERRIDE:\s*\[([^\]]+)\]/
+            );
             if (checkMatch) {
               overriddenChecks.push(checkMatch[1].trim().toLowerCase());
             }
@@ -2943,13 +4013,19 @@ function main() {
           // Downgrade matching failures
           for (let i = failures.length - 1; i >= 0; i--) {
             const f = failures[i];
-            const isEligible = overrideEligiblePrefixes.some(p => f.check.startsWith(p));
+            const isEligible = overrideEligiblePrefixes.some(p =>
+              f.check.startsWith(p)
+            );
             if (isEligible) {
-              const isOverridden = overriddenChecks.some(oc =>
-                f.check.toLowerCase().includes(oc) || oc.includes(f.check.toLowerCase())
+              const isOverridden = overriddenChecks.some(
+                oc =>
+                  f.check.toLowerCase().includes(oc) ||
+                  oc.includes(f.check.toLowerCase())
               );
               if (isOverridden) {
-                console.log(`  🟡 [${f.check}] DOWNGRADED to advisory — FALSE-POSITIVE OVERRIDE with evidence in editor log.`);
+                console.log(
+                  `  🟡 [${f.check}] DOWNGRADED to advisory — FALSE-POSITIVE OVERRIDE with evidence in editor log.`
+                );
                 failures.splice(i, 1);
               }
             }
@@ -2965,18 +4041,24 @@ function main() {
   }
 
   if (failures.length > 0) {
-    console.log(`\n❌ validate-brief FAIL — ${path.basename(absPath)} — ${failures.length} structural issue(s):`);
+    console.log(
+      `\n❌ validate-brief FAIL — ${path.basename(absPath)} — ${failures.length} structural issue(s):`
+    );
     for (const f of failures) {
       console.log(`  [${f.check}] ${f.message}`);
     }
   }
   if (subGateFailed) {
-    console.log(`\n❌ validate-brief FAIL — truth/novelty gate failed (details above).`);
+    console.log(
+      `\n❌ validate-brief FAIL — truth/novelty gate failed (details above).`
+    );
   }
   process.exit(1);
 }
 
 // Run only as an entry point, so the exported checks can be imported by a test/sweep harness
 // without main() hijacking the process (added 2026-08-01 with IMP-113).
-const invokedDirectly = !!process.argv[1] && path.resolve(process.argv[1]).endsWith('validate-brief.ts');
+const invokedDirectly =
+  !!process.argv[1] &&
+  path.resolve(process.argv[1]).endsWith('validate-brief.ts');
 if (invokedDirectly) main();
