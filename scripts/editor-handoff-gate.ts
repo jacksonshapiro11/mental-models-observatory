@@ -166,6 +166,41 @@ export function liveness(
       reason: `${date}-v2.working.md exists but is ${bytes} byte(s) — below the ${MIN_PLAUSIBLE_BRIEF_BYTES}-byte floor, so it is a truncated or empty scratch file, NOT an Editor artifact (last written ${quietMin.toFixed(1)} min ago). 2026-08-08 receipt: this exact file sat at 0 bytes and the gate called it ALIVE.`,
     };
   }
+  // IMP-149 (2026-08-09, 08-09 Critic mandate #3 — SECOND CONSECUTIVE NIGHT of the
+  // same rule failing, one night after IMP-141 shipped). IMP-141 fixed the shape it
+  // was SHOWN — an empty husk — not the rule it was written for: Brief_Editor rule 6
+  // requires the working file to be DELETED on promotion, with an `ls` receipt.
+  // RECEIPT: on 08-09 the working file survived promotion at 37,973 bytes, a
+  // BYTE-IDENTICAL COPY of the promoted v2 with the same mtime. It clears the
+  // 4,000-byte plausibility floor effortlessly and then reads ALIVE for 20 minutes
+  // and QUIET forever after.
+  //
+  // A working file identical to the promoted v2 is not an Editor mid-pass; it is the
+  // fingerprint of a finished pass that skipped its delete. Reporting ABSENT is both
+  // true and safe: v2 already exists, so there is nothing the promotion path needs
+  // from this file, and ABSENT makes promoting it impossible.
+  //
+  // Deliberately IDENTITY, not similarity: a real mid-pass working file differs from
+  // the previous v2 by whatever the Editor has changed so far, and any threshold
+  // below exact equality would start calling live Editors dead on a light-edit night.
+  const promoted = path.join(DB(root), `${date}-v2.md`);
+  if (fs.existsSync(promoted)) {
+    const pst = fs.statSync(promoted);
+    if (
+      pst.size === bytes &&
+      fs.readFileSync(promoted, 'utf8') === fs.readFileSync(working, 'utf8')
+    ) {
+      return {
+        state: 'ABSENT',
+        quietMin,
+        canaryAgeMin,
+        workingPath: working,
+        bytes,
+        reason: `${date}-v2.working.md is BYTE-IDENTICAL to the promoted ${date}-v2.md (${bytes} bytes) — the Editor finished and did not delete its scratch file (Brief_Editor rule 6 requires deletion with an \`ls\` receipt). This is a leftover, not a pass in progress, so it is ABSENT for promotion purposes. 2026-08-09 receipt: this exact file survived promotion at 37,973 bytes and read ALIVE.`,
+      };
+    }
+  }
+
   return {
     state: quietMin < QUIET_MIN ? 'ALIVE' : 'QUIET',
     quietMin,
@@ -814,10 +849,52 @@ function selftest(): number {
     `  [IMP-141] real v2 sizes on disk: n=${v2Sizes.length}, smallest ${smallestRealV2}B → floor ${MIN_PLAUSIBLE_BRIEF_BYTES}B is ${(smallestRealV2 / (MIN_PLAUSIBLE_BRIEF_BYTES || 1)).toFixed(1)}× below it`
   );
 
-  for (const d of [alive, dead, early, held, ceiling, husk, full, huskEarly])
+  // --- IMP-149 (2026-08-09 Critic mandate #3, RC2): A LEFTOVER IS NOT A LIVE EDITOR.
+  // Second consecutive night of Brief_Editor rule 6 failing. IMP-141 caught the EMPTY
+  // husk; this is the FULL one — a byte-identical copy of the promoted v2 that clears
+  // the 4,000-byte floor and reads ALIVE. Tested on the REAL 2026-08-09 artifacts, then
+  // on a synthetic minimal pair so the case survives those files being cleaned up.
+  const realTwin = liveness(process.cwd(), '2026-08-09');
+  const realTwinPath = path.join(DB(process.cwd()), '2026-08-09-v2.working.md');
+  const realTwinExists = fs.existsSync(realTwinPath);
+  const okRealTwinAbsent = !realTwinExists || realTwin.state === 'ABSENT';
+
+  const twin = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-twin-'));
+  fs.mkdirSync(path.join(twin, 'daily-briefs'), { recursive: true });
+  const twinBody = PLAUSIBLE_BODY;
+  fs.writeFileSync(path.join(twin, 'daily-briefs', '2026-08-09-v2.md'), twinBody);
+  fs.writeFileSync(
+    path.join(twin, 'daily-briefs', '2026-08-09-v2.working.md'),
+    twinBody
+  );
+  const okTwinAbsent = liveness(twin, '2026-08-09').state === 'ABSENT';
+
+  // …and the minimal pair: ONE CHARACTER of difference means a real pass in progress,
+  // which must still read ALIVE. This is the leg that stops the check from calling a
+  // live Editor dead on a light-edit night.
+  fs.writeFileSync(
+    path.join(twin, 'daily-briefs', '2026-08-09-v2.working.md'),
+    twinBody + 'x'
+  );
+  const okTwinDiffAlive = liveness(twin, '2026-08-09').state === 'ALIVE';
+
+  for (const d of [alive, dead, early, held, ceiling, husk, full, huskEarly, twin])
     fs.rmSync(d, { recursive: true, force: true });
 
   const rows: [string, boolean][] = [
+    [
+      'IMP-149 the REAL 37,973-byte 2026-08-09-v2.working.md twin reads ABSENT' +
+        (realTwinExists ? '' : ' (artifact cleaned up — synthetic leg binds)'),
+      okRealTwinAbsent,
+    ],
+    [
+      'IMP-149 a working file byte-identical to the promoted v2 reads ABSENT, never ALIVE',
+      okTwinAbsent,
+    ],
+    [
+      'IMP-149 SILENT on a one-character difference — a real mid-pass Editor stays ALIVE',
+      okTwinDiffAlive,
+    ],
     [
       'IMP-141 the REAL 0-byte 2026-08-08-v2.working.md reads ABSENT at the moment it read ALIVE',
       okRealAbsent,
