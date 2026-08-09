@@ -232,29 +232,6 @@ Avoid: rushing, robotic cadence, singsong patterns, dramatic over-pausing, breat
         : {}),
     });
 
-    // 2026-08-07 read-back prerequisite (delta 18): keep a LOCAL copy of the produced script.
-    // The blob upload below is remote-only, so the nightly dual read-back — markdown vs what the
-    // listener actually hears — had nothing on disk to read. Best-effort: never throws, never blocks.
-    try {
-      const _fs = await import('node:fs');
-      _fs.mkdirSync('daily-briefs/audio-scripts', { recursive: true });
-      const _name = isWeekly
-        ? `weekly-light-${weeklySlug}`
-        : `brief-light-${brief.date}`;
-      _fs.writeFileSync(
-        `daily-briefs/audio-scripts/${_name}.txt`,
-        preprocessed.fullText
-      );
-      console.log(
-        `[audio:light] local script copy → daily-briefs/audio-scripts/${_name}.txt`
-      );
-    } catch (localErr) {
-      console.warn(
-        '[audio:light] local script copy failed (non-fatal):',
-        localErr
-      );
-    }
-
     try {
       await put(
         isWeekly
