@@ -25,6 +25,7 @@ import {
   readEpisodeMetadata,
 } from '@/lib/audio/podcast-feed';
 import { weeklyFullEpisodeKey } from '@/lib/audio/episode-keys';
+import { ungroundedTitleTokens } from '@/lib/audio/title-grounding';
 
 export { weeklyFullEpisodeKey };
 
@@ -59,7 +60,8 @@ function extractDescription(brief: {
 async function generateEpisodeTitle(
   lede: string,
   displayDate: string,
-  apiKey: string
+  apiKey: string,
+  briefBody: string
 ): Promise<string> {
   try {
     const client = new OpenAI({ apiKey });
@@ -89,7 +91,16 @@ Rules:
     });
     const title = resp.choices[0]?.message?.content?.trim();
     if (title && title.length > 0 && title.length < 80) {
-      return title;
+      const ungrounded = ungroundedTitleTokens(title, briefBody);
+      if (ungrounded.length > 0) {
+        console.warn(
+          `[audio:full] REJECTED generated title ${JSON.stringify(title)} — ` +
+            `names ${ungrounded.join(', ')}, absent from the brief. ` +
+            `Falling back to the deterministic title (IMP-148).`
+        );
+      } else {
+        return title;
+      }
     }
   } catch (err) {
     console.warn(
@@ -319,15 +330,28 @@ Avoid: Robotic cadence, singsong patterns, dramatic pauses for effect, breathy e
     if (brief.dailyTitle) {
       episodeTitle = brief.dailyTitle;
     } else {
-      const titleInput =
-        brief.lede ||
-        brief.orientation ||
-        (rawMarkdown ? rawMarkdown.slice(0, 500) : '');
-      episodeTitle = await generateEpisodeTitle(
-        titleInput,
-        brief.displayDate,
-        openaiApiKey
-      );
+      // IMP-148: NEVER `rawMarkdown.slice(0, 500)` here. On 2026-08-08 an empty
+      // dailyTitle and an empty lede meant the title generator was fed the
+      // masthead plus an Editor validation block, and it invented a company.
+      // An empty dailyTitle AND an empty lede means the brief did not parse —
+      // that is a defect to report, not raw material to be creative with.
+      const titleInput = brief.lede || brief.orientation || '';
+      episodeTitle = titleInput
+        ? await generateEpisodeTitle(
+            titleInput,
+            brief.displayDate,
+            openaiApiKey,
+            rawMarkdown ?? ''
+          )
+        : `Markets, Meditations, and Mental Models — ${brief.displayDate}`;
+      if (!titleInput) {
+        console.warn(
+          `[audio:full] ${brief.date}: dailyTitle AND lede both empty — the ` +
+            `brief header did not parse. Using the deterministic title and ` +
+            `NOT invoking the generator (IMP-148). Run ` +
+            `\`npx tsx scripts/published-header-gate.ts content/daily-updates/${brief.date}.md\`.`
+        );
+      }
     }
 
     const episode = {

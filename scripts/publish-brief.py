@@ -168,9 +168,35 @@ def strip_internal_tags(content):
     # [INTERNAL: ...] — any internal notes
     content = re.sub(r'\s*\[INTERNAL:[^\]]*\]', '', content)
 
+    # <!-- ... --> — HTML comments. Process/meta markup (BRIEF VALIDATION REPORT,
+    # take-move, INNER-GAME-COMPOUNDING, DEPTH-TREATMENT) belongs on the v2 draft
+    # in daily-briefs/, never on the reader surface.
+    #
+    # ADDED 2026-08-09 (IMP-147). scripts/reader-surface-gate.ts has banned these
+    # since 2026-07-21 and exits 1 on them correctly — but NOTHING CALLED IT:
+    # `grep -n "publish-gate\|reader-surface" scripts/publish-brief.py` returned 0
+    # hits, so publish-gate.sh was an orphan wrapper and every leak shipped. Nine
+    # published briefs carried residual comments (07-14, 07-15, 07-16, 08-01,
+    # 08-03, 08-04, 08-05, 08-06, 08-07) and on 08-08 a 37-line Editor validation
+    # block landed in the header region, where it pushed the epigraph past the
+    # parser's 5-line window and zeroed dailyTitle/epigraph/lede. The podcast then
+    # published "Brief: Tesla's stock crashes after shocking reveal" for a brief
+    # that never mentions Tesla.
+    #
+    # STRIP rather than BLOCK, deliberately: this runs on the nightly hot path, a
+    # comment leak is never load-bearing on the reader surface (novelty-gate reads
+    # take-move off the *draft*, not the published file), and a blocking check here
+    # would have failed the run instead of fixing it. The structural defect that a
+    # strip cannot repair — a header that does not parse — IS blocked, in
+    # validate_brief_content() below.
+    content, n_comments = re.subn(r'<!--[\s\S]*?-->\n?', '', content)
+    if n_comments:
+        content = re.sub(r'\n{3,}', '\n\n', content)
+
     chars_removed = original_len - len(content)
     if chars_removed > 0:
-        print(f"⚠️  STRIPPED internal tags ({chars_removed} chars removed). "
+        detail = f"{n_comments} HTML comment(s), " if n_comments else ""
+        print(f"⚠️  STRIPPED internal markup ({detail}{chars_removed} chars removed). "
               f"These should be removed before the file reaches publish.")
     return content
 
@@ -194,6 +220,48 @@ def validate_brief_content(content, is_light=False):
     stripped = content.strip()
     if not stripped.startswith("#"):
         errors.append("File doesn't start with a markdown heading — may be corrupted.")
+
+    # HEADER CONTRACT (added 2026-08-09 — IMP-147, the fabricated-podcast-title incident)
+    #
+    # lib/daily-update-parser.ts accepts an epigraph ONLY inside the first 5 lines
+    # (`i < 5`). When anything displaces the header, parseDailyBrief returns EMPTY
+    # STRINGS for dailyTitle, epigraph and lede — it does not throw, warn, or log.
+    # Every consumer then degrades silently and differently: the archive card loses
+    # its title and blurb, the homepage rail skips the day, and lib/audio/full-generate.ts
+    # falls through to an LLM clickbait title generator. On 2026-08-08 that generator
+    # was handed raw markdown (because lede was empty too) and invented a company:
+    # the published episode was "Brief: Tesla's stock crashes after shocking reveal"
+    # for a brief where `grep -ic tesla` returns 0.
+    #
+    # The shape below is the contract, verified against the archive: masthead →
+    # italic epigraph → `## <date or week>` → `### <editorial title>`. It holds for
+    # both dailies and the weekly (whose masthead carries ": THE WEEKLY" and whose
+    # date line reads "## Week of ..."). Light briefs use a different masthead and
+    # are exempt. This is the BLOCKING half of the pair whose non-blocking half is
+    # the comment strip in strip_internal_tags(); the parser-bound TS twin is
+    # scripts/published-header-gate.ts (run it with `npx tsx`, --selftest covers
+    # both directions plus the whole post-2026-07-07 archive).
+    if not is_light:
+        head = [ln.strip() for ln in stripped.split("\n") if ln.strip()][:4]
+        if len(head) < 4:
+            errors.append("Header contract: fewer than 4 non-empty lines before the body — file may be truncated.")
+        else:
+            masthead, epigraph, dateline, title = head
+            if not re.match(r'^#\s+\S', masthead):
+                errors.append(f"Header contract: line 1 must be the masthead heading, got {masthead[:60]!r}")
+            if not re.match(r'^\*[^*].*\*$', epigraph):
+                errors.append(
+                    "Header contract: the line after the masthead must be the italic epigraph "
+                    f"(*...*), got {epigraph[:60]!r}. parseDailyBrief only looks in the first 5 "
+                    "lines — anything here zeroes dailyTitle/epigraph/lede silently."
+                )
+            if not re.match(r'^##\s+\S', dateline):
+                errors.append(f"Header contract: expected the '## <date>' line third, got {dateline[:60]!r}")
+            if not re.match(r'^###\s+\S', title):
+                errors.append(
+                    f"Header contract: expected the '### <daily title>' line fourth, got {title[:60]!r}. "
+                    "An empty dailyTitle routes the podcast episode title to an LLM generator."
+                )
 
     if errors:
         print(f"❌ PRE-PUBLISH VALIDATION FAILED:")
