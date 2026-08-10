@@ -138,12 +138,52 @@ function daysBetween(a: string, b: string): number {
   );
 }
 
+function prevDay(d: string): string {
+  return new Date(new Date(d + 'T00:00:00Z').getTime() - 86400000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/**
+ * THE ONE-DAY GRACE (IMP-104 prescribed 2026-07-27, ACTUALLY SHIPPED 2026-08-10).
+ *
+ * The threshold a human-maintained log is graded against is the newest brief published STRICTLY
+ * BEFORE today — not the newest brief on disk. The cadence is morning-publish (~05:20 ET) → the
+ * geo-lead row is appended by a LATER scheduled step (10:03 `append-geo-lead.ts` / Apply_Improvements
+ * Phase 6). Between those two clocks the log is legitimately one day behind today's brief, and
+ * grading against `newestPublishedBrief` made the gate FAIL every single morning — a false positive
+ * with a DAILY period, which is precisely how a genuine catch gets written off as known noise.
+ *
+ * FORENSIC NOTE, kept because it is the lesson: IMP-104's ledger row (2026-07-27) claims this
+ * function was added and "verified both directions". It was not. `git log -S freshnessThreshold
+ * --all` returns EMPTY — the string was never in any commit and was not in the working file either.
+ * The row stayed green for two weeks only because Phase 6 runs `append-geo-lead.ts` FIRST, making
+ * the log current before verify ever read it; the morning of 2026-08-10 the registry was read
+ * before that append and the ghost fix was exposed. IMP-104's check was `run:<selftest>` with no
+ * `grep:` leg, so ledger rule 7's revert-detection could not see the absence. Both are fixed here.
+ *
+ * The grace is exactly ONE day and no more: a log two days behind still FIRES (see selftest), and
+ * the original 06-27 → 07-17 twenty-day dead-log window still FIRES. Grace ≠ blindness.
+ */
+export function freshnessThreshold(
+  root: string,
+  today: string = nyToday()
+): string | null {
+  return newestPublishedBrief(root, prevDay(today));
+}
+
+/** The shipped comparison, exported so the selftest exercises the real one and not a copy. */
+export function isStale(newestRow: string, threshold: string): boolean {
+  return newestRow < threshold;
+}
+
 export function checkInputs(
   root: string,
-  inputs: InputSpec[] = GATE_INPUTS
+  inputs: InputSpec[] = GATE_INPUTS,
+  today: string = nyToday()
 ): Finding[] {
   const out: Finding[] = [];
-  const latestBrief = newestPublishedBrief(root);
+  const latestBrief = freshnessThreshold(root, today);
   if (!latestBrief) return out; // no published briefs (fresh clone / sandbox) — nothing to be stale against
   for (const spec of inputs) {
     const p = path.join(root, spec.file);
@@ -167,7 +207,7 @@ export function checkInputs(
       });
       continue;
     }
-    if (newest < latestBrief) {
+    if (isStale(newest, latestBrief)) {
       const gap = daysBetween(newest, latestBrief);
       out.push({
         check: 'gate-input-stale',
@@ -236,6 +276,33 @@ function selftest(): number {
   // Using UTC here would re-introduce the identical bug every night between 8 PM and midnight ET.
   const okNyClock = nyToday(new Date('2026-07-18T00:30:00Z')) === '2026-07-17';
 
+  // THE ONE-DAY GRACE, BOTH DIRECTIONS ON REAL ARTIFACTS (IMP-154 — the fix IMP-104 claimed and
+  // never shipped; replayed here against the exact 2026-08-10 07:03 ET state that exposed it).
+  //
+  // (a) It DOES something. 2026-08-10.md is on disk and IS counted as published — that is the
+  //     value the OLD code graded the log against, and it is why the gate was RED this morning.
+  //     The threshold is now strictly earlier. If this leg ever goes ✗ the grace is a no-op again.
+  const graceIsNotANoop =
+    newestPublishedBrief(root, '2026-08-10') === '2026-08-10' &&
+    (freshnessThreshold(root, '2026-08-10') ?? '9999') < '2026-08-10';
+  // (b) A log current through the last brief-before-today is SILENT this morning — the false-RED
+  //     with a DAILY period (publish ~05:20 ET → 10:03 append) is closed. Replayed on the real
+  //     pre-append state: the Geo-Lead Theater Log's newest row was 2026-08-09.
+  const threshold0810 = freshnessThreshold(root, '2026-08-10')!;
+  const okGraceHolds = isStale('2026-08-09', threshold0810) === false;
+  // (c) ...but the grace is ONE PUBLISHED BRIEF, not a blanket. Two behind still FIRES, and the
+  //     original 20-day dead-log window still FIRES against its own day's threshold.
+  const okGraceNotBlind =
+    isStale('2026-08-07', threshold0810) === true &&
+    isStale('2026-06-27', freshnessThreshold(root, '2026-07-17')!) === true;
+  // (d) WEEKEND HOLE: 2026-08-09 was a Sunday — the daily was HELD and no 2026-08-09.md exists.
+  //     The threshold must walk back to the newest brief that ACTUALLY published (08-08), never
+  //     to a calendar day with no artifact. A gate that grades against a file that does not
+  //     exist is the decorative-input failure this whole script was built to police.
+  const okWeekendHole =
+    !fs.existsSync(path.join(root, 'content/daily-updates/2026-08-09.md')) &&
+    threshold0810 === '2026-08-08';
+
   // THE REAL REGISTRY, RIGHT NOW: this is the check running in anger.
   const real = checkInputs(root);
   const okRealClean = real.length === 0;
@@ -265,6 +332,18 @@ function selftest(): number {
     `  reading clock is America/New_York, not UTC: ${okNyClock ? '✓' : '✗'}`
   );
   console.log(
+    `  freshnessThreshold GRACE is not a no-op (today publishes, yesterday grades): ${graceIsNotANoop ? '✓' : '✗'}`
+  );
+  console.log(
+    `  a log current through YESTERDAY is SILENT this morning (no daily false-RED): ${okGraceHolds ? '✓' : '✗'}`
+  );
+  console.log(
+    `  ...but TWO briefs behind still FIRES (grace is one brief, not blindness): ${okGraceNotBlind ? '✓' : '✗'}`
+  );
+  console.log(
+    `  weekend hole: Monday grades against Saturday's brief, not a Sunday that never published: ${okWeekendHole ? '✓' : '✗'}`
+  );
+  console.log(
     `  the REAL registered inputs are current right now: ${okRealClean ? '✓' : '✗'}${okRealClean ? '' : `\n${real.map(f => `      ✗ ${f.message}`).join('\n')}`}`
   );
 
@@ -278,6 +357,10 @@ function selftest(): number {
     okFutureExcluded &&
     okNotBlinded &&
     okNyClock &&
+    graceIsNotANoop &&
+    okGraceHolds &&
+    okGraceNotBlind &&
+    okWeekendHole &&
     okRealClean;
   if (ok) {
     console.log(

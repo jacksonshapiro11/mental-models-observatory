@@ -354,6 +354,34 @@ const STOP = new Set([
   'ideas',
   'work',
   'works',
+  // MAGNITUDE AND UNIT WORDS (added 2026-08-09). These are never identity, and as anchors they
+  // make an intersection test unfailable: any two financial paragraphs share "million".
+  // WORKED FAILURE: a planted negative control whose C&C shared nothing with the cc-predraft
+  // still PASSED, on the single anchor `million` — harvested from the pre-draft's "$310 Million
+  // Series B" and matched against the control's invented "$12 million". A gate that cannot fail
+  // is worse than the bug it was added to fix, so the words go in the shared STOP set rather
+  // than in one component's fallback: `million` is junk for the Take and Signal too.
+  'million',
+  'millions',
+  'billion',
+  'billions',
+  'trillion',
+  'trillions',
+  'percent',
+  'series',
+  'quarter',
+  'quarterly',
+  'annual',
+  'total',
+  'share',
+  'shares',
+  'cash',
+  'value',
+  'premium',
+  'revenue',
+  'capital',
+  'company',
+  'companies',
 ]);
 
 /**
@@ -530,9 +558,36 @@ function buildComponents(dir: string, date: string): Component[] {
         const heads = [
           ...stripComments(d).matchAll(/^##\s*Candidate\s*\d+:\s*(.+)$/gim),
         ].map(m => m[1]!);
-        return heads.length
+        const fromHeads = heads.length
           ? [...new Set(heads.flatMap(h => anchors(h)))]
-          : anchors(bodyFrom(d));
+          : [];
+        if (fromHeads.length >= 3) return fromHeads;
+        // ANCHOR-THINNESS FALLBACK (added 2026-08-09). Headline presence is not headline
+        // USEFULNESS. A cc-predraft may write its `## Candidate N:` lines as thesis SENTENCES
+        // rather than entity-led headlines, in which case `anchors()` — which wants proper nouns
+        // and acronyms — returns almost nothing and the intersection test degenerates.
+        // WORKED FAILURE: on 2026-08-09 five candidate headlines ("The aerospace supply chain's
+        // binding constraint is now a window", "A mining company priced like a software company…",
+        // "The first production system whose censorship-resistance is being bought by the
+        // attacker", "Privacy repriced from an ideology into an execution cost", "the exchange
+        // roll-up reaches the last non-electronic market") yielded exactly ONE anchor — `privacy`,
+        // an accident of Candidate 4's capitalisation. The v1 had consumed Candidates 2 and 3 in
+        // full (Mariana Minerals, Copper One, In-Q-Tel, EtherHiding, ClearFake, BNB Smart Chain)
+        // and the gate still reported ZERO intersection, because none of that overlaps one word.
+        //
+        // The fallback is deliberately NOT `anchors(bodyFrom(d))`. That was tried first and it
+        // made the gate TOOTHLESS: run over the whole 24KB pre-draft, `anchors()` harvests every
+        // sentence-initial and ALL-CAPS prose word, so a planted negative control whose C&C
+        // shared nothing with the pre-draft still PASSED — it matched on `nothing`, lifted from
+        // the pre-draft's own "NOTHING IN THIS FILE IS PUBLICATION-CLEARED" line. An intersection
+        // test with a junk-inflated anchor set cannot fail, which is worse than the bug it fixes.
+        // So the fallback reads only the `**Source:**` and `**Event:**` fields, which are the two
+        // places a cc-predraft is structurally obliged to name real entities. Verified both
+        // directions on 2026-08-09: PASS on the true v1, FAIL on the planted bypass.
+        const fields = [
+          ...stripComments(d).matchAll(/^\s*\*\*(?:Source|Event)\s*:?\*\*\s*(.+)$/gim),
+        ].map(m => m[1]!);
+        return fields.length ? [...new Set(fields.flatMap(f => anchors(f)))] : fromHeads;
       },
       sectionOf: v1 =>
         extractSection(v1, /^##\s+Companies\s*&\s*Crypto/i, /^##\s|^#\s*▸/),

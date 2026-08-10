@@ -75,8 +75,13 @@ const die = (msg: string): never => {
   console.error(`\n❌ ${msg}\n`);
   process.exit(1);
 };
+/** 🔴 The light brief and the full brief share a BRIEF_DATE. Before this suffix they also shared
+ *  `.readback/<date>/meta.json`, so the full-brief loop's first night would have silently overwritten
+ *  the light's graded state for the same date. `--product=full` routes to `.readback/<date>-full/`.
+ *  Default is unsuffixed, so every directory already on disk keeps working. */
+let PRODUCT_SUFFIX = '';
 const rbPath = (date: string, ...p: string[]): string =>
-  path.join(RB_DIR, date, ...p);
+  path.join(RB_DIR, date + PRODUCT_SUFFIX, ...p);
 
 // ── SEGMENTATION ──────────────────────────────────────────────────────────────
 /** Split the artifact into candidate units. A unit is a bold-led block, OR — when a `## ▸` section
@@ -482,6 +487,146 @@ function cmdLedger(date: string): void {
   );
 }
 
+// ── MORNING JURISDICTION ──────────────────────────────────────────────────────
+/** Pure half, so the selftest can exercise it without touching disk. Compares the graded units
+ *  against the same units re-segmented out of a later artifact. Identity is the unit id; the
+ *  verdict is the sha. */
+function dirtyUnits(
+  graded: Unit[],
+  md: string,
+  claims: Claim[]
+): { id: string; section: string; before: string; after: string }[] {
+  const now = segment(md, claims);
+  return graded
+    .filter(u => now.find(a => a.id === u.id)?.sha !== u.sha)
+    .map(u => ({
+      id: u.id,
+      section: u.section,
+      before: u.sha,
+      after: now.find(a => a.id === u.id)?.sha ?? 'MISSING',
+    }));
+}
+
+/** 🔴 LAW 1 — ANY PASS WITH REWRITE AUTHORITY SITS INSIDE THE LOOP'S JURISDICTION
+ *  (WORK_ORDER_READBACK.md, PART 12.8). The Morning Truth Gate rewrites the PUBLISHED artifact at
+ *  05:06, hours after every check has run, and nothing re-read what it changed. Receipt: on
+ *  2026-08-08 it rewrote three graded units — lede, update-2, line-3 — and line-3's TRANSMITTED 3/3
+ *  was awarded to a sentence that no longer existed. Their grades were invalidated BY HAND, which is
+ *  the same as not at all.
+ *
+ *  WARN-ONLY BY CONTRACT. It never blocks a publish. Exit 1 means "units changed", not "stop". */
+function cmdDirty(date: string, publishedPath: string, mark: boolean): number {
+  const metaPath = rbPath(date, 'meta.json');
+  if (!fs.existsSync(metaPath)) {
+    console.log(
+      `MORNING-DIRTY ${date} — 0/0 · no read-back state at ${metaPath}; nothing was graded for this date, so nothing can be stale. Not a pass, an absence.`
+    );
+    return 0;
+  }
+  if (!fs.existsSync(publishedPath)) {
+    console.log(
+      `MORNING-DIRTY ${date} — 0/0 · published artifact not found at ${publishedPath}. Nothing compared.`
+    );
+    return 0;
+  }
+  const meta: Meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+  const claims: Claim[] = JSON.parse(
+    fs.readFileSync(rbPath(date, 'claims.json'), 'utf-8')
+  );
+  const md = fs.readFileSync(publishedPath, 'utf-8');
+
+  // A changed unit COUNT is a bigger finding than a changed unit, and segment() would die on it.
+  const cands = candidates(md);
+  if (cands.length !== claims.length) {
+    console.log(
+      `⚠ MORNING-DIRTY ${date} — UNIT COUNT CHANGED: published has ${cands.length}, graded had ${claims.length}. A unit was added or removed after grading; positional comparison abandoned. EVERY grade for this date is suspect.`
+    );
+    fs.writeFileSync(
+      rbPath(date, 'morning-dirty.json'),
+      JSON.stringify(
+        {
+          date,
+          source: publishedPath,
+          graded_units: claims.length,
+          published_units: cands.length,
+          verdict: 'UNIT_COUNT_CHANGED',
+          dirty: null,
+        },
+        null,
+        2
+      )
+    );
+    return 1;
+  }
+
+  // 🔴 THE BASELINE IS WHAT THE LOOP BLESSED, NOT WHAT IT FIRST SAW. meta.units is hashed at
+  // prepare time, BEFORE any redraft. Comparing against it reports every redrafted unit as a
+  // morning change — which is false, since a redraft is re-read inside the loop. When the loop
+  // assembled, `assembled.md` is the graded artifact and it is the baseline. Caught by running the
+  // 2026-08-08 receipt: source-baseline said 6 changed, three of which were the loop's own work.
+  const assembledPath = rbPath(date, 'assembled.md');
+  const usedAssembled = fs.existsSync(assembledPath);
+  const baseline = usedAssembled
+    ? segment(fs.readFileSync(assembledPath, 'utf-8'), claims)
+    : meta.units;
+  const changed = dirtyUnits(baseline, md, claims);
+  console.log(
+    `MORNING-DIRTY ${date} — ${changed.length}/${baseline.length} unit(s) changed since grading  ·  baseline=${usedAssembled ? 'assembled' : 'source'}`
+  );
+  for (const c of changed)
+    console.log(`  · ${c.id}  (${c.section})   ${c.before} → ${c.after}`);
+  if (!changed.length)
+    console.log(
+      `  every graded unit is byte-identical to what shipped. Graded bytes = shipped bytes.`
+    );
+
+  fs.writeFileSync(
+    rbPath(date, 'morning-dirty.json'),
+    JSON.stringify(
+      {
+        date,
+        source: publishedPath,
+        graded_units: baseline.length,
+        published_units: cands.length,
+        baseline: usedAssembled ? 'assembled' : 'source',
+        verdict: changed.length ? 'DIRTY' : 'CLEAN',
+        dirty: changed,
+      },
+      null,
+      2
+    )
+  );
+
+  if (mark && changed.length && fs.existsSync(LEDGER)) {
+    const product = publishedPath.includes('/weekly/')
+      ? 'weekly'
+      : publishedPath.endsWith('-light.md')
+        ? 'light'
+        : 'full';
+    const ledger = JSON.parse(fs.readFileSync(LEDGER, 'utf-8'));
+    const ids = new Set(changed.map(c => c.id));
+    let n = 0;
+    for (const r of ledger) {
+      // 🔴 ONLY GRADE ROWS. The ledger also holds owner-mark rows and notes under the same
+      // (date, product, unit) key — the owner's verbatim mark is ground truth and no later edit
+      // invalidates it. Caught by the denominator: an early run stamped 8 rows for 6 units.
+      if (r.date !== date || r.product !== product || !ids.has(r.unit))
+        continue;
+      if (!r.grades) continue;
+      r.GRADE_INVALIDATED = true;
+      // never overwrite a reason a human wrote — the ledger is append-only in spirit
+      if (!r.invalidation_reason)
+        r.invalidation_reason = `A pass with rewrite authority changed this unit after the read-back graded it (source ${publishedPath}). Grade belongs to bytes that no longer ship.`;
+      n++;
+    }
+    fs.writeFileSync(LEDGER, JSON.stringify(ledger, null, 2));
+    console.log(
+      `  ✓ ${n}/${changed.length} changed unit(s) stamped GRADE_INVALIDATED in ${LEDGER} (product=${product})`
+    );
+  }
+  return changed.length ? 1 : 0;
+}
+
 // ── SELFTEST (both directions, per the IMP standard) ──────────────────────────
 function selftest(): number {
   let pass = 0,
@@ -578,6 +723,32 @@ function selftest(): number {
     segment(corrupted, claims)[1]!.sha !== units[1]!.sha
   );
 
+  // morning jurisdiction — a later pass's edit is detected, and only on the unit it touched
+  const morning = md.replace(
+    'Beta body sentence here.',
+    'Beta body sentence here, corrected at 05:06.'
+  );
+  const md1 = dirtyUnits(units, morning, claims);
+  t('morning edit detected as dirty', md1.length === 1 && md1[0]!.id === 'u2');
+  t(
+    'untouched units are NOT called dirty by the morning check',
+    !md1.some(d => d.id !== 'u2')
+  );
+  t(
+    'an unedited artifact reports zero dirty units',
+    dirtyUnits(units, md, claims).length === 0
+  );
+
+  // product routing — the light and the full brief must not share a state directory
+  const beforeSuffix = PRODUCT_SUFFIX;
+  PRODUCT_SUFFIX = '-full';
+  const fullPath = rbPath('2026-01-01', 'meta.json');
+  PRODUCT_SUFFIX = '';
+  const lightPath = rbPath('2026-01-01', 'meta.json');
+  PRODUCT_SUFFIX = beforeSuffix;
+  t('--product routes to a separate state dir', fullPath !== lightPath);
+  t('default product path is unchanged', lightPath.includes('2026-01-01/'));
+
   // tabulation arithmetic
   const g: Grade[][] = [
     ['DISTORTED', 'DISTORTED', 'DISTORTED'],
@@ -626,7 +797,14 @@ function selftest(): number {
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
-const [, , cmd, a, b] = process.argv;
+const rawArgs = process.argv.slice(2);
+const flags = rawArgs.filter(x => x.startsWith('--'));
+const prod = flags.find(x => x.startsWith('--product='))?.split('=')[1] ?? '';
+if (prod) PRODUCT_SUFFIX = `-${prod}`;
+const positional = rawArgs.filter(x => !x.startsWith('--'));
+const cmd = rawArgs[0]?.startsWith('--') ? rawArgs[0] : positional[0];
+const a = positional[1];
+const b = positional[2];
 switch (cmd) {
   case '--selftest':
     process.exit(selftest());
@@ -646,6 +824,11 @@ switch (cmd) {
     if (!a) die('usage: assemble <DATE>');
     cmdAssemble(a);
     break;
+  case 'dirty':
+    if (!a || !b)
+      die('usage: dirty <DATE> <published.md> [--mark] [--product=full]');
+    process.exit(cmdDirty(a, b, flags.includes('--mark')));
+  // eslint-disable-next-line no-fallthrough
   case 'ledger':
     if (!a) die('usage: ledger <DATE>');
     cmdLedger(a);
@@ -655,7 +838,10 @@ switch (cmd) {
       'transmission-readback.ts — mechanical half of the read-back loop. Never calls a model.'
     );
     console.log(
-      '  prepare <light.md> <claims.json> | check <DATE> | tabulate <DATE> | assemble <DATE> | ledger <DATE> | --selftest'
+      '  prepare <light.md> <claims.json> | check <DATE> | tabulate <DATE> | assemble <DATE> | ledger <DATE> | dirty <DATE> <published.md> [--mark] | --selftest'
+    );
+    console.log(
+      '  --product=full routes state to .readback/<DATE>-full/ so the full brief and the light never collide.'
     );
     process.exit(2);
 }

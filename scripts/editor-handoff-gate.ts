@@ -561,6 +561,61 @@ export function auditHandoff(root: string, date: string): Violation[] {
   return v;
 }
 
+/**
+ * PROMOTION AUDIT — the invariant, not the shape (IMP-155, 2026-08-10 Critic mandate #3, RC2/RC5).
+ *
+ * `Brief_Editor.md` rule 6 states one thing: THE WORKING FILE MUST NOT EXIST AFTER PROMOTION.
+ * Two fixes were built against it in three nights and both were built against the SHAPE they were
+ * shown rather than the RULE, so both are silent tonight:
+ *
+ *   IMP-141 (08-08) saw an EMPTY husk           → built MIN_PLAUSIBLE_BRIEF_BYTES, a 4,000 B floor.
+ *   IMP-149 (08-09) saw a BYTE-IDENTICAL copy   → built an identity test, "identity, not similarity".
+ *   08-10 shipped a 56,562 B MID-PASS SNAPSHOT  → clears the floor, fails identity. Both blind.
+ *
+ * Measured on disk this session, five consecutive nights, five different shapes:
+ *   08-06 294 B · 08-07 0 B · 08-08 0 B · 08-09 37,973 B (identical to v2) · 08-10 56,562 B (neither).
+ *
+ * The lesson is the one 08-09 mandate #1 named and the very next fix then committed: ACCEPTANCE ON
+ * THE TRAINING SET. So this check tests EXISTENCE and nothing else. Size, contents and similarity
+ * are reported as a DIAGNOSIS (ORPHANED-SCRATCH when byte-identical to v2, STALE-SCRATCH when not)
+ * but they never decide the verdict — there is no sixth shape that can slip past an existence test.
+ *
+ * Scope is deliberately narrow: it fires only ONCE v2 EXISTS, i.e. after promotion. A working file
+ * beside no v2 is a live Editor mid-pass, which `--liveness` correctly reads as ALIVE and which this
+ * must never touch. A promotion audit that fires during a live Editor run is a regression wearing
+ * an improvement's name.
+ */
+export function auditPromotion(root: string, date: string): Violation[] {
+  const v2 = path.join(DB(root), `${date}-v2.md`);
+  const working = path.join(DB(root), `${date}-v2.working.md`);
+  if (!fs.existsSync(v2)) return []; // not promoted yet — --liveness owns this window, not us
+  if (!fs.existsSync(working)) return []; // rule 6 satisfied: the scratch file is gone
+
+  let bytes = -1;
+  let identical = false;
+  try {
+    bytes = fs.statSync(working).size;
+    identical =
+      bytes === fs.statSync(v2).size &&
+      fs.readFileSync(working).equals(fs.readFileSync(v2));
+  } catch {
+    /* stat/read race — existence already decided the verdict */
+  }
+  return [
+    {
+      check: identical ? 'ORPHANED-SCRATCH' : 'STALE-SCRATCH',
+      message:
+        `PROMOTION AUDIT FAILED — ${date}-v2.working.md STILL EXISTS beside a promoted ${date}-v2.md ` +
+        `(${bytes} byte(s), ${identical ? 'byte-identical to v2' : 'NOT identical to v2'}). ` +
+        `Brief_Editor rule 6 requires DELETION on promotion; the size and the contents are a diagnosis, ` +
+        `not the verdict — ${identical ? 'ORPHANED-SCRATCH: the promotion copied instead of moving, so the husk is a leftover' : 'STALE-SCRATCH: a mid-pass snapshot survived, so a later reader can grade a document that never shipped'}. ` +
+        `FIX: delete it and write the WORKING FILE DELETED receipt to ${date}-editor-log.md. ` +
+        `Do not add a size or similarity condition to this check — that is exactly how IMP-141 and IMP-149 ` +
+        `each went blind on the next night's shape.`,
+    },
+  ];
+}
+
 // ---------- selftest ----------
 
 /** Build a throwaway pipeline dir with REAL mtimes — the only honest way to test a liveness rule. */
@@ -995,6 +1050,72 @@ function selftest(): number {
     ],
   ];
 
+  // --- IMP-155 PROMOTION AUDIT: existence, on REAL artifacts, across all five shapes.
+  // The acceptance the 08-10 mandate set: FIRE on 08-06 (294 B), 08-07 (0 B), 08-08 (0 B),
+  // 08-09 (byte-identical to v2) and 08-10 (56,562 B mid-pass snapshot) — the two prior fixes
+  // are blind on at least one of these each. Then: SILENT wherever rule 6 was honoured, and
+  // SILENT during a live Editor pass (working file, no v2 yet), which --liveness owns.
+  // ⚠️ THESE FIVE `daily-briefs/2026-08-0*-v2.working.md` FILES ARE RECEIPTS, NOT LITTER.
+  // They are the only surviving evidence of all five shapes. Do NOT sweep them in a cleanup pass
+  // or this leg goes red for the wrong reason — the gate must go on being provable against the
+  // failures that produced it. Delete them only together with this assertion.
+  const promoNights = [
+    '2026-08-06',
+    '2026-08-07',
+    '2026-08-08',
+    '2026-08-09',
+    '2026-08-10',
+  ];
+  const promoFired = promoNights.map(d => auditPromotion(root, d));
+  const okPromoFiresAll = promoFired.every(v => v.length === 1);
+  // Both diagnoses must still be distinguishable — 08-09 is the byte-identical husk, 08-10 is not.
+  const okPromoDiagnoses =
+    auditPromotion(root, '2026-08-09')[0]?.check === 'ORPHANED-SCRATCH' &&
+    auditPromotion(root, '2026-08-10')[0]?.check === 'STALE-SCRATCH';
+  // SILENT on every real date that has a promoted v2 and honoured rule 6. Derived from disk, not
+  // from a hand-picked date, so the silent leg cannot be tuned.
+  const promoDir = DB(root);
+  const cleanNights = fs.existsSync(promoDir)
+    ? fs
+        .readdirSync(promoDir)
+        .map(f => f.match(/^(\d{4}-\d{2}-\d{2})-v2\.md$/)?.[1])
+        .filter((d): d is string => !!d)
+        .filter(d => !fs.existsSync(path.join(promoDir, `${d}-v2.working.md`)))
+    : [];
+  const okPromoSilentClean =
+    cleanNights.length > 0 &&
+    cleanNights.every(d => auditPromotion(root, d).length === 0);
+  // SILENT mid-pass: a working file with NO v2 yet is a live Editor, never a failed promotion.
+  const liveRoot = fixture('promo-live', {
+    canaryMinAgo: 10,
+    workingQuietMin: 1,
+  });
+  const okPromoSilentMidPass = auditPromotion(liveRoot, D).length === 0;
+  const okPromoLivenessIntact = liveness(liveRoot, D).state === 'ALIVE';
+
+  rows.push(
+    [
+      `IMP-155 FIRES on all ${promoNights.length} promotion nights, every shape (294 B / 0 B / 0 B / identical / mid-pass)`,
+      okPromoFiresAll,
+    ],
+    [
+      'IMP-155 keeps ORPHANED-SCRATCH vs STALE-SCRATCH distinguishable (verdict is existence either way)',
+      okPromoDiagnoses,
+    ],
+    [
+      `IMP-155 SILENT on all ${cleanNights.length} real nights that honoured rule 6`,
+      okPromoSilentClean,
+    ],
+    [
+      'IMP-155 SILENT mid-pass (working file, no v2) — --liveness owns that window',
+      okPromoSilentMidPass,
+    ],
+    [
+      'IMP-155 does NOT break --liveness: the same mid-pass fixture still reads ALIVE',
+      okPromoLivenessIntact,
+    ]
+  );
+
   console.log('editor-handoff-gate --selftest');
   for (const [label, ok] of rows) console.log(`  ${ok ? '✓' : '✗'} ${label}`);
 
@@ -1022,6 +1143,7 @@ function main() {
     '--can-self-heal',
     '--can-promote',
     '--audit',
+    '--audit-promotion',
     '--liveness',
     '--qg-liveness',
   ];
@@ -1034,6 +1156,19 @@ function main() {
   }
   const mode = argv[i]!;
   const date = argv[i + 1]!;
+
+  if (mode === '--audit-promotion') {
+    const v = auditPromotion(root, date);
+    console.log(`editor-handoff-gate --audit-promotion ${date}`);
+    for (const x of v) console.log(`   ✗ ${x.check} — ${x.message}`);
+    if (v.length === 0) {
+      console.log(
+        '   ✓ no working file beside the promoted v2 (Brief_Editor rule 6 satisfied)'
+      );
+      process.exit(0);
+    }
+    process.exit(1);
+  }
 
   if (mode === '--qg-liveness') {
     const l = qgLiveness(root, date);

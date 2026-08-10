@@ -34,8 +34,20 @@ function getModelBySlug(slug: string) {
   return READWISE_MODELS.find((m: any) => m.slug === slug);
 }
 // M2 (July 5): domain slug set for slug-type disambiguation
+// 2026-08-10 (brief-morning): NARROWED. The original set assumed a slug is either a domain
+// or a model, never both. `game-theory-strategic-interaction` is BOTH — domain-33 and model
+// `incentives-mechanism-design-24b` (code 24B) carry the same slug — so the check deadlocked
+// against checkModelAssigned, which requires exactly the selector's assignment. Any date the
+// rotation landed on queue index 16 was structurally unpublishable. A slug that resolves to a
+// real MODEL is a valid model identifier regardless of a colliding domain; only pure-domain
+// slugs (e.g. `information-theory-media-ecology`, the July 5 receipt) stay banned.
+const MODEL_SLUGS = new Set(
+  (READWISE_MODELS as any[]).map((m: any) => m.slug)
+);
 const DOMAIN_SLUGS = new Set(
-  (READWISE_DOMAINS as any[]).map((d: any) => d.slug)
+  (READWISE_DOMAINS as any[])
+    .map((d: any) => d.slug)
+    .filter((s: string) => !MODEL_SLUGS.has(s))
 );
 
 type Failure = { check: string; message: string };
