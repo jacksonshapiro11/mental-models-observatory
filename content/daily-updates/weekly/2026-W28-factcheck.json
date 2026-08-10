@@ -1,6 +1,6 @@
 {
   "brief": "2026-W28-jul-05-11.md",
-  "generated": "2026-08-07T11:52:54.279Z",
+  "generated": "2026-08-10T11:22:18.118Z",
   "truthFile": "2026-W28-truth.json",
   "summary": {
     "claims": 7,
@@ -14,6 +14,7 @@
     "headlineAnchors": 0,
     "bylines": 0,
     "derivedPrices": 0,
+    "sourceConclusions": 0,
     "pass": 6,
     "fail": 1,
     "unverified": 6,

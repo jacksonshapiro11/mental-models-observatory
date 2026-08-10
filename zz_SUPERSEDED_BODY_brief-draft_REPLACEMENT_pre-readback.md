@@ -1,8 +1,3 @@
-<!-- REPLACEMENT for ~/Documents/Claude/Scheduled/brief-draft/SKILL.md
-     Built 2026-08-08 for the Read-Back Loop, full brief. Paste this whole file over the live one.
-     Built FROM the current task-body snapshot, so everything below is the body you already run,
-     plus ONE new section: "3.5 — CLAIM-FIRST". Nothing else was touched.
-     Companion: BODY_brief-editor_REPLACEMENT.md (runs the loop over what this writes). -->
 ---
 name: brief-draft
 description: Generate the full v1 daily brief. Imports the four component pre-drafts (Take, Signal, Discovery, C&C) via the ground-truth manifest — it does not author them. Novelty rewrite handled downstream by brief-quality-gate.
@@ -81,55 +76,11 @@ New improvements are prescribed only at the 10:03 session. This is orientation, 
 6. Generator skills **only for sections you actually write**: Inner Game
    (`system/Inner_Game_Generator.md`), Wild Card (`system/Wild_Card_Generator.md`),
    Markets & Macro (`system/Markets_Macro_Generator.md`), AI & Tech (`system/AI_Tech_Generator.md`),
-   Geopolitics (`system/Geopolitics_Generator.md`). The Model: the model is ASSIGNED, not chosen. Run
-   `node --experimental-strip-types scripts/select-daily-model.ts --date {BRIEF_DATE}`
-   and teach the model it returns. If the output carries `skippedFrom` / `skipNote`, that is the
-   rotation working — do NOT reach past it to the skipped slug. Verify the returned slug resolves
-   in `lib/readwise-data.ts`. `system/Model_Tier3_Whitelist.md` is the eligibility pool the
-   selector draws from, not a menu to pick from.
+   Geopolitics (`system/Geopolitics_Generator.md`). The Model: select from
+   `system/Model_Tier3_Whitelist.md` (all 119 catalog models are eligible; 30-day cooldown) and
+   verify the slug in `lib/readwise-data.ts`.
    **Do not open Take_Generator, Signal_Generator or Companies_Crypto_Generator to write those
    sections — they are imports.** Consult them only to develop a component the manifest marked ABSENT.
-
-
-## 3.5 — 🔴 CLAIM-FIRST. WRITE THE CLAIM BEFORE THE BULLET. (new, 2026-08-08)
-
-**Step zero of every bullet, in every section. Not a review step, not a pass afterwards.**
-
-Before drafting a bullet, write two lines:
-
-1. **CLAIM** — what the bullet says is true, in one breath, the way you would say it to someone
-   across the table. **A named actor and a direction.** Not a topic. Not a question. Not
-   "X is interesting."
-2. **SO_WHAT** — why it matters to a smart, busy non-specialist: what they now know, do, or watch.
-
-**If you cannot say the claim in one breath, you have not finished thinking. Do not start the
-bullet.**
-
-🔴 **A bullet that reports a mechanism must say what it means. State the so-what or do not run the
-bullet.** Measured 2026-08-07 on the super brief: of the units Jackson rejected on a blind read,
-**8 of 11 were rejected for exactly this** — *"I don't get the so what"* — and every one had already
-passed a cold reader's comprehension check. Five of the six items in the claim-quality queue are the
-same defect: the bullet reports a mechanism and declines to interpret it. That is the WELL-EXPLAINED
-rung of the four-part test going unenforced.
-
-**Write the file BEFORE drafting**, one row per bullet, in the order the bullets will appear:
-
-`daily-briefs/{BRIEF_DATE}-claims.json`
-```json
-[{"unit":"mm-1","section":"Markets & Macro","claim":"...","so_what":"..."},
- {"unit":"take","section":"The Take","claim":"...","so_what":"..."}]
-```
-
-🔴 **The claims file DEFINES the units.** Every unit gets a row — including the Dashboard
-sub-sections, The Take, Inner Game and The Model, several of which are not bold-led and which no
-parser has ever assigned a unit to. On 2026-08-07 Jackson's harshest verdict on the super brief —
-*"unclear to me in every way"* — landed on exactly such a unit. **The Editor's read-back loop
-(Step 2c of `brief-editor`) validates the prose against this file and FAILS LOUDLY on a count or
-section mismatch, so a bullet drafted with no claim row will stop the loop.**
-
-**Companion rule: write in single-claim sentences. Never write compound and split afterwards.**
-Splitting after is how a body sentence ends up restating its own headline in more technical words —
-the largest measured waste form in the product.
 
 ## 4. Section headers — EXACT (the parser and audio match these)
 

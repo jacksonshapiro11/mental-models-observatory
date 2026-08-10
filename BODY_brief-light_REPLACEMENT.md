@@ -209,6 +209,17 @@ the rubric is not written yet, so do not act on the tag, just record it.
 
 ### 4b.3 — Actuate: unanimous only, two cycles max
 
+🔴 **SEVERITY-WEIGHTED ACTUATION (owner, 2026-08-09).** **A DIRECTION INVERSION ACTUATES AT
+2-OF-3, IMMEDIATELY — it does not wait for the week-one rule.** Everything else keeps unanimous-of-3
+through night 7. An inversion is not a degree of misunderstanding; it is the reader believing the
+opposite of the claim, and a reader acting on it acts backwards.
+
+*Receipt, 2026-08-08 line-3:* the unit said "the estimate is company-managed; the guide is not."
+Reader 1 stated back "forward statements are company-controlled while results are not" — the exact
+inverse — **and the unit graded TRANSMITTED 3/3 with so-what OK**, because the Grader compared CLAIMS
+and the inversion lived in the WHY. The owner bounced off that unit on his Saturday read. Grade the
+WHY against the logged so_what with the same care as the claim.
+
 🔴 **A unit is rewritten only if ALL THREE readers failed it** (DISTORTED or LOST). A 2-of-3 failure
 is **logged and left alone** tonight — that is the nights-1–7 rule, and it is deliberate.
 
@@ -259,3 +270,7 @@ Write a **FAIL** line if you produced no output. Write the `readback-light` line
 errored or was skipped** — `readback=ERROR` with a reason is data; silence is not. A silent failure is
 what cost the 2026-07-27 Critic and evening super-brief: the task ran, wrote nothing, said nothing,
 and nobody knew until 5 AM.
+
+---
+
+**ADDENDUM 2026-08-10 (FINAL WORK ORDER item 4) — THE HURRIED READER, ADVISORY.** `prepare` (step 4b.0) now also writes `hurried-prompt.txt` and prints `HURRIED_HASH`. After spawning the three calibrated Readers, ALSO spawn ONE hurried Reader the same way — pass the prompt file's TEXT, same blindness rules — save its raw reply to `readback-hurried.txt`, and write its grades to `hurried-grades.json` as `{"<unit-id>":{"grade":"TRANSMITTED|DISTORTED|LOST","sowhat":"OK|MISSING|WRONG"}}` BEFORE running `ledger`. It is ADVISORY: it never triggers a redraft, never counts toward actuation, and lands only in the `hurried_read` ledger field. It measures the "in a hurry" half of the success criterion and earns actuation only through the owner-marks calibration bar, like everything else.

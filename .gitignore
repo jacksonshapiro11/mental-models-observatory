@@ -225,3 +225,8 @@ _to_delete/
 .worktrees/
 *.bak-*
 _to_delete2/
+
+# FINAL WORK ORDER 2026-08-10 - generated/scratch, never tracked
+scripts/__pycache__/
+.tmp-probe/
+zz_scratch.trash-*/

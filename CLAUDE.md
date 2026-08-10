@@ -197,3 +197,11 @@ A scheduled improvement is NOT done until, in order: (1) a `system/Improvement_L
 | 2026-07-06 | v2.2 — Improvement-loop spine wired into CLAUDE.md: Reality Check block + manifest rows for Improvement_Ledger.md and Apply_Improvements.md | — | Interactive sessions were not inheriting the ledger/verify discipline (memo item #10). Now a fresh chat orients to the atomic 10:03 session, the ledger, and warn-only health-check verify. |
 | 2026-07-06 | v2.1 — Operating Doctrine wired in (top section + manifest rows for Doctrine, Weekly generators, Predictions & Alpha docs) | — | Jackson: sessions (scheduled AND chats) need consistent breadth/depth — six moves, artifact-bound. Doctrine also lives at the top of Pipeline_Controller. |
 | 2026-05-22 | v2.0 — Restructured for Claude Code scaffold | — | Added System Document Manifest. Scoped continuous execution mode to automated tasks. Original content preserved. |
+
+---
+
+## CARRY + TREE (added 2026-08-10, FINAL WORK ORDER)
+
+**CARRY (item 3):** At session start, read `system/CARRY.md`; execute or explicitly park every OPEN item before taking new work. Items leave CARRY.md only by receipt or owner kill; anything discovered mid-task becomes one line there, not a new thread.
+
+**TREE (item 1):** Every nightly pipeline-status file must include the output of `git status --porcelain` under a `TREE` header. If that output is non-empty, the file's first line is `RED: UNCOMMITTED WORK`. Canonical state lives in commits, not in a working tree.

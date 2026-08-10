@@ -47,5 +47,12 @@
     "domain": "Statistics & Data Science",
     "queueIndex": null,
     "source": "pre-rotation"
+  },
+  {
+    "date": "2026-08-10",
+    "slug": "game-theory-strategic-interaction",
+    "domain": "Incentives & Mechanism Design",
+    "queueIndex": 16,
+    "source": "rotation"
   }
 ]

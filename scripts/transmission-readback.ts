@@ -50,6 +50,27 @@ U<n> CLAIM: … | WHY: …
 
 const STERNER = `\n\nIMPORTANT: your previous answer reused the brief's own wording. State each claim in COMPLETELY different words. Do not reuse the text's phrasing. Proper nouns and figures may be repeated; nothing else may be.`;
 
+/** 🔴 FROZEN — THE HURRIED READER (added 2026-08-10, FINAL WORK ORDER item 4). ADVISORY ONLY.
+ *  The success criterion is "understood in one reading by a smart reader IN A HURRY"; the three
+ *  calibrated readers measure the careful half. This fourth blind reader measures the hurried half.
+ *  Same isolation rules (pass the prompt TEXT; the reader opens no repo file), own frozen template,
+ *  own hash, logged in the separate `hurried_read` ledger field, and NEVER counted toward
+ *  actuation — finalFor() does not take it as a parameter, which is the guarantee. It earns
+ *  actuation later only through the same owner-marks calibration bar as everything else.
+ *  Exactly one interpolation slot: {artifact}. */
+const HURRIED_TEMPLATE = `You are an educated professional — smart, busy, not a specialist in markets, technology or geopolitics — and today you are late. You have about three minutes and you will not get a second pass.
+
+Skim the brief below ONCE, fast, the way you would scan it on your phone between meetings. Do not slow down. Do not re-read a single line.
+
+Then, from what stuck — memory of your one pass, without studying the text again — state for each numbered item: (1) CLAIM — the one thing the item says is true, and (2) WHY — why it matters to someone like you. Use your own words; do not copy phrases from the text. If an item left nothing behind, write LOST and say what little you retain. Do not skip items.
+
+Output one line per item and nothing else:
+U<n> CLAIM: … | WHY: …
+
+---
+
+{artifact}`;
+
 type Claim = { unit: string; section: string; claim: string; so_what?: string };
 type Unit = {
   id: string;
@@ -65,7 +86,10 @@ type Meta = {
   templateHash: string;
   promptHash: string;
   units: Unit[];
+  hurriedTemplateHash?: string; // optional: absent on runs prepared before 2026-08-10
+  hurriedPromptHash?: string;
 };
+type HurriedGrade = { grade: Grade; sowhat?: string };
 type Grade = 'TRANSMITTED' | 'DISTORTED' | 'LOST';
 type UnitGrades = { grades: Grade[]; sowhat?: string[]; element?: string };
 
@@ -238,9 +262,12 @@ function cmdPrepare(light: string, claimsPath: string): void {
   if (prompt !== READER_TEMPLATE.replace('{artifact}', art.trim()))
     die('prompt isolation assertion failed');
 
+  const hurriedPrompt = HURRIED_TEMPLATE.replace('{artifact}', art.trim());
+
   fs.mkdirSync(rbPath(date), { recursive: true });
   fs.writeFileSync(rbPath(date, 'artifact.txt'), art.trim());
   fs.writeFileSync(rbPath(date, 'reader-prompt.txt'), prompt);
+  fs.writeFileSync(rbPath(date, 'hurried-prompt.txt'), hurriedPrompt);
   fs.writeFileSync(rbPath(date, 'source.md'), md);
   const meta: Meta = {
     date,
@@ -248,6 +275,8 @@ function cmdPrepare(light: string, claimsPath: string): void {
     templateHash: sha(READER_TEMPLATE),
     promptHash: sha(prompt),
     units,
+    hurriedTemplateHash: sha(HURRIED_TEMPLATE),
+    hurriedPromptHash: sha(hurriedPrompt),
   };
   fs.writeFileSync(rbPath(date, 'meta.json'), JSON.stringify(meta, null, 2));
   fs.writeFileSync(
@@ -269,6 +298,10 @@ function cmdPrepare(light: string, claimsPath: string): void {
   console.log(
     `  → save raw replies to ${rbPath(date, 'readback-{1,2,3}.txt')}, then run: check ${date}`
   );
+  console.log(
+    `  → ALSO spawn 1 HURRIED Reader [ADVISORY — never counted toward actuation] on ${rbPath(date, 'hurried-prompt.txt')} (same isolation: pass the file's TEXT); save its reply to ${rbPath(date, 'readback-hurried.txt')}; grade it to ${rbPath(date, 'hurried-grades.json')} as {"<unit-id>":{"grade":"TRANSMITTED|DISTORTED|LOST","sowhat":"OK|MISSING|WRONG"}}`
+  );
+  console.log(`  HURRIED_HASH ${meta.hurriedTemplateHash}`);
 }
 
 function cmdCheck(date: string): void {
@@ -301,6 +334,36 @@ function cmdCheck(date: string): void {
       }
     }
   }
+  // ── HURRIED READER (ADVISORY LANE — kept out of `flagged` so it can never drive actuation) ──
+  const hf = rbPath(date, 'readback-hurried.txt');
+  if (fs.existsSync(hf)) {
+    const rb = parseReadback(fs.readFileSync(hf, 'utf-8'));
+    const missing = meta.units.filter(u => !rb[u.idx + 1]);
+    if (missing.length)
+      console.log(
+        `  ⚠ hurried reader: ${missing.length} unit(s) unanswered — ${missing.map(u => 'U' + (u.idx + 1)).join(', ')}`
+      );
+    let hFlag = 0;
+    for (const u of meta.units) {
+      const r = rb[u.idx + 1];
+      if (!r) continue;
+      const ov = overlap(r.claim, md.slice(u.start, u.end));
+      if (ov > PARROT_THRESHOLD) {
+        hFlag++;
+        console.log(
+          `  🦜 hurried U${u.idx + 1} overlap ${(ov * 100).toFixed(0)}% — PARROT [advisory lane; re-run the hurried reader with the sterner suffix, still advisory]`
+        );
+      }
+    }
+    console.log(
+      `  ✓ hurried read-back present [ADVISORY — never counted toward actuation]${hFlag ? ` · ${hFlag} parrot flag(s)` : ''}`
+    );
+  } else {
+    console.log(
+      `  ○ hurried read-back absent (${hf}) — advisory lane not run this night`
+    );
+  }
+
   fs.writeFileSync(rbPath(date, 'sterner-suffix.txt'), STERNER);
   console.log(
     flagged
@@ -351,6 +414,23 @@ function cmdTabulate(date: string): void {
   console.log(
     `   majority-only failures  ${majority.length}  ← LOGGED, NOT ACTUATED (nights 1-7 rule)`
   );
+  const hgPath = rbPath(date, 'hurried-grades.json');
+  if (fs.existsSync(hgPath)) {
+    const hg: Record<string, HurriedGrade> = JSON.parse(
+      fs.readFileSync(hgPath, 'utf-8')
+    );
+    let ht = 0,
+      hn = 0;
+    for (const u of meta.units) {
+      const h = hg[u.id];
+      if (!h) continue;
+      hn++;
+      if (h.grade === 'TRANSMITTED') ht++;
+    }
+    console.log(
+      `   hurried transmitted     ${ht}/${hn}   [ADVISORY — single replica, NEVER actuates, excluded from every number above]`
+    );
+  }
   if (unanimous.length)
     console.log(
       `\n   redraft: ${unanimous.join(', ')}\n   → write {"unit-id":"new prose"} to ${rbPath(date, 'redrafts.json')} then run: assemble ${date}`
@@ -417,6 +497,31 @@ function cmdAssemble(date: string): void {
   );
 }
 
+/** 🔴 ACTUATION ARITHMETIC — takes ONLY the three calibrated grades and the redraft flag. The
+ *  hurried read is not a parameter of this function, which is the structural guarantee that it can
+ *  never reach actuation. Do not add it. */
+function finalFor(
+  g: UnitGrades | undefined,
+  wasRedrafted: boolean
+): 'PASS' | 'RESIDUAL' | 'REDRAFTED' {
+  const failed = g
+    ? g.grades.filter(x => x !== 'TRANSMITTED').length === g.grades.length
+    : false;
+  return failed && !wasRedrafted
+    ? 'RESIDUAL'
+    : failed && wasRedrafted
+      ? 'REDRAFTED'
+      : 'PASS';
+}
+
+/** Attaches the advisory hurried read AFTER final is computed. Mutates nothing else. */
+function attachHurried<T extends Record<string, unknown>>(
+  row: T,
+  hg: HurriedGrade | undefined
+): T & { hurried_read: HurriedGrade | null } {
+  return Object.assign(row, { hurried_read: hg ?? null });
+}
+
 function cmdLedger(date: string): void {
   const meta: Meta = JSON.parse(
     fs.readFileSync(rbPath(date, 'meta.json'), 'utf-8')
@@ -435,6 +540,11 @@ function cmdLedger(date: string): void {
   )
     ? JSON.parse(fs.readFileSync(rbPath(date, 'redrafts.json'), 'utf-8'))
     : {};
+  const hurried: Record<string, HurriedGrade> = fs.existsSync(
+    rbPath(date, 'hurried-grades.json')
+  )
+    ? JSON.parse(fs.readFileSync(rbPath(date, 'hurried-grades.json'), 'utf-8'))
+    : {};
   const ledger = fs.existsSync(LEDGER)
     ? JSON.parse(fs.readFileSync(LEDGER, 'utf-8'))
     : [];
@@ -442,37 +552,34 @@ function cmdLedger(date: string): void {
   for (const u of meta.units) {
     const g = grades[u.id];
     const c = claims.find(x => x.unit === u.id)!;
-    const failed = g
-      ? g.grades.filter(x => x !== 'TRANSMITTED').length === g.grades.length
-      : false;
     const wasRedrafted = u.id in redrafts;
-    const final =
-      failed && !wasRedrafted
-        ? 'RESIDUAL'
-        : failed && wasRedrafted
-          ? 'REDRAFTED'
-          : 'PASS';
+    const final = finalFor(g, wasRedrafted);
     if (final === 'RESIDUAL') residual++;
-    ledger.push({
-      date,
-      product: 'light',
-      unit: u.id,
-      section: u.section,
-      claim: c.claim,
-      so_what: c.so_what ?? null,
-      grades: g?.grades ?? null,
-      sowhat_grades: g?.sowhat ?? null,
-      element: g?.element ?? null,
-      final,
-      cycle: wasRedrafted ? 1 : 0,
-      outcome: wasRedrafted
-        ? 'redrafted'
-        : final === 'RESIDUAL'
-          ? 'shipped-failing'
-          : 'held',
-      promptHash: meta.promptHash,
-      owner_mark: null,
-    });
+    ledger.push(
+      attachHurried(
+        {
+          date,
+          product: 'light',
+          unit: u.id,
+          section: u.section,
+          claim: c.claim,
+          so_what: c.so_what ?? null,
+          grades: g?.grades ?? null,
+          sowhat_grades: g?.sowhat ?? null,
+          element: g?.element ?? null,
+          final,
+          cycle: wasRedrafted ? 1 : 0,
+          outcome: wasRedrafted
+            ? 'redrafted'
+            : final === 'RESIDUAL'
+              ? 'shipped-failing'
+              : 'held',
+          promptHash: meta.promptHash,
+          owner_mark: null,
+        },
+        hurried[u.id]
+      )
+    );
   }
   fs.writeFileSync(LEDGER, JSON.stringify(ledger, null, 2));
   console.log(
@@ -789,8 +896,45 @@ function selftest(): number {
     p[1]?.claim === 'the thing happened' && p[2]?.claim === 'LOST'
   );
 
+  // hurried reader (ADVISORY) — own frozen prompt, structurally unable to actuate
+  t(
+    'calibrated reader template hash is FROZEN at 8362e5b17930dd37',
+    sha(READER_TEMPLATE) === '8362e5b17930dd37'
+  );
+  t(
+    'hurried template has exactly one slot',
+    (HURRIED_TEMPLATE.match(/\{artifact\}/g) ?? []).length === 1
+  );
+  t(
+    'hurried template is its own prompt, distinct from the calibrated one',
+    sha(HURRIED_TEMPLATE) !== sha(READER_TEMPLATE)
+  );
+  t(
+    'finalFor computes from the three calibrated grades alone',
+    finalFor({ grades: ['TRANSMITTED', 'TRANSMITTED', 'TRANSMITTED'] }, false) ===
+      'PASS' &&
+      finalFor({ grades: ['DISTORTED', 'DISTORTED', 'DISTORTED'] }, false) ===
+        'RESIDUAL' &&
+      finalFor({ grades: ['DISTORTED', 'DISTORTED', 'DISTORTED'] }, true) ===
+        'REDRAFTED' &&
+      finalFor({ grades: ['DISTORTED', 'DISTORTED', 'TRANSMITTED'] }, false) ===
+        'PASS'
+  );
+  const hrow = attachHurried(
+    { final: finalFor({ grades: ['TRANSMITTED', 'TRANSMITTED', 'TRANSMITTED'] }, false) },
+    { grade: 'LOST' }
+  );
+  t(
+    'a LOST hurried read cannot move final off PASS',
+    hrow.final === 'PASS' && hrow.hurried_read?.grade === 'LOST'
+  );
+  t(
+    'absent hurried grade logs null, not a failure',
+    attachHurried({ final: 'PASS' }, undefined).hurried_read === null
+  );
+
   console.log(
-    `\n${fail ? '✗' : '✓'} selftest ${pass}/${pass + fail} passed  ·  TEMPLATE_HASH ${sha(READER_TEMPLATE)}`
+    `\n${fail ? '✗' : '✓'} selftest ${pass}/${pass + fail} passed  ·  TEMPLATE_HASH ${sha(READER_TEMPLATE)}  ·  HURRIED_HASH ${sha(HURRIED_TEMPLATE)}`
   );
   if (!fail) console.log('SCRIPT-OK');
   return fail ? 1 : 0;

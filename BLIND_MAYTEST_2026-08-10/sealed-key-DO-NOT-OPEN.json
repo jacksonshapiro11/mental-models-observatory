@@ -1,0 +1,104 @@
+{
+ "1": {
+  "era": "CURRENT",
+  "source": "content/daily-updates/2026-08-08.md",
+  "section": "AI & Tech",
+  "sha16": "c300d673648f93d1"
+ },
+ "2": {
+  "era": "MAY",
+  "source": "content/daily-updates/2026-05-13.md",
+  "section": "Markets & Macro",
+  "sha16": "fc058ffa410b2d72"
+ },
+ "3": {
+  "era": "MAY",
+  "source": "content/daily-updates/2026-05-13.md",
+  "section": "The Signal",
+  "sha16": "76a144a2a219bd38"
+ },
+ "4": {
+  "era": "CURRENT",
+  "source": "content/daily-updates/2026-08-08.md",
+  "section": "Geopolitics",
+  "sha16": "8d365e15b2830f3f"
+ },
+ "5": {
+  "era": "MAY",
+  "source": "content/daily-updates/2026-05-13.md",
+  "section": "AI & Tech",
+  "sha16": "5a52242886fd21e0"
+ },
+ "6": {
+  "era": "MAY",
+  "source": "content/daily-updates/2026-05-13.md",
+  "section": "Geopolitics",
+  "sha16": "9099113637444e9a"
+ },
+ "7": {
+  "era": "CURRENT",
+  "source": "content/daily-updates/2026-08-08.md",
+  "section": "The Signal",
+  "sha16": "2dbab3a8da5091e6"
+ },
+ "8": {
+  "era": "CURRENT",
+  "source": "content/daily-updates/2026-08-10.md",
+  "section": "Companies & Crypto",
+  "sha16": "753c9dd031278349"
+ },
+ "9": {
+  "era": "MAY",
+  "source": "content/daily-updates/2026-05-13.md",
+  "section": "Companies & Crypto",
+  "sha16": "2d9018253a5e7998"
+ },
+ "10": {
+  "era": "CURRENT",
+  "source": "content/daily-updates/2026-08-10.md",
+  "section": "Markets & Macro",
+  "sha16": "a5637c7d8af876a4"
+ },
+ "11": {
+  "era": "CURRENT",
+  "source": "content/daily-updates/2026-08-08.md",
+  "section": "Markets & Macro",
+  "sha16": "333a77527647de0d"
+ },
+ "12": {
+  "era": "MAY",
+  "source": "content/daily-updates/2026-05-14.md",
+  "section": "Markets & Macro",
+  "sha16": "533c88ac8bde82a8"
+ },
+ "13": {
+  "era": "MAY",
+  "source": "content/daily-updates/2026-05-14.md",
+  "section": "AI & Tech",
+  "sha16": "6d9d95c03364b121"
+ },
+ "14": {
+  "era": "CURRENT",
+  "source": "content/daily-updates/2026-08-08.md",
+  "section": "Companies & Crypto",
+  "sha16": "aa857ab87740aca1"
+ },
+ "15": {
+  "era": "MAY",
+  "source": "content/daily-updates/2026-05-14.md",
+  "section": "Companies & Crypto",
+  "sha16": "9f24b151095c115f"
+ },
+ "16": {
+  "era": "CURRENT",
+  "source": "content/daily-updates/2026-08-10.md",
+  "section": "AI & Tech",
+  "sha16": "4f0be07a265929a4"
+ },
+ "_method": {
+  "built": "2026-08-10 FINAL WORK ORDER item 5",
+  "design": "8 May-era (2026-05-13/14/15) + 8 current (2026-08-08/10) bold-led units from the shipped full briefs, matched section distribution M&M 2 / C&C 2 / AI&T 2 / Geopolitics 1 / Signal 1 per era, 60-420 words, picked by fixed stride over each section pool (no hand selection), identical redaction rules both eras, order shuffled under counterbalance constraints (4 MAY in each half, no era three-in-a-row) with a system RNG whose state was never printed",
+  "limitation": "true era-blinding is impossible for a reader who lived these stories; redaction removes trivial tells only. Score only after all 16 marks are in.",
+  "scoring": "per era: Q1 yes-rate = one-read transmission; Q2 yes-rate = perceived craft. MAY vs CURRENT, and the 08-07 calibration bar context applies (shipped-era baseline 80%)."
+ }
+}
