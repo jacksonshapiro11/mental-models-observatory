@@ -1834,6 +1834,90 @@ function corporateEventDateFindings(
 }
 
 // ---------------------------------------------------------------------------
+// DATED-EVENT WEEKDAY (IMP-161, 2026-08-11 — the 08-11 Critic's mandate #2, RC2).
+//
+// WORKED FAILURE. The 08-11 brief's C&C-2 lead sentence — its first eight words — read
+// "Delaware told Verisk on Monday it may not walk away from a $2.35 billion acquisition."
+// The Chancery ruling issued **Friday 2026-08-07** (Reuters, Kanishka Singh, dateline Aug 7:
+// "The judge said on Friday"); Monday was Verisk's RESPONSE statement. The error then propagated
+// into the payoff, whose whole frame was "all abundant on Monday."
+//
+// 🔴 THE CRITIC'S DIAGNOSIS WAS WRONG, AND THE PRESCRIBED FIX WOULD NOT HAVE CAUGHT IT. The
+// mandate reads: the gate "fired ONCE per section" and must be "keyed by bullet index rather than
+// by section." Measured instead of assumed: `corporateEventDateFindings` keys on
+// `corp-event:{section}:{first 28 chars of the line}`, so two different bullets in one section
+// ALREADY produce two keys — re-keying by bullet index changes nothing. The real reason C&C-2 was
+// never examined is VOCABULARY. That check demands a scheduled-event VERB
+// (reports/opens/hosts/unveils/launches/…) AND an event NOUN (conference/earnings/keynote/Q_/…).
+// C&C-2's verbs are told/found/ordered/signed/walked and its nouns are acquisition/deal/merger.
+// It matches neither list and could not have fired under any keying. Receipt: `fact-gate` on the
+// real `daily-briefs/2026-08-11-v2.md` emits exactly ONE corporate-event-date row, on C&C-1
+// (Archer/Boeing), and zero on C&C-2. Applying the mandate literally would have shipped a green
+// gate and the same falsehood — which is why this is a new check, not a re-key.
+//
+// THE CHECK. `corporate-event-date` covers a company's SCHEDULED FUTURE event. This covers the
+// other half: a named actor's COMPLETED action pinned to a weekday, where the weekday is a fact
+// about the SOURCE'S DATELINE and never about the reading date.
+//
+// SCOPING — the discriminator is the preposition "on", and it is doing real work. A brief names
+// weekdays constantly for market data ("S&P finished Monday flat", "Monday's session", "closed
+// Friday at a record"); flagging those is a noise storm that trains the reader to skim the gate.
+//   FIRE   : "on <weekday>" + an ACTION verb (told/ruled/published/signed/announced/…)
+//   SILENT : forward markers — "by Sunday", "Watch Sunday", "through Sunday's lapse", "lapses on
+//            Sunday", "until Friday" — a computed future date is not an event claim
+//   SILENT : no "on" — "finished Monday flat", "Monday's brief", "percent higher on Monday"
+//            (no action verb)
+//   SILENT : any line `corporate-event-date` already owns — one row per bullet, never two
+// ---------------------------------------------------------------------------
+const DATED_ON_WEEKDAY_RE =
+  /\bon\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i;
+// Completed actions by a named actor: legal, corporate, communicative. NOT market verbs
+// (closed/finished/rose/fell) — those are owned by the price and truth-direction checks.
+const DATED_EVENT_ACTION_RE =
+  /\b(?:told|said|ruled|found|ordered|granted|denied|approved|rejected|blocked|dismissed|upheld|sued|charged|fined|indicted|announced|published|filed|released|signed|issued|voted|agreed|confirmed|acquired|bought|sold|resigned|stepped\s+down|died|met|struck|imposed|lifted|banned|seized|arrested|withdrew|halted|suspended|terminated|awarded|settled)\b/i;
+// A forward/span marker anywhere before the weekday turns it into a schedule, not a dateline.
+const DATED_FORWARD_RE =
+  /\b(?:by|through|until|till|before|ahead\s+of|watch|expects?|expected|due|scheduled|upcoming|next|will\s+\w+|lapses?|expires?|begins?|starts?)\b[^.]{0,45}\bon\s+(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i;
+
+function datedEventWeekdayFindings(
+  body: string,
+  _briefDate: string | null
+): Finding[] {
+  const findings: Finding[] = [];
+  const stripped = stripComments(body);
+  // Lines corporate-event-date already owns — never emit a second row for the same bullet.
+  const owned = new Set(
+    corporateEventDateFindings(body, _briefDate).map(f =>
+      f.message.slice(0, 200)
+    )
+  );
+  const seen = new Set<string>();
+  let offset = 0;
+  for (const text of stripped.split('\n')) {
+    const idx = offset;
+    offset += text.length + 1;
+    const when = text.match(DATED_ON_WEEKDAY_RE);
+    if (!when) continue;
+    if (!DATED_EVENT_ACTION_RE.test(text)) continue;
+    if (DATED_FORWARD_RE.test(text)) continue;
+    if (SCHEDULED_EVENTS.some(e => e.re.test(text))) continue; // macro release owned elsewhere
+    // Suppress if corporate-event-date already produced a row quoting this same line.
+    const snippet = text.trim().slice(0, 140);
+    if ([...owned].some(m => m.includes(snippet.slice(0, 60)))) continue;
+    const section = sectionOf(stripped, idx);
+    const key = `dated-event:${section}:${text.trim().slice(0, 40).toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    findings.push({
+      check: 'dated-event-weekday',
+      severity: 'FLAG',
+      message: `DATED-EVENT WEEKDAY — a completed action is pinned to "${when[1]}" in ${section}: "${snippet}". A weekday attached to a court ruling, a filing, an announcement or a statement is a fact about the SOURCE'S DATELINE, never about the reading date. MORNING GATE: resolve this row against a dated primary and rewrite the weekday if it is wrong. UNRESOLVED-FACT if no primary confirms it. Receipt: the 08-11 C&C-2 lead read "Delaware told Verisk on Monday"; the Chancery ruling issued Friday 2026-08-07 (Reuters, dateline Aug 7, "The judge said on Friday") and Monday was Verisk's response statement — the error propagated into the payoff's "all abundant on Monday" frame.`,
+    });
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
 // SEGMENT-METRIC ATTRIBUTION CHECK (IMP-083, 2026-07-21 — the 07-21 Critic's mandate #3, the
 // UNVERIFIABLE that SHIPPED).
 //
@@ -3760,6 +3844,48 @@ function selftest(): number {
     corporateEventDateFindings(fs.readFileSync(jul21pub, 'utf8'), '2026-07-21')
       .length > 0;
 
+  // --- IMP-161 (08-11 Critic mandate #2): dated-event weekday. THE ACCEPTANCE IS ON THE REAL v2,
+  //     both directions, because the fixture version of this bug is the one that already passed. ---
+  const aug11v2 = path.join(
+    process.cwd(),
+    'daily-briefs',
+    '2026-08-11-v2.md'
+  );
+  const dew = (s: string) =>
+    datedEventWeekdayFindings(s, '2026-08-11').map(f => f.message);
+  // FIRE — the exact sentence that shipped false.
+  const okDewFire = dew(
+    '- **Delaware told Verisk on Monday it may not walk away from a $2.35 billion acquisition.** Chancery judge Bonnie David found the termination invalid.'
+  ).length === 1;
+  // SILENT — forward markers. A computed future date is not an event claim; a gate that flags
+  // them is noise, and noise is how a gate's output stops being read.
+  const okDewSilentFwd =
+    dew('Watch Sunday, when the memorandum covering the current arrangement lapses on Sunday.')
+      .length === 0 &&
+    dew('It is a domestic audience or the actual answer, and by Sunday you will know which.')
+      .length === 0;
+  // SILENT — market data. The brief names weekdays constantly for prices; none are dateline claims.
+  const okDewSilentMkt =
+    dew('The S&P finished Monday flat against Friday\'s record close.').length === 0 &&
+    dew('The index closed a fifth of a percentage point higher on Monday.').length === 0 &&
+    dew("Monday's brief counted the same six.").length === 0;
+  // REAL FILE, FIRE: the shipped v2 must produce a row naming Verisk. This is the receipt that
+  // distinguishes this check from the one the mandate asked for — corporate-event-date emits
+  // ZERO rows on this sentence and always would have.
+  const aug11src = fs.existsSync(aug11v2) ? fs.readFileSync(aug11v2, 'utf8') : '';
+  const okDewRealFire =
+    !aug11src ||
+    datedEventWeekdayFindings(aug11src, '2026-08-11').some(f =>
+      /Delaware told Verisk on Monday/i.test(f.message)
+    );
+  // REAL FILE, NO DOUBLE-COUNT: C&C-1 (Archer/Boeing) is owned by corporate-event-date; this
+  // check must not emit a second row for the same bullet.
+  const okDewNoDupe =
+    !aug11src ||
+    !datedEventWeekdayFindings(aug11src, '2026-08-11').some(f =>
+      /Archer Aviation bought/i.test(f.message)
+    );
+
   // --- IMP-083: segment-metric attribution. FIRE on AMD's compound "data-center GPU revenue, $X",
   //     SILENT on a single-qualifier disclosed segment ("Data Center revenue of $X"). ---
   const okSegFire = segmentMetricFindings(
@@ -3954,6 +4080,21 @@ function selftest(): number {
   );
   console.log(
     `  [IMP-082] FIRE on the REAL published 07-21 (AMD/GM weekday event): ${okCorpReal ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-161] FIRE: "Delaware told Verisk on Monday" is a dated-event-weekday FLAG: ${okDewFire ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-161] SILENT on forward markers ("Watch Sunday", "by Sunday you will know"): ${okDewSilentFwd ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-161] SILENT on market weekdays ("finished Monday flat", "Monday's brief"): ${okDewSilentMkt ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-161] FIRE on the REAL 2026-08-11-v2.md at C&C-2 (corporate-event-date emits ZERO there): ${okDewRealFire ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-161] NO DOUBLE-COUNT on C&C-1 (owned by corporate-event-date): ${okDewNoDupe ? '✓' : '✗'}`
   );
   console.log(
     `  [IMP-083] FIRE: "data-center GPU revenue, $7.7 billion" is a segment-metric FLAG: ${okSegFire ? '✓' : '✗'}`
@@ -4589,6 +4730,11 @@ function selftest(): number {
     okCorpSilentMacro &&
     okCorpSilentBare &&
     okCorpReal &&
+    okDewFire &&
+    okDewSilentFwd &&
+    okDewSilentMkt &&
+    okDewRealFire &&
+    okDewNoDupe &&
     okSegFire &&
     okSegSilentDisclosed &&
     okSmFire &&
@@ -4862,6 +5008,12 @@ function main() {
   // event) — a company earnings/conference date pinned to a weekday, checkable in one fetch. Advisory;
   // the Morning Truth Gate confirms the absolute date and rewrites the weekday if wrong.
   findings.push(...corporateEventDateFindings(body, briefDate));
+
+  // 4h. Dated-event weekday (IMP-161, 08-11 Critic mandate #2): a named actor's COMPLETED action
+  // pinned to a weekday — "Delaware told Verisk on Monday" for a Friday ruling. One row per
+  // bullet, requiring per-row resolution at the Morning Truth Gate. Complements 4g, which covers
+  // only a company's SCHEDULED event and could never have seen this class.
+  findings.push(...datedEventWeekdayFindings(body, briefDate));
 
   // 4h. Segment-metric attribution (IMP-083): "AMD's data-center GPU revenue, $7.7 billion" — a
   // compound segment+chip line AMD does not disclose, shipped as if it were a reported metric.

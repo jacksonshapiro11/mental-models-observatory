@@ -430,6 +430,147 @@ function checkAISectionMinBullets(body: string): Failure[] {
   return out;
 }
 
+// ── IMP-162 (2026-08-11 — the 08-11 Critic's mandate #3, RC2): SELF-REPORT CONSISTENCY ────────
+// THE FAILURE. The shipped `2026-08-11-v2.md` carried its own MECHANICAL COUNTS block headed
+// "MEASURED ON DISK RATHER THAN CLAIMED", asserting **9 Six bullets** (with a 9-number
+// distribution), **~5,900 words**, and **3 C&C bullets**. Measured on disk: **8**, **5,443**
+// (validate-brief's own count), **2**. Gate 16 had cut C&C-3 (GSR/DAO treasuries) WHOLE during
+// compression and nothing rewrote the block. The STALENESS LEDGER still listed GSR/DAO as
+// shipped — so tomorrow's Writer reads a subject the reader NEVER SAW as burned, and loses it
+// for the rotation window.
+//
+// WHY THIS IS RC2 AND NOT PEDANTRY. A block that says "measured on disk rather than claimed" and
+// is neither is worse than no block: every downstream consumer — the Critic, the next Writer, the
+// improvement loop — treats it as a measurement. This is the 08-04 gate-selfreport failure
+// (E-EDITOR-GATE-SELFREPORT-01) in a different file: a verdict authored instead of transcribed.
+// The fix is the same shape — the gate that MEASURES is the one that adjudicates the claim.
+//
+// THE CHECK. Parse the numbers the brief states about ITSELF, measure the same quantities with
+// this validator's own functions, and FAIL on disagreement. Exact counts must match exactly; the
+// word count gets a 5% band (the block writes "~5,900", an explicit approximation).
+// Plus: every STALENESS LEDGER subject must actually appear in the reader-facing body.
+function checkSelfReportConsistency(raw: string, body: string): Failure[] {
+  const out: Failure[] = [];
+  const comments = (raw.match(/<!--[\s\S]*?-->/g) ?? []).join('\n');
+  if (!comments) return out;
+
+  // ---- claimed ----
+  const cSix = comments.match(
+    /Six bullets over the \d+-word ceiling:\s*\d+\s*of\s*(\d+)/i
+  );
+  const cDist = comments.match(/Distribution:\s*((?:\d{2,3}\s+){2,}\d{2,3})/i);
+  const cWords = comments.match(
+    /Total reader-facing body:\s*~?\s*([\d,]+)\s*words/i
+  );
+  const cCandC = comments.match(/C&C balance:\s*(\d+)\s*bullets?/i);
+
+  // ---- measured, with this validator's own instruments ----
+  const sectionBullets = (header: string): number => {
+    const start = body.indexOf(header);
+    if (start === -1) return 0;
+    const rest = body.slice(start + header.length);
+    const next = rest.search(/\n#{1,2} /);
+    const section = next === -1 ? rest : rest.slice(0, next);
+    return section.split('\n').filter(l => /^\s*-\s+\*\*/.test(l)).length;
+  };
+  const sixSections = [
+    '## Markets & Macro',
+    '## Companies & Crypto',
+    '## AI & Tech',
+    '## Geopolitics',
+  ];
+  const mSix = sixSections.reduce((n, h) => n + sectionBullets(h), 0);
+  const mCandC = sectionBullets('## Companies & Crypto');
+  const mWords = body.split(/\s+/).filter(Boolean).length;
+
+  const mismatch = (what: string, claimed: number, measured: number, how: string) =>
+    out.push({
+      check: 'selfreport-consistency',
+      message: `🔴 THE BRIEF'S SELF-REPORT DESCRIBES A DIFFERENT DOCUMENT — ${what}: the block claims ${claimed.toLocaleString()}, measured on disk ${measured.toLocaleString()}. ${how} RECEIPT (08-11): Gate 16 cut C&C-3 (GSR/DAO treasuries) WHOLE and nothing rewrote the block, which still read "9 Six bullets / 3 C&C / ~5,900 words" over a document with 8 / 2 / 5,443 — under a heading that says "MEASURED ON DISK RATHER THAN CLAIMED". A self-report that is authored instead of transcribed is the 08-04 gate-selfreport failure in a new file, and every downstream consumer reads it as a measurement. Fix the BLOCK to match the document (or restore what the cut removed) — never the other way round.`,
+    });
+
+  if (cSix && mSix > 0 && parseInt(cSix[1]!, 10) !== mSix)
+    mismatch('Six bullet count', parseInt(cSix[1]!, 10), mSix, 'Counted as bold-led bullets across Markets & Macro, Companies & Crypto, AI & Tech and Geopolitics.');
+  if (cDist && mSix > 0) {
+    const n = cDist[1]!.trim().split(/\s+/).length;
+    if (n !== mSix)
+      mismatch('per-bullet word distribution length', n, mSix, 'The distribution lists one number per shipped bullet; a cut bullet must lose its number.');
+  }
+  if (cCandC && mCandC > 0 && parseInt(cCandC[1]!, 10) !== mCandC)
+    mismatch('Companies & Crypto bullet count', parseInt(cCandC[1]!, 10), mCandC, 'Counted as bold-led bullets inside the C&C section.');
+  if (cWords) {
+    const claimed = parseInt(cWords[1]!.replace(/,/g, ''), 10);
+    if (claimed > 0 && Math.abs(claimed - mWords) / mWords > 0.05)
+      mismatch(
+        'total reader-facing word count',
+        claimed,
+        mWords,
+        'Tolerance is 5% because the block writes an approximation; this is outside it.'
+      );
+  }
+
+  // ---- STALENESS LEDGER: a subject listed as shipped must be IN the brief ----
+  const led = comments.match(/<!--\s*STALENESS LEDGER([\s\S]*?)-->/i);
+  if (led) {
+    // 🔴 SEARCH THE ENTRY'S OWN SECTION, NOT THE WHOLE BRIEF. Measured, not assumed: a
+    // whole-body search produced TWO false positives on the immediately preceding brief
+    // (2026-08-10-v2) — "Jazan hit twice in thirteen days" and "Wandering supermassive black
+    // hole, TDE 2025abcr" are both SHIPPED, but the first has no non-initial capital and the
+    // second's only ALL-CAPS token ("TDE") never appears in the prose. The ledger is organised
+    // by section for a reason; scoping the search the same way is both tighter and correct.
+    // A check whose findings get waived trains the waiver, not the fix.
+    let ledSection = '';
+    for (const line of led[1]!.split('\n')) {
+      const hdr = line.match(/^\s*([A-Z][A-Za-z &]+):\s*$/);
+      if (hdr) {
+        ledSection = hdr[1]!.trim();
+        continue;
+      }
+      const m = line.match(/^\s*-\s+(.+?)\s*\|\s*CLASSIFICATION:/);
+      if (!m) continue;
+      const subject = m[1]!;
+      // Scope: the body section this entry is filed under; whole body if unresolvable.
+      let scope = body;
+      if (ledSection) {
+        const s = body.indexOf(`## ${ledSection}`);
+        if (s !== -1) {
+          const rest = body.slice(s + ledSection.length + 3);
+          const nx = rest.search(/\n#{1,2} /);
+          scope = nx === -1 ? rest : rest.slice(0, nx);
+        }
+      }
+      const bodyLower = scope.toLowerCase();
+      // TOKEN SPECIFICITY — both naive rules were measured and both were wrong on a real brief.
+      // Capitals-only was too NARROW: "Midlife hippocampal microglia replacement" capitalises only
+      // its sentence-initial word, so it matched on "Midlife" alone and reported a SHIPPED Wild
+      // Card item absent (false positive, run 1). Any-content-word was too LOOSE: "GSR / DAO
+      // treasury concentration" then passed on the generic words "treasury"/"concentration"
+      // appearing elsewhere in the brief, and missed the real cut (false negative, run 2).
+      // So: a STRONG token (ALL-CAPS acronym, or a capitalised word that is not sentence-initial)
+      // is decisive on its own; absent any strong token, require TWO weak content words.
+      const STOP =
+        /^(about|after|against|among|because|before|between|during|other|their|there|these|those|through|under|where|which|while|first|second|third|recent|latest|report|reports|reported|update|updated|versus)$/i;
+      const strong = [
+        ...(subject.match(/\b[A-Z]{2,6}\b/g) ?? []),
+        ...(subject.slice(1).match(/\b[A-Z][A-Za-z0-9-]{2,}\b/g) ?? []),
+      ].filter(t => !STOP.test(t));
+      const weak = (subject.match(/\b[A-Za-z][A-Za-z0-9-]{5,}\b/g) ?? []).filter(
+        t => !STOP.test(t)
+      );
+      // Within the entry's own section, ANY token match means the unit shipped. Total absence of
+      // every distinctive term inside its own section is the only signal strong enough to act on.
+      const tokens = [...strong, ...weak];
+      if (!tokens.length) continue;
+      if (!tokens.some(t => bodyLower.includes(t.toLowerCase())))
+        out.push({
+          check: 'selfreport-consistency',
+          message: `🔴 STALENESS LEDGER LISTS A SUBJECT THE READER NEVER SAW — "${subject}". None of its distinctive terms (${tokens.join(', ')}) appear in the reader-facing body. If a compression pass cut this unit, the ledger entry must be rewritten to \`CUT AT GATE 16 — NOT SHIPPED\`, not left standing. RECEIPT (08-11): GSR/DAO treasury concentration was cut whole by Gate 16 and stayed in the ledger, which burns the subject for tomorrow's Writer on a bullet that was never published.`,
+        });
+    }
+  }
+  return out;
+}
+
 function checkCandCBalance(body: string): Failure[] {
   const out: Failure[] = [];
   const start = body.indexOf('## Companies & Crypto');
@@ -3707,8 +3848,41 @@ function selftestValidator(): number {
     );
   }
 
+  // ── IMP-162 (08-11 Critic mandate #3): selfreport-consistency, on the REAL artifacts ─────────
+  // The fixture version of this bug is the one that already passed every gate. The acceptance is
+  // therefore bound to files on disk: the v2 that shipped the wrong self-report must FIRE, and
+  // the two preceding v2s plus the published files must stay SILENT.
+  {
+    const db = path.join(process.cwd(), 'daily-briefs');
+    const cd = path.join(process.cwd(), 'content/daily-updates');
+    const runSRC = (p: string): number => {
+      if (!fs.existsSync(p)) return -1;
+      const rawF = fs.readFileSync(p, 'utf8');
+      return checkSelfReportConsistency(rawF, rawF.replace(/<!--[\s\S]*?-->/g, ''))
+        .length;
+    };
+    const fire = runSRC(path.join(db, '2026-08-11-v2.md'));
+    t(
+      fire === -1 || fire >= 5,
+      `[IMP-162] FIRE on the REAL 2026-08-11-v2.md — 4 count mismatches (9/9/3/5,900 vs 8/8/2/5,443) + the GSR/DAO ledger entry Gate 16 cut whole (${fire} finding(s), ≥5 expected)`
+    );
+    const quiet = [
+      path.join(db, '2026-08-10-v2.md'),
+      path.join(db, '2026-08-09-v2.md'),
+      path.join(db, '2026-08-11-v1.5.md'),
+      path.join(cd, '2026-08-11.md'),
+      path.join(cd, '2026-08-10.md'),
+      path.join(cd, '2026-08-09.md'),
+    ];
+    const noisy = quiet.filter(p => runSRC(p) > 0);
+    t(
+      noisy.length === 0,
+      `[IMP-162] SILENT on 3 healthy v2/v1.5 drafts and 3 published files (${noisy.map(p => path.basename(p)).join(', ') || 'none noisy'})`
+    );
+  }
+
   console.log(
-    `\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration + precedent-analogy + hook-numerator + marker-placement + itemization-sum + estimate-vintage verified both directions)`
+    `\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration + precedent-analogy + hook-numerator + marker-placement + itemization-sum + estimate-vintage + selfreport-consistency verified both directions)`
   );
   return fails ? 1 : 0;
 }
@@ -3897,6 +4071,7 @@ function main() {
   failures.push(...checkMarkerPlacement(raw));
   // --- August 4, 2026 — 08-04 Critic mandates #2 and #3 ---
   failures.push(...checkItemizationSum(body)); // IMP-126
+  failures.push(...checkSelfReportConsistency(raw, body)); // IMP-162, 08-11 Critic mandate #3
   failures.push(
     ...checkInstitutionalEstimateVintage(
       body,
