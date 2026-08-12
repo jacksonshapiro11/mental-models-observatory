@@ -1494,6 +1494,167 @@ export function sourceConclusionInversions(
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// ATTRIBUTED-SUPERLATIVE FIDELITY (IMP-165 — 2026-08-12 Critic mandate #3, RC2; also discharges
+// the (a) half of IMP-151, deferred twice with a hard fuse of 2026-08-13).
+//
+// THE CLASS, three receipts, three different nights, one move:
+//   08-09  Take lede  "the first new AMERICAN iron mine"   — the company says "in Minnesota".
+//   08-12  C&C-1      "by the acquirer's own account, is THE ONLY independent supplier of
+//                      commercially ready photon-counting CT detectors"
+//                     — Teledyne's release says "ONE OF THE WORLD'S ONLY credible, commercially
+//                       ready independent suppliers".
+//   08-07  AI&T-1     the same move in the other direction (source conclusion inverted, IMP-143).
+//
+// Every NUMBER in all three is correct, which is why eleven green gates passed them: the existing
+// `superlative-escalation-gate` compares superlatives against OUR ARCHIVE, and the archive is the
+// wrong referent for a claim about what a NAMED PARTY SAID. The right referent is the party's own
+// wording, and nothing in the chain held a copy of it.
+//
+// THE FIX IS AN EMISSION CONTRACT, not a paraphrase detector — the 08-08 Critic's rule, THE POWER
+// IS THE REQUIREMENT, NOT THE PARSING. A superlative ATTRIBUTED to a named party becomes a CRITICAL
+// claim resolved only by a truth row carrying that party's `quotation` verbatim. A Writer required
+// to paste "one of the world's only" cannot quietly ship "the only".
+//
+// Then TWO binary legs over the quotation, each bound to one of the receipts above:
+//   HEDGE-DELETED  — the quotation hedges the superlative ("one of", "among the", "some of the")
+//                    and the brief's sentence does not. That is 08-12 C&C-1 exactly.
+//   SCOPE-ADDED    — the brief's superlative carries a scope noun (American, global, world's,
+//                    national, ever …) that appears nowhere in the quotation. That is 08-09 exactly.
+//
+// NON-FIRE DISCIPLINE. Both an ATTRIBUTION FRAME and a SCOPE SUPERLATIVE must be in the SAME
+// sentence. An unattributed superlative ("Beijing's first public demonstration of sea-based
+// strategic reach", sourced to CSIS) stays SILENT — it rides the archive rails. An ARGUMENT that
+// contains the word "only" ("the only way to get one on a venture timeline") stays SILENT because
+// no party is credited with saying it.
+const ATTR_SUPERLATIVE_EFFECTIVE_FROM = '2026-08-12';
+const ATTR_FRAME_RE = new RegExp(
+  [
+    String.raw`by\s+(?:the\s+)?[\w'’&.-]+(?:\s+[\w'’&.-]+){0,3}(?:'s|’s)\s+own\s+(?:account|telling|description|words|reckoning)`,
+    String.raw`(?:according|per)\s+to\s+(?:the\s+)?[A-Za-z][\w'’&.-]*`,
+    String.raw`(?:the\s+)?(?:company|acquirer|buyer|seller|issuer|operator|agency|regulator|ministry|department|firm|maker|vendor|developer|lab)\s+(?:says|said|claims|claimed|calls|called|describes|described|bills|billed|touts|touted)`,
+    String.raw`[A-Z][\w'’&.-]*(?:\s+[A-Z][\w'’&.-]*){0,3}\s+(?:says|said|claims|claimed|calls|called|describes|described|bills|billed|touts|touted)\s+(?:it|itself|them|the\s+\w+)`,
+    String.raw`(?:in|on)\s+(?:its|their|his|her)\s+own\s+(?:account|telling|release|filing|words)`,
+  ].join('|'),
+  'i'
+);
+// SCOPE superlatives — claims about the EXTENT of a set, which is what a party's own wording can
+// be checked against. Deliberately NOT the market-extreme family (highs/lows/since), which
+// extractSuperlatives already owns against the archive.
+const ATTR_SUPERLATIVE_RE =
+  /\b(?:the\s+only|the\s+sole|the\s+first|the\s+largest|the\s+biggest|the\s+leading|the\s+world's|the\s+world’s|the\s+nation's|the\s+nation’s|the\s+country's|the\s+country’s|the\s+single|unique(?:ly)?)\b/i;
+// A hedge the SOURCE used and the brief may have dropped.
+const ATTR_HEDGE_RE =
+  /\b(?:one\s+of|among\s+the|some\s+of\s+the|amongst\s+the|a\s+handful\s+of|few\s+of)\b/i;
+// Scope nouns the BRIEF may have added. Each must survive in the quotation.
+//
+// 🔴 WORD BOUNDARIES, NOT SUBSTRINGS — this list shipped as bare `includes()` for about four
+// minutes and immediately produced a FALSE POSITIVE on the very file it was built from: `ever`
+// matched inside "Teledyne has n[ever] built", so a bullet the Morning Truth Gate had already
+// corrected to the source's exact hedge was reported as WIDENED. A false positive on the TRUE
+// leg is not harmless — it trains the next session to skim the gate's output, which is the same
+// failure as the `price-vs-archive` bare-year defect (2026-08-11) and the 133%-overlap validator
+// (IMP-042). Every token is now anchored, and the selftest pins the "never" case forever.
+const ATTR_SCOPE_TOKENS: { label: string; re: RegExp }[] = [
+  { label: 'American', re: /\bamerican?\b/i },
+  { label: 'U.S.', re: /\b(?:u\.s\.|us|usa|united states)\b/i },
+  { label: 'global', re: /\bglobal(?:ly)?\b/i },
+  { label: "world's", re: /\bworld[’']s\b|\bworldwide\b|\bin the world\b/i },
+  { label: 'national', re: /\bnational(?:ly)?\b|\bnationwide\b/i },
+  { label: 'domestic', re: /\bdomestic(?:ally)?\b/i },
+  { label: 'European', re: /\beuropean?\b/i },
+  { label: 'Chinese', re: /\bchinese\b|\bchina\b/i },
+  { label: 'ever', re: /\bever\b/i },
+];
+
+export function attributedSuperlativeClaims(
+  body: string,
+  briefDate: string | null
+): Claim[] {
+  if (briefDate && briefDate < ATTR_SUPERLATIVE_EFFECTIVE_FROM) return [];
+  const claims: Claim[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  for (const s of stripped.matchAll(/[^.!?\n]+[.!?]?/g)) {
+    const text = s[0];
+    const idx = s.index ?? 0;
+    const section = sectionOf(stripped, idx);
+    if (!SRC_SECTION_RE.test(section)) continue;
+    if (!ATTR_FRAME_RE.test(text)) continue;
+    if (!ATTR_SUPERLATIVE_RE.test(text)) continue;
+    const sup = ATTR_SUPERLATIVE_RE.exec(text)![0].replace(/\s+/g, ' ').trim();
+    const key = `attributed-superlative:${srcSlug(text.slice(0, 90))}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    claims.push({
+      key,
+      asset: sup,
+      tier: 'critical',
+      claimType: 'superlative',
+      direction: 'unknown',
+      magnitudePct: null,
+      level: null,
+      section,
+      sentence: text.replace(/\s+/g, ' ').trim(),
+      status: 'UNVERIFIED',
+      superlative: sup,
+      superlativeKind: 'other',
+    });
+  }
+  return claims;
+}
+
+/**
+ * Given a resolved truth row carrying the attributed party's `quotation`, FAIL when the brief
+ * deleted the source's hedge or added a scope the source never claimed.
+ */
+export function attributedSuperlativeFidelity(
+  claims: Claim[],
+  truthClaims:
+    | Record<string, { quotation?: string; resolved?: boolean }>
+    | undefined
+): Finding[] {
+  const out: Finding[] = [];
+  for (const c of claims) {
+    const q = truthClaims?.[c.key]?.quotation;
+    if (!q) continue; // no row → the unresolved-before-publish rail already owns it
+    const quote = q.toLowerCase();
+    const brief = c.sentence.toLowerCase();
+
+    if (ATTR_HEDGE_RE.test(quote) && !ATTR_HEDGE_RE.test(brief)) {
+      out.push({
+        severity: 'FAIL',
+        check: 'attributed-superlative-hedge-deleted',
+        message:
+          `ATTRIBUTED SUPERLATIVE HARDENED — the brief credits a named party with "${c.superlative}", but that party HEDGED it. ` +
+          `Source said: "${q.slice(0, 220)}". Brief says: "${c.sentence.slice(0, 220)}". ` +
+          `2026-08-12 receipt: C&C-1 printed "by the acquirer's own account, is the only independent supplier" against Teledyne's ` +
+          `"one of the world's only credible, commercially ready independent suppliers" — and the bullet's entire chokepoint thesis ` +
+          `rested on the singularity the brief added. Restore the hedge or drop the attribution.`,
+        section: c.section,
+      });
+      continue;
+    }
+
+    const added = ATTR_SCOPE_TOKENS.filter(
+      t => t.re.test(brief) && !t.re.test(quote)
+    ).map(t => t.label);
+    if (added.length) {
+      out.push({
+        severity: 'FAIL',
+        check: 'attributed-superlative-scope-added',
+        message:
+          `ATTRIBUTED SUPERLATIVE WIDENED — the brief's "${c.superlative}" carries scope [${added.join(', ')}] that the attributed party's own wording does not. ` +
+          `Source said: "${q.slice(0, 220)}". Brief says: "${c.sentence.slice(0, 220)}". ` +
+          `2026-08-09 receipt: the Take lede read "the first new AMERICAN iron mine" where the company, in three identically-worded sources, ` +
+          `said "in Minnesota". Narrow the claim to the source's scope, or cite the source that supports the wider one.`,
+        section: c.section,
+      });
+    }
+  }
+  return out;
+}
+
 const AI_ACTION_RE =
   /\b(?:announced|unveiled|launched|released|shipped|deployed|introduced|debuted|rolled\s+out|(?:the\s+)?(?:deployment|rollout|roll-out|launch|release)\s+of)\b/i;
 const AI_PRODUCT_NOUN_RE =
@@ -4047,6 +4208,141 @@ function selftest(): number {
       c => c.tier === 'critical' && /EQT|1\.81 billion|0\.39/i.test(c.sentence)
     );
 
+  // ── IMP-165 (08-12 Critic mandate #3, RC2; discharges IMP-151(a)) ────────────────────────────
+  // Both directions, on REAL artifacts and on the two synthetic receipts the deferred row named.
+  const aug12v2 = path.join(process.cwd(), 'daily-briefs/2026-08-12-v2.md');
+  const attrReal = fs.existsSync(aug12v2)
+    ? attributedSuperlativeClaims(fs.readFileSync(aug12v2, 'utf8'), '2026-08-12')
+    : [];
+  // FIRE leg 1 — the real C&C-1 sentence is extracted as a CRITICAL claim.
+  const okAttrRealFire =
+    !fs.existsSync(aug12v2) ||
+    attrReal.some(
+      c => c.tier === 'critical' && /acquirer|photon[- ]counting|independent supplier/i.test(c.sentence)
+    );
+  // …and it is UNRESOLVED against the real truth file, so --require-resolved blocks it.
+  const attrCC1 = attrReal.find(c => /independent supplier/i.test(c.sentence));
+  const realTruth12 = (() => {
+    try {
+      return JSON.parse(
+        fs.readFileSync(path.join(process.cwd(), 'daily-briefs/2026-08-12-truth.json'), 'utf8')
+      );
+    } catch {
+      return null;
+    }
+  })();
+  // The STRONGEST both-directions leg available, because both files are real and share one key:
+  // v2 shipped "THE ONLY independent supplier"; the published file carries the morning gate's
+  // correction, "one of the world's only". Same bullet, same claim key, same truth row —
+  // the draft must FAIL hedge-deleted and the published file must be SILENT. A gate that can
+  // tell those two apart is measuring the claim, not the sentence.
+  const okAttrRealUnresolved =
+    !fs.existsSync(aug12v2) ||
+    (!!attrCC1 &&
+      !!realTruth12?.claims?.[attrCC1.key]?.quotation &&
+      attributedSuperlativeFidelity([attrCC1], realTruth12.claims).some(
+        f => f.check === 'attributed-superlative-hedge-deleted'
+      ));
+
+  // FIRE leg 2 — HEDGE-DELETED, the 08-12 defect stated against the source's own words.
+  const hedgeClaim = attributedSuperlativeClaims(
+    "## Companies & Crypto\n\nThe target, by the acquirer's own account, is the only independent supplier of commercially ready photon-counting CT detectors.",
+    '2026-08-12'
+  );
+  const okAttrHedge =
+    hedgeClaim.length === 1 &&
+    attributedSuperlativeFidelity(hedgeClaim, {
+      [hedgeClaim[0]!.key]: {
+        resolved: true,
+        quotation:
+          "one of the world's only credible, commercially ready independent suppliers of photon-counting CT detectors",
+      },
+    }).some(f => f.check === 'attributed-superlative-hedge-deleted');
+
+  // FIRE leg 3 — SCOPE-ADDED, the 08-09 Take lede IMP-151 was deferred on twice.
+  const scopeClaim = attributedSuperlativeClaims(
+    '## THE TAKE\n\nAccording to Cleveland-Cliffs, it is the first new American iron mine in seventy years.',
+    '2026-08-12'
+  );
+  const okAttrScope =
+    scopeClaim.length === 1 &&
+    attributedSuperlativeFidelity(scopeClaim, {
+      [scopeClaim[0]!.key]: {
+        resolved: true,
+        quotation: 'the first new iron mine in Minnesota in seventy years',
+      },
+    }).some(f => f.check === 'attributed-superlative-scope-added');
+
+  // SILENT leg 1 — the source's hedge survives in the brief. This is correct behaviour and a gate
+  // that flags it is worthless (IMP-151's own words about the Fastmarkets pair).
+  const okAttrSilentFaithful = (() => {
+    const c = attributedSuperlativeClaims(
+      "## Companies & Crypto\n\nThe target, by the acquirer's own account, is one of the world's only independent suppliers of photon-counting CT detectors.",
+      '2026-08-12'
+    );
+    return (
+      c.length === 1 &&
+      attributedSuperlativeFidelity(c, {
+        [c[0]!.key]: {
+          resolved: true,
+          quotation: "one of the world's only credible, commercially ready independent suppliers",
+        },
+      }).length === 0
+    );
+  })();
+
+  // SILENT leg 2 — an UNATTRIBUTED superlative (08-09 Geo-1, sourced to CSIS) is not this class.
+  const okAttrSilentUnattributed =
+    attributedSuperlativeClaims(
+      '## Geopolitics\n\nThe sortie was Beijing’s first public demonstration of sea-based strategic reach, per CSIS imagery.',
+      '2026-08-12'
+    ).length === 0;
+
+  // SILENT leg 3 — an ARGUMENT containing "the only" credits nobody with saying it (08-09 Take).
+  const okAttrSilentArgument =
+    attributedSuperlativeClaims(
+      '## THE TAKE\n\nBuying the incumbent is the only way to get one on a venture timeline.',
+      '2026-08-12'
+    ).length === 0;
+
+  // SILENT leg 4 — tonight's Discovery and Signal-2, the two clean negatives the mandate named,
+  // measured on the real file so the silent leg cannot be tuned.
+  const okAttrSilentCleanSections =
+    !fs.existsSync(aug12v2) ||
+    !attrReal.some(c => /Discovery|Signal/i.test(c.section));
+
+  // SILENT leg 5 — THE `never` FALSE POSITIVE, pinned to the real published file. Bare substring
+  // matching found "ever" inside "Teledyne has never built" and reported a bullet the morning gate
+  // had already corrected to the source's exact words. This leg exists so it can never come back.
+  const pub12 = path.join(process.cwd(), 'content/daily-updates/2026-08-12.md');
+  const okAttrNoNeverFp = (() => {
+    if (!fs.existsSync(pub12)) return true;
+    const cl = attributedSuperlativeClaims(fs.readFileSync(pub12, 'utf8'), '2026-08-12');
+    let truthPub: any = null;
+    try {
+      truthPub = JSON.parse(
+        fs.readFileSync(path.join(process.cwd(), 'daily-briefs/2026-08-12-truth.json'), 'utf8')
+      );
+    } catch {
+      return true;
+    }
+    return attributedSuperlativeFidelity(cl, truthPub?.claims).length === 0;
+  })();
+
+  // NO-STORM leg — this must not become a nightly worklist. Measured across the real v2 window.
+  const attrRates = ['2026-08-09', '2026-08-10', '2026-08-11', '2026-08-12']
+    .map(d => path.join(process.cwd(), `daily-briefs/${d}-v2.md`))
+    .filter(f => fs.existsSync(f))
+    .map(f => attributedSuperlativeClaims(fs.readFileSync(f, 'utf8'), '2026-08-12').length);
+  const okAttrNoStorm = attrRates.length === 0 || Math.max(...attrRates) <= 3;
+
+  // NO-RETRO leg — the rule binds from 2026-08-12 forward; the archive cannot be condemned by it.
+  const okAttrNoRetro =
+    attributedSuperlativeClaims(
+      "## Companies & Crypto\n\nThe target, by the acquirer's own account, is the only independent supplier.",
+      '2026-07-13'
+    ).length === 0;
+
   console.log('fact-gate --selftest');
   console.log(
     `  [IMP-081] FIRE: GM "$46 billion in revenue, 22% above last year" is a CRITICAL yoy claim: ${okYoyGmFire ? '✓' : '✗'}`
@@ -4613,6 +4909,39 @@ function selftest(): number {
     `  [IMP-117] REAL 08-02 v2: fires on the Colby Smith pairing: ${okByReal ? '✓' : '✗'}`
   );
 
+  console.log(
+    `  [IMP-165] FIRE on the REAL 2026-08-12-v2.md C&C-1 attributed superlative: ${okAttrRealFire ? '✓' : '✗'} (${attrReal.length} claim(s))`
+  );
+  console.log(
+    `  [IMP-165] …and the DRAFT's "the only" FAILS hedge-deleted against the same truth row the PUBLISHED file passes: ${okAttrRealUnresolved ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-165] FIRE: HEDGE-DELETED — "the only" against a source that said "one of the world's only": ${okAttrHedge ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-165/151] FIRE: SCOPE-ADDED — "first new AMERICAN iron mine" against "in Minnesota": ${okAttrScope ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-165] SILENT when the brief keeps the source's hedge: ${okAttrSilentFaithful ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-165/151] SILENT on an UNATTRIBUTED superlative (Geo-1 / CSIS): ${okAttrSilentUnattributed ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-165/151] SILENT on an ARGUMENT containing "the only" (the Take's venture-timeline line): ${okAttrSilentArgument ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-165] SILENT on tonight's Discovery and Signal-2, the mandate's two clean negatives: ${okAttrSilentCleanSections ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-165] SILENT on the REAL published 2026-08-12 ("Teledyne has NEVER built" is not the scope noun "ever"): ${okAttrNoNeverFp ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-165] NO STORM: max ${attrRates.length ? Math.max(...attrRates) : 0} claim(s)/brief across the real 08-09…08-12 v2 window: ${okAttrNoStorm ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-165] NO RETRO: silent on a pre-2026-08-12 brief date (IMP-125's rule): ${okAttrNoRetro ? '✓' : '✗'}`
+  );
   const ok =
     okDaFire &&
     okDaSilentSettledAt &&
@@ -4754,7 +5083,18 @@ function selftest(): number {
     okEarnSilentYoy &&
     okEarnSilentGuidance &&
     okEarnSilentMove &&
-    okEarnReal;
+    okEarnReal &&
+    okAttrRealFire &&
+    okAttrRealUnresolved &&
+    okAttrHedge &&
+    okAttrScope &&
+    okAttrSilentFaithful &&
+    okAttrSilentUnattributed &&
+    okAttrSilentArgument &&
+    okAttrSilentCleanSections &&
+    okAttrNoNeverFp &&
+    okAttrNoStorm &&
+    okAttrNoRetro;
   if (ok) {
     console.log(
       '\n✅ SELFTEST PASS — gate bites the 07-10/07-11/07-13 failures (reuse, transposition, entity misattribution, harmonize-to-published, release-date falsehood) and stays silent on the corrected/healthy cases — including its own two false positives.'
@@ -4921,6 +5261,21 @@ function main() {
     )
   );
 
+  // 3d-ter. ATTRIBUTED SUPERLATIVES (IMP-165 — 08-12 Critic mandate #3, RC2; discharges IMP-151(a)).
+  // A superlative credited to a named party is resolved only by that party's verbatim wording; a
+  // deleted hedge or an added scope is a hard finding. No row → the --require-resolved rail blocks
+  // it at the Morning Truth Gate exactly like any other unresolved CRITICAL claim.
+  const attrSuperlatives = attributedSuperlativeClaims(body, briefDate);
+  for (const e of attrSuperlatives) if (truth?.claims?.[e.key]) e.status = 'PASS';
+  findings.push(
+    ...attributedSuperlativeFidelity(
+      attrSuperlatives,
+      truth?.claims as
+        | Record<string, { quotation?: string; resolved?: boolean }>
+        | undefined
+    )
+  );
+
   // 3e. AI&T definite-product / deployment claims (IMP-074, the 07-19 Critic's mandate #1). "Microsoft
   // announced Project Perception" (reportedly-developing) and "the deployment of Atlas robots" (none
   // deployed) shipped to v2 un-gated — the AI&T section has no pre-draft and no fact rail. A definite,
@@ -5044,6 +5399,7 @@ function main() {
     ...bylineClaims,
     ...derivedClaims,
     ...sourceConclusions,
+    ...attrSuperlatives,
   ].filter(c => c.tier === 'critical' && c.status === 'UNVERIFIED');
   if (!allowUnverified) {
     for (const c of unverifiedCritical) {
@@ -5107,6 +5463,7 @@ function main() {
     ...bylineClaims,
     ...derivedClaims,
     ...sourceConclusions,
+    ...attrSuperlatives,
   ];
 
   // Ledger output (the worklist the editorial agents clear by verify-and-correct).
@@ -5162,7 +5519,7 @@ function main() {
 
   console.log(`fact-gate — ${path.basename(briefPath)}`);
   console.log(
-    `  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} · derived-prices: ${derivedClaims.length} · source-conclusions: ${sourceConclusions.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`
+    `  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} · derived-prices: ${derivedClaims.length} · source-conclusions: ${sourceConclusions.length} · attributed-superlatives: ${attrSuperlatives.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`
   );
   console.log(
     `  archive: ${archiveAssetsKnown} assets known from our last ${archiveDays} briefs`
@@ -5194,4 +5551,9 @@ function main() {
   process.exit(1);
 }
 
-main();
+// Direct-invocation guard (added 2026-08-12 — IMP-165). `main()` ran unconditionally, so this
+// module could not be imported: any sibling gate that wanted `attributedSuperlativeClaims`
+// got a usage banner and process.exit(2) instead. Same guard validate-brief.ts already uses.
+const invokedDirectly =
+  !!process.argv[1] && path.resolve(process.argv[1]).endsWith('fact-gate.ts');
+if (invokedDirectly) main();

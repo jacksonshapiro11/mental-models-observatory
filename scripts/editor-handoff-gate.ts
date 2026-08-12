@@ -41,6 +41,8 @@
  *   --can-self-heal <DATE>   may the Critic rebuild v2 from v1.5? exit 1 = FORBIDDEN.
  *   --audit <DATE>           post-hoc: self-heal/promotion over a live Editor, or an unreconciled
  *                            PROVISIONAL Critic report. exit 1 = violation.
+ *   --finalize <DATE>        IMP-164: retire the working file, assert the editor log, enforce the
+ *                            Gate 16 cut order, print the required paste block. Idempotent.
  *   --selftest               both directions, on the REAL 07-10…07-14 artifacts + mtime fixtures.
  *
  * Exit: 0 clean · 1 violation · 2 usage.
@@ -48,6 +50,11 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+// IMP-164 — ONE definition of a Six unit, shared with the Validator. Importing is deliberate:
+// a second word-counter here would be free to drift from the one the Editor reads, and two
+// counters measuring one thing is the failure that killed checkSixBulletWordCeiling.
+// validate-brief.ts only runs main() when invoked directly, so this import has no side effects.
+import { sixUnitHardBreach } from './validate-brief.ts';
 
 /** The working file has not been touched for this long ⇒ the Editor stopped writing ⇒ crashed.
  *  The Editor's HEARTBEAT contract (Brief_Editor.md) is a touch every ≤5 min, so 20 min of silence
@@ -589,7 +596,45 @@ export function auditPromotion(root: string, date: string): Violation[] {
   const v2 = path.join(DB(root), `${date}-v2.md`);
   const working = path.join(DB(root), `${date}-v2.working.md`);
   if (!fs.existsSync(v2)) return []; // not promoted yet — --liveness owns this window, not us
-  if (!fs.existsSync(working)) return []; // rule 6 satisfied: the scratch file is gone
+
+  const out: Violation[] = [];
+
+  // ── IMP-164 (2026-08-12 Critic mandate #2(c), RC1+RC3): MISSING-EDITOR-LOG ──────────────────
+  // On 2026-08-12 the Editor did the work — Gate 16 cut a unit, the truth file was written, the
+  // body landed at exactly 5,489 words — and then evaporated: no editor log, no SUCCESS line,
+  // CANARY only. The absence of the log was detected by NOTHING; the Critic found it with `ls`.
+  // A Critic arriving at 23:31Z cannot distinguish "finished" from "died mid-pass" without it, and
+  // 07-13/07-14 are what happens when that distinction is guessed.
+  //
+  // THE MANDATE ROUTED THIS TO gate-sweep.ts. It is wired HERE instead, deliberately: gate-sweep
+  // answers exactly one question — which gates does no stage call — and its orphan count is only
+  // comparable across days because it answers nothing else. A nightly-artifact assertion inside an
+  // orphan detector is two classes in one number. This gate already owns "what must be true once
+  // v2 is promoted", the Critic already runs it (`--audit-promotion` is in the 08-12 critic's
+  // receipts), and it costs no new surface. Same detection, correct layer.
+  //
+  // 🔴 NO RETROACTIVE CONDEMNATION OF THE ARCHIVE (IMP-125's lesson, and this leg tripped it within
+  // minutes of being written: it red-failed the IMP-155 leg that asserts silence on 115 real nights).
+  // The rule binds from the day it ships FORWARD. Measured on disk 2026-08-12: 08-06 through 08-11
+  // ALL carry an editor log — so the mandate's own claim that "three additionally carry no editor
+  // log" is wrong, and 2026-08-12 is the ONLY night in the window with a promoted v2 and no log.
+  const EDITOR_LOG_EFFECTIVE_FROM = '2026-08-12';
+  const log = path.join(DB(root), `${date}-editor-log.md`);
+  const logBytes = fs.existsSync(log) ? fs.statSync(log).size : -1;
+  if (date >= EDITOR_LOG_EFFECTIVE_FROM && logBytes <= 0) {
+    out.push({
+      check: 'MISSING-EDITOR-LOG',
+      message:
+        `PROMOTION AUDIT FAILED — ${date}-v2.md is promoted but ${date}-editor-log.md is ` +
+        `${logBytes < 0 ? 'NOT ON DISK' : 'EMPTY (0 bytes)'}. The Editor shipped a brief and left no record that it ran. ` +
+        `A stage without a receipt cannot be told apart from a stage that died mid-pass, and the recovery for those two ` +
+        `is opposite. FIX: run \`editor-handoff-gate.ts --finalize ${date}\` as the LAST action of the Editor pass — it ` +
+        `retires the working file, asserts this log, and prints the block the status line requires. ` +
+        `An Editor that cannot run --finalize writes FAIL, not silence.`,
+    });
+  }
+
+  if (!fs.existsSync(working)) return out; // rule 6 satisfied: the scratch file is gone
 
   let bytes = -1;
   let identical = false;
@@ -601,7 +646,7 @@ export function auditPromotion(root: string, date: string): Violation[] {
   } catch {
     /* stat/read race — existence already decided the verdict */
   }
-  return [
+  out.push(
     {
       check: identical ? 'ORPHANED-SCRATCH' : 'STALE-SCRATCH',
       message:
@@ -612,8 +657,105 @@ export function auditPromotion(root: string, date: string): Violation[] {
         `FIX: delete it and write the WORKING FILE DELETED receipt to ${date}-editor-log.md. ` +
         `Do not add a size or similarity condition to this check — that is exactly how IMP-141 and IMP-149 ` +
         `each went blind on the next night's shape.`,
-    },
-  ];
+    }
+  );
+  return out;
+}
+
+/**
+ * --finalize {DATE} — THE RECEIPT IS PRODUCED BY THE MACHINE, NOT REMEMBERED BY THE STAGE.
+ * (IMP-164, 2026-08-12 Critic mandate #2(a)+(b), RC1+RC3. Also carries mandate #1's cut-order
+ *  enforcement — see the LENGTH-OVERRIDE leg below.)
+ *
+ * Seven consecutive nights of ORPHANED-SCRATCH, three of them with no editor log at all, is not a
+ * stage that forgets. It is a rule with no hands. `rule 6 says delete the working file` has been
+ * true and unobserved since 08-06. So: one idempotent command that DOES the deletion, ASSERTS the
+ * artifacts, and PRINTS the block the Editor is required to paste. The Editor cannot comply by
+ * remembering; it complies by running one thing, and if it cannot run it, it writes FAIL.
+ *
+ * 🔴 THE DELETE GATE. `fs.unlink` returns EPERM on this mount — proved live 2026-08-12
+ * (`rm daily-briefs/.probe-del-test` → "Operation not permitted"), the same gate that blocks
+ * `rm .git/index.lock` (ESC-010/ESC-012). RENAME SUCCEEDS WHERE UNLINK IS BLOCKED, so finalize
+ * retires the husk to `{date}-v2.working.md.retired-{ts}` when unlink fails. That satisfies the
+ * property the rule is actually about — no file named `*-v2.working.md` beside a promoted v2, so
+ * no later reader can grade a document that never shipped — without pretending a delete happened.
+ * Retired husks are visible on disk on purpose; they are evidence, not litter.
+ */
+export function finalize(root: string, date: string): { code: number; lines: string[] } {
+  const lines: string[] = [];
+  const db = DB(root);
+  const v2 = path.join(db, `${date}-v2.md`);
+  const working = path.join(db, `${date}-v2.working.md`);
+  const log = path.join(db, `${date}-editor-log.md`);
+
+  // 1. v2 must exist and be a plausible brief. Finalizing an absent or husk v2 would write a
+  //    receipt for a pass that did not happen — the exact laundering this file exists to prevent.
+  if (!fs.existsSync(v2)) {
+    lines.push(`   ✗ NO-V2 — ${date}-v2.md is not on disk. There is nothing to finalize. If the Editor is still running, this is correct: wait. If it died, use --can-self-heal.`);
+    return { code: 1, lines };
+  }
+  const v2Bytes = fs.statSync(v2).size;
+  if (v2Bytes < MIN_PLAUSIBLE_BRIEF_BYTES) {
+    lines.push(`   ✗ HUSK-V2 — ${date}-v2.md is ${v2Bytes} bytes, under the ${MIN_PLAUSIBLE_BRIEF_BYTES}-byte plausibility floor. Do not finalize a husk.`);
+    return { code: 1, lines };
+  }
+  lines.push(`   ✓ v2 present — ${date}-v2.md, ${v2Bytes} bytes`);
+
+  // 2. Retire the working file. Idempotent: absent is success, not an error.
+  if (fs.existsSync(working)) {
+    const wb = fs.statSync(working).size;
+    try {
+      fs.unlinkSync(working);
+      lines.push(`   ✓ WORKING FILE DELETED — ${date}-v2.working.md (${wb} bytes) unlinked`);
+    } catch {
+      const retired = `${working}.retired-${Date.now()}`;
+      try {
+        fs.renameSync(working, retired);
+        lines.push(`   ✓ WORKING FILE RETIRED — ${date}-v2.working.md (${wb} bytes) → ${path.basename(retired)} (unlink is EPERM on this mount; rename is not)`);
+      } catch (e: any) {
+        lines.push(`   ✗ CANNOT-RETIRE-WORKING — neither unlink nor rename succeeded on ${date}-v2.working.md: ${e?.message ?? e}`);
+        return { code: 1, lines };
+      }
+    }
+  } else {
+    lines.push(`   ✓ no working file beside the promoted v2 (Brief_Editor rule 6 satisfied)`);
+  }
+
+  // 3. The editor log must exist and say something.
+  const logBytes = fs.existsSync(log) ? fs.statSync(log).size : -1;
+  if (logBytes <= 0) {
+    lines.push(`   ✗ MISSING-EDITOR-LOG — ${date}-editor-log.md is ${logBytes < 0 ? 'NOT ON DISK' : 'EMPTY'}. Write the pass record (gates run, edits made, Gate 16 ledger) and re-run --finalize. This is the whole of mandate #2: a stage that ships without a receipt is indistinguishable from a stage that died.`);
+    return { code: 1, lines };
+  }
+  lines.push(`   ✓ editor log present — ${date}-editor-log.md, ${logBytes} bytes`);
+
+  // 4. THE CUT ORDER (2026-08-12 Critic mandate #1, RC4). A night that ends with a majority of Six
+  //    units past their hard ceiling ended with compressible words on the table. If the Editor
+  //    also took a whole-unit cut, it traded a verified story for fat it never spent. Finalize
+  //    refuses to close that night without an explicit LENGTH-OVERRIDE showing the arithmetic.
+  const breach = sixUnitHardBreach(fs.readFileSync(v2, 'utf8'));
+  if (breach.breach) {
+    const logSrc = fs.readFileSync(log, 'utf8');
+    if (!/LENGTH-OVERRIDE/.test(logSrc)) {
+      lines.push(
+        `   ✗ SIX-UNIT-HARD-BREACH — ${breach.over} of ${breach.units} core Six units are over their HARD ceiling ` +
+          `(${breach.distribution}); Σ(unit − hard) = ${breach.surplus} words were recoverable BY COMPRESSION.\n` +
+          `     Gate 16 cut order: exhaust the per-unit surplus BEFORE any whole-unit cut. To close the night anyway, ` +
+          `write \`LENGTH-OVERRIDE:\` into ${date}-editor-log.md with the arithmetic — words needed vs ${breach.surplus} available — and re-run.\n` +
+          `     RECEIPT: 2026-08-12 had 280 recoverable words and deleted a 194-word verified unit instead.`
+      );
+      return { code: 1, lines };
+    }
+    lines.push(`   ✓ LENGTH-OVERRIDE declared in the editor log against a ${breach.over}/${breach.units} breach (${breach.surplus} words recoverable) — the trade is on the record`);
+  } else {
+    lines.push(`   ✓ six-unit-hard-breach clear — ${breach.over} of ${breach.units} core units over hard (${breach.distribution})`);
+  }
+
+  lines.push('');
+  lines.push('   PASTE THIS BLOCK INTO THE EDITOR LOG AND THE STATUS LINE:');
+  lines.push(`   MECHANICAL GATE OUTPUT — editor-handoff-gate --finalize ${date} EXIT=0`);
+  lines.push(`     v2 ${v2Bytes} B · working file retired · editor-log ${logBytes} B · six-unit-hard-breach ${breach.over}/${breach.units} over, ${breach.surplus} recoverable${breach.breach ? ' (LENGTH-OVERRIDE declared)' : ''}`);
+  return { code: 0, lines };
 }
 
 // ---------- selftest ----------
@@ -1116,6 +1258,83 @@ function selftest(): number {
     ]
   );
 
+  // ── IMP-164 (08-12 Critic mandate #2, RC1+RC3): --finalize + MISSING-EDITOR-LOG ─────────────
+  // Both directions, on a throwaway tree with REAL files. The fixture dates are 2026-08-12+ so the
+  // effective-from window is exercised, and a pre-window date proves the archive stays untouched.
+  {
+    const F = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-final-'));
+    fs.mkdirSync(path.join(F, 'daily-briefs'), { recursive: true });
+    const db = path.join(F, 'daily-briefs');
+    const W = (n: string, b: string) => fs.writeFileSync(path.join(db, n), b);
+    const w = (n: number) => Array.from({ length: n }, (_, i) => `w${i}`).join(' ');
+    const brief = (words: number) =>
+      `# ▸ THE SIX\n\n## Markets & Macro\n\n${w(words)}\n\n${w(words)}\n\n` +
+      `## Companies & Crypto\n\n${w(words)}\n\n${w(words)}\n\n` +
+      `## AI & Tech\n\n${w(words)}\n\n${w(words)}\n\n` +
+      `## Geopolitics\n\n${w(words)}\n\n${w(words)}\n\n# ▸ THE TAKE\n\n${w(900)}\n`;
+
+    // (a) the 08-12 shape: promoted v2, orphaned scratch, NO editor log.
+    W('2026-08-12-v2.md', brief(170));
+    W('2026-08-12-v2.working.md', brief(170));
+    const a = auditPromotion(F, '2026-08-12').map(v => v.check).sort();
+    const finA = finalize(F, '2026-08-12');
+    rows.push([
+      'IMP-164 --audit-promotion FIRES on MISSING-EDITOR-LOG *and* ORPHANED-SCRATCH together (the real 08-12 shape)',
+      a.length === 2 && a.includes('MISSING-EDITOR-LOG') && a.includes('ORPHANED-SCRATCH'),
+    ]);
+    rows.push([
+      'IMP-164 --finalize REFUSES a night with no editor log (exit 1) after retiring the husk',
+      finA.code === 1 && finA.lines.some(l => l.includes('MISSING-EDITOR-LOG')),
+    ]);
+    rows.push([
+      'IMP-164 --finalize retires the working file even though unlink is EPERM on this mount (no *-v2.working.md survives)',
+      !fs.existsSync(path.join(db, '2026-08-12-v2.working.md')),
+    ]);
+
+    // (b) write the log → finalize passes, and --audit-promotion goes silent. Idempotent re-run.
+    W('2026-08-12-editor-log.md', 'GATE 16: nothing cut. Pass complete.\n');
+    const finB = finalize(F, '2026-08-12');
+    rows.push([
+      'IMP-164 --finalize PASSES the moment the working file is gone and a non-empty editor log exists',
+      finB.code === 0 && finB.lines.some(l => l.includes('MECHANICAL GATE OUTPUT')),
+    ]);
+    rows.push([
+      'IMP-164 --finalize is IDEMPOTENT (a second run still exits 0)',
+      finalize(F, '2026-08-12').code === 0,
+    ]);
+    rows.push([
+      'IMP-164 --audit-promotion SILENT once both conditions hold',
+      auditPromotion(F, '2026-08-12').length === 0,
+    ]);
+
+    // (c) mandate #1's cut order, enforced at the chokepoint: a majority breach with no override.
+    W('2026-08-13-v2.md', brief(210)); // 8/8 units at 210 → 8 over, 240 recoverable
+    W('2026-08-13-editor-log.md', 'GATE 16: cut C&C-3 whole.\n');
+    const finC = finalize(F, '2026-08-13');
+    rows.push([
+      'IMP-164/163 --finalize REFUSES to close a night with 8/8 units over hard and no LENGTH-OVERRIDE',
+      finC.code === 1 && finC.lines.some(l => l.includes('SIX-UNIT-HARD-BREACH')),
+    ]);
+    fs.appendFileSync(path.join(db, '2026-08-13-editor-log.md'), 'LENGTH-OVERRIDE: needed 194, surplus 240, cut whole anyway because X.\n');
+    rows.push([
+      'IMP-164/163 …and ALLOWS it once LENGTH-OVERRIDE puts the arithmetic on the record',
+      finalize(F, '2026-08-13').code === 0,
+    ]);
+
+    // (d) SILENT mid-pass, and SILENT on the archive (pre-effective-from), both unchanged.
+    W('2026-08-14-v2.working.md', brief(170)); // no v2 → live Editor
+    W('2026-07-20-v2.md', brief(170)); // archive night, no log, no husk
+    rows.push([
+      'IMP-164 SILENT mid-pass (working file, no v2) — --liveness still owns that window',
+      auditPromotion(F, '2026-08-14').length === 0,
+    ]);
+    rows.push([
+      'IMP-164 SILENT on a pre-2026-08-12 night with no editor log — the rule binds forward, never backward (IMP-125)',
+      auditPromotion(F, '2026-07-20').length === 0,
+    ]);
+    fs.rmSync(F, { recursive: true, force: true });
+  }
+
   console.log('editor-handoff-gate --selftest');
   for (const [label, ok] of rows) console.log(`  ${ok ? '✓' : '✗'} ${label}`);
 
@@ -1144,6 +1363,7 @@ function main() {
     '--can-promote',
     '--audit',
     '--audit-promotion',
+    '--finalize',
     '--liveness',
     '--qg-liveness',
   ];
@@ -1156,6 +1376,18 @@ function main() {
   }
   const mode = argv[i]!;
   const date = argv[i + 1]!;
+
+  if (mode === '--finalize') {
+    const r = finalize(root, date);
+    console.log(`editor-handoff-gate --finalize ${date}`);
+    for (const l of r.lines) console.log(l);
+    console.log(
+      r.code === 0
+        ? '\n\u2705 FINALIZED — the Editor pass is closed and its receipt exists on disk.'
+        : '\n\u274c NOT FINALIZED. Fix the line(s) above and re-run. An Editor that cannot finalize writes FAIL to its status line, not silence.'
+    );
+    process.exit(r.code);
+  }
 
   if (mode === '--audit-promotion') {
     const v = auditPromotion(root, date);

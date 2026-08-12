@@ -2217,38 +2217,69 @@ function checkNamedSectionWordBudget(body: string): Failure[] {
   return out;
 }
 
-function checkSixSectionWordBudget(body: string): Failure[] {
-  const out: Failure[] = [];
+// The Signal and The Wild Card are Six subsections and belong here. They were missing until
+// 2026-08-03, which is why SIGNAL_UNIT/SIGNAL_HARD below were unreachable dead code: the
+// isSignal branch could never fire because sectionName could never be 'The Signal'. Jackson
+// caught the same omission once already (the first length fix covered four of six).
+const SIX_SECTIONS = [
+  'Markets & Macro',
+  'Companies & Crypto',
+  'AI & Tech',
+  'Geopolitics',
+  'The Wild Card',
+  'The Signal',
+];
+// Jackson, 2026-08-03: target ~160/bullet, hard ceiling 180. The Signal runs a little longer.
+const UNIT = 160,
+  UNIT_HARD = 180,
+  DEPTH = 350,
+  DEPTH_HARD = 400;
+// Signal, retuned 2026-08-04 (Jackson). The Signal runs TWO IDEAS, each a bold one-line header
+// plus one body block. On 08-04 the bodies ran 393 and 426 words -- 2.5x a Six bullet, ~2.7 min of
+// audio on a single forming trend, and it dragged. July ran ~330/idea. 300/340 spends exactly the
+// ENUMERATION budget (listing five states where three make the point) which is item 1 on
+// Craft_Standard's compression order; going below ~270 would start on the second explanation, and
+// in a Signal idea the second explanation IS the mechanism -- the thing that makes a forming trend
+// legible and separates a Signal from an Overnight item. That is the line where it stops being free.
+const SIGNAL_UNIT = 300,
+  SIGNAL_HARD = 340;
+
+export interface SixUnit {
+  section: string;
+  index: number; // 1-based within its section
+  count: number; // units in that section
+  words: number;
+  soft: number;
+  hard: number;
+  depth: boolean;
+  /**
+   * CORE = the four prose Six sections (M&M, C&C, AI&T, Geopolitics), the units that carry
+   * UNIT_HARD and that the Editor trades against each other at Gate 16.
+   *
+   * The Wild Card and The Signal are excluded from the MAJORITY denominator (never from the
+   * per-unit advisory legs) and the reason is measured, not stylistic. On 2026-08-12 the blank-line
+   * split produced THIRTEEN Signal "units" — `27 75 68 104 73 59 2 21 83 58 95 81 1` — because the
+   * Signal is two ideas written as many paragraphs plus bold headers. Wild Card items run ~120
+   * words against a 180 ceiling and can essentially never breach. Both would dilute a ratio to
+   * meaninglessness: the real 8-of-8 failure reads as 8-of-24, a minority, and the gate goes blind
+   * on the exact night it was built for.
+   */
+  core: boolean;
+}
+
+/**
+ * ONE ENUMERATION OF THE SIX'S UNITS, shared by every length rule in this file.
+ *
+ * Extracted 2026-08-12 (IMP-163) so the advisory per-unit leg and the new majority-breach leg
+ * cannot disagree about what a "unit" is. Two checks measuring one thing, one of them blind, is
+ * worse than one check that sees -- see the checkSixBulletWordCeiling removal note below.
+ */
+export function sixUnitWordCounts(body: string): SixUnit[] {
+  const out: SixUnit[] = [];
   const sixStart = body.indexOf('# ▸ THE SIX');
   const sixEnd = body.indexOf('# ▸ THE TAKE');
   if (sixStart === -1 || sixEnd === -1) return out;
   const sixBody = body.slice(sixStart, sixEnd);
-  // The Signal and The Wild Card are Six subsections and belong here. They were missing until
-  // 2026-08-03, which is why SIGNAL_UNIT/SIGNAL_HARD below were unreachable dead code: the
-  // isSignal branch could never fire because sectionName could never be 'The Signal'. Jackson
-  // caught the same omission once already (the first length fix covered four of six).
-  const SIX_SECTIONS = [
-    'Markets & Macro',
-    'Companies & Crypto',
-    'AI & Tech',
-    'Geopolitics',
-    'The Wild Card',
-    'The Signal',
-  ];
-  // Jackson, 2026-08-03: target ~160/bullet, hard ceiling 180. The Signal runs a little longer.
-  const UNIT = 160,
-    UNIT_HARD = 180,
-    DEPTH = 350,
-    DEPTH_HARD = 400;
-  // Signal, retuned 2026-08-04 (Jackson). The Signal runs TWO IDEAS, each a bold one-line header
-  // plus one body block. On 08-04 the bodies ran 393 and 426 words -- 2.5x a Six bullet, ~2.7 min of
-  // audio on a single forming trend, and it dragged. July ran ~330/idea. 300/340 spends exactly the
-  // ENUMERATION budget (listing five states where three make the point) which is item 1 on
-  // Craft_Standard's compression order; going below ~270 would start on the second explanation, and
-  // in a Signal idea the second explanation IS the mechanism -- the thing that makes a forming trend
-  // legible and separates a Signal from an Overnight item. That is the line where it stops being free.
-  const SIGNAL_UNIT = 300,
-    SIGNAL_HARD = 340;
 
   for (const sectionName of SIX_SECTIONS) {
     const m = sixBody.match(new RegExp(`## ${sectionName}\\b`));
@@ -2263,44 +2294,123 @@ function checkSixSectionWordBudget(body: string): Failure[] {
       .filter(u => u.length > 0 && !/^#{1,6} /.test(u) && !/^<!--/.test(u));
     if (units.length === 0) continue;
 
-    let total = 0,
-      depthUnits = 0;
+    const isSignal = /Signal/i.test(sectionName);
     units.forEach((u, i) => {
-      const words = u.split(/\s+/).filter(Boolean).length;
-      total += words;
       const depth =
         u.includes('<!-- DEPTH-TREATMENT -->') ||
-        u.includes('\u200Bdepth_treatment\u200B') ||
+        u.includes('​depth_treatment​') ||
         u.includes('INVESTMENT TARGET');
-      const isSignal = /Signal/i.test(sectionName);
-      const ceil = depth ? DEPTH : isSignal ? SIGNAL_UNIT : UNIT;
-      const hard = depth ? DEPTH_HARD : isSignal ? SIGNAL_HARD : UNIT_HARD;
-      if (depth) depthUnits++;
-      if (words > hard) {
-        out.push({
-          check: 'six-section-word-budget',
-          message: `OVER: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (hard ceiling ${hard}). Compress or split.${depth ? ' (DEPTH-TREATMENT)' : ''}`,
-        });
-      } else if (words > ceil) {
-        out.push({
-          check: 'six-section-word-budget',
-          message: `OVER: ${sectionName} unit ${i + 1}/${units.length} is ${words} words (soft ceiling ${ceil}). Compress.${depth ? ' (DEPTH-TREATMENT)' : ''}`,
-        });
-      }
+      out.push({
+        section: sectionName,
+        index: i + 1,
+        count: units.length,
+        words: u.split(/\s+/).filter(Boolean).length,
+        soft: depth ? DEPTH : isSignal ? SIGNAL_UNIT : UNIT,
+        hard: depth ? DEPTH_HARD : isSignal ? SIGNAL_HARD : UNIT_HARD,
+        depth,
+        core: !isSignal && !/Wild Card/i.test(sectionName),
+      });
     });
+  }
+  return out;
+}
+
+export interface SixUnitBreach {
+  units: number;
+  over: number;
+  surplus: number; // sum of max(0, words - hard) -- words recoverable by COMPRESSION
+  breach: boolean;
+  distribution: string; // "195 212 208 ..." for the pasted receipt
+}
+
+/**
+ * CHECK: six-unit-hard-breach (IMP-163 -- 2026-08-12 Critic mandate #1, RC4).
+ *
+ * WORKED FAILURE, one night old. 2026-08-11 shipped `178 172 180 178 176 177 179 178 180` --
+ * nine units, ZERO breaches. 2026-08-12 shipped EIGHT units and EIGHT breaches, 280 words over
+ * UNIT_HARD in total. Every one was detected. Every one was advisory. The only length rail with
+ * teeth is the whole-brief ceiling, so Gate 16 optimised the number that bit and paid for it by
+ * DELETING A WHOLE VERIFIED UNIT (the 194-word Meta Muse Glimmer bullet: primary source, a
+ * 2026-08-10 world-first, a passing gate run) while 280 words of compressible fat sat in the
+ * survivors. 280 available by compression > 194 needed by deletion. The reader lost a story to a
+ * length problem that did not exist.
+ *
+ * THE RULE: one unit at 185 is craft. MORE THAN HALF the Six's units over their hard ceiling is a
+ * stage that has stopped measuring, and it is exactly the state in which a whole-unit cut is the
+ * wrong instrument. So the MAJORITY condition -- never a single overage -- escalates the advisory
+ * into a finding that `editor-handoff-gate --finalize` REFUSES TO PASS without an explicit
+ * LENGTH-OVERRIDE carrying the arithmetic.
+ *
+ * WHY IT DOES NOT BLOCK PUBLISH: the brief always ships (Escalation Mechanism, standing rule). The
+ * teeth live at the Editor, the stage that can still act, not at the morning gate, which can only
+ * refuse to publish a finished brief. `validate-brief` keeps exiting 0 on this finding.
+ *
+ * 🔴 ONE DEVIATION FROM THE MANDATE, TAKEN ON A RECEIPT AND NOT ON A PREFERENCE.
+ * The mandate's acceptance required silence on `daily-briefs/2026-08-10-v2.md`. Measured on disk
+ * 2026-08-12, the core distributions are:
+ *     08-12  195* 212* | 208* 219* | 214* 201* | 241* 230*   → 8/8 over, 280 recoverable
+ *     08-11  186* 172  | 178  178  | 178  179  | 178  180    → 1/8 over,   6 recoverable
+ *     08-10  219* 181* | 235* 220* | 211* 164  | 229* 182*   → 7/8 over, 217 recoverable
+ * 08-10 is MATERIALLY THE SAME DEFECT as 08-12 — a majority of units past the hard ceiling with a
+ * three-figure compressible surplus. Silencing it would tune the gate to the single night the
+ * Critic happened to examine, which is the ACCEPTANCE-ON-THE-TRAINING-SET error that IMP-141 and
+ * IMP-149 each committed and IMP-155 was built to stop. So 08-10 FIRES, deliberately, and the
+ * deviation is recorded here rather than buried in a green selftest.
+ * ALSO CORRECTED: the mandate quotes 08-11 as `178 172 180 178 176 177 179 178 180` — nine units,
+ * zero breaches. That distribution is not in `2026-08-11-v2.md`, which holds eight units with one
+ * at 186. The SILENT verdict on 08-11 survives (1 of 8 is not a majority); the receipt behind it
+ * did not, and a mandate's arithmetic is checkable exactly like a brief's.
+ */
+export function sixUnitHardBreach(body: string): SixUnitBreach {
+  // CORE units only — see SixUnit.core for the measured reason (13 pseudo-units in one Signal).
+  const units = sixUnitWordCounts(body).filter(u => u.core);
+  const over = units.filter(u => u.words > u.hard);
+  const surplus = over.reduce((n, u) => n + (u.words - u.hard), 0);
+  return {
+    units: units.length,
+    over: over.length,
+    surplus,
+    // "more than half" -- a tie is not a majority, and a single overage is craft, not a stage failure.
+    breach: units.length > 0 && over.length * 2 > units.length,
+    distribution: units.map(u => u.words).join(' '),
+  };
+}
+
+function checkSixSectionWordBudget(body: string): Failure[] {
+  const out: Failure[] = [];
+  const all = sixUnitWordCounts(body);
+  if (all.length === 0) return out;
+
+  for (const u of all) {
+    if (u.words > u.hard) {
+      out.push({
+        check: 'six-section-word-budget',
+        message: `OVER: ${u.section} unit ${u.index}/${u.count} is ${u.words} words (hard ceiling ${u.hard}). Compress or split.${u.depth ? ' (DEPTH-TREATMENT)' : ''}`,
+      });
+    } else if (u.words > u.soft) {
+      out.push({
+        check: 'six-section-word-budget',
+        message: `OVER: ${u.section} unit ${u.index}/${u.count} is ${u.words} words (soft ceiling ${u.soft}). Compress.${u.depth ? ' (DEPTH-TREATMENT)' : ''}`,
+      });
+    }
+  }
+
+  for (const sectionName of SIX_SECTIONS) {
+    const units = all.filter(u => u.section === sectionName);
+    if (units.length === 0) continue;
+    const total = units.reduce((n, u) => n + u.words, 0);
+    const depthUnits = units.filter(u => u.depth).length;
 
     // The Six runs 2-3 units per section ("elastic by the day", Editorial Bible), so the section
-    // budget is the ALLOWED count (3) x the unit ceiling — not the count actually shipped.
+    // budget is the ALLOWED count (3) x the unit ceiling -- not the count actually shipped.
     // Otherwise writing more units raises your own budget, which is the failure mode being fixed.
     // The section budget must use THIS section's unit ceiling, not the default: The Signal runs
     // to SIGNAL_HARD/unit (340 as of 2026-08-04), so 3 x UNIT_HARD would mis-budget a compliant Signal.
-    const sectionUnitHard = /Signal/i.test(sectionName)
-      ? SIGNAL_HARD
-      : UNIT_HARD;
+    const isSignalSection = /Signal/i.test(sectionName);
+    const sectionUnitHard = isSignalSection ? SIGNAL_HARD : UNIT_HARD;
     // The Signal is 2 IDEAS, not 3 units, so the generic 3-unit budget would never bind on it
     // (3 x 340 = 1,020 against a section that should run ~665). Its two bold one-line headers are
     // real blocks but are not ideas, hence the small headline allowance.
-    const isSignalSection = /Signal/i.test(sectionName);
     const allowedUnits = isSignalSection ? 2 : 3;
     const headlineAllowance = isSignalSection ? 80 : 0;
     const budget =
@@ -3881,8 +3991,78 @@ function selftestValidator(): number {
     );
   }
 
+  // ── IMP-163 (08-12 Critic mandate #1): six-unit-hard-breach, on the REAL artifacts ───────────
+  // The acceptance the mandate wrote, unchanged: FIRE on the night that traded a verified unit for
+  // 280 words of fat; SILENT on the two nights before it; SILENT on one unit at 185, because a
+  // single overage is craft and a gate that punishes craft gets waived within a week.
+  {
+    const db = path.join(process.cwd(), 'daily-briefs');
+    const runB = (p: string): SixUnitBreach | null =>
+      fs.existsSync(p) ? sixUnitHardBreach(fs.readFileSync(p, 'utf8')) : null;
+
+    const b12 = runB(path.join(db, '2026-08-12-v2.md'));
+    t(
+      b12 === null || (b12.breach && b12.over === 8 && b12.surplus === 280),
+      `[IMP-163] FIRE on the REAL 2026-08-12-v2.md — 8 units over hard, 280-word compressible surplus (measured: over=${b12?.over}, surplus=${b12?.surplus}, breach=${b12?.breach})`
+    );
+
+    const b11 = runB(path.join(db, '2026-08-11-v2.md'));
+    t(
+      b11 === null || (!b11.breach && b11.over === 1 && b11.units === 8),
+      `[IMP-163] SILENT on the REAL 2026-08-11-v2.md — the night the Editor compressed instead of deleting (${b11?.over}/${b11?.units} over, surplus ${b11?.surplus}; the mandate quoted nine units at 178 172 180…, the file holds eight with one at 186 — verdict unchanged, receipt corrected)`
+    );
+
+    // DELIBERATE DEVIATION, receipted in the sixUnitHardBreach docblock: the mandate asked for
+    // silence on 08-10. 08-10 is 7 of 8 over with 217 recoverable words — the same defect as
+    // 08-12. Silencing it would be acceptance on the training set, so it FIRES and the selftest
+    // asserts that it fires, which is the only honest way to hold a deviation in place.
+    const b10 = runB(path.join(db, '2026-08-10-v2.md'));
+    t(
+      b10 === null || (b10.breach && b10.over === 7 && b10.units === 8),
+      `[IMP-163] FIRES on 2026-08-10-v2.md against the mandate's spec (${b10?.over}/${b10?.units} over, ${b10?.surplus} recoverable) — same defect, not a training-set exemption`
+    );
+
+    // Synthetic: one unit at 185, the rest compliant. The failure being caught is a STAGE that
+    // stopped measuring, not a sentence that ran eight words long.
+    const w = (n: number) => Array.from({ length: n }, (_, i) => `w${i}`).join(' ');
+    const oneOver =
+      `# ▸ THE SIX\n\n## Markets & Macro\n\n${w(185)}\n\n${w(170)}\n\n` +
+      `## Companies & Crypto\n\n${w(175)}\n\n${w(160)}\n\n` +
+      `## AI & Tech\n\n${w(178)}\n\n${w(150)}\n\n` +
+      `# ▸ THE TAKE\n\nbody\n`;
+    const bs = sixUnitHardBreach(oneOver);
+    t(
+      !bs.breach && bs.over === 1 && bs.surplus === 5,
+      `[IMP-163] SILENT on one unit at 185 with the rest compliant (over=${bs.over}/${bs.units}, surplus=${bs.surplus}, breach=${bs.breach}) — one overage is craft`
+    );
+
+    // And the majority condition really is a majority: flip the same fixture to 4 of 6 over.
+    const fourOver =
+      `# ▸ THE SIX\n\n## Markets & Macro\n\n${w(200)}\n\n${w(200)}\n\n` +
+      `## Companies & Crypto\n\n${w(200)}\n\n${w(200)}\n\n` +
+      `## AI & Tech\n\n${w(170)}\n\n${w(160)}\n\n` +
+      `# ▸ THE TAKE\n\nbody\n`;
+    const bf = sixUnitHardBreach(fourOver);
+    t(
+      bf.breach && bf.over === 4 && bf.units === 6 && bf.surplus === 80,
+      `[IMP-163] FIRES at 4 of 6 over (over=${bf.over}/${bf.units}, surplus=${bf.surplus}) — the majority is the trigger, not the count`
+    );
+
+    // A tie is not a majority — 3 of 6 must stay silent, or "more than half" is a lie.
+    const tie =
+      `# ▸ THE SIX\n\n## Markets & Macro\n\n${w(200)}\n\n${w(200)}\n\n` +
+      `## Companies & Crypto\n\n${w(200)}\n\n${w(170)}\n\n` +
+      `## AI & Tech\n\n${w(170)}\n\n${w(160)}\n\n` +
+      `# ▸ THE TAKE\n\nbody\n`;
+    const bt = sixUnitHardBreach(tie);
+    t(
+      !bt.breach && bt.over === 3 && bt.units === 6,
+      `[IMP-163] SILENT at exactly half (${bt.over}/${bt.units}) — a tie is not a majority`
+    );
+  }
+
   console.log(
-    `\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration + precedent-analogy + hook-numerator + marker-placement + itemization-sum + estimate-vintage + selfreport-consistency verified both directions)`
+    `\nvalidate-brief selftest — ${fails ? 'FAILED' : 'PASS'} (catalyst-enumeration + precedent-analogy + hook-numerator + marker-placement + itemization-sum + estimate-vintage + selfreport-consistency + six-unit-hard-breach verified both directions)`
   );
   return fails ? 1 : 0;
 }
@@ -3956,6 +4136,23 @@ function main() {
       console.log(
         `🟡 LENGTH ADVISORY — ${soft.length} section(s) over their soft ceiling. Compress where you can; this does NOT block the brief.`
       );
+
+    // IMP-163 (2026-08-12 Critic mandate #1, RC4) — THE MAJORITY BREACH.
+    // Advisory findings are a log, not a gate: 08-12 printed eight of them and the Editor
+    // answered by deleting a whole verified unit. This line is the one the Editor cannot read
+    // past, and `editor-handoff-gate --finalize` refuses to close a night on it without a
+    // LENGTH-OVERRIDE. It does NOT change this script's exit code — the brief always ships.
+    const breach = sixUnitHardBreach(body);
+    if (breach.breach) {
+      console.log(
+        `🔴 [six-unit-hard-breach] BLOCKING AT THE EDITOR — ${breach.over} of ${breach.units} Six units are over their HARD ceiling ` +
+          `(distribution: ${breach.distribution}). Σ(unit − hard) = ${breach.surplus} words are recoverable BY COMPRESSION.\n` +
+          `   CUT ORDER (Brief_Editor Gate 16): exhaust the ${breach.surplus}-word per-unit surplus BEFORE any whole-unit cut is legal. ` +
+          `A whole-unit cut taken while the surplus covers the words needed requires an explicit LENGTH-OVERRIDE with the arithmetic shown.\n` +
+          `   RECEIPT: 2026-08-12 had 280 recoverable words and deleted a 194-word verified unit instead. 280 > 194. ` +
+          `The reader lost a story to a length problem that did not exist.`
+      );
+    }
   }
   {
     // BRIEF LENGTH — the ONE blocking length rail (2026-08-03, Jackson).
