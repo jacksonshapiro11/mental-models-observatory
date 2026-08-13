@@ -356,6 +356,148 @@ function checkModelCanonicalExample(brief: string): Flag[] {
   return [];
 }
 
+// ---------------------------------------------------------------------------
+// IMP-168 — COMPARATOR SELECTION + RANGE COLLAPSE (2026-08-13 Critic mandate #2, RC2, new sub-class)
+//
+// WORKED FAILURE, 2026-08-13, THREE INSTANCES IN THREE SECTIONS IN ONE NIGHT — and every one is a
+// TRUE statement about a REAL figure from the CITED source, which is exactly why `source-conclusion`
+// and `attributed-superlative` are both blind to them. The defect is not the number. It is the
+// SELECTION the brief made from inside its own source and did not disclose.
+//
+//   AI&T-2 — the whole claim is a 16x ratio, picked out of the source's own THREE-ROW table:
+//       Meta Muse Glimmer   52 KiB    ← the brief's subject
+//       Qwen3.6 27B         64 KiB    ← NEVER MENTIONED IN THE BRIEF
+//       Gemma 4 31B        840 KiB    ← the brief's chosen comparator
+//     52/840 = 6.2% ✓ and 840/52 = 16.2 ✓ — the arithmetic is all correct. Against Qwen3.6 27B
+//     (27B vs Glimmer's 30B, at least as comparable as Gemma's 31B) the ratio is 52/64 = 81%,
+//     i.e. **1.2x, not 16x**. Raschka's own framing calls Glimmer "a Gemma-like architecture"
+//     running 32Q/2KV where Gemma 4 runs 32Q/16KV local — the brief compared it to the one model
+//     whose KV config is LEAST like it and called the gap a finding.
+//   DISCOVERY — "each a different set of TWENTY species" where the source says communities
+//     "comprising **12 to 20** species". Range-top printed as a point value.
+//
+// THE CHECK IS AN EMISSION CONTRACT, NOT A TABLE READER — deliberately. Nothing in this repo can
+// see the rows of a source's table, and a check that guesses at them would be a false-positive
+// engine. So: a ratio against a single NAMED THIRD PARTY must carry a `comparator-set:<slug>` truth
+// row listing every comparator the cited source itself provides; a study-sourced SET-SIZE count
+// stated as a point value must carry a `source-range:<slug>` row. If your source's table has three
+// rows and you print one ratio, YOU HAVE MADE A SELECTION — say so in the sentence.
+//
+// THE SILENT LEGS ARE WHAT MAKE IT A CHECK RATHER THAN A NUMERAL DETECTOR (mandate's own list):
+//   · Geo-2's 80-to-1 ($4M interceptor vs ~$50k Shahed) — two INDEPENDENTLY sourced figures, not
+//     rows of one comparator table. No single named third-party comparator frame → silent.
+//   · C&C-2's 194 turns — a ratio of two of the SAME issuer's own figures. No third party → silent.
+//   · Geo-2's CSIS "759 to 827" — the brief PRINTS the range. That is the behaviour the range leg
+//     exists to reward, and the reason it cannot be a bare numeral detector.
+const RATIO_CLAIM_RE =
+  /\b(\d+(?:\.\d+)?)\s*(?:x|×)\s+(?:the\s+)?(?:\w+\s+){0,3}\b|\babout\s+(\d+(?:\.\d+)?)\s*percent\s+of\s+a\s+comparable\b|\b(\d+)\s*-\s*to\s*-\s*(\d+)\b/i;
+// A comparator FRAME: the ratio is stated AGAINST a single named third party. "against X", "vs X",
+// "compared with X", "a comparable <noun>" — the shape that hides a selection.
+const COMPARATOR_FRAME_RE =
+  /\b(?:against|versus|vs\.?|compared\s+(?:with|to)|relative\s+to)\s+(?:about\s+|roughly\s+|some\s+)?(?:[\d.,]+\s*\w+\s+(?:for|of)\s+)?([A-Z][A-Za-z0-9.&'’-]*(?:\s+[A-Z0-9][A-Za-z0-9.&'’-]*){0,3})\b|\ba\s+comparable\s+(?:open\s+)?\w+\b/;
+// Set-size nouns — a COUNT OF MEMBERS drawn from a study's set. This is the family where a range
+// top gets printed as a point value, and it is narrow on purpose.
+const SET_SIZE_NOUN_RE =
+  /\b(\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)\s+(species|communities|strains|genomes|samples|sites|participants|subjects|isolates|populations|cohorts|trials|cases)\b/i;
+// The brief printing a range itself — the clean negative. If the range is on the page, the reader
+// has the selection and nothing is hidden.
+// 🔴 NO BARE HYPHEN, AND THE PAIR MUST ASCEND. The first version of this matched "2026-08" out of
+// a source URL and reported a DATE as a printed range — the identical defect to `price-vs-archive`
+// reading a bare year as a commodity price (CARRY 2026-08-11 row 35). A false positive on a TRUE
+// leg trains the next session to skim the gate's output, so the hyphen form is gone and
+// `rangeAscends` proves the two numerals are a real low→high pair.
+const RANGE_PRINTED_RE =
+  /\b(\d[\d,.]*)\s*(?:to|–|—)\s*(\d[\d,.]*)\b|\bbetween\s+(\d[\d,.]*)\s+and\s+(\d[\d,.]*)\b/i;
+function printsRange(text: string): boolean {
+  for (const m of text.matchAll(new RegExp(RANGE_PRINTED_RE, 'gi'))) {
+    const lo = parseFloat((m[1] ?? m[3] ?? '').replace(/,/g, ''));
+    const hi = parseFloat((m[2] ?? m[4] ?? '').replace(/,/g, ''));
+    if (Number.isFinite(lo) && Number.isFinite(hi) && hi > lo) return true;
+  }
+  return false;
+}
+// 🔴 THE DISCRIMINATOR, and it is the whole difference between a check and a numeral detector.
+// The mandate's own silent list makes it explicit: Geo-2's 80-to-1 ($4M interceptor vs ~$50k
+// Shahed) is "two INDEPENDENTLY sourced figures, NOT ROWS OF ONE COMPARATOR TABLE". Both cases
+// print both sides of the ratio, so carrying the figures is not the discriminator. What separates
+// them is that the AI&T-2 comparison was READ OFF A SINGLE SOURCE DOCUMENT that also listed the
+// comparators the brief did not print — a teardown, a model card, a table, a benchmark. Without a
+// source document holding the SET, there is no undisclosed selection to make.
+const COMPARATOR_TABLE_SOURCE_RE =
+  /\b(?:teardown|model\s+card|benchmark|leaderboard|table|spec\s+sheet|datasheet|comparison\s+(?:table|chart)|scorecard)\b/i;
+// A study/source attribution in the same bullet — without one there is no source range to collapse.
+const STUDY_ATTRIB_RE =
+  /\b(?:study|studies|paper|per|according to|teardown|model card|counts?|reported|researchers?|team|et al\.?|University|Institute|Lab(?:oratory)?|CSIS|Nature|Science)\b/i;
+
+export function checkComparatorSelection(
+  brief: string,
+  truthKeys: Set<string>
+): Flag[] {
+  const flags: Flag[] = [];
+  const bullets = sixBullets(brief);
+  const regions: { where: string; text: string }[] = bullets.map((b, i) => ({
+    where: `${b.section} bullet ${i + 1}`,
+    text: b.text,
+  }));
+  // DISCOVERY is the LAST `# ▸` section, so a next-`▸` terminator never matches and the region
+  // swallowed the entire appendix (43,884 chars measured) — leaking the AI&T bullet's "teardown"
+  // and "16x" into a Discovery finding. Bound it at the next horizontal rule.
+  const disc = sectionRegion(
+    brief,
+    /^#\s*▸\s*DISCOVERY\s*$/m,
+    /^---\s*$|^#\s*▸/m
+  );
+  if (disc.trim()) regions.push({ where: 'Discovery', text: disc });
+
+  for (const r of regions) {
+    const hasRatio = RATIO_CLAIM_RE.test(r.text);
+    const frame = COMPARATOR_FRAME_RE.exec(r.text);
+    // (a) COMPARATOR SELECTION — a ratio against a single named third party, no comparator-set row.
+    if (hasRatio && frame && COMPARATOR_TABLE_SOURCE_RE.test(r.text)) {
+      const hasRow = [...truthKeys].some(k => k.startsWith('comparator-set:'));
+      if (!hasRow) {
+        flags.push({
+          check: 'comparator-selection',
+          where: r.where,
+          message: `A load-bearing RATIO is stated against a single named comparator ("${(frame[1] ?? frame[0]).slice(0, 40)}") and no \`comparator-set:<slug>\` row lists the comparators the cited SOURCE ITSELF provides. 2026-08-13 receipt: AI&T-2's entire claim was a 16x KV-cache ratio picked from the source's own three-row table — Gemma 4 31B at 840 KiB was the EXTREME, Qwen3.6 27B at 64 KiB (against which the ratio is 1.2x) was never mentioned in the brief, and every number printed was correct. If your source's table has three rows and you print one ratio, you have made a SELECTION — enumerate the set in {BRIEF_DATE}-truth.json and state the range in-body, or say why this comparator is the right one.`,
+        });
+      }
+    }
+    // (b) RANGE COLLAPSE — a study-sourced set-size COUNT printed as a point value, no source-range row.
+    const setSize = SET_SIZE_NOUN_RE.exec(r.text);
+    if (setSize && STUDY_ATTRIB_RE.test(r.text) && !printsRange(r.text)) {
+      const hasRow = [...truthKeys].some(k => k.startsWith('source-range:'));
+      if (!hasRow) {
+        flags.push({
+          check: 'range-collapse',
+          where: r.where,
+          message: `A study-sourced SET-SIZE count is printed as an exact point value ("${setSize[0]}") with no range anywhere in the unit and no \`source-range:<slug>\` row recording what the source actually stated. 2026-08-13 receipt: the Discovery printed "each a different set of TWENTY species" where Hu et al. describe communities "comprising 12 to 20 species" — the range TOP shipped as the value. Print the source's range, or record it in {BRIEF_DATE}-truth.json and say why the top is the right figure. (Geo-2's CSIS "759 to 827" is the clean negative: it prints the range, so it is silent.)`,
+        });
+      }
+    }
+  }
+  return flags;
+}
+
+/** `comparator-set:*` / `source-range:*` keys present in the day's truth file. */
+export function truthKeysFor(briefPath: string): Set<string> {
+  const out = new Set<string>();
+  const m = path.basename(briefPath).match(/(\d{4}-\d{2}-\d{2})/);
+  if (!m) return out;
+  try {
+    const j = JSON.parse(
+      fs.readFileSync(
+        path.join(path.dirname(briefPath), `${m[1]}-truth.json`),
+        'utf8'
+      )
+    );
+    for (const k of Object.keys(j?.claims ?? {})) out.add(k);
+  } catch {
+    /* no truth file → no rows, which is the correct default */
+  }
+  return out;
+}
+
 function lint(brief: string): Flag[] {
   const intro = introOf(brief);
   const bullets = sixBullets(brief);
@@ -373,6 +515,8 @@ function lint(brief: string): Flag[] {
   flags.push(...checkCcDealMagnitude(brief)); // IMP-099 (restored)
   flags.push(...checkCcPricingRung(brief)); // IMP-108 (restored)
   flags.push(...checkModelCanonicalExample(brief)); // IMP-103 (restored)
+  // IMP-168 is truth-file coupled, so main() supplies the keys; lint() runs it with an empty
+  // set, which is the strictest reading (no rows = every selection undisclosed).
   return flags;
 }
 
@@ -559,6 +703,71 @@ function selftest(): number {
     if (!ok) fails++;
   };
 
+  // ── IMP-168 (08-13 Critic mandate #2, RC2): comparator selection + range collapse ──
+  // Every leg is the mandate's own acceptance list, measured on the real v2 files it named.
+  const cs13 = path.join(process.cwd(), 'daily-briefs/2026-08-13-v2.md');
+  const cs13f = fs.existsSync(cs13)
+    ? checkComparatorSelection(fs.readFileSync(cs13, 'utf8'), new Set())
+    : [];
+  assert(
+    !fs.existsSync(cs13) ||
+      cs13f.some(
+        f => f.check === 'comparator-selection' && /AI\s*&\s*Tech/i.test(f.where)
+      ),
+    "[IMP-168] comparator-selection FIRES on the real 08-13 AI&T-2 (Gemma 4 the extreme of a 3-row table, Qwen absent from the body)"
+  );
+  assert(
+    !fs.existsSync(cs13) ||
+      cs13f.some(
+        f => f.check === 'range-collapse' && /Discovery/i.test(f.where)
+      ),
+    '[IMP-168] range-collapse FIRES on the real 08-13 Discovery ("twenty species" against a stated 12-20)'
+  );
+  assert(
+    !fs.existsSync(cs13) || !cs13f.some(f => /Geopolitic/i.test(f.where)),
+    "[IMP-168] SILENT on 08-13 Geo-2 — the 80-to-1 is two INDEPENDENTLY sourced figures, and the CSIS \"759 to 827\" PRINTS its range"
+  );
+  assert(
+    !fs.existsSync(cs13) ||
+      !cs13f.some(f => /Companies\s*&\s*Crypto/i.test(f.where)),
+    '[IMP-168] SILENT on 08-13 C&C-2 194 turns — a ratio of two of the SAME issuer\'s figures, no third party, no selection'
+  );
+  assert(
+    !fs.existsSync(cs13) ||
+      checkComparatorSelection(
+        fs.readFileSync(cs13, 'utf8'),
+        new Set(['comparator-set:muse-glimmer-kv-cache', 'source-range:hu-community-species'])
+      ).length === 0,
+    '[IMP-168] SILENT once the comparator-set / source-range rows exist — it is an EMISSION contract, not a table reader'
+  );
+  {
+    const rates = [
+      '2026-08-09',
+      '2026-08-10',
+      '2026-08-11',
+      '2026-08-12',
+      '2026-08-13',
+    ]
+      .map(d => path.join(process.cwd(), `daily-briefs/${d}-v2.md`))
+      .filter(f => fs.existsSync(f))
+      .map(
+        f =>
+          checkComparatorSelection(fs.readFileSync(f, 'utf8'), new Set()).length
+      );
+    assert(
+      rates.length === 0 || Math.max(...rates) <= 2,
+      `[IMP-168] NO STORM across the real 08-09..08-13 window (<=2/brief): rates ${rates.join('/')}`
+    );
+  }
+  assert(
+    !printsRange('https://example.com/2026-08-13/paper'),
+    '[IMP-168] a DATE is not a printed range — the bare-year false-positive class (CARRY row 35) cannot come back'
+  );
+  assert(
+    printsRange('CSIS counts 759 to 827 PAC-3 MSE rounds against 2,330 pre-war.'),
+    '[IMP-168] ...and a REAL low-to-high pair still reads as a printed range'
+  );
+
   const badFlags = lint(BAD_FIXTURE);
   const cleanFlags = lint(CLEAN_FIXTURE);
   const expectBad = [
@@ -719,6 +928,10 @@ function main() {
     process.exit(2);
   }
   const flags = lint(fs.readFileSync(p, 'utf8'));
+  // IMP-168 (08-13 mandate #2): comparator selection + range collapse, keyed off the day's truth file.
+  flags.push(
+    ...checkComparatorSelection(fs.readFileSync(p, 'utf8'), truthKeysFor(p))
+  );
   console.log(
     `ceiling-lint — ${path.basename(p)} — ${flags.length} FLAG${flags.length === 1 ? '' : 's'}`
   );
@@ -781,4 +994,8 @@ function main() {
   process.exit(0);
 }
 
-main();
+// Direct-invocation guard (added 2026-08-13 — IMP-168, mirroring fact-gate/assembly-gate): the
+// module must be importable so `checkComparatorSelection` can be exercised without a usage banner.
+const invokedDirectly =
+  !!process.argv[1] && path.resolve(process.argv[1]).endsWith('ceiling-lint.ts');
+if (invokedDirectly) main();

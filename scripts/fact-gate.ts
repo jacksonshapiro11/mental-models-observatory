@@ -1408,6 +1408,129 @@ export function sourceConclusionClaims(
   return claims;
 }
 
+// ---------------------------------------------------------------------------
+// ISSUER-CAUSAL CLAIMS (IMP-166 — 2026-08-13 Critic mandate #1, RC2)
+//
+// WORKED FAILURE, AND IT IS THE SHARPEST KIND: the source-conclusion contract (IMP-143) shipped on
+// 08-13, wrote ELEVEN truth rows, and wrote ZERO of them for THE SIX — which is the only place the
+// class recurred. Six of the eleven were Wild Card rows. The Wild Card was already the careful
+// section. The contract fired where the discipline already existed and was silent where it did not.
+//
+// THE DEFECT IT COULD NOT SEE — 2026-08-13 C&C-2, live on the reader surface:
+//   BRIEF  "The 66 basis points is what moved: the reserve rate fell to 3.48 percent, and that
+//           alone ate a 151 percent rise in usage and left seven."
+//   CIRCLE "Reserve Income of $668 million increased 5% year-over-year, primarily from the 25%
+//           growth in average USDC in Circulation, partially offset by a 66 bps decline in the
+//           Reserve Return Rate."
+//   → numerator 151% (VOLUME) substituted for the issuer's 25% (average circulation)
+//   → denominator "seven" (TOTAL revenue) substituted for the issuer's 5% (reserve income)
+//   → and the bullet's own thesis is "Circle earns on the dollar, not the turns", so by its own
+//     argument the 151% could not be eaten. THE BULLET REFUTES ITSELF, and every number in it is
+//     real. That is why `source-conclusion` and `attributed-superlative` are both blind to it.
+//
+// WHY THE EXISTING LEG MISSED IT — one line, and it is the whole gap: IMP-143's trigger is a NAMED
+// STUDY, INSTITUTIONAL SOURCE or ATTRIBUTED QUOTATION. An ISSUER RESULTS RELEASE is none of the
+// three by its parser, so a bullet built ENTIRELY on a company's own reported numbers writes no row.
+//
+// FIX (same emission-contract pattern; the power is the REQUIREMENT, not the parsing): when a bullet
+// names an issuer AND reasons causally about that issuer's own reported financial metric, that is a
+// CRITICAL claim keyed `source-conclusion:<company>-<metric>`, resolved only by a truth row carrying
+// THE ISSUER'S OWN CAUSAL SENTENCE VERBATIM plus `brief_claim_within_source_claim: y/n`. An issuer
+// that explains its own number has already written your causal sentence; quote it before you improve
+// it. Unresolved → the existing --require-resolved rail blocks at the Morning Truth Gate.
+//
+// NON-FIRE DISCIPLINE (measured, not asserted — the acceptance the mandate set): the bullet must
+// carry an ISSUER FRAME (a named party with a reporting verb — reported/guided/posted/disclosed/its
+// results/on its call), the SENTENCE must carry a REPORTED METRIC NOUN, a NUMERAL, and a CAUSAL or
+// INFERENTIAL connective. Silent by construction on: a named STUDY with no issuer (08-13 Wild Card
+// Timema — already covered by IMP-143, and a duplicate row is a storm), and reporting-sourced
+// figures with no issuer and no reported-metric claim (08-13 Geo-2).
+// ---------------------------------------------------------------------------
+const ISSUER_METRIC_RE =
+  /\b(?:revenue|revenues|income|earnings|circulation|volumes?|margins?|reserve\s+rate|interest\s+(?:expense|income)|net\s+(?:loss|income|interest)|losses?|ebitda|arr|bookings?|backlog|deposits?|fees?|yield|take\s+rate|operating\s+cash\s+flow|free\s+cash\s+flow|guidance|cost\s+line|basis\s+points?|bps)\b/i;
+// An inference ABOUT a reported figure often POINTS at it rather than restating it — which is
+// exactly the shape of the 08-12 CoreWeave defect ("If the quarter landed anywhere inside THAT
+// RANGE, … the whole loss is financing cost"). Requiring a literal digit in the same sentence would
+// make the check blind to the conditional-inference half of its own acceptance spec.
+const ISSUER_QUANT_ANAPHOR_RE =
+  /\b(?:that\s+(?:range|figure|margin|number|line|alone)|inside\s+that|the\s+floor\s+of|its\s+entire|the\s+largest\s+cost)\b/i;
+// A named party doing the reporting. This is what separates an ISSUER from a journalist or a study.
+const ISSUER_FRAME_RE = new RegExp(
+  String.raw`\b(?:${SRC_NAMED})(?:'s|’s)?\s+(?:[a-z0-9-]+\s+){0,3}(?:reported|reports|guided|guides|posted|posts|disclosed|discloses|booked|books|logged|earns?|earned)\b` +
+    String.raw`|\b(?:reported|guided|posted|disclosed)\s+(?:a|an|its|net|revenue|income)\b` +
+    String.raw`|\bits\s+(?:own\s+)?(?:results|release|filing|earnings|quarter|guidance)\b` +
+    String.raw`|\bon\s+its\s+(?:first-quarter|second-quarter|third-quarter|fourth-quarter|earnings|quarterly)\s+call\b`,
+  'i'
+);
+// Causal + INFERENTIAL connectives. The mandate names the causal set; the 08-12 AI&T-1 receipt is a
+// CONDITIONAL inference on a guided range, so the conditional forms are in the set deliberately.
+const ISSUER_CAUSAL_RE =
+  /\b(?:ate|eats|drove|drives|driven\s+by|offset|offsets|left|leaves|because|that\s+alone|alone\s+(?:ate|explains|accounts)|which\s+is\s+why|means\s+that|implies|accounts\s+for|attributable\s+to|primarily\s+from|so\s+the|if\s+the\s+quarter|if\s+it\s+landed|exceeds\s+its|is\s+what\s+moved)\b/i;
+
+/** NO RETROACTIVE CONDEMNATION OF THE ARCHIVE (IMP-125). Binds from the day it ships forward. */
+const ISSUER_CAUSAL_EFFECTIVE_FROM = '2026-08-12';
+
+/** The bullet (`- **…**` block) containing `idx`. Issuer identity is bullet-scoped; the causal
+ *  claim is sentence-scoped. The 08-13 receipt requires exactly this split: "Circle" is named in
+ *  the bullet's first sentence and the self-refuting causal claim is four sentences later. */
+function bulletAround(body: string, idx: number): string {
+  const start = body.lastIndexOf('\n- ', idx);
+  if (start === -1) return sentenceAround(body, idx);
+  let end = body.indexOf('\n- ', idx);
+  if (end === -1) end = body.indexOf('\n\n', idx);
+  if (end === -1) end = body.length;
+  return body.slice(start, end);
+}
+
+export function issuerCausalClaims(
+  body: string,
+  briefDate: string | null
+): Claim[] {
+  if (briefDate && briefDate < ISSUER_CAUSAL_EFFECTIVE_FROM) return [];
+  const claims: Claim[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  // Sentence split that does NOT break on a decimal point. The shared `[^.!?\n]+` splitter cuts
+  // "fell to 3.48 percent" in half, which truncated the 08-13 receipt's own message mid-number.
+  for (const s of stripped.matchAll(
+    /[^\n]*?[^\s.!?][.!?]+[*”"')]*(?=\s+[*_]*[A-Z"“(]|\s*$)|[^\n]+/g
+  )) {
+    const text = s[0].replace(/^[\s*_-]+/, '');
+    const idx = s.index ?? 0;
+    const section = sectionOf(stripped, idx);
+    if (!SRC_SECTION_RE.test(section)) continue;
+    // Sentence-level: a reported metric, a quantity (literal or anaphoric), and a causal connective.
+    const metric = ISSUER_METRIC_RE.exec(text);
+    if (!metric) continue;
+    if (!/\d/.test(text) && !ISSUER_QUANT_ANAPHOR_RE.test(text)) continue;
+    if (!ISSUER_CAUSAL_RE.test(text)) continue;
+    // Bullet-level: an issuer frame. No issuer → this is a study or reporting, and IMP-143 owns it.
+    const bullet = bulletAround(stripped, idx);
+    if (!ISSUER_FRAME_RE.test(bullet)) continue;
+    // The company is the bullet's first capitalised token run — its grammatical subject.
+    const company = (/\*\*\s*([A-Z][A-Za-z.&'’-]{2,}(?:\s+[A-Z][A-Za-z.&'’-]+){0,2})/.exec(
+      bullet
+    ) ?? /\b([A-Z][A-Za-z.&'’-]{2,})\b/.exec(bullet))?.[1];
+    if (!company) continue;
+    const key = `source-conclusion:${srcSlug(company)}-${srcSlug(metric[0])}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    claims.push({
+      key,
+      asset: `${company} ${metric[0]}`.replace(/\s+/g, ' ').trim(),
+      tier: 'critical',
+      claimType: 'source-conclusion',
+      direction: 'unknown',
+      magnitudePct: null,
+      level: null,
+      section,
+      sentence: text.replace(/\s+/g, ' ').trim(),
+      status: 'UNVERIFIED',
+    });
+  }
+  return claims;
+}
+
 /** Words too common to carry a conclusion's content. */
 const SRC_STOPWORD = new Set([
   'about',
@@ -3012,7 +3135,17 @@ const PRIMARY_SOURCE_RE =
 // Two gates, one night, one shape: a negated declaration read as an admission.
 // Scoped tightly — only an EXPLICIT negation of the harmonizing verb clears the line.
 const HARMONIZE_NEGATED_RE =
-  /\b(?:did|do|does|would|will|could)\s+(?:\*{0,2}not\*{0,2}|n[o']t)\s+\w{0,12}\s?harmoni[sz]|\bnot\s+harmoni[sz]|\brefused\s+to\s+harmoni[sz]|\bdeclined\s+to\s+harmoni[sz]|\bwithout\s+harmoni[sz]|\bnever\s+harmoni[sz]|\bharmoni[sz]\w*\s*[:=]\s*\**\s*(?:none|no|n\/a|nil)\b|\bno\s+sentence\s+was\s+moved\s+toward\s+the\s+published\s+record/i;
+  /\b(?:did|do|does|would|will|could)\s+(?:\*{0,2}not\*{0,2}|n[o']t)\s+\w{0,12}\s?harmoni[sz]|\bnot\s+harmoni[sz]|\brefused\s+to\s+harmoni[sz]|\bdeclined\s+to\s+harmoni[sz]|\bwithout\s+harmoni[sz]|\bnever\s+harmoni[sz]|\bharmoni[sz]\w*\s*[:=]\s*\**\s*(?:none|no|n\/a|nil)\b|\bno\s+sentence\s+was\s+moved\s+toward\s+the\s+published\s+record|\b(?:never|not)\s+to\s+the\s+\*{0,2}published\s+record/i;
+// ^ 2026-08-13 (morning pass): the RULE'S OWN HEADING was firing the gate. The QG log
+// prints "### QG TRUTH RULE — HARMONIZE TO THE SOURCE, NEVER TO THE PUBLISHED RECORD
+// (IMP-033)" as a section title; it carries the verb + the published referent, and the
+// negation form it uses ("never TO THE PUBLISHED RECORD") was not the form the regex
+// recognised ("never HARMONIZE"). A statement of the rule was read as a confession of
+// breaking it, and it hard-FAILed a night whose QG had explicitly complied ("the QG did
+// NOT resolve toward what we printed"). Same class as the price-vs-archive bare-year
+// false positive (CARRY 2026-08-11): a false positive on the TRUE leg trains the next
+// session to skim the gate. The real 07-11 confession ("QG harmonized v1.5 to the
+// published record") contains no such negation and still FAILs — self-test okThFire.
 
 function carriesUnresolvedHarmonization(line: string): boolean {
   // Negation belongs to its clause, not the whole line. A compliant
@@ -4343,6 +4476,88 @@ function selftest(): number {
       '2026-07-13'
     ).length === 0;
 
+  // ── IMP-166 (08-13 Critic mandate #1, RC2): issuer-causal ────────────────────────────────────
+  // Every leg is the mandate's own acceptance spec, on the real files it named. The mandate's
+  // diagnosis was VERIFIED before building to it (Apply_Improvements / CARRY 2026-08-11 row 60):
+  // `grep -c issuerCausal scripts/fact-gate.ts` was 0 and the 08-13 truth file really does carry
+  // ZERO source-conclusion rows for Companies & Crypto — the stated mechanism reproduced.
+  const aug13v2 = path.join(process.cwd(), 'daily-briefs/2026-08-13-v2.md');
+  const issuer13 = fs.existsSync(aug13v2)
+    ? issuerCausalClaims(fs.readFileSync(aug13v2, 'utf8'), '2026-08-13')
+    : [];
+  // FIRE leg 1 — the real C&C-2 sentence that substituted a 151% VOLUME rise for the issuer's own
+  // 25% average-circulation growth, and refuted its own thesis doing it.
+  const okIssuerFireCircle =
+    !fs.existsSync(aug13v2) ||
+    issuer13.some(
+      c =>
+        c.tier === 'critical' &&
+        /66 basis points/i.test(c.sentence) &&
+        /151 percent/i.test(c.sentence)
+    );
+  // …and it is UNRESOLVED against the real 08-13 truth file, so --require-resolved blocks it at the
+  // Morning Truth Gate. This is the leg that proves the GAP existed: the contract wrote 11 rows and
+  // none of them was this one.
+  const realTruth13 = (() => {
+    try {
+      return JSON.parse(
+        fs.readFileSync(path.join(process.cwd(), 'daily-briefs/2026-08-13-truth.json'), 'utf8')
+      );
+    } catch {
+      return null;
+    }
+  })();
+  const okIssuerUnresolved =
+    !fs.existsSync(aug13v2) ||
+    !realTruth13 ||
+    issuer13.every(c => !realTruth13.claims?.[c.key]);
+  // FIRE leg 2 — the 08-12 AI&T-1 conditional inference on a GUIDED range, the mandate's second
+  // named FIRE case. This is why the quantity test accepts an anaphor as well as a digit.
+  const okIssuerFireCoreWeave =
+    !fs.existsSync(aug12v2) ||
+    issuerCausalClaims(fs.readFileSync(aug12v2, 'utf8'), '2026-08-12').some(
+      c => /coreweave/i.test(c.key) || /guidance for one cost line/i.test(c.sentence)
+    );
+  // SILENT leg 1 — tonight's Wild Card Timema bullet. A named STUDY, correctly carrying the
+  // source's own leading alternative, ALREADY covered by IMP-143. A duplicate row is a storm.
+  const okIssuerSilentTimema =
+    !fs.existsSync(aug13v2) || !issuer13.some(c => /Wild Card/i.test(c.section));
+  // SILENT leg 2 — tonight's Geo-2. Figures from reporting: no issuer, no reported-metric claim.
+  const okIssuerSilentGeo =
+    !fs.existsSync(aug13v2) || !issuer13.some(c => /Geopolitic/i.test(c.section));
+  // NO-STORM leg — the mandate's ceiling is ≤2 new rows per brief. Measured with the date gate
+  // LIFTED across the real 08-04…08-13 window, so the silence is a property of the trigger and not
+  // an artifact of EFFECTIVE_FROM: max observed 2, mean 0.6.
+  const issuerRates = [
+    '2026-08-04',
+    '2026-08-05',
+    '2026-08-06',
+    '2026-08-07',
+    '2026-08-08',
+    '2026-08-09',
+    '2026-08-10',
+    '2026-08-11',
+    '2026-08-12',
+    '2026-08-13',
+  ]
+    .map(d => path.join(process.cwd(), `daily-briefs/${d}-v2.md`))
+    .filter(f => fs.existsSync(f))
+    .map(f => issuerCausalClaims(fs.readFileSync(f, 'utf8'), '2026-08-13').length);
+  const okIssuerNoStorm =
+    issuerRates.length === 0 || Math.max(...issuerRates) <= 2;
+  // SILENT leg 3 — a STUDY with a causal verb and a metric-shaped noun is not an issuer claim.
+  const okIssuerSilentStudy =
+    issuerCausalClaims(
+      '## Wild Card\n\nBangor University reported that a million years of asexual reproduction left the machinery intact in 3 species.',
+      '2026-08-13'
+    ).length === 0;
+  // NO-RETRO leg — binds from 2026-08-12 forward (IMP-125).
+  const okIssuerNoRetro =
+    issuerCausalClaims(
+      '## Companies & Crypto\n\nCircle reported revenue of $701 million, and that alone ate a 151 percent rise in volume.',
+      '2026-07-13'
+    ).length === 0;
+
   console.log('fact-gate --selftest');
   console.log(
     `  [IMP-081] FIRE: GM "$46 billion in revenue, 22% above last year" is a CRITICAL yoy claim: ${okYoyGmFire ? '✓' : '✗'}`
@@ -4931,6 +5146,30 @@ function selftest(): number {
     `  [IMP-165/151] SILENT on an ARGUMENT containing "the only" (the Take's venture-timeline line): ${okAttrSilentArgument ? '✓' : '✗'}`
   );
   console.log(
+    `  [IMP-166] FIRE on the REAL 2026-08-13-v2.md C&C-2 issuer-causal claim (151% volume for the issuer's 25% circulation): ${okIssuerFireCircle ? '✓' : '✗'} (${issuer13.length} row(s))`
+  );
+  console.log(
+    `  [IMP-166] ...and UNRESOLVED against the real 2026-08-13-truth.json (the gap: 11 rows, none for C&C): ${okIssuerUnresolved ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-166] FIRE on the 2026-08-12 AI&T-1 conditional inference on a GUIDED range: ${okIssuerFireCoreWeave ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-166] SILENT on the 08-13 Wild Card Timema study (IMP-143 owns it; a duplicate row is a storm): ${okIssuerSilentTimema ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-166] SILENT on the 08-13 Geopolitics section (reporting figures, no issuer): ${okIssuerSilentGeo ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-166] SILENT on a named STUDY with a causal verb and a metric-shaped noun: ${okIssuerSilentStudy ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-166] NO STORM across the real 08-04..08-13 window, date gate lifted (<=2/brief): ${okIssuerNoStorm ? '✓' : '✗'} (rates ${issuerRates.join('/')})`
+  );
+  console.log(
+    `  [IMP-166] NO RETRO — silent on a pre-2026-08-12 date: ${okIssuerNoRetro ? '✓' : '✗'}`
+  );
+  console.log(
     `  [IMP-165] SILENT on tonight's Discovery and Signal-2, the mandate's two clean negatives: ${okAttrSilentCleanSections ? '✓' : '✗'}`
   );
   console.log(
@@ -5091,6 +5330,14 @@ function selftest(): number {
     okAttrSilentFaithful &&
     okAttrSilentUnattributed &&
     okAttrSilentArgument &&
+    okIssuerFireCircle &&
+    okIssuerUnresolved &&
+    okIssuerFireCoreWeave &&
+    okIssuerSilentTimema &&
+    okIssuerSilentGeo &&
+    okIssuerSilentStudy &&
+    okIssuerNoStorm &&
+    okIssuerNoRetro &&
     okAttrSilentCleanSections &&
     okAttrNoNeverFp &&
     okAttrNoStorm &&
@@ -5276,6 +5523,15 @@ function main() {
     )
   );
 
+  // 3d-quater. ISSUER-CAUSAL CLAIMS (IMP-166 — 08-13 Critic mandate #1, RC2). IMP-143's contract
+  // wrote 11 rows on 08-13 and ZERO for the Six, which is the only place the class recurred: C&C-2
+  // substituted a 151% VOLUME rise for the issuer's own 25% average-circulation growth and refuted
+  // its own thesis doing it. An issuer results release is not a study, so nothing wrote a row. Now a
+  // bullet that reasons causally about an issuer's own reported metric must carry the ISSUER'S OWN
+  // causal sentence verbatim, under the same --require-resolved rail.
+  const issuerCausals = issuerCausalClaims(body, briefDate);
+  for (const e of issuerCausals) if (truth?.claims?.[e.key]) e.status = 'PASS';
+
   // 3e. AI&T definite-product / deployment claims (IMP-074, the 07-19 Critic's mandate #1). "Microsoft
   // announced Project Perception" (reportedly-developing) and "the deployment of Atlas robots" (none
   // deployed) shipped to v2 un-gated — the AI&T section has no pre-draft and no fact rail. A definite,
@@ -5399,6 +5655,7 @@ function main() {
     ...bylineClaims,
     ...derivedClaims,
     ...sourceConclusions,
+    ...issuerCausals,
     ...attrSuperlatives,
   ].filter(c => c.tier === 'critical' && c.status === 'UNVERIFIED');
   if (!allowUnverified) {
@@ -5431,7 +5688,8 @@ function main() {
       headlineClaims.length > 0 ||
       bylineClaims.length > 0 ||
       derivedClaims.length > 0 ||
-      sourceConclusions.length > 0);
+      sourceConclusions.length > 0 ||
+      issuerCausals.length > 0);
   if (truthBypass) {
     findings.push({
       check: 'truth-bypass',
@@ -5463,6 +5721,7 @@ function main() {
     ...bylineClaims,
     ...derivedClaims,
     ...sourceConclusions,
+    ...issuerCausals,
     ...attrSuperlatives,
   ];
 
@@ -5484,6 +5743,7 @@ function main() {
       bylines: bylineClaims.length, // IMP-117
       derivedPrices: derivedClaims.length, // IMP-120
       sourceConclusions: sourceConclusions.length, // IMP-143
+      issuerCausals: issuerCausals.length, // IMP-166
       pass: allClaims.filter(c => c.status === 'PASS').length,
       fail: allClaims.filter(c => c.status === 'FAIL').length,
       unverified: allClaims.filter(c => c.status === 'UNVERIFIED').length,
@@ -5519,7 +5779,7 @@ function main() {
 
   console.log(`fact-gate — ${path.basename(briefPath)}`);
   console.log(
-    `  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} · derived-prices: ${derivedClaims.length} · source-conclusions: ${sourceConclusions.length} · attributed-superlatives: ${attrSuperlatives.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`
+    `  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} · derived-prices: ${derivedClaims.length} · source-conclusions: ${sourceConclusions.length} · issuer-causals: ${issuerCausals.length} · attributed-superlatives: ${attrSuperlatives.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`
   );
   console.log(
     `  archive: ${archiveAssetsKnown} assets known from our last ${archiveDays} briefs`

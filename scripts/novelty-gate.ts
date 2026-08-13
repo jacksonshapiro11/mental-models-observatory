@@ -75,10 +75,20 @@ function titleForm(title: string): string {
 }
 
 function extractTakeTitle(body: string): string | null {
+  // Fix 2026-08-13 (CARRY rows 30 + 71, third receipt): shipped Takes title at
+  // H3 (`### Payee, Not Party`), never H2, so the old /^\s*##\s+/ skipped the
+  // real title and matched the next `## ` heading it found — which on a draft
+  // carrying an internal appendix meant the gate read "REGENERATION RECORD…" as
+  // the Take title. It also never stripped HTML comments, so a heading inside a
+  // metadata block could win. Now: strip comments, then take the FIRST H2/H3
+  // after the ▸ THE TAKE marker. `#{2,3}` cannot match `####` (no space after
+  // the third `#` when backtracking), so deeper headings stay excluded.
   const start = body.indexOf('# ▸ THE TAKE');
   if (start === -1) return null;
-  const rest = body.slice(start + '# ▸ THE TAKE'.length);
-  const m = rest.match(/^\s*##\s+(.+)$/m);
+  const rest = body
+    .slice(start + '# ▸ THE TAKE'.length)
+    .replace(/<!--[\s\S]*?-->/g, '');
+  const m = rest.match(/^[ \t]*#{2,3}[ \t]+(.+?)[ \t]*$/m);
   return m ? m[1].trim() : null;
 }
 

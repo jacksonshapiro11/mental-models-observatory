@@ -1909,6 +1909,73 @@ function checkDashboardSentenceCeiling(body: string): Failure[] {
 }
 
 /**
+ * DASHBOARD-HEADING-CONTRACT (IMP-159 — 08-10 Critic mandate #2, RC4; coded 2026-08-13 on its fuse).
+ *
+ * A sub-heading that names an asset class PROMISES that class. "Commodities & Rates" carrying rates
+ * only is the textbook RC4 shape: a rule violated identically often enough becomes the format — the
+ * Editor's own status line began CALLING IT OUT AND ACCEPTING IT.
+ *
+ * THE SOURCING JUDGEMENT IS CORRECT AND MUST NOT CHANGE: a missing price beats a stale one, and the
+ * QG is right to refuse to invent one. **The heading is the defect**, and on 08-10 it stopped being
+ * cosmetic: Geo-1, an A-rated bullet, concluded on "the buffer the entire crude curve is priced
+ * against" while the brief contained no crude price for the reader to hold it against.
+ *
+ * 🔴 THE PREMISE WAS RE-MEASURED BEFORE THIS WAS CODED, AND THE DIAGNOSIS CHANGED — receipts, this
+ * session. CARRY row 62 (2026-08-11) declared the violation "has now stopped happening" because
+ * WTI $82.13 printed that day, and recommended dropping the count. Measured across the four most
+ * recent v2 files: 08-13 NO commodity price · 08-12 NO · 08-11 WTI above $82 · 08-10 NO. **One
+ * night in four is not a stop.** The defect is LIVE, it is on the brief published this morning, and
+ * it is no longer seasonal — 08-12 and 08-13 are weekdays, so the "Sunday-for-Monday" framing in
+ * the original mandate was too narrow. Coded against the measured behaviour, not the stored one.
+ */
+const DASH_CLASS_CONTRACT: {
+  heading: string;
+  label: string;
+  priceRe: RegExp;
+}[] = [
+  {
+    heading: '### Commodities & Rates',
+    label: 'Commodities',
+    // A commodity NOUN carrying EITHER a price level OR a quantified move. The contract is that the
+    // heading DELIVERS the class it names — not that a settle exists.
+    //
+    // 🔴 THE MANDATE'S ACCEPTANCE SPEC WAS VERIFIED BEFORE BUILDING TO IT, AND THE FIRST VERSION OF
+    // THIS REGEX FAILED IT — the receipt is why the rule is wider than the mandate's wording. The
+    // spec requires SILENCE on 08-08 and 08-07 ("weekday, real commodity prints"). A price-level-only
+    // test FIRED on both. Measured: 08-08 reads "Gold ran up 2.48 percent against Thursday afternoon
+    // on a clean same-instrument comparison"; 08-07 reads "gold posted a fourth consecutive up
+    // session… roughly five to six basis points". Those nights DO deliver commodities — as a dated
+    // MOVE, which is the only defensible form available during the gold-settle drought (CARRY row 67,
+    // session 9 with no sourceable settle). Demanding a settle would have made the check punish the
+    // correct sourcing judgement, which is the one thing IMP-159's own row forbids.
+    priceRe:
+      /\b(?:WTI|Brent|crude|oil|gold|silver|copper|natural\s+gas|nat\s+gas|wheat|corn|soybeans?|aluminium|aluminum|nickel|uranium)\b[^.;]{0,90}?(?:[$€£]\s?\d|\d+(?:\.\d+)?\s*(?:percent|%|dollars|cents|basis\s+points?|bps|per\s+(?:barrel|ounce|tonne|ton|pound|bushel|mmbtu))|\b(?:up|down|rose|fell|rallied|slid|gained|lost|posted)\b)/i,
+  },
+];
+function checkDashboardHeadingContract(body: string): Failure[] {
+  const out: Failure[] = [];
+  const dashStart = body.indexOf('# ▸ THE DASHBOARD');
+  const dashEnd = body.indexOf('# ▸ THE SIX');
+  if (dashStart === -1 || dashEnd === -1) return out;
+  const dashBody = body.slice(dashStart, dashEnd);
+  for (const c of DASH_CLASS_CONTRACT) {
+    if (!dashBody.includes(c.heading)) continue;
+    if (c.priceRe.test(dashBody)) continue;
+    out.push({
+      check: 'dashboard-heading-contract',
+      message:
+        `Dashboard sub-heading "${c.heading}" names ${c.label} and the section carries NO ${c.label.toLowerCase()} price. ` +
+        `A heading that names an asset class PROMISES that class; a rule violated identically often enough becomes the format (RC4), and the Editor's own status line had begun logging this instead of fixing it. ` +
+        `THE SOURCING JUDGEMENT IS NOT THE DEFECT — a missing price beats a stale one, and you must NOT invent one. Rename the sub-heading to "Rates" and add one clause saying why ` +
+        `(e.g. "futures reopen at 18:00 ET Sunday, after this brief's final sweep"). ` +
+        `08-10 receipt: Geo-1 concluded on "the buffer the entire crude curve is priced against" and the brief carried no crude price for the reader to hold it against. ` +
+        `Re-measured 2026-08-13: no commodity price on 08-10, 08-12 or 08-13 — live and no longer only a Sunday problem.`,
+    });
+  }
+  return out;
+}
+
+/**
  * Check 16a-CODE: Wild Card Staleness vs Last 3 Published Briefs.
  * Compares Wild Card items in the current brief against the last 3 published briefs.
  * Wild Cards have a history of repeating from 1-3 days ago, so we check a wider window.
@@ -3607,6 +3674,36 @@ function selftestValidator(): number {
   const GOOD_WIRE = `**A record move, and the two available explanations imply opposite trades.** Reuters reported the forced seller had finished; the other read is that a dated forecast came due.`;
   const GOOD_FLOW = `**A record move, and the two available explanations imply opposite trades.** Foreign investors net bought 7.22 trillion won against retail selling; the other read is a dated forecast coming due.`;
   const ORDINARY = `**The Employment Cost Index landed Friday with private compensation up 3.3%.** Benefits ran 3.8% against wages at 3.1%, a 70bp gap.`;
+  // ── IMP-159 (08-10 Critic mandate #2, RC4) — dashboard-heading-contract, on REAL v2 files.
+  // The mandate demanded the acceptance be drawn from the trailing window rather than one night
+  // (CARRY 2026-08-12: "a mandate that specifies its acceptance from one night's memory will keep
+  // asking gates to be blind on their second-worst case"), so every leg below is a measured file.
+  const dashRead = (d: string) => {
+    const f = path.join(process.cwd(), `daily-briefs/${d}-v2.md`);
+    return fs.existsSync(f)
+      ? checkDashboardHeadingContract(fs.readFileSync(f, 'utf8')).length
+      : -1;
+  };
+  for (const d of ['2026-08-10', '2026-08-03', '2026-08-12']) {
+    const n = dashRead(d);
+    t(
+      n !== 0,
+      `[IMP-159] FIRES on ${d} — "Commodities & Rates" carrying no commodity datum${n === -1 ? ' (file absent, leg skipped)' : ''}`
+    );
+  }
+  for (const d of ['2026-08-07', '2026-08-08', '2026-08-11', '2026-08-13']) {
+    const n = dashRead(d);
+    t(
+      n <= 0,
+      `[IMP-159] SILENT on ${d} — the section DOES deliver commodities (a settle, or a dated move during the gold-settle drought)${n === -1 ? ' (file absent, leg skipped)' : ''}`
+    );
+  }
+  t(
+    checkDashboardHeadingContract(
+      '# ▸ THE DASHBOARD\n\n### Rates\n\n*The ten-year fell four basis points.*\n\n# ▸ THE SIX\n'
+    ).length === 0,
+    '[IMP-159] SILENT when the heading is renamed "Rates" — the prescribed remedy actually clears the check'
+  );
   t(
     checkCatalystEnumeration(wrap(BAD)).length === 1,
     '[IMP-113] FIRES on competing-explanation framing with no attributed catalyst'
@@ -4123,6 +4220,7 @@ function main() {
   failures.push(...checkSignalStaleness(body, briefDir, absPath));
   failures.push(...checkWildCardStaleness(body, briefDir, absPath));
   failures.push(...checkDashboardSentenceCeiling(body));
+  failures.push(...checkDashboardHeadingContract(body)); // IMP-159
   // --- Six section word budget: see the single format-agnostic check below ---
   {
     // SOFT CEILING — advisory only, never blocks (Jackson, 2026-08-01: "I don't want a strict
