@@ -47,8 +47,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export interface AdverseFinding {
-  check: 'adverse-datum' | 'adverse-datum-contract';
-  severity: 'FAIL';
+  check:
+    | 'adverse-datum'
+    | 'adverse-datum-contract'
+    | 'series-direction-contradiction';
+  severity: 'FAIL' | 'UNRESOLVED-FACT';
   message: string;
   bullet: string;
   thesis: string;
@@ -224,6 +227,145 @@ export function adverseDatum(
 }
 
 // ---------------------------------------------------------------------------
+// IMP-171 — THE SERIES-DIRECTION LEG (2026-08-14 Critic mandate #1, RC2).
+//
+// M&M-1 closed on "A market can reprice a rate of change in an afternoon. It cannot reprice a
+// level." The level it named — PPI final demand, +4.7% y/y for July — had fallen 80bp from June's
+// +5.5% IN THE SAME RELEASE. Every number in the bullet was true; the conclusion was the
+// arithmetic inverse of a datum sitting in the bullet's own source. `adverse-datum-gate` EXITED 0,
+// because the textual leg triggers on state-change THESES ("has stopped being", "is no longer")
+// and a stickiness claim is the opposite shape: it asserts that nothing changed.
+//
+// A LEVEL YOU CALL STICKY IS A TWO-POINT CLAIM. One point cannot support it. So the leg is:
+//   (a) the bullet prints a periodic series value ("4.7 percent over the year", "annualised"), AND
+//   (b) it draws a persistence conclusion about that value, AND
+//   (c) it does NOT print the prior period's value.
+// Resolution against {BRIEF_DATE}-truth.json, which stores periodic series as `<family>-YYYY-MM`:
+//   • no prior-period row on disk        → UNRESOLVED-FACT (the Morning Truth Gate resolves it)
+//   • prior row exists and the value moved → FAIL (the conclusion contradicts its own series)
+//   • the bullet prints the prior value    → SILENT. This is the escape hatch, and it is the whole
+//     point: the leg rewards printing the second point rather than punishing any numeral. The
+//     08-14 Take is the clean negative — it prints BOTH endpoints of the hold series (7.5% → 10.2%)
+//     inside the sentence and takes no finding.
+//
+// MEASURED, and the reason the acceptance gate below differs from the mandate's wording: by the
+// time this session ran, the Morning Truth Gate had already repaired the CONTENT — it added
+// `ppi:final-demand-yoy-2026-06` (5.5) and rewrote the published closer to name the fall. So the
+// mandate's stated FIRE condition ("no prior-period row on disk") no longer reproduces. The
+// contradiction branch does, on the same file, and it is the stronger test: the row exists, the
+// series fell, and the frozen v2 closer still calls the level unrepricable.
+const SERIES_VALUE_RE =
+  /(\d+(?:\.\d+)?)\s*percent\s+(?:over the year|on the year|for the year|year[- ]over[- ]year|y\/y|annualised|annualized|at an annual rate)/gi;
+
+/**
+ * Persistence / stickiness conclusions. NARROW on purpose: this must not match ordinary reporting
+ * of a level. "the level is falling" is excluded by construction — a bullet that says the level is
+ * falling is doing the thing this leg exists to ask for.
+ */
+const STICKY_RE =
+  /\b(?:cannot reprice (?:a|the) level|cannot be repriced|a level takes|levels take|the level (?:is|remains|stays|holds|has not)|remains (?:stuck|elevated|where it|unchanged)|has not budged|does not (?:move|come down)|is not (?:moving|coming down|going anywhere)|stays put|is sticky|remains sticky)\b/i;
+
+export interface SeriesPoint {
+  key: string;
+  family: string;
+  period: string; // YYYY-MM
+  value: number;
+}
+
+/** Periodic-series rows in a truth file: keys shaped `<family>-YYYY-MM`. Daily price rows
+ *  (`price:sp500-close-2026-08-13`, i.e. `-YYYY-MM-DD`) do NOT match and are not series points. */
+export function seriesPoints(
+  truthClaims?: Record<string, unknown> | undefined
+): SeriesPoint[] {
+  const out: SeriesPoint[] = [];
+  if (!truthClaims) return out;
+  for (const [key, row] of Object.entries(truthClaims)) {
+    const m = /^(.*?)-(\d{4}-\d{2})$/.exec(key);
+    if (!m) continue;
+    const raw = (row as { value?: unknown })?.value;
+    const v = Number(String(raw ?? '').replace(/[^0-9.-]/g, ''));
+    if (!Number.isFinite(v) || String(raw ?? '') === '') continue;
+    out.push({ key, family: m[1]!, period: m[2]!, value: v });
+  }
+  return out;
+}
+
+const norm = (n: number) => String(n).replace(/\.0+$/, '');
+
+export function seriesDirectionContradiction(
+  body: string,
+  truthClaims?: Record<string, unknown> | undefined
+): AdverseFinding[] {
+  const findings: AdverseFinding[] = [];
+  const byFamily = new Map<string, SeriesPoint[]>();
+  for (const p of seriesPoints(truthClaims)) {
+    if (!byFamily.has(p.family)) byFamily.set(p.family, []);
+    byFamily.get(p.family)!.push(p);
+  }
+  for (const arr of byFamily.values())
+    arr.sort((a, b) => a.period.localeCompare(b.period));
+
+  for (const bullet of bullets(body)) {
+    const sticky = STICKY_RE.exec(bullet);
+    if (!sticky) continue;
+    const vals = [...bullet.matchAll(new RegExp(SERIES_VALUE_RE.source, 'gi'))]
+      .map(m => Number(m[1]))
+      .filter(n => Number.isFinite(n));
+    if (!vals.length) continue; // a stickiness claim with no periodic value is not a two-point claim
+
+    const printed = numerals(bullet);
+
+    // The family whose LATEST recorded point this bullet prints as a periodic value.
+    let series: SeriesPoint[] | undefined;
+    for (const arr of byFamily.values()) {
+      const latest = arr[arr.length - 1]!;
+      if (vals.some(v => Math.abs(v - latest.value) < 1e-9)) {
+        series = arr;
+        break;
+      }
+    }
+
+    const prior = series && series.length > 1 ? series[series.length - 2] : undefined;
+
+    if (!prior) {
+      findings.push({
+        check: 'series-direction-contradiction',
+        severity: 'UNRESOLVED-FACT',
+        message:
+          `STICKY LEVEL, ONE POINT — this bullet concludes "${sticky[0]}" about a periodic series it prints as ` +
+          `${vals.map(v => `${v} percent`).join(', ')}, and {BRIEF_DATE}-truth.json carries no row for the PRIOR period of that ` +
+          `series. A level you call sticky is a two-point claim: print the prior point or do not call it sticky. ` +
+          `MORNING GATE: record <series>-YYYY-MM for the prior period and re-run — if the series moved against the ` +
+          `conclusion, the closer is the arithmetic inverse of its own source. RECEIPT (2026-08-14 M&M-1): "It cannot ` +
+          `reprice a level" shipped over PPI final demand +4.7% y/y, which the SAME BLS release put at +5.5% in June.`,
+        bullet: bullet.slice(0, 200).replace(/\s+/g, ' '),
+        thesis: sticky[0],
+      });
+      continue;
+    }
+
+    const latest = series![series!.length - 1]!;
+    if (printed.has(norm(prior.value))) continue; // ESCAPE HATCH — the second point is in the text
+    if (Math.abs(prior.value - latest.value) < 1e-9) continue; // genuinely unchanged: sticky is true
+
+    const dir = latest.value < prior.value ? 'FELL' : 'ROSE';
+    findings.push({
+      check: 'series-direction-contradiction',
+      severity: 'FAIL',
+      message:
+        `SERIES DIRECTION CONTRADICTS THE CONCLUSION — the bullet concludes "${sticky[0]}" about ${latest.key}, and the ` +
+        `recorded series ${dir} from ${prior.value} (${prior.period}) to ${latest.value} (${latest.period}). The prior value ` +
+        `appears nowhere in the bullet. Either print "${norm(prior.value)}" and rewrite the conclusion to describe the move, ` +
+        `or drop the conclusion. Every number here can be true while the sentence is the arithmetic inverse of its own source ` +
+        `— that is exactly what shipped on 2026-08-14.`,
+      bullet: bullet.slice(0, 200).replace(/\s+/g, ' '),
+      thesis: sticky[0],
+    });
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
 function sectionBlock(body: string, heading: RegExp): string | null {
   const lines = stripHtmlComments(body).split('\n');
   const start = lines.findIndex(l => /^#{1,6}\s/.test(l) && heading.test(l));
@@ -385,7 +527,64 @@ function selftest(): number {
     'NO ORPHAN: an EMPTY truth object does not disable the textual leg'
   );
 
-  const total = 19;
+  // -------------------------------------------------------------------------
+  // IMP-171 — THE SERIES-DIRECTION LEG, proved in BOTH directions on the real 2026-08-14 files.
+  const v2_0814 = path.join(root, 'daily-briefs', '2026-08-14-v2.md');
+  const pub_0814 = path.join(root, 'content', 'daily-updates', '2026-08-14.md');
+  const truth_0814 = path.join(root, 'daily-briefs', '2026-08-14-truth.json');
+  if (fs.existsSync(v2_0814) && fs.existsSync(truth_0814)) {
+    const claims = JSON.parse(fs.readFileSync(truth_0814, 'utf8'))?.claims;
+    const fired = seriesDirectionContradiction(
+      fs.readFileSync(v2_0814, 'utf8'),
+      claims
+    );
+    t(
+      fired.length === 1 && fired[0]!.severity === 'FAIL',
+      'BITES: 08-14 v2 M&M-1 — "It cannot reprice a level" over PPI 4.7% y/y while the recorded series fell from 5.5 (June) → 1 FAIL'
+    );
+    t(
+      /5\.5 \(2026-06\) to 4\.7 \(2026-07\)/.test(fired[0]?.message ?? ''),
+      'THE FINDING NAMES BOTH POINTS — a gate that says "contradicts" without printing the two values is unactionable'
+    );
+    if (fs.existsSync(pub_0814)) {
+      t(
+        seriesDirectionContradiction(
+          fs.readFileSync(pub_0814, 'utf8'),
+          claims
+        ).length === 0,
+        'ESCAPE HATCH WORKS: the PUBLISHED 08-14 M&M-1 prints "down from 5.5 percent in June" and takes no finding — the leg rewards the second point'
+      );
+    }
+    // Clean negatives from the SAME brief, so the leg cannot be tuned to fire on every numeral.
+    const takeBullet = bullets(fs.readFileSync(v2_0814, 'utf8')).find(b =>
+      /7\.5[\s\S]{0,120}10\.2|10\.2[\s\S]{0,120}7\.5/.test(b)
+    );
+    if (takeBullet)
+      t(
+        seriesDirectionContradiction(takeBullet, claims).length === 0,
+        'SILENT on the 08-14 Take — it prints BOTH endpoints of the hold series in the sentence'
+      );
+    else t(true, '(08-14 Take two-endpoint bullet not located — assertion skipped)');
+    t(
+      seriesDirectionContradiction(
+        '- **A level.** Producer prices ran 4.7 percent over the year and the level remains elevated.',
+        {}
+      ).length === 1,
+      'NO-TRUTH BRANCH: a stickiness conclusion on a one-point series with an empty truth file returns UNRESOLVED-FACT, never silence'
+    );
+    t(
+      seriesDirectionContradiction(
+        '- **No stickiness claim.** Producer prices ran 4.7 percent over the year and the month was flat.',
+        claims
+      ).length === 0,
+      'NOT A NUMERAL DETECTOR: the same series value with NO persistence conclusion takes no finding'
+    );
+  } else {
+    for (let i = 0; i < 6; i++)
+      t(false, 'SELFTEST FAIL — missing 2026-08-14 fixture for the series leg');
+  }
+
+  const total = 25;
   console.log(
     `\nadverse-datum-gate selftest — ${total - fails}/${total} assertions passed`
   );
@@ -410,26 +609,58 @@ function main(): number {
     return 2;
   }
   const ti = args.indexOf('--truth');
-  let truthClaims: Record<string, TruthCounter> | undefined;
+  let truthPath: string | undefined;
   if (ti > -1 && args[ti + 1] && fs.existsSync(args[ti + 1]!)) {
+    truthPath = args[ti + 1]!;
+  } else {
+    // IMP-171 AUTO-DISCOVERY. The Editor and the QG call this gate as `adverse-datum-gate <brief>`
+    // with no --truth flag, so a leg that only works behind a flag is a leg that never runs. Derive
+    // {BRIEF_DATE}-truth.json from the brief's own filename, exactly as fact-gate does.
+    const d = /(\d{4}-\d{2}-\d{2})/.exec(path.basename(briefPath))?.[1];
+    const guess = d
+      ? path.join(path.dirname(briefPath), `${d}-truth.json`)
+      : undefined;
+    const alt = d ? path.join('daily-briefs', `${d}-truth.json`) : undefined;
+    truthPath = [guess, alt].find(p => p && fs.existsSync(p));
+  }
+  let truthClaims: Record<string, TruthCounter> | undefined;
+  if (truthPath) {
     try {
-      truthClaims = JSON.parse(fs.readFileSync(args[ti + 1]!, 'utf8'))?.claims;
+      truthClaims = JSON.parse(fs.readFileSync(truthPath, 'utf8'))?.claims;
     } catch {
       truthClaims = undefined;
     }
   }
-  const findings = adverseDatum(
-    fs.readFileSync(briefPath, 'utf8'),
-    truthClaims
+  const raw = fs.readFileSync(briefPath, 'utf8');
+  const findings = [
+    ...adverseDatum(raw, truthClaims),
+    ...seriesDirectionContradiction(raw, truthClaims),
+  ];
+  console.log(
+    `adverse-datum-gate — ${path.basename(briefPath)}${truthPath ? ` · truth: ${path.basename(truthPath)}` : ' · no truth file'}`
   );
-  console.log(`adverse-datum-gate — ${path.basename(briefPath)}`);
-  for (const f of findings)
+  const fails = findings.filter(f => f.severity === 'FAIL');
+  const unresolved = findings.filter(f => f.severity === 'UNRESOLVED-FACT');
+  for (const f of fails)
     console.error(`  ✗ [${f.check}] ${f.message}\n      "${f.bullet}"`);
-  if (findings.length) {
+  for (const f of unresolved)
     console.error(
-      `\n❌ ADVERSE-DATUM FAIL — ${findings.length} bullet(s) assert a thesis without disclosing what cuts against it.`
+      `  UNRESOLVED-FACT: [${f.check}] ${f.message}\n      "${f.bullet}"`
+    );
+  if (fails.length) {
+    console.error(
+      `\n❌ ADVERSE-DATUM FAIL — ${fails.length} bullet(s) assert a thesis without disclosing what cuts against it.` +
+        (unresolved.length ? ` (+${unresolved.length} UNRESOLVED-FACT)` : '')
     );
     return 1;
+  }
+  if (unresolved.length) {
+    // Never blocking: an absent prior-period row is a question for the Morning Truth Gate, which
+    // has a browser. The evening does not, and the brief always ships.
+    console.log(
+      `\n✅ ADVERSE-DATUM PASS — ${unresolved.length} UNRESOLVED-FACT routed to the Morning Truth Gate.`
+    );
+    return 0;
   }
   console.log(
     '\n✅ ADVERSE-DATUM PASS — every directional thesis prints its counterweight.'
