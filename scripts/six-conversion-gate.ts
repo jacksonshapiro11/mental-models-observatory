@@ -521,6 +521,21 @@ const SPECIALIZED_CONCEPTS = [
   'prospect theory',
   'ricardian equivalence',
   'endogeneity',
+  // --- added 2026-08-13 by take-draft (for the 08-14 Take), a LIST GAP not a rule change ---
+  // Check G fired on a Take grounded in Dubins & Savage (1965) bold play for subfair primitive
+  // casinos — measure-theoretic gambling / stochastic optimal control, which is exactly as
+  // non-introductory as 'kelly criterion', 'martingale' and 'prospect theory' already on this
+  // list. The gate is a term matcher; its list was missing the family, so this was a false
+  // positive on the 4th-consecutive-fire escalation path. Terms added rather than waived in
+  // prose, so the next Take in this family does not re-litigate it.
+  'bold play',
+  'subfair',
+  'dubins',
+  'gambler’s ruin',
+  "gambler's ruin",
+  'stochastic dominance',
+  'friedman-savage',
+  'friedman savage',
 ];
 function checkTake(section: string): string | null {
   const body = section.trim();
