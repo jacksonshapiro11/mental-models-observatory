@@ -84,6 +84,112 @@ function checkPayoffClass(qg: string): string[] {
   return out;
 }
 
+// ---------- 2b. PAYOFF-CLASS TRANSCRIPTION CONSISTENCY (IMP-176 — 08-15 Critic mandate #2, RC3) ----------
+//
+// THE FAILURE: on 08-15 the QG emitted `PAYOFF CLASS: MECHANISM`, having overruled the Writer's
+// self-declared TENSION ("Shipped intro classified: THEME. The Writer self-declared TENSION; I
+// disagree" … "1 intro conclusion rewritten (THEME → MECHANISM)"). The reader-bound v2 then asserted
+// TENSION in TWO places — line 231 "Tonight is a TENSION, rotating off two consecutive MECHANISMs"
+// and line 300, an Editor validation block written 14 minutes AFTER the QG log, "assembly-gate …
+// PASS (payoff class TENSION…)". So the ONLY rotation receipt on disk was false, and it concealed a
+// THIRD consecutive MECHANISM (08-13, 08-14, 08-15).
+//
+// THE TRAP THIS MUST NOT FALL INTO: QG logs quote PRIOR nights' classes in a rotation history block
+// (`08-11: PAYOFF CLASS: MECHANISM`). The existing `checkPayoffClass` takes the FIRST match in the
+// file, so on a night whose QG log has no own emission it would read a history line as tonight's
+// class and condemn a clean brief. 2026-08-12 is exactly that file. Own-emission discrimination is
+// therefore the load-bearing part of this leg, not a nicety.
+const PAYOFF_HISTORY_PREFIX_RE = /(?:\b\d{2}-\d{2}\b|\b\d{4}-\d{2}-\d{2}\b)\s*:\s*$/;
+
+const classOf = (s: string): string | null =>
+  /MECHANISM/i.test(s)
+    ? 'MECHANISM'
+    : /TENSION/i.test(s)
+      ? 'TENSION'
+      : /THEME/i.test(s)
+        ? 'THEME'
+        : /INVENTORY/i.test(s)
+          ? 'INVENTORY'
+          : null;
+
+/** The QG's OWN payoff-class emission for that night — never a quoted history line. */
+export function qgOwnPayoffClass(qg: string): string | null {
+  for (const line of qg.split('\n')) {
+    const idx = line.search(/PAYOFF CLASS:/i);
+    if (idx === -1) continue;
+    // Strip markdown noise from the prefix, then reject a `MM-DD:` / `YYYY-MM-DD:` history stamp.
+    const prefix = line.slice(0, idx).replace(/[`*_>\s-]+$/g, '').trimEnd();
+    if (PAYOFF_HISTORY_PREFIX_RE.test(prefix + ':')) continue;
+    if (/^\s*(?:\d{2}-\d{2}|\d{4}-\d{2}-\d{2})\s*:/.test(line.replace(/^[\s`*_>-]+/, ''))) continue;
+    const cls = classOf(line.slice(idx));
+    if (cls) return cls;
+  }
+  return null;
+}
+
+/** Payoff-class assertions made by the BRIEF itself, in payoff-class contexts only. */
+export function briefPayoffClassAssertions(brief: string): Array<{ line: number; cls: string; text: string }> {
+  const out: Array<{ line: number; cls: string; text: string }> = [];
+  const lines = brief.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i]!;
+    // Scoped, per the mandate: `payoff class <CLASS>` or `Tonight is a <CLASS>`. A bare mention of
+    // the word MECHANISM in prose is not a class assertion.
+    const m =
+      /payoff\s+class[^A-Za-z]{0,4}(MECHANISM|TENSION|THEME|INVENTORY)\b/i.exec(l) ??
+      /\bTonight\s+is\s+an?\s+(MECHANISM|TENSION|THEME|INVENTORY)\b/i.exec(l);
+    if (m) out.push({ line: i + 1, cls: m[1]!.toUpperCase(), text: l.trim().slice(0, 180) });
+  }
+  return out;
+}
+
+export function checkPayoffClassConsistency(brief: string, qg: string): string[] {
+  const own = qgOwnPayoffClass(qg);
+  if (!own) return []; // nothing authoritative to compare against — validate-brief owns presence
+  const out: string[] = [];
+  for (const a of briefPayoffClassAssertions(brief)) {
+    if (a.cls === own) continue;
+    out.push(
+      `PAYOFF CLASS TRANSCRIBED AGAINST THE QG — the quality gate emitted PAYOFF CLASS: ${own}, and the ` +
+        `reader-bound brief asserts ${a.cls} at line ${a.line}: "${a.text}". The Editor may not transcribe a ` +
+        `payoff class it did not read from the QG's emitted PAYOFF CLASS: line, and must strike any pre-QG ` +
+        `class declaration the QG overruled. A rotation receipt that names the wrong class is worse than no ` +
+        `receipt: it certifies the rotation that did not happen. RECEIPT (2026-08-15): QG emitted MECHANISM ` +
+        `after overruling the Writer's TENSION; v2 asserted TENSION twice, concealing a third consecutive ` +
+        `MECHANISM (08-13, 08-14, 08-15).`
+    );
+  }
+  return out;
+}
+
+/** ROTATION LEG — three consecutive identical payoff classes is a device the reader has now met thrice. */
+export function checkPayoffRotation(
+  briefDate: string,
+  readQgForDate: (d: string) => string | null
+): string | null {
+  const prev = (d: string, back: number): string => {
+    const dt = new Date(`${d}T12:00:00Z`);
+    dt.setUTCDate(dt.getUTCDate() - back);
+    return dt.toISOString().slice(0, 10);
+  };
+  const chain: Array<{ d: string; cls: string }> = [];
+  for (let back = 0; back <= 6 && chain.length < 3; back++) {
+    const d = prev(briefDate, back);
+    const qg = readQgForDate(d);
+    if (!qg) continue;
+    const cls = qgOwnPayoffClass(qg);
+    if (cls) chain.push({ d, cls });
+  }
+  if (chain.length < 3) return null;
+  if (!chain.every(c => c.cls === chain[0]!.cls)) return null;
+  return (
+    `PAYOFF DEVICE UNROTATED — three consecutive payoff classes are ${chain[0]!.cls} ` +
+    `(${chain.map(c => `${c.d}=${c.cls}`).reverse().join(' · ')}). The rotation rule exists because a reader who ` +
+    `meets the same closing device three mornings running stops reading it as a conclusion. Draft the intro to a ` +
+    `different class, or state in the QG log why this one earned a third run.`
+  );
+}
+
 // ---------- 3. Fresh-frame sweep completeness (IMP-025, kept verbatim) ----------
 // E-CONVERGENCE-ASSEMBLY-01 lesson (now serving the payoff): before settling for THEME/NONE,
 // the QG's FRESH-FRAME SCAN must consider mechanism candidates across the FULL brief. On
@@ -319,6 +425,98 @@ function selftest(): number {
       false,
       () => checkLeftoverMarker(SILENT_MARKER) !== null,
     ],
+    // ── IMP-176 (08-15 Critic mandate #2, RC3): class transcription + rotation, on REAL files ──
+    [
+      'own-emission: the 08-15 QG log reads MECHANISM (its own emitted line)',
+      true,
+      () => {
+        const p = path.join(process.cwd(), 'daily-briefs/2026-08-15-quality-gate-log.md');
+        return !fs.existsSync(p) || qgOwnPayoffClass(fs.readFileSync(p, 'utf8')) === 'MECHANISM';
+      },
+    ],
+    [
+      'HISTORY-LINE DISCRIMINATION: the 08-12 QG log has NO own emission — its only PAYOFF CLASS lines are a quoted 08-11/10/09 history block, and reading one as tonight\'s class would condemn a clean brief',
+      true,
+      () => {
+        const p = path.join(process.cwd(), 'daily-briefs/2026-08-12-quality-gate-log.md');
+        if (!fs.existsSync(p)) return true;
+        const qg = fs.readFileSync(p, 'utf8');
+        // The naive first-match parser DOES find a class here — that is the trap being closed.
+        return /PAYOFF CLASS:/i.test(qg) && qgOwnPayoffClass(qg) === null;
+      },
+    ],
+    [
+      'FIRES: the real 2026-08-15-v2 asserts TENSION twice against the QG\'s emitted MECHANISM → 2 findings',
+      true,
+      () => {
+        const b = path.join(process.cwd(), 'daily-briefs/2026-08-15-v2.md');
+        const q = path.join(process.cwd(), 'daily-briefs/2026-08-15-quality-gate-log.md');
+        if (!fs.existsSync(b) || !fs.existsSync(q)) return true;
+        return (
+          checkPayoffClassConsistency(
+            fs.readFileSync(b, 'utf8'),
+            fs.readFileSync(q, 'utf8')
+          ).length === 2
+        );
+      },
+    ],
+    [
+      'SILENT (RE-SOURCED NEGATIVE): the real 2026-08-12-v2 asserts TENSION and takes NO finding — the Critic\'s named negative ("QG emitted TENSION") was vacuous; the 08-12 QG emitted nothing, and the history-line discrimination is what keeps this silent',
+      false,
+      () => {
+        const b = path.join(process.cwd(), 'daily-briefs/2026-08-12-v2.md');
+        const q = path.join(process.cwd(), 'daily-briefs/2026-08-12-quality-gate-log.md');
+        if (!fs.existsSync(b) || !fs.existsSync(q)) return false;
+        const brief = fs.readFileSync(b, 'utf8');
+        // Non-vacuous: the 08-12 brief genuinely DOES assert a payoff class.
+        if (!briefPayoffClassAssertions(brief).some(a => a.cls === 'TENSION')) return true;
+        return (
+          checkPayoffClassConsistency(brief, fs.readFileSync(q, 'utf8')).length > 0
+        );
+      },
+    ],
+    [
+      'ROTATION FIRES: 08-13, 08-14 and 08-15 all emitted MECHANISM → the third consecutive device is flagged',
+      true,
+      () =>
+        checkPayoffRotation('2026-08-15', d => {
+          const p = path.join(process.cwd(), `daily-briefs/${d}-quality-gate-log.md`);
+          return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+        }) !== null,
+    ],
+    [
+      // My first candidate negative (08-12) was WRONG and the leg was right: 08-11/10/09 were all
+      // MECHANISM, so 08-12 IS a genuine third-consecutive night. Re-sourced to a real mixed chain.
+      'ROTATION SILENT: the real 2026-08-06 chain is THEME · TENSION · MECHANISM (08-06/08-05/08-04) — a mixed chain takes no flag',
+      false,
+      () =>
+        checkPayoffRotation('2026-08-06', d => {
+          const p = path.join(process.cwd(), `daily-briefs/${d}-quality-gate-log.md`);
+          return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+        }) !== null,
+    ],
+    [
+      // ANTI-CAROUSEL PROOF (the E-INNER-GAME-DOMAIN-CAROUSEL-01 lesson: a rule with one legal
+      // answer every night is not a rule). Measured across every QG log on disk.
+      'ROTATION IS NOT ALWAYS-ON: the leg fires on well under a quarter of all dated QG logs',
+      false,
+      () => {
+        const dir = path.join(process.cwd(), 'daily-briefs');
+        if (!fs.existsSync(dir)) return false;
+        const dates = fs
+          .readdirSync(dir)
+          .filter(f => /^\d{4}-\d{2}-\d{2}-quality-gate-log\.md$/.test(f))
+          .map(f => f.slice(0, 10))
+          .sort();
+        if (dates.length < 20) return false;
+        const read = (d: string) => {
+          const p = path.join(dir, `${d}-quality-gate-log.md`);
+          return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+        };
+        const fires = dates.filter(d => checkPayoffRotation(d, read) !== null).length;
+        return fires / dates.length > 0.25; // expected SILENT => ratio must stay at or below 25%
+      },
+    ],
     // ── IMP-167 (08-13 Critic mandate #3, RC5): payoff scope binding, on REAL files ──
     [
       "payoff-scope FIRES on the real 2026-08-13-v2 intro's unbound 'Gulf' (intro=1, body=0)",
@@ -448,7 +646,16 @@ function main() {
         findings.push({ severity: 'FLAG', message: msg });
       const sweep = checkFreshFrameSweep(qg);
       if (sweep) findings.push({ severity: 'FLAG', message: sweep });
+      // IMP-176 — 08-15 mandate #2: the brief may not assert a class the QG did not emit.
+      for (const msg of checkPayoffClassConsistency(brief, qg))
+        findings.push({ severity: 'FLAG', message: msg });
     }
+    // IMP-176 rotation leg — reads the QG chain, not the brief's self-report.
+    const rot = checkPayoffRotation(dateM[1]!, d => {
+      const p = path.join(path.dirname(briefPath), `${d}-quality-gate-log.md`);
+      return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+    });
+    if (rot) findings.push({ severity: 'FLAG', message: rot });
   }
 
   console.log(`assembly-gate (payoff) — ${path.basename(briefPath)}`);

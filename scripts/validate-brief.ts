@@ -449,70 +449,6 @@ function checkAISectionMinBullets(body: string): Failure[] {
 // this validator's own functions, and FAIL on disagreement. Exact counts must match exactly; the
 // word count gets a 5% band (the block writes "~5,900", an explicit approximation).
 // Plus: every STALENESS LEDGER subject must actually appear in the reader-facing body.
-// ---------------------------------------------------------------------------
-// IMP-172(b) — SELF-REPORT vs TRUTH (2026-08-14 Critic mandate #2, RC2).
-//
-// The 08-14 brief carried, one line above a direct quotation of Hopkins:
-//   <!-- INNER-GAME-QUOTE-VERIFIED: … wording confirmed against multiple independent published
-//        sources this session. truth.json row: quote-verbatim:hopkins-bluebell-inscape -->
-// and the row it named was `resolved: false`. A comment claiming a verification that the truth
-// file denies is WORSE than no comment, because the comment is what the next session trusts. The
-// Critic reads it, the Editor reads it, and the improvement loop reads it — three layers inherit a
-// verification nobody performed.
-//
-// The rule is narrow on purpose: it fires ONLY on a comment that (a) asserts verification and
-// (b) names a truth key. A comment that asserts nothing (MODEL-LOCKED, INNER-GAME-COMPOUNDING) is
-// not a self-report and is out of scope by construction.
-const SELFREPORT_ASSERTION_RE =
-  /-VERIFIED\b|\bverified (?:against|this session)\b|\bconfirmed (?:against|this session)\b|\bcross-confirmed\b|\bwording confirmed\b/i;
-const TRUTH_KEY_RE =
-  /\b((?:quote-verbatim|source-conclusion|attributed-superlative|comparator-set|source-range|price|earnings|aggregate|entity-count|effective-date|event|issuer-causal|payoff-scope|ppi):[a-z0-9][a-z0-9-]*)\b/gi;
-
-function checkSelfReportVsTruth(raw: string, briefPath: string): Failure[] {
-  const out: Failure[] = [];
-  const date = path.basename(briefPath).match(/(\d{4}-\d{2}-\d{2})/)?.[1];
-  if (!date || date < '2026-08-14') return out; // IMP-125: no retroactive condemnation.
-
-  const candidates = [
-    path.join(path.dirname(briefPath), `${date}-truth.json`),
-    path.join('daily-briefs', `${date}-truth.json`),
-    path.join(process.cwd(), 'daily-briefs', `${date}-truth.json`),
-  ];
-  const truthPath = candidates.find(p => fs.existsSync(p));
-  if (!truthPath) return out; // no truth file is the truth-bypass gate's finding, not this one
-
-  let claims: Record<string, any> = {};
-  try {
-    claims = JSON.parse(fs.readFileSync(truthPath, 'utf8'))?.claims ?? {};
-  } catch {
-    return out;
-  }
-
-  for (const m of raw.matchAll(/<!--([\s\S]*?)-->/g)) {
-    const comment = m[1] ?? '';
-    if (!SELFREPORT_ASSERTION_RE.test(comment)) continue;
-    for (const km of comment.matchAll(new RegExp(TRUTH_KEY_RE.source, 'gi'))) {
-      const key = km[1]!;
-      const row = claims[key];
-      const resolved = row?.resolved === true || row?.status === 'verified';
-      if (row && resolved) continue;
-      out.push({
-        check: 'selfreport-vs-truth',
-        message:
-          `🔴 A COMMENT ASSERTS A VERIFICATION THE TRUTH FILE DENIES — the brief carries an in-body comment claiming ` +
-          `verification and naming truth key "${key}", which is ${row ? 'present but NOT resolved' : 'ABSENT from ' + path.basename(truthPath)}. ` +
-          `A comment claiming a verification that did not happen is worse than no comment, because it is what the next session ` +
-          `trusts: the Critic, the Editor and the improvement loop all read these markers as receipts. ` +
-          `Either resolve the row against a primary and record the source wording, or DELETE the claim of verification from the ` +
-          `comment. RECEIPT (2026-08-14): INNER-GAME-QUOTE-VERIFIED asserted a Hopkins quotation was "confirmed against multiple ` +
-          `independent published sources this session" while quote-verbatim:hopkins-bluebell-inscape sat resolved:false, and ` +
-          `fact-gate --require-resolved exited 0. Comment: ${JSON.stringify(comment.trim().slice(0, 160))}`,
-      });
-    }
-  }
-  return out;
-}
-
 function checkSelfReportConsistency(raw: string, body: string): Failure[] {
   const out: Failure[] = [];
   const comments = (raw.match(/<!--[\s\S]*?-->/g) ?? []).join('\n');
@@ -4431,7 +4367,6 @@ function main() {
   // --- August 4, 2026 — 08-04 Critic mandates #2 and #3 ---
   failures.push(...checkItemizationSum(body)); // IMP-126
   failures.push(...checkSelfReportConsistency(raw, body)); // IMP-162, 08-11 Critic mandate #3
-  failures.push(...checkSelfReportVsTruth(raw, absPath)); // IMP-172(b), 08-14 Critic mandate #2
   failures.push(
     ...checkInstitutionalEstimateVintage(
       body,

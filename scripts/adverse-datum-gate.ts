@@ -366,6 +366,152 @@ export function seriesDirectionContradiction(
 }
 
 // ---------------------------------------------------------------------------
+// IMP-175 — THE ARTIFACT-CONCLUSION RAIL (2026-08-15 Critic mandate #3, RC2).
+//
+// THE FAILURE: 08-15 M&M-1 concluded that the July retail-sales print was a calendar artifact
+// ("it is sitting on a calendar", "inside a confidence interval that includes zero") while
+// withholding the LEAD FINDING OF ITS OWN WIRE — Reuters led that release with economists
+// slashing Q3 growth estimates. Every figure in the bullet verified. The unit was true and
+// rhetorically one-sided, which is the failure mode no truth gate can see.
+//
+// THE RULE: if a bullet concludes that a data release is an ARTIFACT of measurement or the
+// calendar, it must carry at least one sentence attributing a NON-ARTIFACT reading to a named
+// forecaster, wire or institution. Otherwise the reader gets one side of a two-sided release.
+//
+// SEVERITY IS UNRESOLVED-FACT, NEVER FAIL — by design. Whether a competing reading exists is a
+// question for the Morning Truth Gate, which has a browser. The evening does not, and the brief
+// always ships (the ESC-013 orphan-input discipline).
+//
+// NARROWNESS IS THE WHOLE DESIGN. The mandate's vocabulary list includes the bare word
+// "measurement", and 08-15 M&M-2 — a REQUIRED SILENT case — contains "Robin Brooks made the
+// measurement Friday". A word list would have fired on the clean unit. So the trigger is a list of
+// artifact CONCLUSIONS, not artifact words.
+const ARTIFACT_CONCLUSION_RE =
+  /\b(?:sit(?:s|ting)\s+on\s+a\s+calendar|confidence\s+interval\s+that\s+includes\s+zero|seasonal\s+adjustment|(?:is|was|were|are)\s+payback\b|payback\s+for\b|measurement\s+artifact|calendar\s+artifact|an\s+artifact\s+of\s+(?:the\s+)?(?:calendar|measurement|timing|comparison)|a\s+timing\s+(?:artifact|distortion|effect)|(?:the\s+)?(?:same\s+)?distortion\s+runs\s+in\s+reverse)\b/i;
+
+// The escape hatch, proved on a real unit: 08-15 Geo-1 carries "which TP ICAP's Scott Shelton
+// reads as a risk premium rather than tighter fundamentals". A NAMED entity plus an
+// INTERPRETATION verb. Reporting verbs ("put", "ran", "made", "said") are deliberately excluded —
+// M&M-1 contains "The Census Bureau put the drop against a consensus" and "Amazon ran Prime Day",
+// and neither is a competing reading of what the print means.
+const ATTRIBUTED_READING_RE =
+  /\b[A-Z][A-Za-z.&'’-]*(?:\s+[A-Z][A-Za-z.&'’-]*){0,3}(?:'s|’s)?\s+(?:\w+\s+){0,3}?(?:reads?|calls?|argues?|warns?|blames?|attributes?|slashed|slash|cutting|forecasts?|expects?|estimates?)\b/;
+
+export function artifactConclusionRail(body: string): AdverseFinding[] {
+  const findings: AdverseFinding[] = [];
+  for (const bullet of bullets(body)) {
+    const hit = ARTIFACT_CONCLUSION_RE.exec(bullet);
+    if (!hit) continue;
+    if (ATTRIBUTED_READING_RE.test(bullet)) continue; // ESCAPE HATCH — a competing read is in the open
+    findings.push({
+      check: 'artifact-conclusion-unattributed',
+      severity: 'UNRESOLVED-FACT',
+      message:
+        `ARTIFACT CONCLUSION WITH NO ATTRIBUTED COUNTER-READING — this bullet concludes the release is an ` +
+        `artifact of measurement or the calendar ("${hit[0]}") and no sentence in it attributes a NON-artifact ` +
+        `reading to a named forecaster, wire or institution. Every figure can verify and the unit still ships ` +
+        `one side of a two-sided release. MORNING GATE: find what the release's own wire led with; if a named ` +
+        `economist or institution read it as signal rather than noise, print that read and let the artifact ` +
+        `argument answer it. RECEIPT (2026-08-15 M&M-1): "it is sitting on a calendar" shipped while Reuters led ` +
+        `the same release with economists slashing third-quarter growth estimates — a fact the bullet never met. ` +
+        `ESCAPE HATCH (2026-08-15 Geo-1): "which TP ICAP's Scott Shelton reads as a risk premium rather than ` +
+        `tighter fundamentals" — one attributed sentence discharges this rail.`,
+      bullet: bullet.slice(0, 200).replace(/\s+/g, ' '),
+      thesis: hit[0],
+    });
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// IMP-177 — THE SCHEDULE-SEQUENCE RAIL (2026-08-15 Critic mandate #1, RC2).
+//
+// THE FAILURE: 08-15 C&C-3 closed "When the depreciation schedule ends before the lease begins,
+// the bitcoin has stopped being treasury and become construction financing." Riot's own filing puts
+// the first 96 IT MW in DECEMBER 2027 and the depreciation running to 2029 — the lease begins ~18
+// months BEFORE the depreciation ends. The sentence was the arithmetic inverse of its own source.
+// Seven other figures in the unit verified exactly, and `adverse-datum-gate` exited 0: IMP-171's
+// series leg fires on PERSISTENCE claims, and a SEQUENCING claim over two dated events is a
+// different shape.
+//
+// THE RULE: a sequencing claim is a two-date claim. The sentence that asserts the ORDER must print
+// a date. Zero dates in the ordering sentence means the claim cannot be checked by anyone —
+// including the writer, which is how the inverse shipped.
+//
+// THE THRESHOLD IS ≥1 IN-SENTENCE DATE, and that is a deliberate, receipted choice rather than the
+// doc rule's "print both". It is exactly what separates the shipped defect from its repair:
+//   v1.5 (shipped defect): "When the depreciation schedule ends before the lease begins, …"  → 0 dates
+//   v2   (morning repair): "The lease begins in December 2027, before the depreciation ends, …" → 1 date
+// A bullet-scoped date count would have passed the DEFECT, because the same bullet prints 2026,
+// 2027 and 2029 in the depreciation table three sentences earlier. KNOWN LIMIT: a one-date ordering
+// sentence can still invert. That residual is what the truth-row leg below is for, and it is
+// recorded here rather than hidden.
+const SEQ_VERB =
+  String.raw`(?:end|ends|ended|expire|expires|expired|begin|begins|began|start|starts|started|commence|commences|commenced|lapse|lapses|lapsed|mature|matures|matured|close|closes|closed|open|opens|opened|run\s+off|runs\s+off|run\s+out|runs\s+out|deliver|delivers|delivered|deploy|deploys|deployed|land|lands|landed|arrive|arrives|arrived|tax|taxed|apply|applies|applied|due|effective|sign|signs|signed|signing|vote|votes|voted|take\s+effect|takes\s+effect)`;
+
+/** An ORDERING claim: a schedule verb, then before/after/until/by the time, then a second schedule verb. */
+const SEQ_CLAIM_RE = new RegExp(
+  String.raw`\b${SEQ_VERB}\b[^.;]{0,80}?\b(?:before|after|ahead\s+of|by\s+the\s+time|until|prior\s+to)\b[^.;]{0,80}?\b${SEQ_VERB}\b`,
+  'i'
+);
+
+/** A printed calendar date: a month name, or a bare four-digit year, or ISO. */
+const DATE_TOKEN_RE =
+  /\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan\.?|Feb\.?|Mar\.?|Apr\.?|Jun\.?|Jul\.?|Aug\.?|Sep\.?|Sept\.?|Oct\.?|Nov\.?|Dec\.?)\b|\b(?:19|20)\d{2}\b|\b\d{4}-\d{2}-\d{2}\b/;
+
+/** Sentence split that tolerates the bold lead and decimal figures well enough for this rail. */
+function sentences(bullet: string): string[] {
+  return bullet
+    .replace(/\*\*/g, '')
+    .split(/(?<=[.!?])\s+(?=[A-Z“"(])/)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+export function scheduleSequenceContradiction(
+  body: string,
+  truthClaims?: Record<string, unknown> | undefined
+): AdverseFinding[] {
+  const findings: AdverseFinding[] = [];
+  // Recorded schedule dates, if the Morning Truth Gate has any: `scheduled-event:*` / `schedule:*`
+  // rows carrying a resolvable date. Absent rows never block — the rail degrades to advisory.
+  const recorded: string[] = [];
+  for (const [key, row] of Object.entries(truthClaims ?? {})) {
+    if (!/^(?:scheduled-event|schedule|delivery|lease|maturity):/i.test(key)) continue;
+    const v = String((row as { value?: unknown })?.value ?? '');
+    if (DATE_TOKEN_RE.test(v)) recorded.push(`${key}=${v}`);
+  }
+
+  for (const bullet of bullets(body)) {
+    for (const s of sentences(bullet)) {
+      const claim = SEQ_CLAIM_RE.exec(s);
+      if (!claim) continue;
+      if (DATE_TOKEN_RE.test(s)) continue; // ESCAPE HATCH — the ordering sentence is dated
+      findings.push({
+        check: 'schedule-sequence-undated',
+        severity: 'UNRESOLVED-FACT',
+        message:
+          `UNDATED SEQUENCING CLAIM — this sentence asserts an ORDER between two scheduled events ` +
+          `("${claim[0].replace(/\s+/g, ' ').slice(0, 120)}") and prints no date for either. A sequencing claim is a ` +
+          `two-date claim: print the dates in the sentence that makes the ordering claim, or do not claim the order. ` +
+          `MORNING GATE: record each event as a schedule row and re-run — if the recorded order contradicts the ` +
+          `asserted order, this escalates to FAIL. ` +
+          (recorded.length
+            ? `RECORDED SCHEDULE ROWS AVAILABLE: ${recorded.slice(0, 4).join(' · ')}. `
+            : `NO schedule rows recorded for this brief, so the order cannot be checked mechanically tonight. `) +
+          `RECEIPT (2026-08-15 C&C-3, shipped in v1.5): "When the depreciation schedule ends before the lease ` +
+          `begins" — Riot's own filing puts the first 96 IT MW in December 2027 against depreciation running to ` +
+          `2029, so the lease begins about eighteen months BEFORE the depreciation ends. The closer was the ` +
+          `arithmetic inverse of the issuer's schedule and seven other figures in the unit verified exactly.`,
+        bullet: bullet.slice(0, 200).replace(/\s+/g, ' '),
+        thesis: claim[0].replace(/\s+/g, ' ').slice(0, 120),
+      });
+    }
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
 function sectionBlock(body: string, heading: RegExp): string | null {
   const lines = stripHtmlComments(body).split('\n');
   const start = lines.findIndex(l => /^#{1,6}\s/.test(l) && heading.test(l));
@@ -584,7 +730,122 @@ function selftest(): number {
       t(false, 'SELFTEST FAIL — missing 2026-08-14 fixture for the series leg');
   }
 
-  const total = 25;
+  // -------------------------------------------------------------------------
+  // IMP-175 — THE ARTIFACT-CONCLUSION RAIL, on the 2026-08-15 Critic's own four acceptance cases.
+  const v2_0815 = path.join(root, 'daily-briefs', '2026-08-15-v2.md');
+  const v15_0815 = path.join(root, 'daily-briefs', '2026-08-15-v1.5.md');
+  if (fs.existsSync(v2_0815)) {
+    const b0815 = fs.readFileSync(v2_0815, 'utf8');
+    const mm1 = bullets(b0815).find(b => /sitting on a calendar/i.test(b));
+    const mm2b = bullets(b0815).find(b => /Robin Brooks made the measurement/i.test(b));
+    const geo1 = bullets(b0815).find(b => /Scott Shelton reads as a risk premium/i.test(b));
+
+    t(
+      !!mm1 && artifactConclusionRail(mm1).length === 1,
+      'FIRES: 08-15 M&M-1 — artifact conclusion ("sitting on a calendar") with zero attributed counter-reading → 1 UNRESOLVED-FACT'
+    );
+    t(
+      !!mm1 && artifactConclusionRail(mm1)[0]?.severity === 'UNRESOLVED-FACT',
+      'NEVER BLOCKING: the artifact rail emits UNRESOLVED-FACT, never FAIL — the evening has no browser'
+    );
+    t(
+      !!mm2b && artifactConclusionRail(mm2b).length === 0,
+      'SILENT: 08-15 M&M-2 — contains "made the measurement" but concludes about PRICING; a bare-word list would have fired here, the conclusion list does not'
+    );
+    t(
+      !!geo1 && artifactConclusionRail(geo1).length === 0,
+      'SILENT: 08-15 Geo-1 — no artifact conclusion (silent on the vocabulary leg, not the escape hatch; the escape hatch is proved on the next assertion)'
+    );
+    // THE ESCAPE HATCH, PROVED — not asserted. Real defective prose + the real Geo-1 attribution
+    // clause must go silent. Without this the Geo-1 negative above is vacuous, which is exactly the
+    // failure the 08-15 Critic named in its own acceptance specs.
+    t(
+      !!mm1 &&
+        !!geo1 &&
+        artifactConclusionRail(
+          `${mm1!.replace(/\s+$/, '')} The drop is one reading, which TP ICAP's Scott Shelton reads as a genuine demand slowdown rather than a calendar effect.`
+        ).length === 0,
+      'ESCAPE HATCH PROVED: the SAME firing M&M-1 prose plus one real attributed counter-reading goes SILENT'
+    );
+
+    // IMP-177 — THE SCHEDULE-SEQUENCE RAIL, fire case re-pointed to v1.5.
+    // THE MORNING TRUTH GATE ERASED THE MANDATE'S NAMED FIRE CASE at 05:10 today: v2's closer was
+    // rewritten to "The lease begins in December 2027, before the depreciation ends". Testing
+    // against v2 would produce a green run proving nothing. The shipped defect survives in v1.5.
+    if (fs.existsSync(v15_0815)) {
+      const b15 = fs.readFileSync(v15_0815, 'utf8');
+      const cc3_defect = bullets(b15).find(b =>
+        /depreciation schedule ends before the lease begins/i.test(b)
+      );
+      t(
+        !!cc3_defect && scheduleSequenceContradiction(cc3_defect, {}).length === 1,
+        'FIRES: 08-15 v1.5 C&C-3 — "the depreciation schedule ends before the lease begins" prints no date in the ordering sentence → 1 finding'
+      );
+      t(
+        !!cc3_defect &&
+          scheduleSequenceContradiction(cc3_defect, {})[0]?.check ===
+            'schedule-sequence-undated',
+        'THE FINDING NAMES THE ORDERING CLAUSE — a sequencing gate that will not quote the clause is unactionable'
+      );
+      // BULLET-SCOPED WOULD HAVE PASSED THE DEFECT. This is the assertion that proves the design
+      // choice: the same bullet prints 2026, 2027 and 2029 in its depreciation table.
+      t(
+        !!cc3_defect && /\b2029\b/.test(cc3_defect!) && /\b2027\b/.test(cc3_defect!),
+        'SCOPE PROOF: the defective bullet DOES print 2027 and 2029 elsewhere — a bullet-scoped date count would have exited 0 on the shipped inversion'
+      );
+    } else {
+      for (let i = 0; i < 3; i++)
+        t(false, 'SELFTEST FAIL — missing 2026-08-15-v1.5.md fixture for the schedule-sequence leg');
+    }
+
+    const cc3_repaired = bullets(b0815).find(b =>
+      /lease begins in December 2027, before the depreciation ends/i.test(b)
+    );
+    t(
+      !!cc3_repaired && scheduleSequenceContradiction(cc3_repaired, {}).length === 0,
+      'SILENT on the REPAIR: v2 C&C-3 dates the ordering sentence ("December 2027") — the rail rewards the date, and the morning fix is not re-condemned'
+    );
+    const geo2 = bullets(b0815).find(b => /Finished imports are taxed 21 days after signing/i.test(b));
+    t(
+      !!geo2 && SEQ_CLAIM_RE.test('Finished imports are taxed 21 days after signing, which is 3 September.'),
+      'NON-VACUOUS NEGATIVE, PART 1: 08-15 Geo-2 genuinely CONTAINS an ordering claim ("taxed 21 days after signing")'
+    );
+    t(
+      !!geo2 && scheduleSequenceContradiction(geo2, {}).length === 0,
+      'NON-VACUOUS NEGATIVE, PART 2: 08-15 Geo-2 is SILENT because that ordering sentence prints "3 September" — the escape hatch, on a real unit in the same brief'
+    );
+
+    // NO STORM — the Critic capped both rails across the 08-09…08-14 window.
+    let artifactHits = 0;
+    let seqHits = 0;
+    for (const d of [
+      '2026-08-09',
+      '2026-08-10',
+      '2026-08-11',
+      '2026-08-12',
+      '2026-08-13',
+      '2026-08-14',
+    ]) {
+      const p = path.join(root, 'daily-briefs', `${d}-v2.md`);
+      if (!fs.existsSync(p)) continue;
+      const raw = fs.readFileSync(p, 'utf8');
+      artifactHits += artifactConclusionRail(raw).length;
+      seqHits += scheduleSequenceContradiction(raw, {}).length;
+    }
+    t(
+      artifactHits <= 2,
+      `NO STORM (artifact rail): ${artifactHits} finding(s) across 08-09…08-14 v2 — the Critic's cap is ≤2`
+    );
+    t(
+      seqHits <= 1,
+      `NO STORM (sequence rail): ${seqHits} finding(s) across 08-09…08-14 v2 — the Critic's cap is ≤1`
+    );
+  } else {
+    for (let i = 0; i < 12; i++)
+      t(false, 'SELFTEST FAIL — missing 2026-08-15-v2.md fixture for the 08-15 mandate legs');
+  }
+
+  const total = 37;
   console.log(
     `\nadverse-datum-gate selftest — ${total - fails}/${total} assertions passed`
   );
@@ -635,6 +896,8 @@ function main(): number {
   const findings = [
     ...adverseDatum(raw, truthClaims),
     ...seriesDirectionContradiction(raw, truthClaims),
+    ...artifactConclusionRail(raw), // IMP-175 — 08-15 mandate #3
+    ...scheduleSequenceContradiction(raw, truthClaims), // IMP-177 — 08-15 mandate #1
   ];
   console.log(
     `adverse-datum-gate — ${path.basename(briefPath)}${truthPath ? ` · truth: ${path.basename(truthPath)}` : ' · no truth file'}`

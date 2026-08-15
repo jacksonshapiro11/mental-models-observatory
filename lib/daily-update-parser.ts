@@ -414,14 +414,17 @@ const CONTENT_DIR = path.join(process.cwd(), 'content/daily-updates');
 export function getLatestBrief(): DailyBrief | null {
   if (!fs.existsSync(CONTENT_DIR)) return null;
 
-  // Exclude Brief Light files — they're handled by getLatestBriefLight.
-  // Without this filter, "2026-04-14-light.md" sorts after "2026-04-14.md"
-  // and getLatestBrief returns the light file, which then misroutes into
-  // the full-brief audio pipeline (see getAllBriefDates below, which already
-  // has this filter).
+  // STRICT DATE SHAPE — must stay identical to getAllBriefDates below (IMP-178, 2026-08-15).
+  // This filter previously read `f.endsWith('.md') && !f.includes('-light')`, and its own comment
+  // claimed parity with getAllBriefDates ("which already has this filter") — it had copied only the
+  // -light exclusion, not the date shape. Under the loose filter ANY stray .md in this directory
+  // that sorts high becomes "Today's Daily Brief" on /daily-update, the site's primary Full Brief
+  // link: a README.md, an -old.md, an editor scratch file. Uppercase filenames sort ABOVE digits,
+  // so README.md would have won outright. The two functions must answer the same question the same
+  // way; `scripts/latest-brief-parity-gate.ts` asserts they do.
   const files = fs
     .readdirSync(CONTENT_DIR)
-    .filter(f => f.endsWith('.md') && !f.includes('-light'))
+    .filter(f => /^\d{4}-\d{2}-\d{2}\.md$/.test(f))
     .sort()
     .reverse();
 
