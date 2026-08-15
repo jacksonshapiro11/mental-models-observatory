@@ -230,3 +230,6 @@ _to_delete2/
 scripts/__pycache__/
 .tmp-probe/
 zz_scratch.trash-*/
+
+# selection loop working dir (2026-08-15) — prompts, units, verdicts
+.selection/
