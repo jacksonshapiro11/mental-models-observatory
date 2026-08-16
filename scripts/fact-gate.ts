@@ -1715,6 +1715,135 @@ export function quoteVerbatimRail(
 }
 
 // ---------------------------------------------------------------------------
+// IMP-180 — THE CITATION-LOCATOR RAIL (2026-08-16 Critic mandate #2, RC2).
+//
+// On 2026-08-16 the Inner Game shipped:
+//     "— Constantin Stanislavski, An Actor Prepares, chapter 10, 'Relaxation of Muscles'"
+// "Relaxation of Muscles" is CHAPTER 6 of the sixteen-chapter Hapgood translation. Chapter 10 is
+// "Communion." The staleness ledger one line above certified the replacement with "Quote
+// web-verified this session" — so a NEW false fact shipped under a FRESH certification, inside a
+// replacement made specifically to repair an EARLIER false receipt.
+//
+// WHY NO GATE SAW IT. `quoteVerbatimRail` (IMP-172) audits the WORDING inside the quotation marks
+// and is structurally blind to the LOCATOR sitting beside them. fact-gate exited 1 that night on
+// three unverified-critical claims and not one of them was the chapter. The verifier checked the
+// sentence and never checked the address.
+//
+// THE PRINCIPLE: a locator is a checkable claim with exactly the standing of a word inside the
+// quotation marks. "Chapter 10" asserts that a reader who opens chapter 10 finds this. It is
+// falsifiable in one lookup, it is the part of a citation that signals the citer actually opened
+// the book, and it is therefore the part most worth being true.
+//
+// THE ESCAPE HATCH IS THE CORRECT DEFAULT: naming only the WORK is always silent. An unverifiable
+// chapter number should be OMITTED, never guessed — dropping the locator costs the reader nothing
+// and costs the brief no authority it legitimately had.
+const LOCATOR_RAIL_EFFECTIVE_FROM = '2026-08-16'; // IMP-125: no retroactive condemnation.
+
+/** Attribution lines are em-dash-led credit lines under a pulled quotation:
+ *  "— Constantin Stanislavski, An Actor Prepares, chapter 10, "Relaxation of Muscles"".
+ *  Bounded to short credit lines so ordinary prose containing "page 3" can never enter. */
+export function attributionLocators(
+  body: string
+): { line: string; kind: string; value: number }[] {
+  const out: { line: string; kind: string; value: number }[] = [];
+  for (const raw of body.split('\n')) {
+    const t = raw.trim();
+    if (!/^[—–]\s*\S/.test(t)) continue; // must be a credit line
+    if (t.length > 300) continue; // a credit line, not a paragraph that opened with a dash
+    const m = t.match(
+      /\b(chapters?|chs?\.|books?|sections?|parts?|cantos?|pages?|pp?\.)\s*(\d{1,4})\b/i
+    );
+    if (!m) continue;
+    out.push({
+      line: t,
+      kind: m[1].replace(/\.$/, '').toLowerCase(),
+      value: Number(m[2]),
+    });
+  }
+  return out;
+}
+
+export function citationLocatorRail(
+  body: string,
+  truth: any,
+  briefDate: string | null,
+  requireResolved: boolean
+): { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] {
+  const out: { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] =
+    [];
+  if (briefDate && briefDate < LOCATOR_RAIL_EFFECTIVE_FROM) return out;
+  const found = attributionLocators(body);
+  if (!found.length) return out; // the escape hatch: cite the work and stop
+
+  const claims = (truth?.claims ?? {}) as Record<string, any>;
+  const rows = Object.entries(claims).filter(([k]) =>
+    k.startsWith('quote-locator:')
+  );
+
+  for (const f of found) {
+    const cited = f.line.slice(0, 160);
+    // Match a row to this attribution by any distinctive token they share (the slug is free-form).
+    const tokens = (f.line.match(/[A-Za-z]{5,}/g) ?? []).map(w =>
+      w.toLowerCase()
+    );
+    const row = rows.find(([k]) => {
+      const slug = k.slice('quote-locator:'.length).toLowerCase();
+      return tokens.some(t => slug.includes(t));
+    });
+
+    if (!row) {
+      out.push({
+        check: 'citation-locator-unresolved',
+        severity: requireResolved ? 'FAIL' : 'FLAG',
+        message:
+          `UNRESOLVED CITATION LOCATOR — the attribution asserts ${f.kind} ${f.value} and no ` +
+          `\`quote-locator:\` row exists in the truth file: ${cited}. A locator is a checkable claim with ` +
+          `the same standing as a word inside the quotation marks; it is falsifiable in one lookup and it ` +
+          `is the part of the citation that says you opened the book. MORNING GATE: open the published ` +
+          `contents, add quote-locator:{slug} with resolved:true, the locator's own value and the source ` +
+          `consulted — OR delete the locator and cite the work, which is always legal. RECEIPT ` +
+          `(2026-08-16): "An Actor Prepares, chapter 10, 'Relaxation of Muscles'" shipped under an ` +
+          `explicit "Quote web-verified this session" certification. It is chapter 6.`,
+      });
+      continue;
+    }
+
+    const [key, r] = row;
+    const resolved = r?.resolved === true || r?.status === 'verified';
+    const rawVal = String(r?.value ?? r?.locator ?? r?.claim ?? r?.match ?? '');
+    const stated = Number(rawVal.match(/\d{1,4}/)?.[0] ?? NaN);
+    const source = String(r?.source ?? '').trim();
+
+    if (Number.isFinite(stated) && stated !== f.value) {
+      out.push({
+        check: 'citation-locator-mismatch',
+        severity: 'FAIL',
+        message:
+          `FALSE CITATION LOCATOR — the brief says ${f.kind} ${f.value}; the verified row "${key}" says ` +
+          `${stated}. ${cited}. The truth file and the reader-facing line disagree, and the reader-facing ` +
+          `line is the one that gets quoted. Correct the attribution to ${stated}, or drop the locator.`,
+      });
+      continue;
+    }
+    const reasons: string[] = [];
+    if (!resolved) reasons.push('the row is not resolved');
+    if (!Number.isFinite(stated))
+      reasons.push('the row carries no locator value');
+    if (!source) reasons.push('the row names no source consulted');
+    if (reasons.length)
+      out.push({
+        check: 'citation-locator-unresolved',
+        severity: requireResolved ? 'FAIL' : 'FLAG',
+        message:
+          `UNRESOLVED CITATION LOCATOR — "${key}": ${reasons.join('; ')}. ${cited}. A locator resolves only ` +
+          `by a row carrying the locator's OWN VALUE plus the source consulted; resolved:true on its own is a ` +
+          `promise, not a receipt. Cite the ${f.kind} you opened, or cite the work and stop.`,
+      });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // IMP-173 — THE SETTLE-OBSERVATION RAIL (2026-08-14 Critic mandate #3, RC2, NEW CLASS).
 //
 // On 2026-08-13 the Dashboard asserted Brent and WTI were "both down MORE THAN 2 PERCENT". The
@@ -3309,7 +3438,7 @@ const PRIMARY_SOURCE_RE =
 // Two gates, one night, one shape: a negated declaration read as an admission.
 // Scoped tightly — only an EXPLICIT negation of the harmonizing verb clears the line.
 const HARMONIZE_NEGATED_RE =
-  /\b(?:did|do|does|would|will|could)\s+(?:\*{0,2}not\*{0,2}|n[o']t)\s+\w{0,12}\s?harmoni[sz]|\bnot\s+harmoni[sz]|\brefused\s+to\s+harmoni[sz]|\bdeclined\s+to\s+harmoni[sz]|\bwithout\s+harmoni[sz]|\bnever\s+harmoni[sz]|\bharmoni[sz]\w*\s*[:=]\s*\**\s*(?:none|no|n\/a|nil)\b|\bno\s+sentence\s+was\s+moved\s+toward\s+the\s+published\s+record|\b(?:never|not)\s+to\s+the\s+\*{0,2}published\s+record/i;
+  /\b(?:did|do|does|would|will|could)\s+(?:\*{0,2}not\*{0,2}|n[o']t)\s+\w{0,12}\s?harmoni[sz]|\bnot\s+harmoni[sz]|\bno\s+harmoni[sz]|\brefused\s+to\s+harmoni[sz]|\bdeclined\s+to\s+harmoni[sz]|\bwithout\s+harmoni[sz]|\bnever\s+harmoni[sz]|\bharmoni[sz]\w*\s*[:=]\s*\**\s*(?:none|no|n\/a|nil)\b|\bno\s+sentence\s+was\s+moved\s+toward\s+the\s+published\s+record|\b(?:never|not)\s+to\s+the\s+\*{0,2}published\s+record/i;
 // ^ 2026-08-13 (morning pass): the RULE'S OWN HEADING was firing the gate. The QG log
 // prints "### QG TRUTH RULE — HARMONIZE TO THE SOURCE, NEVER TO THE PUBLISHED RECORD
 // (IMP-033)" as a section title; it carries the verb + the published referent, and the
@@ -3320,6 +3449,15 @@ const HARMONIZE_NEGATED_RE =
 // false positive (CARRY 2026-08-11): a false positive on the TRUE leg trains the next
 // session to skim the gate. The real 07-11 confession ("QG harmonized v1.5 to the
 // published record") contains no such negation and still FAILs — self-test okThFire.
+// ^ 2026-08-15 (brief-editor pass), THIRD instance of this same class: the 08-16 QG
+// wrote the compliant disclosure as "No harmonization performed and none owed" on a
+// line that also names "The published 08-15 brief" — and the negation list carried
+// "not harmoniz" and "never harmoniz" but NOT the plainest English form, "NO
+// harmonization". A compliant QG was FAILed for pasting the receipt the rule demands,
+// for the third time in a fortnight, each time on a different surface form of the same
+// negation. Added `\bno\s+harmoni[sz]`. This strictly narrows FALSE POSITIVES and
+// loosens nothing: the real 07-11 confession carries no negation of any form and the
+// self-test's okThFire leg still FAILs it (verified in-pass, both directions).
 
 function carriesUnresolvedHarmonization(line: string): boolean {
   // Negation belongs to its clause, not the whole line. A compliant
@@ -4732,6 +4870,104 @@ function selftest(): number {
       '2026-07-13'
     ).length === 0;
 
+
+  // ---------------- IMP-180 — THE CITATION-LOCATOR RAIL (2026-08-16 mandate #2) ----------------
+  // Every leg below runs against REAL FILES ON DISK, not fixtures: the defect is a chapter number
+  // that shipped, and a fixture cannot prove a rail bites the thing that actually reached readers.
+  const locStrip = (t: string) => t.replace(/<!--[\s\S]*?-->/g, '');
+  const locRead = (f: string): string | null => {
+    const fp = path.join(process.cwd(), f);
+    return fs.existsSync(fp) ? locStrip(fs.readFileSync(fp, 'utf8')) : null;
+  };
+  const loc0816 = locRead('daily-briefs/2026-08-16-v2.md');
+  const loc0814 = locRead('daily-briefs/2026-08-14-v2.md');
+  // FIRE: the shipped "chapter 10" with no quote-locator row anywhere.
+  const okLocFire =
+    loc0816 === null ||
+    citationLocatorRail(loc0816, null, '2026-08-16', false).filter(
+      f => f.check === 'citation-locator-unresolved'
+    ).length === 1;
+  // ESCALATES: add the TRUE row (chapter 6) and the disagreement becomes a hard FAIL.
+  const okLocMismatch =
+    loc0816 === null ||
+    citationLocatorRail(
+      loc0816,
+      {
+        claims: {
+          'quote-locator:stanislavski-actor-prepares-relaxation': {
+            value: 6,
+            resolved: true,
+            source:
+              'An Actor Prepares, Hapgood translation, published 16-chapter contents',
+          },
+        },
+      },
+      '2026-08-16',
+      false
+    ).some(f => f.check === 'citation-locator-mismatch' && f.severity === 'FAIL');
+  // SILENT: a resolved row that AGREES with the shipped locator.
+  const okLocAgrees =
+    loc0816 === null ||
+    citationLocatorRail(
+      loc0816,
+      {
+        claims: {
+          'quote-locator:stanislavski-actor-prepares-relaxation': {
+            value: 10,
+            resolved: true,
+            source: 'published contents',
+          },
+        },
+      },
+      '2026-08-16',
+      false
+    ).length === 0;
+  // SILENT: 08-14's Hopkins attribution names the WORK and no locator — the correct default, and
+  // the clean negative on a real file. (This also covers the same brief's Model attribution.)
+  const okLocSilentWork =
+    loc0814 === null ||
+    citationLocatorRail(loc0814, null, '2026-08-16', false).length === 0;
+  // NO STORM, measured with the EFFECTIVE_FROM shield DELIBERATELY OFF so the silence is the
+  // rail's and not the date's: 08-09…08-15 must produce ≤1 finding in total.
+  let locStorm = 0;
+  for (const d of ['09', '10', '11', '12', '13', '14', '15']) {
+    const b = locRead(`daily-briefs/2026-08-${d}-v2.md`);
+    if (b) locStorm += citationLocatorRail(b, null, null, false).length;
+  }
+  const okLocNoStorm = locStorm <= 1;
+  // NO RETRO: the same firing file, dated before EFFECTIVE_FROM, is silent (IMP-125).
+  const okLocNoRetro =
+    loc0816 === null ||
+    citationLocatorRail(loc0816, null, '2026-08-15', false).length === 0;
+  // The extractor itself must not read ordinary prose as a credit line.
+  const okLocNotProse =
+    attributionLocators(
+      'The Fed published a 40-page review; see page 12 for the dissent.\n'
+    ).length === 0 &&
+    attributionLocators('— Marcus Aurelius, Meditations, book 4\n').length === 1;
+
+  console.log(
+    `  [IMP-180] FIRE on the REAL 2026-08-16 v2 ("An Actor Prepares, chapter 10", no quote-locator row): ${okLocFire ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-180] ESCALATES to FAIL once the true row (chapter 6) exists: ${okLocMismatch ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-180] SILENT when a resolved row AGREES with the shipped locator: ${okLocAgrees ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-180] SILENT on 2026-08-14 v2 (Hopkins + the Model name works, not locators): ${okLocSilentWork ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-180] NO STORM across 08-09…08-15 with the date shield OFF: ${okLocNoStorm ? '✓' : '✗'} (${locStorm} finding(s))`
+  );
+  console.log(
+    `  [IMP-180] NO RETRO: same file dated 2026-08-15 is silent: ${okLocNoRetro ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-180] extractor reads credit lines, not prose ("see page 12"): ${okLocNotProse ? '✓' : '✗'}`
+  );
+
   console.log('fact-gate --selftest');
   console.log(
     `  [IMP-081] FIRE: GM "$46 billion in revenue, 22% above last year" is a CRITICAL yoy claim: ${okYoyGmFire ? '✓' : '✗'}`
@@ -5515,7 +5751,14 @@ function selftest(): number {
     okAttrSilentCleanSections &&
     okAttrNoNeverFp &&
     okAttrNoStorm &&
-    okAttrNoRetro;
+    okAttrNoRetro &&
+    okLocFire &&
+    okLocMismatch &&
+    okLocAgrees &&
+    okLocSilentWork &&
+    okLocNoStorm &&
+    okLocNoRetro &&
+    okLocNotProse;
   if (ok) {
     console.log(
       '\n✅ SELFTEST PASS — gate bites the 07-10/07-11/07-13 failures (reuse, transposition, entity misattribution, harmonize-to-published, release-date falsehood) and stays silent on the corrected/healthy cases — including its own two false positives.'
@@ -5874,6 +6117,14 @@ function main() {
   // IMP-172 — THE QUOTE-VERBATIM RAIL (2026-08-14 Critic mandate #2, RC2).
   findings.push(
     ...quoteVerbatimRail(truth, briefDate, requireResolved).map(f => ({
+      check: f.check,
+      severity: f.severity as any,
+      message: f.message,
+    }))
+  );
+  // IMP-180 — THE CITATION-LOCATOR RAIL (2026-08-16 Critic mandate #2, RC2).
+  findings.push(
+    ...citationLocatorRail(body, truth, briefDate, requireResolved).map(f => ({
       check: f.check,
       severity: f.severity as any,
       message: f.message,

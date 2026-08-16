@@ -408,6 +408,103 @@ const SET_SIZE_NOUN_RE =
 // `rangeAscends` proves the two numerals are a real low→high pair.
 const RANGE_PRINTED_RE =
   /\b(\d[\d,.]*)\s*(?:to|–|—)\s*(\d[\d,.]*)\b|\bbetween\s+(\d[\d,.]*)\s+and\s+(\d[\d,.]*)\b/i;
+// ---------------------------------------------------------------------------
+// IMP-181 — SINGLE-INSTANCE GENERALIZATION (2026-08-16 Critic mandate #3, RC2).
+//
+// AI&T-1 led with: "...on the right one AN OPEN-WEIGHT MODEL runs about 25 percent more expensive
+// than the frontier." The bullet's own evidence, quoted verbatim by the bullet: "...on that basis
+// K3 comes out roughly 25 percent more expensive." ONE named model in the evidence; an INDEFINITE
+// CATEGORY in the lead. The unit also switched sets between "open-weight" (lead) and "open-source"
+// (body). ceiling-lint exited 0 with zero FLAGs, because its pricing rung asks whether a MAGNITUDE
+// IS PRESENT and never whether the magnitude's SUBJECT is the subject the evidence measured.
+//
+// The lead sentence is the one that gets quoted, screenshotted and remembered. A lead broader than
+// its evidence is not a rounding error in emphasis; it is a different claim, and the wider one is
+// the one that travels.
+//
+// UNRESOLVED-FACT, NEVER FAIL: whether a second instance exists is a browser question and the
+// evening has no browser (ESC-013 orphan-input discipline). ceiling-lint is advisory by design.
+//
+// THE ESCAPE HATCH IS THE FIX: name the instance in the lead, or name a second instance in the
+// evidence. Both make the sentence truer, neither costs a word of substance.
+const INDEFINITE_CATEGORY_RE =
+  /\b(an?)\s+([a-z]+(?:-[a-z]+)*\s+)?(model|sovereign|bank|issuer|index|lender|miner|utility|insurer|exchange|chipmaker)\b/i;
+const MAGNITUDE_RE =
+  /\b\d+(?:\.\d+)?\s*(?:percent|%|basis points|bps|times|x\b)|\$\s?\d/i;
+
+/** Capitalized or alphanumeric product/company tokens — the "instances" a category could have.
+ *  Sentence-initial words and a stoplist of connectives are excluded so ordinary prose does not
+ *  read as a roll-call of names. */
+const INSTANCE_STOP = new Set([
+  'The','A','An','But','And','So','That','This','These','Those','It','Its','His','Her','Their',
+  'He','She','They','We','You','I','In','On','At','By','For','From','With','As','If','When',
+  'What','Which','Who','No','Not','Every','Each','One','Two','Three','Four','Five','Both',
+  'Investment','Grade','Because','After','Before','While','Since','Until','Though','Although',
+  'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','January','February',
+  'March','April','May','June','July','August','September','October','November','December',
+]);
+export function instanceNames(sentence: string): string[] {
+  const out = new Set<string>();
+  const words = sentence.split(/\s+/);
+  for (let i = 0; i < words.length; i++) {
+    const raw = words[i]!.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9.]+$/g, '');
+    if (!raw) continue;
+    if (i === 0) continue; // sentence-initial capitalization proves nothing
+    // "K3", "GPT-5", "Gemini" — a capital followed by letters/digits, or a letter+digit code.
+    if (!/^[A-Z][A-Za-z0-9]*(?:-[A-Z0-9][A-Za-z0-9]*)?$/.test(raw)) continue;
+    if (INSTANCE_STOP.has(raw)) continue;
+    out.add(raw);
+  }
+  return [...out];
+}
+
+/** Split a bullet into its bolded LEAD sentence and the body that follows it. */
+export function leadAndBody(bulletText: string): { lead: string; body: string } {
+  const m = bulletText.match(/^\*\*([\s\S]*?)\*\*\s*([\s\S]*)$/);
+  if (!m) return { lead: bulletText, body: '' };
+  return { lead: m[1]!.trim(), body: m[2]!.trim() };
+}
+
+export function checkSingleInstanceGeneralization(bullets: Bullet[]): Flag[] {
+  const flags: Flag[] = [];
+  for (const b of bullets) {
+    const { lead, body } = leadAndBody(b.text);
+    if (!body) continue;
+    const cat = lead.match(INDEFINITE_CATEGORY_RE);
+    if (!cat) continue; // the lead names its subject, or names no category — silent
+    if (!MAGNITUDE_RE.test(lead)) continue; // a category without a number generalizes nothing checkable
+
+    // Find the magnitude the lead carries, then read the body sentence(s) that carry the SAME
+    // magnitude — that is the evidence the lead is standing on, and the only place worth counting.
+    const mag = lead.match(/\b\d+(?:\.\d+)?\s*(?:percent|%)/i)?.[0];
+    if (!mag) continue;
+    const magNum = mag.match(/\d+(?:\.\d+)?/)![0];
+    const support = body
+      .split(/(?<=[.?!])\s+/)
+      .filter(sn => new RegExp(`\\b${magNum}\\b`).test(sn));
+    if (!support.length) continue; // the magnitude is not restated; a different check's business
+
+    const named = new Set<string>();
+    for (const sn of support) for (const n of instanceNames(sn)) named.add(n);
+    if (named.size !== 1) continue; // 0 = nothing to count · ≥2 = the escape hatch, honoured
+
+    const only = [...named][0]!;
+    const phrase = cat[0].trim();
+    flags.push({
+      check: 'single-instance-generalization',
+      where: b.section,
+      message:
+        `UNRESOLVED-FACT — the lead generalizes to "${phrase}" while the evidence for its ${mag} names ` +
+        `exactly ONE instance (${only}). A lead may not be broader than its evidence: the lead sentence is ` +
+        `the one that gets quoted, so the wider claim is the one that travels. Name the instance in the lead ` +
+        `("${only} runs about ${mag}…"), or name a second instance in the body. RECEIPT (2026-08-16): AI&T-1 ` +
+        `shipped "an open-weight model runs about 25 percent more expensive" off a single K3 measurement — ` +
+        `and switched sets between "open-weight" in the lead and "open-source" in the body.`,
+    });
+  }
+  return flags;
+}
+
 function printsRange(text: string): boolean {
   for (const m of text.matchAll(new RegExp(RANGE_PRINTED_RE, 'gi'))) {
     const lo = parseFloat((m[1] ?? m[3] ?? '').replace(/,/g, ''));
@@ -515,6 +612,7 @@ function lint(brief: string): Flag[] {
   flags.push(...checkCcDealMagnitude(brief)); // IMP-099 (restored)
   flags.push(...checkCcPricingRung(brief)); // IMP-108 (restored)
   flags.push(...checkModelCanonicalExample(brief)); // IMP-103 (restored)
+  flags.push(...checkSingleInstanceGeneralization(bullets)); // IMP-181
   // IMP-168 is truth-file coupled, so main() supplies the keys; lint() runs it with an empty
   // set, which is the strictest reading (no rows = every selection undisclosed).
   return flags;
@@ -879,6 +977,76 @@ function selftest(): number {
       `[IMP-112] --strict-model ${shouldFire ? 'FIRES' : 'SILENT'} on the REAL published ${d} Model${!shouldFire && v.length ? ` (got: ${v.map(f => f.message.slice(0, 40)).join(', ')})` : ''}`
     );
   }
+
+
+  // ── IMP-181 (08-16 Critic mandate #3, RC2): a lead may not be broader than its evidence ──
+  // The mandate's own acceptance list, every leg measured on real v2 files.
+  const sig16 = path.join(process.cwd(), 'daily-briefs/2026-08-16-v2.md');
+  const sig16f = fs.existsSync(sig16)
+    ? checkSingleInstanceGeneralization(
+        sixBullets(fs.readFileSync(sig16, 'utf8'))
+      )
+    : [];
+  assert(
+    !fs.existsSync(sig16) ||
+      sig16f.some(f => /AI\s*&\s*Tech/i.test(f.where) && /K3/.test(f.message)),
+    '[IMP-181] FIRES on the real 08-16 AI&T-1 — indefinite "an open-weight model" + 25 percent, body names only K3'
+  );
+  assert(
+    !fs.existsSync(sig16) ||
+      !sig16f.some(f => /Companies\s*&\s*Crypto/i.test(f.where)),
+    '[IMP-181] SILENT on 08-16 C&C-1 — the lead says "Four companies" and the body names four (the clean negative inside the same brief)'
+  );
+  assert(
+    !fs.existsSync(sig16) || sig16f.length === 1,
+    `[IMP-181] exactly ONE finding in the whole 08-16 brief (AI&T-3 names Ben Moll and the wager specifically)${sig16f.length !== 1 ? ` (got ${sig16f.length}: ${sig16f.map(f => f.where).join(', ')})` : ''}`
+  );
+  // NO STORM across the held-out window the mandate named.
+  let sigStorm = 0;
+  for (const d of ['09', '10', '11', '12', '13', '14', '15']) {
+    const fp = path.join(process.cwd(), `daily-briefs/2026-08-${d}-v2.md`);
+    if (fs.existsSync(fp))
+      sigStorm += checkSingleInstanceGeneralization(
+        sixBullets(fs.readFileSync(fp, 'utf8'))
+      ).length;
+  }
+  assert(
+    sigStorm <= 2,
+    `[IMP-181] NO STORM across 08-09…08-15 v2 (${sigStorm} finding(s), ceiling 2)`
+  );
+  // THE ESCAPE HATCH, proved rather than asserted: the SAME firing prose goes silent the moment
+  // the lead names the instance it measured. A gate whose escape hatch is untested is a gate that
+  // only knows how to punish.
+  const sigFiring = [
+    {
+      section: 'AI & Tech',
+      text: '**Warren Pies says the AI price war is measured on the wrong denominator, and on the right one an open-weight model runs about 25 percent more expensive than the frontier.** His post of 14 August: on cost per task K3 comes out roughly 25 percent more expensive.',
+    },
+  ];
+  const sigRepaired = [
+    {
+      section: 'AI & Tech',
+      text: '**Warren Pies says the AI price war is measured on the wrong denominator, and on the right one K3 runs about 25 percent more expensive than the frontier.** His post of 14 August: on cost per task K3 comes out roughly 25 percent more expensive.',
+    },
+  ];
+  const sigTwo = [
+    {
+      section: 'AI & Tech',
+      text: '**On the right denominator an open-weight model runs about 25 percent more expensive than the frontier.** On cost per task K3 comes out roughly 25 percent more expensive, and Qwen lands within a point of the same 25 percent gap.',
+    },
+  ];
+  assert(
+    checkSingleInstanceGeneralization(sigFiring).length === 1,
+    '[IMP-181] FIRES on the reconstructed shipped lead (the control for the two hatches below)'
+  );
+  assert(
+    checkSingleInstanceGeneralization(sigRepaired).length === 0,
+    '[IMP-181] ESCAPE HATCH A — SILENT once the lead names the instance it measured'
+  );
+  assert(
+    checkSingleInstanceGeneralization(sigTwo).length === 0,
+    '[IMP-181] ESCAPE HATCH B — SILENT once the body names a second instance'
+  );
 
   // Real-artifact both-directions: the shipped 07-31 v2 (mechanical PASS clean) must carry 0 of the
   // three restored flags — Apple/Coinbase/DTCC are not deals; C&C cites 2011/2000 precedents; the

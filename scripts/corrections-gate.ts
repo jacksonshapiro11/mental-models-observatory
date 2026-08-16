@@ -117,6 +117,107 @@ export function checkRow(
   return fails;
 }
 
+/* ---------------------------------------------------------------------------
+ * IMP-179 — THE FORMAT SEAM AND THE ID SEAM (2026-08-16, brief-morning receipt, RC1).
+ *
+ * WHAT HAPPENED THIS MORNING. The Sunday Morning Truth Gate proved two published briefs false
+ * and logged the corrections as PROSE BULLETS — matching the style of the entries already sitting
+ * under "Withdrawn" — instead of pipe-table rows. `parseLedger` requires a line to start with `|`
+ * and to carry >=8 cells, so those entries were INVISIBLE: the gate printed
+ *   "corrections-gate — 9 logged correction(s) · 0 open"
+ * while `2026-08-14-light.md` still carried a proven falsehood on the live reader surface.
+ *
+ * That is the 2026-07-11 blindness arriving through a FORMAT seam instead of a transport seam.
+ * v1 read the wrong COPY (working tree, not origin/main). v2 fixed the copy and still reads only
+ * one FORM. A gate whose parser silently drops what it cannot parse reports "0 open" for
+ * "0 found", and those two sentences mean opposite things.
+ *
+ * ...and in the same session the ids COLLIDED: COR-006 and COR-007 were allocated to the new
+ * corrections while both were already taken by the 07-17 TSMC and 07-21 GM rows, because nothing
+ * anywhere allocates or validates an id. A ledger whose primary key is assigned by eyeball is a
+ * ledger where two different falsehoods can share one row's provenance.
+ *
+ * TWO LEGS, both SILENT on the repaired ledger as it stands today, both FIRING on the exact
+ * states this morning produced:
+ *   PROSE-ONLY  — a COR id that appears in a prose bullet but has NO pipe-table row is a
+ *                 correction this gate cannot check. Unparseable is not the same as absent, and
+ *                 the difference is a reader being lied to.
+ *   ID INTEGRITY — table ids must be UNIQUE and CONTIGUOUS from COR-001. A duplicate means two
+ *                 corrections share a key; a gap means a row was allocated and lost.
+ * ------------------------------------------------------------------------- */
+
+/** Ids declared in PROSE (bolded bullets, headings, narrative) rather than in the pipe table.
+ *  We only count a mention that LOOKS LIKE A DECLARATION — a bolded id at the head of a bullet or
+ *  a heading — so ordinary cross-references ("see COR-001") are not mistaken for new entries. */
+export function parseProseIds(md: string): string[] {
+  const out = new Set<string>();
+  for (const line of md.split('\n')) {
+    const t = line.trim();
+    if (t.startsWith('|')) continue; // the table is the parseable form; that is the point
+    // "- **COR-010 / COR-011 (logged ...)" · "**COR-005 ...**" · "### COR-012"
+    const m = t.match(/^(?:[-*]\s+)?(?:\*\*|#{1,6}\s*)\s*((?:COR-\d+\s*(?:\/|,|and)?\s*)+)/i);
+    if (!m) continue;
+    for (const id of m[1].match(/COR-\d+/gi) ?? []) out.add(id.toUpperCase());
+  }
+  return [...out];
+}
+
+/** A correction recorded in a form the parser drops is an unchecked correction. */
+export function checkProseOnly(rows: Row[], md: string): string[] {
+  const tableIds = new Set(rows.map(r => r.id.toUpperCase()));
+  const fails: string[] = [];
+  for (const id of parseProseIds(md)) {
+    if (tableIds.has(id)) continue;
+    fails.push(
+      `${id}: PROSE-ONLY CORRECTION — declared in narrative form with no pipe-table row, so this gate ` +
+        `cannot read its target file, its wrong text or its corrected text, and CANNOT PROVE the reader ` +
+        `is no longer being lied to. Unparseable is not the same as absent. RECEIPT (2026-08-16): two ` +
+        `corrections logged this way printed "0 open" while a proven falsehood was still live in ` +
+        `content/daily-updates/2026-08-14-light.md. Move it into the table: | id | found | brief_file | ` +
+        `\`wrong\` | \`correct\` | source | applied |.`
+    );
+  }
+  return fails;
+}
+
+/** The ledger's primary key must actually be a key. */
+export function checkIdIntegrity(rows: Row[]): string[] {
+  const fails: string[] = [];
+  const seen = new Map<string, string>();
+  for (const r of rows) {
+    const id = r.id.toUpperCase();
+    const prior = seen.get(id);
+    if (prior !== undefined) {
+      fails.push(
+        `${id}: DUPLICATE ID — allocated twice (first found ${prior}, again found ${r.found}). Two different ` +
+          `falsehoods now share one provenance key, so "which correction is COR-${id.slice(4)}" has two answers ` +
+          `and neither is auditable. RECEIPT (2026-08-16): COR-006/COR-007 were re-used for new corrections ` +
+          `while already held by the 07-17 TSMC and 07-21 GM rows, because nothing allocates ids. Renumber the ` +
+          `newer row to the next free id.`
+      );
+      continue;
+    }
+    seen.set(id, r.found);
+  }
+  const nums = [...seen.keys()]
+    .map(k => Number(k.slice(4)))
+    .filter(n => Number.isFinite(n))
+    .sort((a, b) => a - b);
+  if (nums.length) {
+    const missing: number[] = [];
+    for (let n = 1; n <= nums[nums.length - 1]!; n++)
+      if (!nums.includes(n)) missing.push(n);
+    if (missing.length)
+      fails.push(
+        `ID GAP — no table row for ${missing.map(n => `COR-${String(n).padStart(3, '0')}`).join(', ')}, ` +
+          `though higher ids exist. Either the row was allocated and lost, or it lives in prose the parser drops. ` +
+          `A gap is the shape a silently-deleted correction leaves behind; close it or record the withdrawal ` +
+          `as a table row with its wrong/correct literals intact.`
+      );
+  }
+  return fails;
+}
+
 /**
  * Reads the file as it exists on origin/main — the copy the reader actually sees.
  *
@@ -264,6 +365,73 @@ function selftest(): number {
         checkRow(row, () => FIXED).length === 0 &&
         checkRow(row, () => BROKEN).length > 0,
     ],
+    // IMP-179 — THE FORMAT SEAM. This is the literal 2026-08-16 state: the correction exists,
+    // it is written down, a human can read it — and the parser drops it, so the gate says 0 open.
+    [
+      'FAILs on a correction declared in PROSE with no table row (the 08-16 format seam)',
+      true,
+      () =>
+        checkProseOnly(
+          [row],
+          '- **COR-099 / COR-100 (logged 2026-08-16).** The published brief said X; it is false.\n'
+        ).length > 0,
+    ],
+    [
+      'SILENT when the same prose entry ALSO has its table row (commentary, not a new correction)',
+      false,
+      () =>
+        checkProseOnly(
+          [{ ...row, id: 'COR-099' }],
+          '- **COR-099 (logged AND applied 2026-08-16).** Commentary on a row that exists.\n'
+        ).length > 0,
+    ],
+    [
+      'SILENT on an ordinary cross-reference mid-sentence (no storm on prose that merely cites)',
+      false,
+      () =>
+        checkProseOnly([], 'The rule that created this ledger is visible in COR-001 and COR-002.\n')
+          .length > 0,
+    ],
+    // IMP-179 — THE ID SEAM. COR-006/007 were re-used on 08-16 while already held.
+    [
+      'FAILs on a duplicate id (the 08-16 re-use)',
+      true,
+      () =>
+        checkIdIntegrity([
+          { ...row, id: 'COR-006', found: '2026-07-17' },
+          { ...row, id: 'COR-006', found: '2026-08-16' },
+        ]).length > 0,
+    ],
+    [
+      'FAILs on a gap in the id sequence (a row allocated and lost)',
+      true,
+      () =>
+        checkIdIntegrity([
+          { ...row, id: 'COR-001' },
+          { ...row, id: 'COR-003' },
+        ]).length > 0,
+    ],
+    [
+      'SILENT on a unique, contiguous id sequence',
+      false,
+      () =>
+        checkIdIntegrity([
+          { ...row, id: 'COR-001' },
+          { ...row, id: 'COR-002' },
+        ]).length > 0,
+    ],
+    // The live ledger must pass BOTH new legs — green here means the real file is well-formed.
+    [
+      'the LIVE ledger has no prose-only correction and no id collision',
+      false,
+      () => {
+        const p = path.join(process.cwd(), 'system/Corrections_Ledger.md');
+        if (!fs.existsSync(p)) return false;
+        const md = fs.readFileSync(p, 'utf8');
+        const rs = parseLedger(md);
+        return checkProseOnly(rs, md).length + checkIdIntegrity(rs).length > 0;
+      },
+    ],
     [
       'parses the live ledger',
       false,
@@ -313,6 +481,11 @@ function main(): number {
   };
 
   const fails: string[] = [];
+  // IMP-179 — read the FORM and the KEY before reading any copy. A row the parser drops is a
+  // correction nobody checked, and a duplicated id is a correction nobody can find.
+  const ledgerMd = fs.readFileSync(ledgerPath, 'utf8');
+  fails.push(...checkProseOnly(rows, ledgerMd).map(f => `[LEDGER]    ${f}`));
+  fails.push(...checkIdIntegrity(rows).map(f => `[LEDGER]    ${f}`));
   for (const r of rows)
     fails.push(...checkRow(r, readLocal).map(f => `[LOCAL]     ${f}`));
 
