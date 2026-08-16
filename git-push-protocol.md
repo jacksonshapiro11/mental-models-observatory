@@ -86,6 +86,21 @@ So: if you must move a lock, move it out of the repository's `.git` entirely, an
 that `git rev-parse refs/heads/main` still resolves and `ls .git/refs/heads` holds only real branch
 names.
 
+🔴 **BEFORE YOU DELETE A JUNK REF, CHECK WHAT IT POINTS AT.** A renamed `refs/heads/main.lock` holds
+the value main was *about to* be set to, so a junk ref can be the ONLY thing keeping a real commit
+reachable. Run this first, every time:
+
+```bash
+git merge-base --is-ancestor <sha> HEAD && echo "safe to delete" || echo "STOP — unreachable work"
+git branch recovered-<sha> <sha>      # if unreachable: give it a real ref BEFORE deleting anything
+```
+
+**Receipt, 2026-08-16:** `refs/heads/main.lock.stale-1786188190657235913` pointed at `2812706` —
+*gates: IMP-141/142/143/144, the 2026-08-08 Critic mandates*, **768 insertions across four gate
+scripts, not in main's history and not reproduced anywhere else.** Eight days of it existing only
+because a lock file got renamed into `refs/heads/`. A successful `git gc --prune` would have
+destroyed it.
+
 ### Why each step exists
 
 - **`find .git -name "*.lock" -delete`** — Scheduled tasks leave lock files at unpredictable depths (`.git/index.lock`, `.git/HEAD.lock`, `.git/refs/heads/main.lock`). The `rm -f .git/*.lock` approach misses nested locks, and zsh glob errors when `refs/heads/*.lock` has no matches. `find` handles all cases silently.
