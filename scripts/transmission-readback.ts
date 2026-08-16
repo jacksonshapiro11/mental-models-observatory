@@ -57,21 +57,27 @@ const STERNER = `\n\nIMPORTANT: your previous answer reused the brief's own word
  *  a reader who happens to share the writer's background and is a closed door to the freshman the
  *  Clarity Standard names — and nothing in the panel could see that until now.
  *  OWN HASH, so it does not move when READER_TEMPLATE moves. Logged as `assumed_knowledge`.
- *  ACTUATES NOTHING until it reproduces owner complaints. */
+ *  ACTUATES NOTHING until it reproduces owner complaints.
+ *  🔴 REVISED 2026-08-16 by owner ruling 3, and the revision matters: the first version said
+ *  "zero items = CLEAN". A markets brief will essentially never return zero — a nineteen-year-old
+ *  does not know breakeven, free float, cost-to-mine or non-GAAP — so CLEAN was a state the product
+ *  could not reach and the detector would have read as permanently failing, exactly like the
+ *  consequence test on Inner Game. There is no CLEAN now. It reports a COUNT, the terms, and whether
+ *  the sentence could have carried the gloss. The TREND is the signal; owner marks set the good
+ *  number. Template changed, so its hash changed — declared, not silent. */
 const ASSUMED_KNOWLEDGE_TEMPLATE = `You are a smart nineteen-year-old. You are curious and you read carefully, but you have no specialized background in markets, technology, policy or geopolitics, and you have not read anything else this publication has written.
 
-Read the passage below. Your ONLY job is to list what it expects you to already know.
+Read the passage below. Your ONLY job is to report what it expects you to already know.
 
 For each numbered item, list every term of art, concept, mechanism, institution, or background fact that the text USES but does not EXPLAIN in plain words in the sentence that uses it. Include anything you would have to look up to follow the claim. Do not list things you merely find interesting, and do not judge the writing.
 
-If an item assumes nothing you would not already know, write CLEAN for that item.
+For EACH thing you list, add one word: CARRYABLE if a short plain-words gloss could have ridden inside the sentence that used it, or STANDALONE if explaining it would have needed its own sentence.
 
 Output one line per item and nothing else:
-U<n>: CLEAN
-or
-U<n>: <term or fact>; <term or fact>; …
+U<n>: <count> | <term> (CARRYABLE|STANDALONE); <term> (CARRYABLE|STANDALONE); …
 
----
+If an item lists nothing, write:
+U<n>: 0 |
 
 {artifact}`;
 

@@ -61,9 +61,26 @@ const isFixture = (section: string): boolean =>
   FIXTURE_SECTIONS.has(section.trim().toUpperCase());
 
 /** A2, owner ruling 2026-08-16: 70 core / 15 developing / 15 reach over DISCRETIONARY units. */
-const MIX_TARGET = { core: 70, developing: 15, reach: 15 };
-/** B1, owner decree 2026-08-16: minimum 2 PAID reach picks per brief. Absolute floor. */
-const REACH_FLOOR = 2;
+/** A2, RESTATED by closing ruling 2 (2026-08-16): 70 core / 12 developing / 18 reach over
+ *  DISCRETIONARY units. Restated because floor-dominates plus a 16-19 band puts reach near 18 percent
+ *  every night, and a target you knowingly miss nightly teaches whoever reads the log to skim it. */
+const MIX_TARGET = { core: 70, developing: 12, reach: 18 };
+/** B1, owner ruling 2026-08-16 (revised the same day from 2 to 3): minimum THREE paid reach picks
+ *  per brief, absolute. Two was below current reality — the last 30 days already averaged 1.9 — and
+ *  a floor below where you already stand is a ceiling in disguise. NOTE the arithmetic this creates:
+ *  3 picks inside the 15-18 unit band is 17-20% reach against a signed 15% target, so the floor and
+ *  the mix cannot both be satisfied exactly. THE FLOOR DOMINATES; the tally prints both so the gap
+ *  is visible rather than argued. */
+const REACH_FLOOR = 3;
+
+/** VOLUME, owner ruling 2026-08-16: discretionary units per brief, signed band.
+ *  🔴 THE DENOMINATOR IS NAMED INLINE, ALWAYS: DISCRETIONARY units under the A1 fixture rule.
+ *  Baseline on that denominator: May 19.7, last 30 days 12.5. Modal target 17.
+ *  (An earlier 15-18 band and a 17.7 / 10.5 baseline came from the pre-A1 denominator, which also
+ *  removed The Take and Discovery. Same measurement, different denominator, different meaning — which
+ *  is why no number is written anywhere in this system without its denominator beside it.)
+ *  Restoration is MORE, SHORTER, PLAINER units at a held word budget — not a longer brief. */
+const UNIT_BAND = { lo: 16, hi: 19, modal: 17 };
 const CORE_SECTIONS = new Set([
   'MARKETS & MACRO',
   'COMPANIES & CRYPTO',
@@ -550,7 +567,13 @@ export function tallyLine(
     `SELECTION: ${disc.length} discretionary units (${units.length - disc.length} fixtures) — ` +
     `${parts.join(', ') || 'no verdicts'} | mix ${pct('core')}/${pct('developing')}/${pct('reach')} ` +
     `vs ${MIX_TARGET.core}/${MIX_TARGET.developing}/${MIX_TARGET.reach} | reach ${reach} vs floor ${REACH_FLOOR}` +
-    (reach < REACH_FLOOR ? ' BELOW-FLOOR' : '')
+    (reach < REACH_FLOOR ? ' BELOW-FLOOR' : '') +
+    ` | volume ${disc.length} vs band ${UNIT_BAND.lo}-${UNIT_BAND.hi} discretionary (modal ${UNIT_BAND.modal})` +
+    (disc.length < UNIT_BAND.lo
+      ? ' BELOW-BAND'
+      : disc.length > UNIT_BAND.hi
+        ? ' ABOVE-BAND'
+        : '')
   );
 }
 
@@ -727,11 +750,17 @@ function selftest(): number {
   );
   t(
     'tally reports the mix against the target',
-    tallyLine('X', u, good).includes('vs 70/15/15')
+    tallyLine('X', u, good).includes('vs 70/12/18')
   );
   t(
     'tally flags a brief under the reach floor',
-    tallyLine('X', u, good).includes('BELOW-FLOOR')
+    tallyLine('X', u, good).includes('reach 0 vs floor 3') &&
+      tallyLine('X', u, good).includes('BELOW-FLOOR')
+  );
+  t(
+    'tally flags a brief under the volume band',
+    tallyLine('X', u, good).includes('vs band 16-19') &&
+      tallyLine('X', u, good).includes('BELOW-BAND')
   );
 
   // template discipline
