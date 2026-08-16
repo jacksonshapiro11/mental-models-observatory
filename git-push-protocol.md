@@ -67,6 +67,25 @@ git pull --rebase origin main
 
 See `REPO_WORKFLOW.md` for the full dual-path explanation.
 
+### 🔴 E1 — WHERE A STALE LOCK MAY GO (owner rule 2026-08-16)
+
+`rm` is refused inside a Cowork-mounted working folder, so a cloud session cannot run step 1 as
+written. **`mv` is permitted, and moving a lock aside is equivalent to deleting it** — but the
+destination is not free:
+
+**A stale lock moves ONLY to a destination OUTSIDE `.git` — `/tmp/` or `_to_delete/`. Nothing is ever
+renamed or parked INSIDE `.git`.**
+
+**Receipt:** git's own fallback does exactly the forbidden thing. When it cannot unlink
+`.git/refs/heads/main.lock` it renames it to `main.lock.stale-<nanoseconds>` **in place**, and
+`refs/heads/` is a directory where every filename is parsed as a ref. The junk refs accumulate, `git
+gc` and `git repack` abort on `bad object refs/heads/main.lock.stale-…`, and fetch stays broken until
+someone cleans it out by hand — **312 files, two days.**
+
+So: if you must move a lock, move it out of the repository's `.git` entirely, and check afterwards
+that `git rev-parse refs/heads/main` still resolves and `ls .git/refs/heads` holds only real branch
+names.
+
 ### Why each step exists
 
 - **`find .git -name "*.lock" -delete`** — Scheduled tasks leave lock files at unpredictable depths (`.git/index.lock`, `.git/HEAD.lock`, `.git/refs/heads/main.lock`). The `rm -f .git/*.lock` approach misses nested locks, and zsh glob errors when `refs/heads/*.lock` has no matches. `find` handles all cases silently.

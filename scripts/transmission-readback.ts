@@ -50,6 +50,31 @@ U<n> CLAIM: … | WHY: …
 
 const STERNER = `\n\nIMPORTANT: your previous answer reused the brief's own wording. State each claim in COMPLETELY different words. Do not reuse the text's phrasing. Proper nouns and figures may be repeated; nothing else may be.`;
 
+/** 🔴 FROZEN — THE ASSUMED-KNOWLEDGE READER (owner decree 2026-08-16, C2). ADVISORY ONLY.
+ *  Joins the panel BESIDE the hurried reader; it replaces nobody. The calibrated readers ask "did
+ *  the meaning arrive." The hurried reader asks "did it arrive in three minutes." This one asks a
+ *  question neither can: "what did the writer assume I already knew." A unit transmits perfectly to
+ *  a reader who happens to share the writer's background and is a closed door to the freshman the
+ *  Clarity Standard names — and nothing in the panel could see that until now.
+ *  OWN HASH, so it does not move when READER_TEMPLATE moves. Logged as `assumed_knowledge`.
+ *  ACTUATES NOTHING until it reproduces owner complaints. */
+const ASSUMED_KNOWLEDGE_TEMPLATE = `You are a smart nineteen-year-old. You are curious and you read carefully, but you have no specialized background in markets, technology, policy or geopolitics, and you have not read anything else this publication has written.
+
+Read the passage below. Your ONLY job is to list what it expects you to already know.
+
+For each numbered item, list every term of art, concept, mechanism, institution, or background fact that the text USES but does not EXPLAIN in plain words in the sentence that uses it. Include anything you would have to look up to follow the claim. Do not list things you merely find interesting, and do not judge the writing.
+
+If an item assumes nothing you would not already know, write CLEAN for that item.
+
+Output one line per item and nothing else:
+U<n>: CLEAN
+or
+U<n>: <term or fact>; <term or fact>; …
+
+---
+
+{artifact}`;
+
 /** 🔴 FROZEN — THE HURRIED READER (added 2026-08-10, FINAL WORK ORDER item 4). ADVISORY ONLY.
  *  The success criterion is "understood in one reading by a smart reader IN A HURRY"; the three
  *  calibrated readers measure the careful half. This fourth blind reader measures the hurried half.
@@ -88,6 +113,8 @@ type Meta = {
   units: Unit[];
   hurriedTemplateHash?: string; // optional: absent on runs prepared before 2026-08-10
   hurriedPromptHash?: string;
+  assumedKnowledgeTemplateHash?: string; // optional: absent on runs prepared before 2026-08-16
+  assumedKnowledgePromptHash?: string;
 };
 type HurriedGrade = { grade: Grade; sowhat?: string };
 type Grade = 'TRANSMITTED' | 'DISTORTED' | 'LOST';
@@ -263,11 +290,13 @@ function cmdPrepare(light: string, claimsPath: string): void {
     die('prompt isolation assertion failed');
 
   const hurriedPrompt = HURRIED_TEMPLATE.replace('{artifact}', art.trim());
+  const akPrompt = ASSUMED_KNOWLEDGE_TEMPLATE.replace('{artifact}', art.trim());
 
   fs.mkdirSync(rbPath(date), { recursive: true });
   fs.writeFileSync(rbPath(date, 'artifact.txt'), art.trim());
   fs.writeFileSync(rbPath(date, 'reader-prompt.txt'), prompt);
   fs.writeFileSync(rbPath(date, 'hurried-prompt.txt'), hurriedPrompt);
+  fs.writeFileSync(rbPath(date, 'assumed-knowledge-prompt.txt'), akPrompt);
   fs.writeFileSync(rbPath(date, 'source.md'), md);
   const meta: Meta = {
     date,
@@ -277,6 +306,8 @@ function cmdPrepare(light: string, claimsPath: string): void {
     units,
     hurriedTemplateHash: sha(HURRIED_TEMPLATE),
     hurriedPromptHash: sha(hurriedPrompt),
+    assumedKnowledgeTemplateHash: sha(ASSUMED_KNOWLEDGE_TEMPLATE),
+    assumedKnowledgePromptHash: sha(akPrompt),
   };
   fs.writeFileSync(rbPath(date, 'meta.json'), JSON.stringify(meta, null, 2));
   fs.writeFileSync(
@@ -301,7 +332,13 @@ function cmdPrepare(light: string, claimsPath: string): void {
   console.log(
     `  → ALSO spawn 1 HURRIED Reader [ADVISORY — never counted toward actuation] on ${rbPath(date, 'hurried-prompt.txt')} (same isolation: pass the file's TEXT); save its reply to ${rbPath(date, 'readback-hurried.txt')}; grade it to ${rbPath(date, 'hurried-grades.json')} as {"<unit-id>":{"grade":"TRANSMITTED|DISTORTED|LOST","sowhat":"OK|MISSING|WRONG"}}`
   );
+  console.log(
+    `  → ALSO spawn 1 ASSUMED-KNOWLEDGE Reader [ADVISORY — C2, never counted toward actuation] on ${rbPath(date, 'assumed-knowledge-prompt.txt')} (same isolation: pass the file's TEXT); save its reply to ${rbPath(date, 'readback-assumed-knowledge.txt')}; it returns a LIST OF TERMS, never a grade`
+  );
   console.log(`  HURRIED_HASH ${meta.hurriedTemplateHash}`);
+  console.log(
+    `  ASSUMED_KNOWLEDGE_HASH ${meta.assumedKnowledgeTemplateHash}   [C2 · advisory · actuates nothing]`
+  );
 }
 
 function cmdCheck(date: string): void {
@@ -875,6 +912,22 @@ function selftest(): number {
     g[2]!.every(x => x === 'TRANSMITTED')
   );
 
+  // 🔴 C2 — the assumed-knowledge reader is a SEPARATE instrument with its own hash
+  t(
+    'assumed-knowledge template has exactly one slot',
+    (ASSUMED_KNOWLEDGE_TEMPLATE.match(/\{artifact\}/g) ?? []).length === 1
+  );
+  t(
+    'assumed-knowledge hash differs from the reader and hurried hashes',
+    sha(ASSUMED_KNOWLEDGE_TEMPLATE) !== sha(READER_TEMPLATE) &&
+      sha(ASSUMED_KNOWLEDGE_TEMPLATE) !== sha(HURRIED_TEMPLATE)
+  );
+  t(
+    'assumed-knowledge asks for terms, never for a grade',
+    /does not EXPLAIN/.test(ASSUMED_KNOWLEDGE_TEMPLATE) &&
+      !/TRANSMITTED|DISTORTED|LOST/.test(ASSUMED_KNOWLEDGE_TEMPLATE)
+  );
+
   // prompt isolation
   const rendered = READER_TEMPLATE.replace('{artifact}', 'ARTIFACT');
   t(
@@ -911,8 +964,10 @@ function selftest(): number {
   );
   t(
     'finalFor computes from the three calibrated grades alone',
-    finalFor({ grades: ['TRANSMITTED', 'TRANSMITTED', 'TRANSMITTED'] }, false) ===
-      'PASS' &&
+    finalFor(
+      { grades: ['TRANSMITTED', 'TRANSMITTED', 'TRANSMITTED'] },
+      false
+    ) === 'PASS' &&
       finalFor({ grades: ['DISTORTED', 'DISTORTED', 'DISTORTED'] }, false) ===
         'RESIDUAL' &&
       finalFor({ grades: ['DISTORTED', 'DISTORTED', 'DISTORTED'] }, true) ===
@@ -921,7 +976,12 @@ function selftest(): number {
         'PASS'
   );
   const hrow = attachHurried(
-    { final: finalFor({ grades: ['TRANSMITTED', 'TRANSMITTED', 'TRANSMITTED'] }, false) },
+    {
+      final: finalFor(
+        { grades: ['TRANSMITTED', 'TRANSMITTED', 'TRANSMITTED'] },
+        false
+      ),
+    },
     { grade: 'LOST' }
   );
   t(

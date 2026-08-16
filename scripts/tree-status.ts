@@ -272,7 +272,9 @@ function selftest(): number {
   );
 
   const total = 9;
-  console.log(`\ntree-status selftest — ${total - fails}/${total} assertions passed`);
+  console.log(
+    `\ntree-status selftest — ${total - fails}/${total} assertions passed`
+  );
   if (fails) {
     console.error('✗ SELFTEST FAILED');
     return 1;
@@ -281,6 +283,40 @@ function selftest(): number {
     '✓ tree-status verified in BOTH directions — the false RED is gone and truncation still bites.'
   );
   return 0;
+}
+
+/** 🔴 E2 (owner rule 2026-08-16): every dirty path is attributed to an owner. An unattributed path
+ *  is how two writers collide in one tree without either of them noticing — and this week the tree
+ *  gained six scratch files nobody claimed. Attribution is a HEURISTIC on path shape, and it says
+ *  so: `unattributed` is a real answer and it is the one that should prompt a question. */
+const OWNERS: { re: RegExp; owner: string }[] = [
+  { re: /^content\/daily-updates\/weekly\//, owner: 'weekly-publish' },
+  { re: /^content\/daily-updates\//, owner: 'publish-brief.py' },
+  { re: /^daily-briefs\//, owner: 'evening-pipeline' },
+  { re: /^daily-intelligence\//, owner: 'intel-sweep' },
+  { re: /^system\//, owner: 'working-session' },
+  { re: /(^|\/)_[a-z0-9_-]+\.(md|ts|json)$/i, owner: 'SCRATCH-unattributed' },
+  { re: /\.scratch-ignore$/, owner: 'SCRATCH-unattributed' },
+  { re: /^scripts\/.*-gate\.(ts|sh)$/, owner: 'gates-session' },
+  { re: /^scripts\//, owner: 'code' },
+  {
+    re: /^(WORK_ORDER|HANDOFF|SELECTION|HINDSIGHT|BODY|QUEUE)_/,
+    owner: 'working-session',
+  },
+  { re: /^factcheck\.json$/, owner: 'fact-check-run' },
+  { re: /^CLAUDE\.md$/, owner: 'doctrine' },
+];
+function attribute(path: string): string {
+  for (const o of OWNERS) if (o.re.test(path)) return o.owner;
+  return 'unattributed';
+}
+function mtime(path: string): string {
+  try {
+    const d = fs.statSync(path).mtime;
+    return d.toISOString().slice(0, 16).replace('T', ' ');
+  } catch {
+    return '—';
+  }
 }
 
 function main(): number {
@@ -295,6 +331,9 @@ function main(): number {
     console.log('\n✅ TREE GREEN — nothing dirty.');
     return 0;
   }
+  console.log(
+    '  status  path'.padEnd(62) + 'owner'.padEnd(23) + 'last written'
+  );
   for (const v of [
     'PUBLISHED-ABSENT',
     'PUBLISHED-DIVERGED',
@@ -306,7 +345,10 @@ function main(): number {
     const g = rows.filter(r => r.verdict === v);
     if (!g.length) continue;
     console.log(`\n  ${v} (${g.length}) — ${g[0]!.note}`);
-    for (const r of g) console.log(`    ${r.status} ${r.path}`);
+    for (const r of g)
+      console.log(
+        `    ${r.status} ${r.path.padEnd(52)} ${attribute(r.path).padEnd(22)} ${mtime(r.path)}`
+      );
   }
   if (red.length) {
     console.error(

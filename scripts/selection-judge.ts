@@ -42,6 +42,41 @@ import * as crypto from 'node:crypto';
 const SEL_DIR = '.selection';
 const LEDGER = 'system/selection-ledger.json';
 const STANDARD = 'system/Selection_Standard.md';
+
+/** 🔴 A1, owner ruling 2026-08-16. The Selection Standard governs DISCRETIONARY PICKS ONLY.
+ *  A fixture runs every night by format; nobody chooses it, and grading it as a selection decision
+ *  measures the format instead of the selecting. Fixtures are graded FIXTURE and excluded from every
+ *  selection denominator.
+ *  NOTE, because it is not obvious and it moves the measured mix by 6 points: DISCOVERY and THE TAKE
+ *  are NOT on the owner's list, so they stay DISCRETIONARY. Discovery counts as a reach pick. */
+const FIXTURE_SECTIONS = new Set([
+  'INNER GAME',
+  'THE MEDITATION',
+  'THE MODEL',
+  'THE CLOSE',
+  'MEDITATION',
+  'CLOSE',
+]);
+const isFixture = (section: string): boolean =>
+  FIXTURE_SECTIONS.has(section.trim().toUpperCase());
+
+/** A2, owner ruling 2026-08-16: 70 core / 15 developing / 15 reach over DISCRETIONARY units. */
+const MIX_TARGET = { core: 70, developing: 15, reach: 15 };
+/** B1, owner decree 2026-08-16: minimum 2 PAID reach picks per brief. Absolute floor. */
+const REACH_FLOOR = 2;
+const CORE_SECTIONS = new Set([
+  'MARKETS & MACRO',
+  'COMPANIES & CRYPTO',
+  'AI & TECH',
+  'GEOPOLITICS',
+]);
+const DEVELOPING_SECTIONS = new Set(['THE SIGNAL', 'THE LINE']);
+export function mixClass(section: string): 'core' | 'developing' | 'reach' {
+  const S = section.trim().toUpperCase();
+  if (CORE_SECTIONS.has(S) || S === 'THE TAKE') return 'core';
+  if (DEVELOPING_SECTIONS.has(S)) return 'developing';
+  return 'reach';
+}
 const TAKE_LEDGER = 'system/take-ledger.json';
 const ARCHIVE = 'content/daily-updates';
 const PRIOR_DAYS_DEFAULT = 30;
@@ -94,11 +129,13 @@ type Unit = {
   section: string;
   lead: string;
   fingerprint: string;
+  fixture: boolean;
+  mix: 'core' | 'developing' | 'reach';
   start: number;
   end: number;
   sha: string;
 };
-type Verdict = 'SOUND' | 'REPEAT' | 'UNPAID-REACH' | 'NO-STAKES';
+type Verdict = 'SOUND' | 'REPEAT' | 'UNPAID-REACH' | 'NO-STAKES' | 'FIXTURE';
 type Row = {
   verdict: Verdict;
   belief_change?: string;
@@ -206,6 +243,8 @@ export function selectionUnits(md: string): Unit[] {
       section,
       lead,
       fingerprint: fingerprint(text),
+      fixture: isFixture(section),
+      mix: mixClass(section),
       start,
       end: start + text.length,
       sha: sha(text),
@@ -331,10 +370,8 @@ function cmdPrepare(briefPath: string, priorDays: number): void {
   }
   tagged += md.slice(cursor);
 
-  const prompt = JUDGE_TEMPLATE.replace(
-    '{standard}',
-    fs.readFileSync(STANDARD, 'utf-8')
-  )
+  const standardText = fs.readFileSync(STANDARD, 'utf-8');
+  const prompt = JUDGE_TEMPLATE.replace('{standard}', standardText)
     .replace('{priors}', lines.join('\n') || '(none)')
     .replace('{takemoves}', moves || '(none)')
     .replace('{takehistory}', hist || '(none)')
@@ -351,6 +388,11 @@ function cmdPrepare(briefPath: string, priorDays: number): void {
         source: briefPath,
         units: units.length,
         templateHash: sha(JUDGE_TEMPLATE),
+        // 🔴 D1. The standard is interpolated, so a standard swap changed every grade while the
+        // template hash sat still — on 2026-08-16 that silently moved SOUND from 97.1% to 75.2%.
+        // The INSTRUMENT is template PLUS standard, and the instrument is what gets hashed.
+        standardVersion: sha(standardText),
+        instrumentHash: sha(JUDGE_TEMPLATE + '\u0000' + standardText),
         promptHash: sha(prompt),
         priorFiles: files.length,
         priorLeads: lines.length,
@@ -372,11 +414,20 @@ function cmdPrepare(briefPath: string, priorDays: number): void {
     `  TEMPLATE_HASH ${sha(JUDGE_TEMPLATE)}   PROMPT_HASH ${sha(prompt)}`
   );
   console.log(
+    `  INSTRUMENT_HASH ${sha(JUDGE_TEMPLATE + '\u0000' + standardText)}   STANDARD_VERSION ${sha(standardText)}   (D1: template + standard, so a standard swap can never be silent)`
+  );
+  console.log(
     `  → ${selPath(date, 'judge-prompt.txt')} — give this to the judge and nothing else`
   );
 }
 
-const VERDICTS: Verdict[] = ['SOUND', 'REPEAT', 'UNPAID-REACH', 'NO-STAKES'];
+const VERDICTS: Verdict[] = [
+  'SOUND',
+  'REPEAT',
+  'UNPAID-REACH',
+  'NO-STAKES',
+  'FIXTURE',
+];
 
 /** 🔴 THE GRAMMAR IS THE STANDARD, MECHANISED. A verdict whose evidence is missing is not a verdict. */
 export function validate(units: Unit[], v: Record<string, Row>): string[] {
@@ -388,6 +439,16 @@ export function validate(units: Unit[], v: Record<string, Row>): string[] {
     if (!ids.has(id)) errs.push(`verdict names unknown unit "${id}"`);
     if (!VERDICTS.includes(r.verdict))
       errs.push(`${id}: bad verdict "${r.verdict}"`);
+    // 🔴 A1 both directions: a fixture must be graded FIXTURE, and nothing else may be.
+    const u = units.find(x => x.id === id);
+    if (u?.fixture && r.verdict !== 'FIXTURE')
+      errs.push(
+        `${id}: section "${u.section}" is a FIXTURE and must be graded FIXTURE, not ${r.verdict}`
+      );
+    if (u && !u.fixture && r.verdict === 'FIXTURE')
+      errs.push(
+        `${id}: section "${u.section}" is a discretionary pick and may not be graded FIXTURE`
+      );
     if (r.verdict === 'REPEAT' && !r.repetition_of?.trim())
       errs.push(`${id}: REPEAT with nothing named as the thing repeated`);
     if (r.verdict === 'UNPAID-REACH' && !r.reach?.trim())
@@ -396,7 +457,11 @@ export function validate(units: Unit[], v: Record<string, Row>): string[] {
       errs.push(
         `${id}: NO-STAKES but a belief-change sentence was written — pick one`
       );
-    if (r.verdict !== 'NO-STAKES' && !r.belief_change?.trim())
+    if (
+      r.verdict !== 'NO-STAKES' &&
+      r.verdict !== 'FIXTURE' &&
+      !r.belief_change?.trim()
+    )
       errs.push(`${id}: ${r.verdict} with no belief-change sentence`);
   }
   return errs;
@@ -449,6 +514,10 @@ function cmdRecord(date: string, model: string, force: boolean): void {
       note: r.note?.trim() || null,
       promptHash: meta.promptHash,
       templateHash: meta.templateHash,
+      instrument_hash: meta.instrumentHash ?? null,
+      standard_version: meta.standardVersion ?? null,
+      fixture: u.fixture,
+      mix: u.mix,
       priorLeads: meta.priorLeads,
       judge_model: model || 'UNRECORDED',
       owner_mark: null,
@@ -466,10 +535,23 @@ export function tallyLine(
   units: Unit[],
   v: Record<string, Row>
 ): string {
+  const disc = units.filter(u => !u.fixture);
   const c: Record<string, number> = {};
-  for (const u of units) c[v[u.id]!.verdict] = (c[v[u.id]!.verdict] ?? 0) + 1;
-  const parts = VERDICTS.filter(k => c[k]).map(k => `${c[k]} ${k}`);
-  return `SELECTION: ${units.length} units — ${parts.join(', ') || 'no verdicts'}`;
+  for (const u of disc) c[v[u.id]!.verdict] = (c[v[u.id]!.verdict] ?? 0) + 1;
+  const parts = VERDICTS.filter(k => k !== 'FIXTURE' && c[k]).map(
+    k => `${c[k]} ${k}`
+  );
+  const m: Record<string, number> = { core: 0, developing: 0, reach: 0 };
+  for (const u of disc) m[u.mix] = (m[u.mix] ?? 0) + 1;
+  const n = disc.length || 1;
+  const pct = (k: string) => Math.round((100 * m[k]!) / n);
+  const reach = m.reach!;
+  return (
+    `SELECTION: ${disc.length} discretionary units (${units.length - disc.length} fixtures) — ` +
+    `${parts.join(', ') || 'no verdicts'} | mix ${pct('core')}/${pct('developing')}/${pct('reach')} ` +
+    `vs ${MIX_TARGET.core}/${MIX_TARGET.developing}/${MIX_TARGET.reach} | reach ${reach} vs floor ${REACH_FLOOR}` +
+    (reach < REACH_FLOOR ? ' BELOW-FLOOR' : '')
+  );
 }
 
 function cmdTally(date: string): void {
@@ -549,10 +631,54 @@ function selftest(): number {
   // grammar, both directions
   const good: Record<string, Row> = {};
   for (const x of u)
-    good[x.id] = {
-      verdict: 'SOUND',
-      belief_change: 'A reader now believes a new thing.',
-    };
+    good[x.id] = x.fixture
+      ? { verdict: 'FIXTURE' }
+      : {
+          verdict: 'SOUND',
+          belief_change: 'A reader now believes a new thing.',
+        };
+
+  // 🔴 A1 — fixtures, both directions
+  t(
+    'THE MODEL is detected as a fixture',
+    u.some(x => x.id === 'the-model' && x.fixture)
+  );
+  t(
+    'THE TAKE is NOT a fixture (it is not on the owner list)',
+    u.some(x => x.id === 'the-take' && !x.fixture)
+  );
+  t(
+    'a fixture graded SOUND is caught',
+    validate(u, {
+      ...good,
+      'the-model': { verdict: 'SOUND', belief_change: 'x' },
+    }).some(e => e.includes('must be graded FIXTURE'))
+  );
+  t(
+    'a discretionary pick graded FIXTURE is caught',
+    validate(u, { ...good, 'the-take': { verdict: 'FIXTURE' } }).some(e =>
+      e.includes('may not be graded FIXTURE')
+    )
+  );
+
+  // A2 — mix classification
+  t('a Six section is core', mixClass('Markets & Macro') === 'core');
+  t('THE TAKE is core', mixClass('THE TAKE') === 'core');
+  t('The Signal is developing', mixClass('The Signal') === 'developing');
+  t('The Wild Card is reach', mixClass('The Wild Card') === 'reach');
+  t(
+    'DISCOVERY is a reach pick, not a fixture',
+    mixClass('DISCOVERY') === 'reach' && !isFixture('DISCOVERY')
+  );
+
+  // 🔴 D1 — the instrument is template PLUS standard; a standard swap must move the hash
+  const ih = (std: string) => sha(JUDGE_TEMPLATE + '\u0000' + std);
+  t('instrument hash moves when the standard moves', ih('A') !== ih('B'));
+  t('instrument hash is stable for identical inputs', ih('A') === ih('A'));
+  t(
+    'instrument hash is not the template hash',
+    ih('A') !== sha(JUDGE_TEMPLATE)
+  );
   t(
     'a complete, well-formed verdict set validates',
     validate(u, good).length === 0
@@ -591,9 +717,21 @@ function selftest(): number {
     )
   );
   t(
-    'tally counts what it read',
-    tallyLine('X', u, good) ===
-      `SELECTION: ${u.length} units — ${u.length} SOUND`
+    'tally counts DISCRETIONARY units and names the fixtures separately',
+    tallyLine('X', u, good).includes(
+      `${u.filter(x => !x.fixture).length} discretionary units`
+    ) &&
+      tallyLine('X', u, good).includes(
+        `${u.filter(x => x.fixture).length} fixtures`
+      )
+  );
+  t(
+    'tally reports the mix against the target',
+    tallyLine('X', u, good).includes('vs 70/15/15')
+  );
+  t(
+    'tally flags a brief under the reach floor',
+    tallyLine('X', u, good).includes('BELOW-FLOOR')
   );
 
   // template discipline

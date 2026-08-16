@@ -172,3 +172,44 @@ Each of these is a CARRY row in `system/CARRY.md` dated 2026-08-15 pointing back
 6. **Accretion.** Phase A adds one script, one standard and one advisory task. **It removes nothing,
    and it is allowed to remove nothing, because it has no authority yet.** The day it gains authority
    it inherits the read-back's rule: if net check count rises, it was implemented wrong.
+
+---
+
+# PART 6 — THE CONSOLIDATED ORDER OF 2026-08-16 (executed; this closes the work-order sequence)
+
+**No new work orders after this. The weekly drift report is ONE line against the DECREE row in
+`system/CARRY.md`. Day 30 is a design conversation, not an order.**
+
+## C3 — CURIOSITY, AND THE MUNGER ROW CLOSING INTO IT
+
+**The Part 12 reader-question check IS the curiosity detector.** It was pre-registered in
+`WORK_ORDER_READBACK.md` PART 12.1 as the Question Test — a third Reader output, `Q:`, the one
+question a reader would still ask. **Under this decree its purpose is renamed and kept: an unanswered
+question is a hole when the unit failed, and it is CURIOSITY when the unit succeeded.** The same
+signal, read against whether the unit landed. Question quality is logged with the panel. **Advisory.
+Actuates nothing.**
+
+**The Munger register row closes here, gate lifted by owner ruling.** It was blocked on the 16 blind
+marks. It is now the last clause of the Clarity Standard, live tonight in `Craft_Standard.md`,
+`Register_Standard.md` and both generators: *plain words, named actors, last line a rule of thumb the
+reader could repeat at dinner.* The 16 marks are still owed — they calibrate, they no longer gate.
+
+## THE PANEL, AS IT NOW STANDS
+
+| reader | asks | hash | actuates |
+|---|---|---|---|
+| 3 × calibrated | did the meaning arrive | `TEMPLATE_HASH 8362e5b17930dd37` | yes, unanimous only |
+| 1 × hurried | did it arrive in three minutes | `HURRIED_HASH ffa38d225eb2c135` | no |
+| 1 × assumed-knowledge | **what did the writer assume I already knew** | own frozen hash, printed by `prepare` | no |
+| question leg | what would I still ask | inside the reader template | no |
+
+**Three of the four are advisory and that is correct.** A panel where everything actuates is a panel
+that stops being an instrument and becomes a committee.
+
+## WHAT DID NOT LAND, AND WHY
+
+**D2 — the regenerated calibration packet.** The six ratified prompts are built on disk at
+`INSTRUMENT_HASH 96c582e31dcd5ba7`; the judges run in a cloud container and **file staging is refused
+with `session_stale_relogin`.** Blocked on one desktop re-auth. **The 08-11 packet is void as of
+today, so there is currently no valid calibration packet** — that is the one real gap left by this
+order.
