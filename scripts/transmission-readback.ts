@@ -31,6 +31,7 @@ import * as crypto from 'node:crypto';
 
 const RB_DIR = '.readback';
 const LEDGER = 'system/readback-ledger.json';
+const PANEL_CALIBRATION = 'system/panel-calibration.json';
 const PARROT_THRESHOLD = 0.7;
 
 /** 🔴 FROZEN. Exactly one interpolation slot: {artifact}. Changing this text changes the hash and
@@ -777,6 +778,77 @@ function cmdDirty(date: string, publishedPath: string, mark: boolean): number {
   return changed.length ? 1 : 0;
 }
 
+/** 🔴 ITEM 9 (2026-08-17) — THE ASSUMED-KNOWLEDGE READER'S CALIBRATION CHECK. Mechanical half only:
+ *  it never runs the detector, it AUDITS the detector's returned lines against known-positive seeds
+ *  taken from the owner's own marks. A detector with no known positives cannot fail, and a detector
+ *  that cannot fail is not an instrument. Seeds live in system/panel-calibration.json.
+ *  Usage: akcheck <DATE>  — reads .readback/<DATE>/readback-assumed-knowledge.txt */
+export function akAudit(
+  transcript: string,
+  seeds: { unit: string; term: string; match: string }[],
+  unitIds: string[]
+): { seed: string; unit: string; found: boolean }[] {
+  // transcript lines look like:  U<n>: <count> | <term> (CARRYABLE); <term> (STANDALONE); …
+  const byIdx: Record<number, string> = {};
+  for (const line of transcript.split('\n')) {
+    const m = line.match(/^\s*U(\d+)\s*:\s*(.*)$/);
+    if (m) byIdx[Number(m[1])] = m[2]!;
+  }
+  return seeds.map(sd => {
+    const i = unitIds.indexOf(sd.unit);
+    const body = i >= 0 ? (byIdx[i + 1] ?? '') : '';
+    return {
+      seed: sd.term,
+      unit: sd.unit,
+      // 'i' is applied here, not embedded: an inline (?i) is Python syntax and throws in JS.
+      found: i >= 0 && new RegExp(sd.match, 'i').test(body),
+    };
+  });
+}
+
+function cmdAkCheck(date: string): number {
+  if (!fs.existsSync(PANEL_CALIBRATION))
+    die(
+      `${PANEL_CALIBRATION} is missing — the detector has no known positives and therefore cannot fail.`
+    );
+  const cal = JSON.parse(fs.readFileSync(PANEL_CALIBRATION, 'utf-8'));
+  const seeds = (cal.assumed_knowledge?.seeds ?? []).filter(
+    (x: { date: string }) => x.date === date
+  );
+  const tPath = rbPath(date, 'readback-assumed-knowledge.txt');
+  if (!seeds.length) {
+    console.log(
+      `AK-CALIBRATION ${date} — 0/0 seeds for this date. Nothing asserted; this is an absence, not a pass.`
+    );
+    return 0;
+  }
+  if (!fs.existsSync(tPath)) {
+    console.log(
+      `AK-CALIBRATION ${date} — 0/${seeds.length} · no detector output at ${tPath}. The reader has not run. Absence, not a pass.`
+    );
+    return 0;
+  }
+  const meta: Meta = JSON.parse(
+    fs.readFileSync(rbPath(date, 'meta.json'), 'utf-8')
+  );
+  const res = akAudit(
+    fs.readFileSync(tPath, 'utf-8'),
+    seeds,
+    meta.units.map(u => u.id)
+  );
+  const hit = res.filter(r => r.found).length;
+  console.log(
+    `AK-CALIBRATION ${date} — ${hit}/${res.length} seed(s) flagged by the detector`
+  );
+  for (const r of res)
+    console.log(`  ${r.found ? '✓' : '✗ MISSED'}  ${r.unit}  ${r.seed}`);
+  if (hit < res.length)
+    console.log(
+      '  🔴 CALIBRATION FAILS. A seed is an owner receipt: a term a real reader actually bounced off. Missing one means the detector does not yet see what he sees.'
+    );
+  return hit === res.length ? 0 : 1;
+}
+
 // ── SELFTEST (both directions, per the IMP standard) ──────────────────────────
 function selftest(): number {
   let pass = 0,
@@ -918,6 +990,36 @@ function selftest(): number {
     g[2]!.every(x => x === 'TRANSMITTED')
   );
 
+  // 🔴 ITEM 9 — the calibration set exists, carries the owner's three seeds, and the auditor works
+  const calOk = fs.existsSync(PANEL_CALIBRATION);
+  t('the AK calibration set exists on disk', calOk);
+  if (calOk) {
+    const cal = JSON.parse(fs.readFileSync(PANEL_CALIBRATION, 'utf-8'));
+    const sd = cal.assumed_knowledge?.seeds ?? [];
+    t('three owner seeds are registered', sd.length === 3);
+    t(
+      'every seed names a date, a unit, a term and a matcher',
+      sd.every(
+        (x: Record<string, string>) => x.date && x.unit && x.term && x.match
+      )
+    );
+    const ids = ['six:markets-macro:1', 'six:geopolitics:2', 'signal:2'];
+    const good = akAudit(
+      'U1: 2 | 10-year breakeven (CARRYABLE); CPI consensus (CARRYABLE)\nU2: 1 | shadow fleet (CARRYABLE)\nU3: 1 | EtO sterilization (STANDALONE)',
+      sd,
+      ids
+    );
+    t(
+      'auditor confirms a detector that flagged all three seeds',
+      good.every(r => r.found)
+    );
+    const bad = akAudit('U1: 0 |\nU2: 0 |\nU3: 0 |', sd, ids);
+    t(
+      'auditor CATCHES a detector that flagged none of them',
+      bad.every(r => !r.found)
+    );
+  }
+
   // 🔴 C2 — the assumed-knowledge reader is a SEPARATE instrument with its own hash
   t(
     'assumed-knowledge template has exactly one slot',
@@ -1039,6 +1141,10 @@ switch (cmd) {
       die('usage: dirty <DATE> <published.md> [--mark] [--product=full]');
     process.exit(cmdDirty(a, b, flags.includes('--mark')));
   // eslint-disable-next-line no-fallthrough
+  case 'akcheck':
+    if (!a) die('usage: akcheck <DATE>');
+    process.exit(cmdAkCheck(a));
+  // eslint-disable-next-line no-fallthrough
   case 'ledger':
     if (!a) die('usage: ledger <DATE>');
     cmdLedger(a);
@@ -1048,7 +1154,7 @@ switch (cmd) {
       'transmission-readback.ts — mechanical half of the read-back loop. Never calls a model.'
     );
     console.log(
-      '  prepare <light.md> <claims.json> | check <DATE> | tabulate <DATE> | assemble <DATE> | ledger <DATE> | dirty <DATE> <published.md> [--mark] | --selftest'
+      '  prepare <light.md> <claims.json> | check <DATE> | tabulate <DATE> | assemble <DATE> | ledger <DATE> | dirty <DATE> <published.md> [--mark] | akcheck <DATE> | --selftest'
     );
     console.log(
       '  --product=full routes state to .readback/<DATE>-full/ so the full brief and the light never collide.'

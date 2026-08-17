@@ -213,3 +213,50 @@ that stops being an instrument and becomes a committee.
 with `session_stale_relogin`.** Blocked on one desktop re-auth. **The 08-11 packet is void as of
 today, so there is currently no valid calibration packet** — that is the one real gap left by this
 order.
+
+---
+
+# PART 7 — PHASE B CHANNEL DETERMINED, AND THE NIGHTLY JUDGE'S STANDING ARRANGEMENT (2026-08-17)
+
+## ITEM 8 — the candidate log ships by DOCTRINE, as ADVISORY, now
+
+**Measured before deciding.** All four deep slots already write a nightly pre-draft artifact:
+`cc-predraft` (65 files), `signal-draft` (138), `take-draft` (109), `discovery-draft` (138). **The
+tasks exist. The files exist. Only the C&C pre-draft logs candidates** — 5 a night, roughly 3
+allocated, **so its losers have been on disk since May.** Signal, Take and Discovery draft the winner
+directly and log zero.
+
+**Therefore: logging is a DOCTRINE change, not a task-body install.** The pre-draft tasks read their
+generator docs; adding "3-5 candidate angles, one line each, losers marked" to
+`system/Signal_Generator.md`, `system/Take_Generator.md` and the Discovery generator makes the pool
+exist tonight, with no install and no scheduler change. **Shipped as ADVISORY.**
+
+**What still needs a task body, and therefore waits for the batched round:** *surfacing.* Showing the
+losers to the owner in the nightly status line — so the pool is visible without opening four files —
+is a status-line change inside task bodies. **That is the half that waits.**
+
+**Phase B's gate is unchanged.** This is the candidate log arriving early as an artifact, not Phase B
+opening. The funnel becomes Phase B when the losers are surfaced and the tie-break is enforced rather
+than advised.
+
+**Item 7 is embedded as its selection tie-break:** consequence outranks cleverness; an obscure pick
+must beat the bigger story on insight, never on novelty.
+
+## ITEM 12 — the nightly judge, standing arrangement
+
+Until the owner rules on the API-key question, **the safe half is official rather than a nightly
+SKIPPED.**
+
+- **STEP 1 `prepare` ALWAYS runs, and the status line ALWAYS prints the mechanical numbers.** Volume
+  against the band needs no judge, and it is **the binding decree number** — the one showing red on
+  most nights. A task that prints nothing because the graded half is unavailable throws away the half
+  that works.
+- **Grading steps are marked PENDING CLEAN-CONTAINER BATCH.** This session grades accumulated packets
+  in its clean container whenever the owner pings *"grade the backlog."* **Provenance stays
+  clean-container, and those rows never pool with any in-session run.**
+- **The blindness probe stays in the body as a standing check.**
+
+**Why the batch is not a workaround.** The clean container is the *better* provenance: judges there
+have no repository access at all, which is the clean-room runner a standing CARRY row has been asking
+for since 08-10. The nightly path would have to reach that bar anyway.
+

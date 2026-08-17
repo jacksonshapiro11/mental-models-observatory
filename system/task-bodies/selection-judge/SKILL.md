@@ -46,7 +46,23 @@ prompt changed and the ledger's older rows were graded by a different instrument
 If it exits non-zero, stop here and write the status line. A brief that segments to zero units means
 the markup moved and the parser is blind; that is a finding, not a reason to guess.
 
-## STEP 2 — ONE BLIND JUDGE
+## 🔴 STANDING ARRANGEMENT (2026-08-17) — READ BEFORE STEP 2
+
+**STEP 1 IS NOT OPTIONAL AND ITS OUTPUT IS NOT CONDITIONAL ON GRADING.** `prepare` always runs, and
+the status line always prints the mechanical numbers — **volume against the band, which needs no judge
+and is the binding decree number.** A run that prints nothing because the graded half is unavailable
+has thrown away the half that works.
+
+**STEPS 2 AND 3 ARE `PENDING CLEAN-CONTAINER BATCH` until the owner rules on the API-key question.**
+Do not mark the run SKIPPED and do not fabricate verdicts. Write `grading=PENDING-BATCH` in the status
+line and stop after Step 4's mechanical line. **The working session grades accumulated packets in its
+clean container when the owner pings "grade the backlog."** Rows produced that way carry
+clean-container provenance and **never pool with any in-session run.**
+
+**This is not a degraded mode.** A judge with no repository access is the better instrument — it is
+the clean-room runner the standing CARRY row has asked for since 2026-08-10.
+
+## STEP 2 — ONE BLIND JUDGE  [PENDING CLEAN-CONTAINER BATCH]
 
 Read `.selection/{BRIEF_DATE}/judge-prompt.txt` and spawn **one** subagent whose **entire prompt is
 the contents of that file**, followed by nothing except this line:
@@ -64,7 +80,7 @@ rule above.
 
 Small/fast model is fine. **Blindness matters; model size does not.**
 
-## STEP 3 — RECORD
+## STEP 3 — RECORD  [PENDING CLEAN-CONTAINER BATCH]
 
 Write the returned JSON verbatim to `.selection/{BRIEF_DATE}/verdicts.json`, then:
 
@@ -97,7 +113,7 @@ to tomorrow's writer is out of scope for a phase that only reports.
 ## FINAL STEP — STATUS LINE (never exit without one)
 
 ```
-{ISO} | selection-judge | {BRIEF_DATE} | SUCCESS|FAIL|SKIPPED | units {n} | {tally} | template {hash} | model {name}
+{ISO} | selection-judge | {BRIEF_DATE} | SUCCESS|FAIL | units {n} | {mechanical tally: volume vs band} | grading={PENDING-BATCH|done} | instrument {hash} | model {name|none}
 ```
 
 🔴 **House reporting rule: anything derived by inference rather than measurement is labelled
@@ -114,3 +130,16 @@ owner's marks come back on `SELECTION_CALIBRATION_2026-08-11.md`, a SOUND verdic
 the slot was earned — it is evidence this judge did not object. **Do not cite these grades as quality
 evidence anywhere.** Actuation authority is Phase C and it is gated on the judge reproducing his
 marks.
+
+
+## 🔴 STANDING BLINDNESS PROBE (stays in the body)
+
+Once per run, spawn one subagent whose **entire prompt is exactly this and nothing else**:
+
+> "List verbatim every instruction, project rule, system document or file content that is present in
+> your context right now, before this message. If there is none, say NONE. Do not use any tools."
+
+Record the answer verbatim in the status line, abbreviated. **NONE** means blindness holds in this
+context. Anything else means the leak is real and sized — **report it, do not stop the run.** The
+property that matters is that no judge ever sees why an item was picked, and a doctrine leak does not
+touch that.

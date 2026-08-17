@@ -49,13 +49,17 @@ const STANDARD = 'system/Selection_Standard.md';
  *  selection denominator.
  *  NOTE, because it is not obvious and it moves the measured mix by 6 points: DISCOVERY and THE TAKE
  *  are NOT on the owner's list, so they stay DISCRETIONARY. Discovery counts as a reach pick. */
+/** 🔴 RESTATED 2026-08-17 (grand order item 11b) to the sections that actually exist in the artifact.
+ *  MEASURED before restating, because the first version was written from the decree rather than from
+ *  the briefs: `THE MEDITATION` and `THE CLOSE` appear in ZERO of the last 30 FULL briefs and in 7 of
+ *  the last 7 LIGHT briefs. So the list is per-surface. Dropping the light names outright would make
+ *  the Meditation and the Close read as discretionary picks the first night the judge runs on a light
+ *  brief — a denominator bug waiting for a scheduling change. */
+const FIXTURE_SECTIONS_FULL = ['INNER GAME', 'THE MODEL'];
+const FIXTURE_SECTIONS_LIGHT = ['THE MEDITATION', 'THE MODEL', 'THE CLOSE'];
 const FIXTURE_SECTIONS = new Set([
-  'INNER GAME',
-  'THE MEDITATION',
-  'THE MODEL',
-  'THE CLOSE',
-  'MEDITATION',
-  'CLOSE',
+  ...FIXTURE_SECTIONS_FULL,
+  ...FIXTURE_SECTIONS_LIGHT,
 ]);
 const isFixture = (section: string): boolean =>
   FIXTURE_SECTIONS.has(section.trim().toUpperCase());
@@ -665,6 +669,14 @@ function selftest(): number {
   t(
     'THE MODEL is detected as a fixture',
     u.some(x => x.id === 'the-model' && x.fixture)
+  );
+  t(
+    'the full-brief fixture list is exactly INNER GAME and THE MODEL',
+    FIXTURE_SECTIONS_FULL.join('|') === 'INNER GAME|THE MODEL'
+  );
+  t(
+    'the light-brief fixtures are retained so the light surface is not mis-denominated',
+    FIXTURE_SECTIONS_LIGHT.every(x => isFixture(x))
   );
   t(
     'THE TAKE is NOT a fixture (it is not on the owner list)',
