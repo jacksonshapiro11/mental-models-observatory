@@ -69,13 +69,13 @@ selection one — the caps are Model ~460, Inner Game ~290 words.
 | `six:geopolitics:2` | core | There are 518 Russian shadow-fleet tankers the EU and the UK have san… | SOUND | The US has sanctioned a fraction of the shadow-fleet tankers the EU and UK already have, even though unilateral US action cuts activity 86%… |  | legit no clue what this is or means what is a shadow fleet why did US vs EU rule differently what does this mean
 | `six:the-wild-card:1` | reach | A supermassive black hole has been found 30,000 light-years from its … | SOUND | Because dormant black holes are only detectable when they disturb a star, the catalogued population is a systematic undercount rather than … |  | ok
 | `six:the-wild-card:2` | reach | Human language diversity peaked between three thousand and one thousa… | SOUND | Language diversity peaked one to three thousand years ago and declined with early state consolidation, millennia before the colonialism usu… |  | ok
-| `six:the-wild-card:3` | reach | LiDAR over southwest Amazonia found more than twenty thousand pre-Col… | SOUND | Over 20,000 pre-Columbian earthworks and up to three million people mean the pristine-rainforest baseline in ecological models is a landsca… |  |
-| `signal:1` | developing | Every connected product sold into Europe is about to carry a printed … | SOUND | A binding EU vulnerability-reporting deadline lands 11 September 2026, far earlier than the cited December 2027 date, forcing a disclosed m… |  |
-| `signal:2` | developing | Washington is withdrawing the rule that was going to force American m… | SOUND | Even as the EPA reverses its ethylene-oxide rule, sterilization keeps migrating away from EtO because the validation investments are alread… |  |
-| `the-take` | core | Supply-Indexed Demand: when an index computes a company's weight from… | SOUND | Nasdaq's float-based weighting turns an insider lockup expiry into both a supply event and a mechanical demand event with the same sign. |  |
-| `inner-game` | — | Today's practice: name the one peer at your level whose work you have… | FIXTURE | — |  |
-| `the-model` | — | commit | FIXTURE | — |  |
-| `discovery` | reach | ### The Culprit Was Three Bodies Down This year researchers described… | SOUND | A newly identified organelle inside rumen ciliates, not the methanogen a decade of additives has targeted, is the actual hydrogen supplier … |  |
+| `six:the-wild-card:3` | reach | LiDAR over southwest Amazonia found more than twenty thousand pre-Col… | SOUND | Over 20,000 pre-Columbian earthworks and up to three million people mean the pristine-rainforest baseline in ecological models is a landsca… | ok may need slightly more why do i care or explantion bringing in lidar is confusing when we could just explain it simpler — `WHY` `JARGON` |
+| `signal:1` | developing | Every connected product sold into Europe is about to carry a printed … | SOUND | A binding EU vulnerability-reporting deadline lands 11 September 2026, far earlier than the cited December 2027 date, forcing a disclosed m… | generally ok think we couldve simplified to get our point across better — `JARGON` |
+| `signal:2` | developing | Washington is withdrawing the rule that was going to force American m… | SOUND | Even as the EPA reverses its ethylene-oxide rule, sterilization keeps migrating away from EtO because the validation investments are alread… | too muuch jargon — `JARGON` |
+| `the-take` | core | Supply-Indexed Demand: when an index computes a company's weight from… | SOUND | Nasdaq's float-based weighting turns an insider lockup expiry into both a supply event and a mechanical demand event with the same sign. | ok but too much theater in the conclusion — `THEATER` |
+| `inner-game` | — | Today's practice: name the one peer at your level whose work you have… | FIXTURE | — | ok — `ok` |
+| `the-model` | — | commit | FIXTURE | — | ok — `ok` |
+| `discovery` | reach | ### The Culprit Was Three Bodies Down This year researchers described… | SOUND | A newly identified organelle inside rumen ciliates, not the methanogen a decade of additives has targeted, is the actual hydrogen supplier … | ok but simpler and more why do i care — `WHY` `JARGON` |
 
 **What 2026-08-10 should have run and did not** (missing-boat — no instrument can fill this in):
 
@@ -88,23 +88,23 @@ selection one — the caps are Model ~460, Inner Game ~290 words.
 
 | unit | class | lead | judge | the belief the judge says moved | OWNER |
 |---|---|---|---|---|---|
-| `six:markets-macro:1` | core | Small caps round-tripped 1.73 percentage points on Monday while the S… | SOUND | The oil-driven steepening shows the market pricing crude as an inflation risk rather than a growth drag, which hits Russell 2000 fuel and b… |  |
-| `six:markets-macro:2` | core | Gold is being bought as the hedge against currency debasement while B… | SOUND | The debasement trade moved from Bitcoin into gold and memory funds, leaving BTC ETFs in a rare full-year net outflow. |  |
-| `six:companies-crypto:1` | core | Archer Aviation bought more than $200 million of annual Boeing revenu… | SOUND | Boeing's all-stock, no-cash sale of Insitu while retaining a cross-licence signals it judged the autonomy hardware a liability worth sheddi… |  |
-| `six:companies-crypto:2` | core | Delaware told Verisk on Friday it may not walk away from a $2.35 bill… | SOUND | Verisk's court-ordered specific performance is hollow because a judge cannot compel FTC approval, so targets should negotiate reverse termi… |  |
-| `six:ai-tech:1` | core | Nvidia signed six of the largest private-capital pools on earth to mo… | SOUND | Nvidia's $500bn in financing memoranda prices the AI-buildout queue without shortening it, since capital was never the binding constraint. |  |
-| `six:ai-tech:2` | core | GitHub retired its free hosted-model tier, and the users who found ou… | SOUND | GitHub's free tier died by silent mislabeled deprecation, because a subsidy calibrated to human request rates has no denominator once agent… |  |
-| `six:geopolitics:1` | core | Iran is negotiating lanes through Hormuz rather than a reopening, and… | SOUND | Iran replacing its negotiator with an IRGC hardliner, not its lanes language, is the real tell that Tehran intends continued restriction. |  |
-| `six:geopolitics:2` | core | Nine former senior officials from Australia, India, the United States… | SOUND | A wargame showed a coalition losing to China through decision latency rather than weak agreements, so alliance strength is approval-loop sp… |  |
-| `six:the-wild-card:1` | reach | Primate brains did not get big for thinking. They got big for seeing. | SOUND | Primate brain expansion tracked optic-nerve and visual growth rather than frontal-lobe reasoning, upending the big-brains-for-thinking stor… |  |
-| `six:the-wild-card:2` | reach | The same silver catalyst does its work in a different place depending… | SOUND | A solid oxide cell's silver catalyst shifts location and mechanism with reaction direction, so a component tuned forward is not tuned for i… |  |
-| `six:the-wild-card:3` | reach | Around the age of fifty the brain's memory centre starts quietly swap… | SOUND | Aging hippocampal inflammation reflects an influx of new monocyte-derived cells replacing microglia, not decay of a lifelong-resident popul… |  |
-| `signal:1` | developing | Every gram of the antibody infusion that treats a dozen rare diseases… | SOUND | FcRn blockers displacing immunoglobulin therapy will also starve albumin supply, since both are co-products of the same plasma litre. |  |
-| `signal:2` | developing | The temperature reading that settles a weather contract comes from on… | **REPEAT** | Repeats 2026-07-18 "The Withdrawal Option" — a publisher quietly curtails what it reports and the gap goes unpriced because no instrument c… |  |
-| `the-take` | core | Enforcement Incidence. Which instrument an authority actually uses is… | SOUND | The shadow-fleet sanctions gap reflects who bears the cost of using an instrument, not a difference in resolve, so the tally is a price map… |  |
-| `inner-game` | — | Today's practice: take the one thing you have already understood and … | FIXTURE | — |  |
-| `the-model` | — | Availability | FIXTURE | — |  |
-| `discovery` | reach | Is the variance in this reading coming from the thing I am trying to … | SOUND | When a measurement will not sharpen with more data, the noise is usually a local confound, so the fix is changing vantage point rather than… |  |
+| `six:markets-macro:1` | core | Small caps round-tripped 1.73 percentage points on Monday while the S… | SOUND | The oil-driven steepening shows the market pricing crude as an inflation risk rather than a growth drag, which hits Russell 2000 fuel and b… | ok maybe too much jargon but ok — `JARGON` |
+| `six:markets-macro:2` | core | Gold is being bought as the hedge against currency debasement while B… | SOUND | The debasement trade moved from Bitcoin into gold and memory funds, leaving BTC ETFs in a rare full-year net outflow. | ok — `ok` |
+| `six:companies-crypto:1` | core | Archer Aviation bought more than $200 million of annual Boeing revenu… | SOUND | Boeing's all-stock, no-cash sale of Insitu while retaining a cross-licence signals it judged the autonomy hardware a liability worth sheddi… | this one didnt land enough — `DEPTH` |
+| `six:companies-crypto:2` | core | Delaware told Verisk on Friday it may not walk away from a $2.35 bill… | SOUND | Verisk's court-ordered specific performance is hollow because a judge cannot compel FTC approval, so targets should negotiate reverse termi… | ok but why do we care think this is more about principle than point — `WHY` |
+| `six:ai-tech:1` | core | Nvidia signed six of the largest private-capital pools on earth to mo… | SOUND | Nvidia's $500bn in financing memoranda prices the AI-buildout queue without shortening it, since capital was never the binding constraint. | ok — `ok` |
+| `six:ai-tech:2` | core | GitHub retired its free hosted-model tier, and the users who found ou… | SOUND | GitHub's free tier died by silent mislabeled deprecation, because a subsidy calibrated to human request rates has no denominator once agent… | ok — `ok` |
+| `six:geopolitics:1` | core | Iran is negotiating lanes through Hormuz rather than a reopening, and… | SOUND | Iran replacing its negotiator with an IRGC hardliner, not its lanes language, is the real tell that Tehran intends continued restriction. | ok — `ok` |
+| `six:geopolitics:2` | core | Nine former senior officials from Australia, India, the United States… | SOUND | A wargame showed a coalition losing to China through decision latency rather than weak agreements, so alliance strength is approval-loop sp… | ok — `ok` |
+| `six:the-wild-card:1` | reach | Primate brains did not get big for thinking. They got big for seeing. | SOUND | Primate brain expansion tracked optic-nerve and visual growth rather than frontal-lobe reasoning, upending the big-brains-for-thinking stor… | ok — `ok` |
+| `six:the-wild-card:2` | reach | The same silver catalyst does its work in a different place depending… | SOUND | A solid oxide cell's silver catalyst shifts location and mechanism with reaction direction, so a component tuned forward is not tuned for i… | ok — `ok` |
+| `six:the-wild-card:3` | reach | Around the age of fifty the brain's memory centre starts quietly swap… | SOUND | Aging hippocampal inflammation reflects an influx of new monocyte-derived cells replacing microglia, not decay of a lifelong-resident popul… | ok — `ok` |
+| `signal:1` | developing | Every gram of the antibody infusion that treats a dozen rare diseases… | SOUND | FcRn blockers displacing immunoglobulin therapy will also starve albumin supply, since both are co-products of the same plasma litre. | too confusing why do i care not very clear at all feel like there is a desire for the signal to be obscure instead of mainsteam when it really should be more down the middle stuff with some obscure things given the deeper analysis of a key thing we think is developing — `WHY` `JARGON` |
+| `signal:2` | developing | The temperature reading that settles a weather contract comes from on… | **REPEAT** | Repeats 2026-07-18 "The Withdrawal Option" — a publisher quietly curtails what it reports and the gap goes unpriced because no instrument c… | this was fine but not clear why I care — `WHY` |
+| `the-take` | core | Enforcement Incidence. Which instrument an authority actually uses is… | SOUND | The shadow-fleet sanctions gap reflects who bears the cost of using an instrument, not a difference in resolve, so the tally is a price map… | no clue what this is and is it a repeat from the russian tanker one? — `AK` |
+| `inner-game` | — | Today's practice: take the one thing you have already understood and … | FIXTURE | — | ok — `ok` |
+| `the-model` | — | Availability | FIXTURE | — | ok — `ok` |
+| `discovery` | reach | Is the variance in this reading coming from the thing I am trying to … | SOUND | When a measurement will not sharpen with more data, the noise is usually a local confound, so the fix is changing vantage point rather than… | ok — `ok` |
 
 **What 2026-08-11 should have run and did not** (missing-boat — no instrument can fill this in):
 
@@ -228,6 +228,76 @@ selection one — the caps are Model ~460, Inner Game ~290 words.
 
 1. 
 2. 
+
+---
+
+# OWNER MARKS — TRANSCRIBED AND SCORED IN TWO LAYERS (2026-08-17)
+
+**Marked: 2026-08-10 and 2026-08-11, all 34 units (30 discretionary, 4 fixtures).** The other four
+nights are unmarked and stay open — **partial marking is valid and a blank is still not agreement.**
+
+**The two layers are reported separately because the marks split cleanly, and pooling them would fake
+a verdict.** One blended number would read as "78% agreement" and mean nothing: it would mix a
+question about *what we chose* with a question about *how we wrote it*, and the answers point in
+opposite directions.
+
+## (a) SELECTION LAYER — did the slot deserve to exist
+
+**Agreement: 28 of 30 discretionary units = 93.3%.** "ok…" counts as agree, and so does a complaint
+about execution that never disputes the pick.
+
+| the two disagreements | judge | owner |
+|---|---|---|
+| `2026-08-11 signal:2` | **REPEAT** of 2026-07-18's withdrawal-option move | **passed it** — *"this was fine but not clear why I care"* |
+| `2026-08-11 the-take` | **SOUND** | **suspects a repeat** — *"is it a repeat from the russian tanker one?"* (2026-08-10 `six:geopolitics:2`) |
+
+**Both disagreements are about the boundary of "repeat," and they run in opposite directions.** The
+judge calls a repeated structural move a repeat where the owner sees a new story; the owner calls a
+story crossing sections on consecutive nights a repeat where the judge sees two clean units. **Neither
+is obviously right and both are filed to CARRY for the repeat leg's next revision.**
+
+## (b) EXECUTION LAYER — how it was written
+
+**22 complaints across 17 of 30 discretionary units — 57% of marked units carry at least one.**
+
+| class | n | share of complaints |
+|---|---|---|
+| **WHY** — missing why-care | **9** | 41% |
+| **JARGON** | 6 | 27% |
+| **AK** — assumed knowledge | 3 | 14% |
+| **DEPTH** | 2 | 9% |
+| **THEATER** | 2 | 9% |
+
+By night: **2026-08-10 carried 15 complaints on 11 of 15 units; 2026-08-11 carried 7 on 6 of 15.**
+
+## The headline, stated the way it actually falls
+
+**SELECTION AGREEMENT IS HIGH — 93.3%. EXECUTION COMPLAINTS ARE MANY — 57% of units.** The judge and
+the owner are choosing the same stories. **The brief's problem in this window is not what it picked.
+It is how it explained what it picked.**
+
+## 🔴 THE INSTRUMENT FINDING, AND IT IS THE BIGGEST ONE HERE
+
+**All nine WHY complaints landed on units the judge graded SOUND with a belief-change sentence
+written out in full. The judge returned ZERO NO-STAKES across both nights.**
+
+That is not a calibration miss, it is a **specification gap**. The belief-change leg asks *"can a
+belief be stated from this text"* — and the judge, holding the whole unit and reading carefully, can
+almost always state one. **The owner is answering a different question: did the unit state it to
+me.** A unit can contain its why-care and never deliver it, and the CONSEQUENCE TEST as written
+cannot see the difference.
+
+**AK + JARGON together are 9 of 22 — the same size as WHY.** So two thirds of every complaint in this
+window is the SIMPLICITY leg of the north star, not the consequentiality leg. The Clarity Standard
+and the plain-upfront rule are aimed correctly; this is the measurement that says so.
+
+**The charter complaint, verbatim, because it is the cleanest statement of item 2 in the owner's own
+words** — `2026-08-11 signal:1`:
+
+> *"feel like there is a desire for the signal to be obscure instead of mainsteam when it really
+> should be more down the middle stuff with some obscure things given the deeper analysis of a key
+> thing we think is developing"*
+
 
 ---
 
