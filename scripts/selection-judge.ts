@@ -92,10 +92,25 @@ const CORE_SECTIONS = new Set([
   'GEOPOLITICS',
 ]);
 const DEVELOPING_SECTIONS = new Set(['THE SIGNAL', 'THE LINE']);
-export function mixClass(section: string): 'core' | 'developing' | 'reach' {
+/** 🔴 RULING A, 2026-08-17 — THE SIGNAL IS 1+1 AND ITS TWO UNITS ARE NOT THE SAME KIND OF PICK.
+ *  `signal:1` is MAINSTREAM: the bigger thing developing on the horizon, down the middle,
+ *  plain-upfront — classed DEVELOPING by charter. `signal:2` is EXPLORATORY: the paid obscure pick,
+ *  which must pay the obscurity price with a transferable mechanism — classed REACH by charter.
+ *  So mix class is a function of the UNIT, not only of the section.
+ *  🔴 THIS MECHANICALLY MOVES THE MEASURED MIX. On the 08-10..08-15 window, over 92 discretionary
+ *  units: developing 13% -> 7%, reach 26% -> 33%, reach picks 4.0 -> 5.0 a night. Pre- and post-
+ *  change windows MUST NOT POOL; MIX_RULE_CHANGED is stamped into every tally for that reason. */
+const MIX_RULE_CHANGED = '2026-08-17';
+export function mixClass(
+  section: string,
+  unitId = ''
+): 'core' | 'developing' | 'reach' {
   const S = section.trim().toUpperCase();
   if (CORE_SECTIONS.has(S) || S === 'THE TAKE') return 'core';
-  if (DEVELOPING_SECTIONS.has(S)) return 'developing';
+  if (DEVELOPING_SECTIONS.has(S))
+    return unitId.startsWith('signal:') && unitId !== 'signal:1'
+      ? 'reach'
+      : 'developing';
   return 'reach';
 }
 const TAKE_LEDGER = 'system/take-ledger.json';
@@ -134,7 +149,11 @@ Here is today's shipped brief. Each unit is prefixed with its id in square brack
 
 For EACH unit id, answer three questions in order, then give one verdict.
 
-(a) BELIEF-CHANGE. Write ONE sentence: what should a reader now believe that they did not believe before reading this unit? Write the sentence, do not describe it. If you cannot write that sentence — because the unit reports something without asking the reader to change any belief — say NO-STAKES and stop.
+(a) BELIEF-CHANGE, AND THE SENTENCE THAT DELIVERS IT. First write ONE sentence: what should a reader now believe that they did not believe before reading this unit? Write the sentence, do not describe it.
+
+Then do the part that decides the verdict: QUOTE, VERBATIM AND WORD FOR WORD FROM THE UNIT, the sentence in which the unit itself tells the reader why this matters to them. Copy it exactly — it will be checked against the text, character for character, and an approximation counts as no quote at all.
+
+The test is NOT whether a careful reader could work the why-care out. It is whether the unit SAID it. If no single sentence in the unit delivers the why-care to the reader — if you would have to assemble it from several places, or supply it yourself from what you know — then the unit did not deliver it, and the verdict is NO-STAKES no matter how sound the underlying idea is.
 
 (b) REPETITION. Does this advance a prior thesis, or re-run it? Name the prior lead or the take move it repeats if it repeats. Same topic with a new fact is an UPDATE and is fine. Same claim, or the same structural move inside the window, is a REPEAT.
 
@@ -143,7 +162,7 @@ For EACH unit id, answer three questions in order, then give one verdict.
 VERDICT, exactly one of: SOUND · REPEAT · UNPAID-REACH · NO-STAKES.
 
 Output one JSON object and nothing else, keyed by unit id:
-{"<unit-id>": {"verdict": "...", "belief_change": "<your one sentence, or empty for NO-STAKES>", "repetition_of": "<prior lead or move id, or empty>", "reach": "<the transferable mechanism, or why it is unpaid, or empty>", "note": "<optional, one line>"}}`;
+{"<unit-id>": {"verdict": "...", "belief_change": "<your one sentence, or empty for NO-STAKES>", "why_quote": "<the verbatim sentence FROM THE UNIT that delivers the why-care, or empty for NO-STAKES>", "repetition_of": "<prior lead or move id, or empty>", "reach": "<the transferable mechanism, or why it is unpaid, or empty>", "note": "<optional, one line>"}}`;
 
 type Unit = {
   id: string;
@@ -160,6 +179,7 @@ type Verdict = 'SOUND' | 'REPEAT' | 'UNPAID-REACH' | 'NO-STAKES' | 'FIXTURE';
 type Row = {
   verdict: Verdict;
   belief_change?: string;
+  why_quote?: string;
   repetition_of?: string;
   reach?: string;
   note?: string;
@@ -265,7 +285,7 @@ export function selectionUnits(md: string): Unit[] {
       lead,
       fingerprint: fingerprint(text),
       fixture: isFixture(section),
-      mix: mixClass(section),
+      mix: mixClass(section, id),
       start,
       end: start + text.length,
       sha: sha(text),
@@ -451,7 +471,33 @@ const VERDICTS: Verdict[] = [
 ];
 
 /** 🔴 THE GRAMMAR IS THE STANDARD, MECHANISED. A verdict whose evidence is missing is not a verdict. */
-export function validate(units: Unit[], v: Record<string, Row>): string[] {
+/** 🔴 RULING B, 2026-08-17. `md` is optional only so old callers keep compiling; when it is passed,
+ *  the why-quote is checked as a VERBATIM SUBSTRING of the unit. That check is the whole ruling: it
+ *  converts "delivered to the reader" from something a judge asserts into something the script can
+ *  prove. Receipt: all nine of the owner's WHY complaints landed on units graded SOUND with a full
+ *  belief-change sentence — the old leg asked whether a belief COULD be stated, and a careful judge
+ *  can nearly always state one. */
+/** Markdown is stripped on BOTH sides before comparing. A judge reading `- **Alpha lead.**` will
+ *  quote `Alpha lead.` — correctly — and a comparison that kept the asterisks would reject it. The
+ *  check must catch a judge SUPPLYING the why-care, never a judge quoting cleanly. Caught by the
+ *  selftest, which failed on exactly this the first time it ran. */
+const norm = (x: string): string =>
+  x
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/^\s*#{1,6}\s+/gm, ' ')
+    .replace(/^\s*[-*+]\s+/gm, ' ')
+    .replace(/[*_`>]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+export function validate(
+  units: Unit[],
+  v: Record<string, Row>,
+  md?: string
+): string[] {
   const errs: string[] = [];
   const ids = new Set(units.map(u => u.id));
   for (const id of ids)
@@ -484,6 +530,22 @@ export function validate(units: Unit[], v: Record<string, Row>): string[] {
       !r.belief_change?.trim()
     )
       errs.push(`${id}: ${r.verdict} with no belief-change sentence`);
+    // 🔴 RULING B — delivered, not constructible.
+    if (r.verdict !== 'NO-STAKES' && r.verdict !== 'FIXTURE') {
+      if (!r.why_quote?.trim())
+        errs.push(
+          `${id}: ${r.verdict} with no why_quote — if no sentence in the unit delivers the why-care, the verdict is NO-STAKES`
+        );
+      else if (md && u) {
+        const body = norm(md.slice(u.start, u.end));
+        if (!body.includes(norm(r.why_quote)))
+          errs.push(
+            `${id}: why_quote is NOT a verbatim sentence from the unit — "${r.why_quote.slice(0, 60)}…". A paraphrase is the judge supplying the why-care, which is the defect this leg exists to catch`
+          );
+      }
+    }
+    if (r.verdict === 'NO-STAKES' && r.why_quote?.trim())
+      errs.push(`${id}: NO-STAKES but a why_quote was supplied — pick one`);
   }
   return errs;
 }
@@ -501,7 +563,10 @@ function cmdRecord(date: string, model: string, force: boolean): void {
       `no verdicts at ${vPath}. The judge has not run. Nothing recorded — this is an absence, not a clean sheet.`
     );
   const v: Record<string, Row> = JSON.parse(fs.readFileSync(vPath, 'utf-8'));
-  const errs = validate(units, v);
+  const md = fs.existsSync(meta.source)
+    ? fs.readFileSync(meta.source, 'utf-8')
+    : undefined;
+  const errs = validate(units, v, md);
   if (errs.length)
     die(
       `VERDICT GRAMMAR FAILURE — ${errs.length} problem(s):\n   ${errs.join('\n   ')}`
@@ -532,6 +597,7 @@ function cmdRecord(date: string, model: string, force: boolean): void {
       belief_change: r.belief_change?.trim() || null,
       repetition_of: r.repetition_of?.trim() || null,
       reach: r.reach?.trim() || null,
+      why_quote: r.why_quote?.trim() || null,
       note: r.note?.trim() || null,
       promptHash: meta.promptHash,
       templateHash: meta.templateHash,
@@ -573,6 +639,7 @@ export function tallyLine(
     `vs ${MIX_TARGET.core}/${MIX_TARGET.developing}/${MIX_TARGET.reach} | reach ${reach} vs floor ${REACH_FLOOR}` +
     (reach < REACH_FLOOR ? ' BELOW-FLOOR' : '') +
     ` | volume ${disc.length} vs band ${UNIT_BAND.lo}-${UNIT_BAND.hi} discretionary (modal ${UNIT_BAND.modal})` +
+    ` | mixrule ${MIX_RULE_CHANGED}` +
     (disc.length < UNIT_BAND.lo
       ? ' BELOW-BAND'
       : disc.length > UNIT_BAND.hi
@@ -663,7 +730,91 @@ function selftest(): number {
       : {
           verdict: 'SOUND',
           belief_change: 'A reader now believes a new thing.',
+          // a REAL substring of that unit — the whole point of ruling B is that this is checkable
+          why_quote: md
+            .slice(x.start, x.end)
+            .replace(/\*/g, ' ')
+            .trim()
+            .slice(0, 24),
         };
+
+  // 🔴 RULING A — the two Signal units are not the same kind of pick
+  t(
+    'signal:1 is DEVELOPING',
+    mixClass('The Signal', 'signal:1') === 'developing'
+  );
+  t('signal:2 is REACH', mixClass('The Signal', 'signal:2') === 'reach');
+  t(
+    'a Six bullet is unaffected by the signal rule',
+    mixClass('Markets & Macro', 'six:markets-macro:1') === 'core'
+  );
+
+  // 🔴 RULING B — the why-care must be QUOTED, and the quote must be real
+  t(
+    'a verdict with no why_quote is caught',
+    validate(u, {
+      ...good,
+      'the-take': { verdict: 'SOUND', belief_change: 'x' },
+    }).some(e => e.includes('no why_quote'))
+  );
+  t(
+    'NO-STAKES carrying a why_quote is caught',
+    validate(u, {
+      ...good,
+      'the-take': { verdict: 'NO-STAKES', why_quote: 'x' },
+    }).some(e => e.includes('pick one'))
+  );
+  {
+    const takeUnit = u.find(x => x.id === 'the-take')!;
+    const verbatim = md
+      .slice(takeUnit.start, takeUnit.end)
+      .match(/\*\*(.+?)\*\*/)![1]!;
+    t(
+      'a VERBATIM quote from the unit passes',
+      validate(
+        u,
+        {
+          ...good,
+          'the-take': {
+            verdict: 'SOUND',
+            belief_change: 'x',
+            why_quote: verbatim,
+          },
+        },
+        md
+      ).length === 0
+    );
+    t(
+      'a PARAPHRASE is caught as not verbatim',
+      validate(
+        u,
+        {
+          ...good,
+          'the-take': {
+            verdict: 'SOUND',
+            belief_change: 'x',
+            why_quote: 'something the unit never actually said anywhere',
+          },
+        },
+        md
+      ).some(e => e.includes('NOT a verbatim sentence'))
+    );
+    t(
+      'quote matching ignores smart quotes and whitespace, not words',
+      validate(
+        u,
+        {
+          ...good,
+          'the-take': {
+            verdict: 'SOUND',
+            belief_change: 'x',
+            why_quote: '  ' + verbatim.toUpperCase() + ' ',
+          },
+        },
+        md
+      ).length === 0
+    );
+  }
 
   // 🔴 A1 — fixtures, both directions
   t(

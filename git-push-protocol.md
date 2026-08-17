@@ -101,6 +101,33 @@ scripts, not in main's history and not reproduced anywhere else.** Eight days of
 because a lock file got renamed into `refs/heads/`. A successful `git gc --prune` would have
 destroyed it.
 
+### 🔴 D — THE SCRATCH-INDEX COMMIT HELPER: RESET OUTSIDE THE EXPORTED INDEX
+
+A cloud session commits against a COPY of the index (`GIT_INDEX_FILE=$HOME/.idx-$$`) because the
+mount refuses the lock unlinks git needs. **The bug was never the copy. It was leaving the variable
+exported afterwards.**
+
+```bash
+#  WRONG — and it produced a false "1,045 staged deletions" alarm twice
+export GIT_INDEX_FILE="$IDX"
+git add <files>; git commit ...
+git reset -q            # ← still on the SCRATCH index; the real one stays stale
+rm -f "$IDX"            # ← now the exported path does not exist: git reads an EMPTY index
+git diff --cached ...   # ← every tracked file reads as DELETED. Nothing is wrong. Everything looks wrong.
+
+#  RIGHT
+export GIT_INDEX_FILE="$IDX"
+git add <files>
+git diff --cached --name-status | grep -c '^D'   # hard gate: any D aborts
+git commit -F - <<'MSG' … MSG
+unset GIT_INDEX_FILE; rm -f "$IDX"   # ← unset FIRST, and only then
+git reset -q                          # ← refreshes the REAL index against the new HEAD
+```
+
+**Two occurrences, both false alarms, both costing a full verification round to disprove.** The
+lesson generalises past git: **a verification command that inherits the environment of the operation
+it is verifying is not an independent check.**
+
 ### Why each step exists
 
 - **`find .git -name "*.lock" -delete`** — Scheduled tasks leave lock files at unpredictable depths (`.git/index.lock`, `.git/HEAD.lock`, `.git/refs/heads/main.lock`). The `rm -f .git/*.lock` approach misses nested locks, and zsh glob errors when `refs/heads/*.lock` has no matches. `find` handles all cases silently.
