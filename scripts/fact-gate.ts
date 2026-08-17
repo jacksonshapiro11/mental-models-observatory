@@ -1264,7 +1264,7 @@ function effectiveDateClaims(body: string, _briefDate: string | null): Claim[] {
 }
 
 // ---------------------------------------------------------------------------
-// NAMED-STATUTE THRESHOLD CHECK (IMP-183 — the 08-17 Critic's mandate #1, RC2).
+// NAMED-STATUTE THRESHOLD CHECK (IMP-189 — the 08-17 Critic's mandate #1, RC2).
 //
 // WORKED FAILURE. 08-17 AI&T-1 shipped: "California's SB 53 exempts any company below $500 million
 // in revenue OR MODEL TRAINING COSTS from coverage at all." Two errors in one clause, and the
@@ -4256,7 +4256,7 @@ function selftest(): number {
       c => c.tier === 'critical' && /takes effect today/i.test(c.sentence)
     );
 
-  // --- IMP-183 (08-17 mandate #1, RC2): NAMED-STATUTE THRESHOLDS. Both directions, asserted against
+  // --- IMP-189 (08-17 mandate #1, RC2): NAMED-STATUTE THRESHOLDS. Both directions, asserted against
   //     the two REAL sentences the mandate names — one that must FAIL, one that must stay SILENT. ---
   const aug17v2 = path.join(process.cwd(), 'daily-briefs', '2026-08-17-v2.md');
   const aug17Statutes = fs.existsSync(aug17v2)
@@ -5245,12 +5245,12 @@ function selftest(): number {
     `  [IMP-069] SILENT on "the deadline … falls today" (a deadline ≠ an effective date): ${okEdSilentDeadline ? '✓' : '✗'}`
   );
   console.log(
-    `  [IMP-183] FIRE: SB 53 + "$500 million" is a CRITICAL statute-threshold claim: ${okStatFire ? '✓' : '✗'}\n` +
-      `  [IMP-183] SILENT on the correctly-sourced "PRC-029-1 in Order No. 909" (no threshold attached): ${okStatSilentPrc ? '✓' : '✗'}\n` +
-      `  [IMP-183] SILENT when the only numbers are DATES: ${okStatSilentDate ? '✓' : '✗'}\n` +
-      `  [IMP-183] a FLOP coverage test counts as a threshold: ${okStatFlop ? '✓' : '✗'}\n` +
-      `  [IMP-183] REAL 08-17 v2: exactly one statute claim, statute:sb53 (${aug17Statutes.length} found): ${okStatReal ? '✓' : '✗'}\n` +
-      `  [IMP-183] the morning truth row resolves it, with the bill text URL: ${okStatResolves ? '✓' : '✗'}`
+    `  [IMP-189] FIRE: SB 53 + "$500 million" is a CRITICAL statute-threshold claim: ${okStatFire ? '✓' : '✗'}\n` +
+      `  [IMP-189] SILENT on the correctly-sourced "PRC-029-1 in Order No. 909" (no threshold attached): ${okStatSilentPrc ? '✓' : '✗'}\n` +
+      `  [IMP-189] SILENT when the only numbers are DATES: ${okStatSilentDate ? '✓' : '✗'}\n` +
+      `  [IMP-189] a FLOP coverage test counts as a threshold: ${okStatFlop ? '✓' : '✗'}\n` +
+      `  [IMP-189] REAL 08-17 v2: exactly one statute claim, statute:sb53 (${aug17Statutes.length} found): ${okStatReal ? '✓' : '✗'}\n` +
+      `  [IMP-189] the morning truth row resolves it, with the bill text URL: ${okStatResolves ? '✓' : '✗'}`
   );
   console.log(
     `  [IMP-069] SILENT on bare "highly effective / cost-effective": ${okEdSilentBare ? '✓' : '✗'}`
@@ -6063,7 +6063,7 @@ function main() {
   const effectiveDates = effectiveDateClaims(body, briefDate);
   for (const e of effectiveDates) if (truth?.claims?.[e.key]) e.status = 'PASS';
 
-  // 3d-quinquies. NAMED-STATUTE THRESHOLDS (IMP-183 — 08-17 Critic mandate #1, RC2). "SB 53 exempts
+  // 3d-quinquies. NAMED-STATUTE THRESHOLDS (IMP-189 — 08-17 Critic mandate #1, RC2). "SB 53 exempts
   // any company below $500 million in revenue or model training costs from coverage" was wrong in
   // both its criterion and its effect, and the unit's conclusion rested on it. A statute cited beside
   // a monetary or proportional threshold now resolves only against the bill's own text.
@@ -6235,7 +6235,7 @@ function main() {
     ...sourceConclusions,
     ...issuerCausals,
     ...attrSuperlatives,
-    ...statuteClaims, // IMP-183
+    ...statuteClaims, // IMP-189
   ].filter(c => c.tier === 'critical' && c.status === 'UNVERIFIED');
   if (!allowUnverified) {
     for (const c of unverifiedCritical) {
@@ -6327,7 +6327,7 @@ function main() {
     ...sourceConclusions,
     ...issuerCausals,
     ...attrSuperlatives,
-    ...statuteClaims, // IMP-183
+    ...statuteClaims, // IMP-189
   ];
 
   // Ledger output (the worklist the editorial agents clear by verify-and-correct).
@@ -6349,7 +6349,7 @@ function main() {
       derivedPrices: derivedClaims.length, // IMP-120
       sourceConclusions: sourceConclusions.length, // IMP-143
       issuerCausals: issuerCausals.length, // IMP-166
-      statuteThresholds: statuteClaims.length, // IMP-183
+      statuteThresholds: statuteClaims.length, // IMP-189
       pass: allClaims.filter(c => c.status === 'PASS').length,
       fail: allClaims.filter(c => c.status === 'FAIL').length,
       unverified: allClaims.filter(c => c.status === 'UNVERIFIED').length,
