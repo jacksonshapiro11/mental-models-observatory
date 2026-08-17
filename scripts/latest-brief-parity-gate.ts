@@ -149,15 +149,37 @@ function selftest(): number {
   // it never wins and this gate does not claim to catch it. What DOES win is anything sorting above
   // a digit — every lowercase filename, and any future-dated draft. Both are realistic here: drafts
   // in this pipeline are routinely dated tomorrow.
+  // THE FIXTURE DATE IS DERIVED, NEVER HARDCODED (fixed 2026-08-17 — IMP-185, RC2).
+  // This leg was written as `'2026-08-16-draft.md'`, which was future-dated ON THE DAY IT WAS
+  // WRITTEN and therefore won the loose resolver. Then 2026-08-17.md published, the fixture stopped
+  // sorting above the newest edition, the divergence it constructed evaporated, and the assertion
+  // red-failed IMP-178 and ESC-017 — a gate reporting itself broken because the calendar moved, not
+  // because anything regressed. A fixture that encodes "later than the tree" as a literal has a
+  // shelf life; deriving it from the tree's own newest edition cannot expire.
+  const dayAfter = (d: string): string => {
+    const dt = new Date(`${d}T00:00:00Z`);
+    dt.setUTCDate(dt.getUTCDate() + 1);
+    return dt.toISOString().slice(0, 10);
+  };
+  const newest = strictLatest(real); // e.g. '2026-08-17'
+  const futureDraft = `${dayAfter(newest)}-draft.md`; // always sorts above `newest`.md
+  const belowSuffix = `${newest}-old.md`; // '-' (0x2D) < '.' (0x2E) → always sorts below
+  // Split into named legs: an ANDed assertion that fails tells you nothing about WHICH shape broke.
   t(
     checkParity([...real, 'index.md']).some(
       f => f.check === 'latest-brief-resolver-divergence'
-    ) &&
-      checkParity([...real, '2026-08-16-draft.md']).some(
-        f => f.check === 'latest-brief-resolver-divergence'
-      ) &&
-      looseLatest([...real, '2026-08-15-old.md']) === strictLatest(real),
-    'FIRES on the shapes that actually win (a lowercase "index.md"; a future-dated "2026-08-16-draft.md") — and correctly does NOT claim to catch "-old.md", which sorts below and never wins'
+    ),
+    'FIRES on a lowercase "index.md" — every lowercase name sorts above a digit and wins'
+  );
+  t(
+    checkParity([...real, futureDraft]).some(
+      f => f.check === 'latest-brief-resolver-divergence'
+    ),
+    `FIRES on a future-dated draft ("${futureDraft}", derived from the tree's newest edition — drafts here are routinely dated tomorrow)`
+  );
+  t(
+    looseLatest([...real, belowSuffix]) === strictLatest(real),
+    `correctly does NOT claim to catch "${belowSuffix}", which sorts below and never wins`
   );
 
   // ── The 08-15 shape, reconstructed: today's edition exists but the route resolves elsewhere. ──
@@ -177,7 +199,7 @@ function selftest(): number {
     `SILENT on the live tree for ${today} (either today's edition is the newest, or there is none)`
   );
 
-  console.log(`\nlatest-brief-parity-gate selftest — ${9 - fails}/9 assertions passed`);
+  console.log(`\nlatest-brief-parity-gate selftest — ${11 - fails}/11 assertions passed`);
   if (fails) {
     console.error('✗ SELFTEST FAILED');
     return 1;

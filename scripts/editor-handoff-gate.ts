@@ -98,10 +98,48 @@ const statusLines = (root: string, date: string): string[] => {
 // Classify by the STATUS FIELD, never by substring. The 07-13 Editor's SUCCESS line reads
 // "… | SUCCESS | … Supersedes SELF-HEAL-CRITIC entry." — a naive /SELF-HEAL/ test on the whole
 // line calls the Editor's completion a self-heal. (Caught by this gate's own selftest.)
+//
+// ── THE SELECTOR IS A FIELD TOO, NOT A SUBSTRING (added 2026-08-17 — IMP-184, RC2) ────────────
+// The rule above was learned for the KIND and never applied to the SELECTION, so for months both
+// selectors below asked "does this line MENTION the task?" — and on this board every task narrates
+// every other task at length. RECEIPTS, from the real 2026-08-17 status board:
+//   line 32  `… | brief-critic | … | SUCCESS |` — prose names brief-editor → read as an EDITOR SUCCESS
+//   line 32  the same line mentions brief-quality-gate      → read as a QG SUCCESS at 00:27:29Z
+//   line 15  `… | signal-discovery-draft | …`               → read as an Editor line
+//   line 19 (08-03) `… | brief-email | …`                   → read as a QG line
+// Two live consequences, not one cosmetic one:
+//   (1) MEASUREMENT. The QG runtime distribution took max(terminal) − min(canary) across the
+//       contaminated set, so 2026-08-17 measured 105.2 min against a real QG runtime of 86.98
+//       (CANARY 22:42:15Z → SUCCESS 00:09:14Z). That tripped the calibration leg — the leg whose
+//       whole purpose is that QG_NO_ARTIFACT_WAIT_MIN "cannot quietly go stale" — and red-failed
+//       nine ledger rows on a number no QG ever ran.
+//   (2) CORRECTNESS, and this is the one that could ship a bad brief. `qgLiveness` returns QUIET
+//       the moment it finds a terminal line, with the reason "the QG has finished". A foreign
+//       SUCCESS line that merely mentions the quality gate therefore clears the Editor to seed a
+//       passthrough v1.5 over a QG that is still writing — verbatim the 2026-08-03 failure this
+//       function exists to prevent. Symmetrically, `liveness()` reads a brief-critic SUCCESS as the
+//       Editor's own, which silences IMP-072's completed-but-unlogged check (the 07-18 gap).
+// A line's task is the SECOND PIPE FIELD of a real status line. Nothing else is its task.
+/** The task that OWNS a status line — `{ts} | {task} | {output} | {STATUS} | {reason}`.
+ *  Returns null for any line that is not a status line (prose, headers, continuations), which is
+ *  why field 0 must be a bare timestamp and not merely contain one. */
+export function lineTask(raw: string): string | null {
+  const fields = raw.split('|');
+  if (fields.length < 2) return null;
+  if (!/^\s*\d{4}-\d{2}-\d{2}T[\d:]+(?:Z|[+-]\d{2}:?\d{2})?\s*$/.test(fields[0]!))
+    return null;
+  return fields[1]!.trim();
+}
+/** True only when THIS line's task field is the named task. */
+const ownedBy = (raw: string, task: RegExp): boolean => {
+  const t = lineTask(raw);
+  return t !== null && task.test(t);
+};
+
 function editorLines(root: string, date: string): EditorLine[] {
   const out: EditorLine[] = [];
   for (const raw of statusLines(root, date)) {
-    if (!/brief-editor/i.test(raw)) continue;
+    if (!ownedBy(raw, /^brief-editor$/i)) continue;
     const tsm = raw.match(/(\d{4}-\d{2}-\d{2}T[\d:]+Z)/);
     const ts = tsm ? new Date(tsm[1]) : null;
     const fields = raw.split('|').map(f => f.trim());
@@ -362,7 +400,7 @@ export const QG_NO_ARTIFACT_WAIT_MIN = 105;
 function qgLines(root: string, date: string): EditorLine[] {
   const out: EditorLine[] = [];
   for (const raw of statusLines(root, date)) {
-    if (!/brief-quality-gate|\|\s*quality-gate\s*\|/i.test(raw)) continue;
+    if (!ownedBy(raw, /^(brief-)?quality-gate$/i)) continue;
     const tsm = raw.match(
       /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2}))/
     );
@@ -973,6 +1011,53 @@ function selftest(): number {
   }
   const observedMax = runtimes.length ? Math.max(...runtimes) : 0;
   const okQgCalibrated = QG_NO_ARTIFACT_WAIT_MIN > observedMax;
+
+  // --- IMP-184 (2026-08-17, RC2): THE SELECTOR IS A FIELD, NOT A SUBSTRING. Asserted against the
+  //     REAL 08-17 board, which is the densest cross-narration night on record. Both directions:
+  //     the foreign lines must be EXCLUDED, and the genuine ones must still be SELECTED.
+  const board0817 = statusLines(root, '2026-08-17');
+  const foreignQg = board0817.filter(
+    l => /brief-quality-gate/i.test(l) && !ownedBy(l, /^(brief-)?quality-gate$/i)
+  );
+  const foreignEd = board0817.filter(
+    l => /brief-editor/i.test(l) && !ownedBy(l, /^brief-editor$/i)
+  );
+  // (a) The contamination is REAL on this board — if these ever hit 0 the legs below prove nothing.
+  const okContaminationReal = foreignQg.length >= 2 && foreignEd.length >= 2;
+  // (b) NOT ONE foreign line survives the selector, by either name.
+  const okNoForeignSelected =
+    !qgLines(root, '2026-08-17').some(l => foreignQg.includes(l.raw)) &&
+    !editorLines(root, '2026-08-17').some(l => foreignEd.includes(l.raw));
+  // (c) A foreign SUCCESS line must never be read as a TERMINAL — this is the correctness leg, not
+  //     the measurement one. brief-critic posted `| SUCCESS |` at 00:27:29Z while narrating both
+  //     tasks; had that been read as the QG's terminal, qgLiveness would answer QUIET ("the QG has
+  //     finished") and clear the Editor to overwrite a live QG's v1.5. The real QG terminal is
+  //     00:09:14Z, so we assert the terminal is THAT line and not the critic's.
+  const qgTerm = qgLines(root, '2026-08-17').find(
+    l => l.kind === 'SUCCESS' || l.kind === 'FAIL'
+  );
+  const okTerminalIsTheQgs =
+    !!qgTerm &&
+    /2026-08-17T00:09:14Z/.test(qgTerm.raw) &&
+    !/brief-critic/.test(lineTask(qgTerm.raw) ?? '');
+  // (d) The MEASUREMENT leg: 08-17's QG ran 22:42:15Z → 00:09:14Z = 86.98 min. The contaminated
+  //     selector reported 105.2 (the critic's 00:27:29Z line) and red-failed nine ledger rows.
+  const qg0817 = qgLines(root, '2026-08-17');
+  const c0817 = qg0817.filter(l => l.kind === 'CANARY' && l.ts).map(l => l.ts!.getTime());
+  const t0817 = qg0817
+    .filter(l => (l.kind === 'SUCCESS' || l.kind === 'FAIL') && l.ts)
+    .map(l => l.ts!.getTime());
+  const mins0817 =
+    c0817.length && t0817.length
+      ? (Math.max(...t0817) - Math.min(...c0817)) / 60000
+      : -1;
+  const okRuntime0817 = Math.abs(mins0817 - 86.98) < 0.05;
+  // (e) A prose line owns no task at all — field 0 must BE a timestamp, not merely contain one.
+  const okProseOwnsNoTask =
+    lineTask('the brief-editor should defer to brief-quality-gate') === null &&
+    lineTask('## brief-editor | SUCCESS | not a status line') === null &&
+    lineTask('2026-08-17T00:09:14Z | brief-quality-gate | x | SUCCESS |') ===
+      'brief-quality-gate';
   console.log(
     `  [IMP-121] observed QG runtimes (trailing 30 boards, n=${runtimes.length}): ${runtimes.map(m => m.toFixed(1)).join(' · ')} min → max ${observedMax.toFixed(1)}, budget ${QG_NO_ARTIFACT_WAIT_MIN}`
   );
@@ -1148,6 +1233,26 @@ function selftest(): number {
     [
       `IMP-121 the ${QG_NO_ARTIFACT_WAIT_MIN}-min budget still exceeds the observed max (${observedMax.toFixed(1)})`,
       okQgCalibrated,
+    ],
+    [
+      `IMP-184 the real 08-17 board DOES cross-narrate (${foreignQg.length} foreign QG mentions, ${foreignEd.length} foreign editor mentions) — else the next four legs prove nothing`,
+      okContaminationReal,
+    ],
+    [
+      'IMP-184 NOT ONE foreign line survives either selector (task field, not substring)',
+      okNoForeignSelected,
+    ],
+    [
+      "IMP-184 a foreign SUCCESS is never a TERMINAL — the QG's terminal is its own 00:09:14Z line, not brief-critic's 00:27:29Z (this is the passthrough-v1.5 hole)",
+      okTerminalIsTheQgs,
+    ],
+    [
+      `IMP-184 08-17 measures the QG's REAL 86.98 min, not the contaminated 105.2 (got ${mins0817.toFixed(2)})`,
+      okRuntime0817,
+    ],
+    [
+      'IMP-184 a prose line owns no task; a real status line owns exactly its second field',
+      okProseOwnsNoTask,
     ],
     ['FIRES on real 07-14 (mid-pass snapshot promoted, then superseded)', ok14],
     ['FIRES on real 07-13 (self-heal over a live Editor)', ok13],

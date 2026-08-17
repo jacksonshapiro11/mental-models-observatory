@@ -1264,6 +1264,90 @@ function effectiveDateClaims(body: string, _briefDate: string | null): Claim[] {
 }
 
 // ---------------------------------------------------------------------------
+// NAMED-STATUTE THRESHOLD CHECK (IMP-183 — the 08-17 Critic's mandate #1, RC2).
+//
+// WORKED FAILURE. 08-17 AI&T-1 shipped: "California's SB 53 exempts any company below $500 million
+// in revenue OR MODEL TRAINING COSTS from coverage at all." Two errors in one clause, and the
+// unit's whole conclusion rested on them: the $500M test is ANNUAL GROSS REVENUE ONLY ("model
+// training costs" is an SB 1047 criterion, a different bill), and it SORTS DUTIES rather than gating
+// coverage — coverage is the 10^26 FLOP frontier-model definition. The dependent sentence, "Every
+// firm deploying the same agents below it owes no disclosure to anyone", was false on the same
+// ground. Every gate passed: the numeral $500 million is real, it is simply attached to the wrong
+// test in the wrong bill. A statute's number is the one fact in a brief that is FREE to check and
+// catastrophic to recall — the bill text is a URL, and no amount of fluency substitutes for opening
+// it. This is the 07-10 fluent/false pattern wearing a citation.
+//
+// FIX (the emission-contract pattern — entity-count / effective-date / source-conclusion). A named
+// statute or docket cited in the same sentence as a MONETARY OR PROPORTIONAL THRESHOLD becomes a
+// CRITICAL claim keyed `statute:<slug>`, resolvable only by a truth row. Unresolved → the existing
+// --require-resolved rail blocks it at the Morning Truth Gate. The power is the requirement, not the
+// parsing: a Writer who must paste the bill text's own words cannot quietly invert the test.
+//
+// NON-FIRE DISCIPLINE (this gate runs nightly; a storm is paid for every night). The threshold must
+// sit in the SAME SENTENCE as the citation, and a DATE is not a threshold. Receipt, the same brief:
+// Signal-2's "FERC approved PRC-029-1 in Order No. 909 on 24 July 2025. It takes effect 1 October
+// 2026…" — correctly sourced, no monetary or proportional threshold attached — stays SILENT, and
+// its effective date is already carried by the effective-date rail. Measured across the real
+// 08-13…08-17 v2 files: ≤1 claim per brief.
+// ---------------------------------------------------------------------------
+const STATUTE_CITE_RE = new RegExp(
+  String.raw`\b(?:(?:SB|AB|HB|HR)\s?\.?\s?\d{1,4}` +
+    String.raw`|H\.R\.\s?\d{1,5}|S\.\s?\d{1,5}` +
+    String.raw`|Order\s+No\.?\s?\d{1,4}` +
+    String.raw`|Executive\s+Order\s+\d{4,5}` +
+    String.raw`|PRC-\d{1,3}(?:-\d{1,2})?` +
+    String.raw`|\d{1,2}\s?CFR(?:\s?§?\s?[\d.]+)?` +
+    String.raw`|\d{1,3}\s?FR\s?\d{2,6}` +
+    String.raw`|Regulation\s+\(EU\)\s+\d{4}\/\d{2,4}` +
+    String.raw`|Directive\s+\d{4}\/\d{1,4}(?:\/[A-Z]{2,3})?)\b`,
+  'g'
+);
+/** A THRESHOLD, not a date. "24 July 2025" must never trip this. */
+const STATUTE_THRESHOLD_RE = new RegExp(
+  String.raw`[$£€]\s?\d` +
+    String.raw`|\d+(?:\.\d+)?\s*(?:%|percent\b|pct\b|basis points\b|bps\b)` +
+    String.raw`|\b\d+(?:\.\d+)?\s*(?:million|billion|trillion|bn|tn)\b` +
+    String.raw`|\b10\s?\^\s?\d+|\b10\*\*\d+|\bFLOPs?\b`,
+  'i'
+);
+
+export function statuteThresholdClaims(
+  body: string,
+  _briefDate: string | null
+): Claim[] {
+  const claims: Claim[] = [];
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  for (const s of stripped.matchAll(/[^.!?\n]+[.!?]?/g)) {
+    const text = s[0];
+    const idx = s.index ?? 0;
+    if (!STATUTE_THRESHOLD_RE.test(text)) continue;
+    for (const cite of text.matchAll(STATUTE_CITE_RE)) {
+      const slug = cite[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '')
+        .slice(0, 24);
+      const key = `statute:${slug}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      claims.push({
+        key,
+        asset: `named statute (${cite[0].trim()})`,
+        tier: 'critical',
+        claimType: 'statute-threshold',
+        direction: 'unknown',
+        magnitudePct: null,
+        level: null,
+        section: sectionOf(stripped, idx),
+        sentence: text.trim(),
+        status: 'UNVERIFIED',
+      });
+    }
+  }
+  return claims;
+}
+
+// ---------------------------------------------------------------------------
 // AI&T DEFINITE-PRODUCT-CLAIM CHECK (IMP-074, 2026-07-19 — the 07-19 Critic's mandate #1).
 //
 // WORKED FAILURE. Two AI&T bullets shipped to v2 on fluent, sophisticated, FALSE premises:
@@ -4172,6 +4256,62 @@ function selftest(): number {
       c => c.tier === 'critical' && /takes effect today/i.test(c.sentence)
     );
 
+  // --- IMP-183 (08-17 mandate #1, RC2): NAMED-STATUTE THRESHOLDS. Both directions, asserted against
+  //     the two REAL sentences the mandate names — one that must FAIL, one that must stay SILENT. ---
+  const aug17v2 = path.join(process.cwd(), 'daily-briefs', '2026-08-17-v2.md');
+  const aug17Statutes = fs.existsSync(aug17v2)
+    ? statuteThresholdClaims(fs.readFileSync(aug17v2, 'utf8'), '2026-08-17')
+    : [];
+  // (a) THE SENTENCE THAT WAS FALSE. Wrong criterion (revenue only; "model training costs" is
+  //     SB 1047) and wrong effect (the $500M line sorts duties; coverage is the 10^26 FLOP test).
+  const okStatFire = statuteThresholdClaims(
+    "California's SB 53 exempts any company below $500 million in revenue or model training costs from coverage at all.",
+    '2026-08-17'
+  ).some(
+    c =>
+      c.key === 'statute:sb53' &&
+      c.claimType === 'statute-threshold' &&
+      c.tier === 'critical' &&
+      c.status === 'UNVERIFIED'
+  );
+  // (b) THE SENTENCE THAT WAS RIGHT — the mandate's own "must PASS" case. Correctly sourced, and no
+  //     monetary or proportional threshold attached, so this check has no business speaking. Its
+  //     effective date is already carried by the effective-date rail; two gates on one clause is how
+  //     a nightly storm starts.
+  const okStatSilentPrc =
+    statuteThresholdClaims(
+      'FERC approved PRC-029-1 in Order No. 909 on 24 July 2025. It takes effect 1 October 2026, and it requires inverter-based resources to ride through voltage disturbances.',
+      '2026-08-17'
+    ).length === 0;
+  // (c) A DATE IS NOT A THRESHOLD. The single most likely false-fire, stated as its own assertion.
+  const okStatSilentDate =
+    statuteThresholdClaims(
+      'Order No. 909 was signed on 24 July 2025 and amended on 3 August 2026.',
+      '2026-08-17'
+    ).length === 0;
+  // (d) ON THE REAL FILE: exactly one claim in the brief that shipped the error, and it is that one.
+  const okStatReal =
+    !fs.existsSync(aug17v2) ||
+    (aug17Statutes.length === 1 && aug17Statutes[0]!.key === 'statute:sb53');
+  // (e) THE CONTRACT CLOSES: the morning's truth row (bill text URL + the statute's own words)
+  //     resolves it. Without a row it rides --require-resolved into the Morning Truth Gate.
+  const aug17Truth = path.join(process.cwd(), 'daily-briefs', '2026-08-17-truth.json');
+  const okStatResolves =
+    !fs.existsSync(aug17Truth) ||
+    (() => {
+      const t = JSON.parse(fs.readFileSync(aug17Truth, 'utf8')) as {
+        claims?: Record<string, { resolved?: boolean; source?: string }>;
+      };
+      const row = t.claims?.['statute:sb53'];
+      return !!row && row.resolved === true && /https?:\/\//.test(row.source ?? '');
+    })();
+  // (f) THE FLOP GATE IS A THRESHOLD TOO — a coverage test with no currency in it.
+  const okStatFlop =
+    statuteThresholdClaims(
+      'SB 53 defines a frontier model as one trained using more than 10^26 FLOPs.',
+      '2026-08-17'
+    ).length === 1;
+
   // --- IMP-143 (08-07 mandate #2, re-prescribed 08-08 as #2a): SOURCE CONCLUSIONS. Both directions,
   //     asserted against the REAL artifact the Critic named — 08-08 AI&T-1, whose whole causal spine
   //     rests on a reconstruction of a conference talk that no layer ever had to write down. ---
@@ -5105,6 +5245,14 @@ function selftest(): number {
     `  [IMP-069] SILENT on "the deadline … falls today" (a deadline ≠ an effective date): ${okEdSilentDeadline ? '✓' : '✗'}`
   );
   console.log(
+    `  [IMP-183] FIRE: SB 53 + "$500 million" is a CRITICAL statute-threshold claim: ${okStatFire ? '✓' : '✗'}\n` +
+      `  [IMP-183] SILENT on the correctly-sourced "PRC-029-1 in Order No. 909" (no threshold attached): ${okStatSilentPrc ? '✓' : '✗'}\n` +
+      `  [IMP-183] SILENT when the only numbers are DATES: ${okStatSilentDate ? '✓' : '✗'}\n` +
+      `  [IMP-183] a FLOP coverage test counts as a threshold: ${okStatFlop ? '✓' : '✗'}\n` +
+      `  [IMP-183] REAL 08-17 v2: exactly one statute claim, statute:sb53 (${aug17Statutes.length} found): ${okStatReal ? '✓' : '✗'}\n` +
+      `  [IMP-183] the morning truth row resolves it, with the bill text URL: ${okStatResolves ? '✓' : '✗'}`
+  );
+  console.log(
     `  [IMP-069] SILENT on bare "highly effective / cost-effective": ${okEdSilentBare ? '✓' : '✗'}`
   );
   console.log(
@@ -5676,6 +5824,12 @@ function selftest(): number {
     okEcPubResolvable &&
     okEdFire &&
     okEdSilentDeadline &&
+    okStatFire &&
+    okStatSilentPrc &&
+    okStatSilentDate &&
+    okStatFlop &&
+    okStatReal &&
+    okStatResolves &&
     okEdSilentBare &&
     okEdReal &&
     okScFireReal &&
@@ -5909,6 +6063,13 @@ function main() {
   const effectiveDates = effectiveDateClaims(body, briefDate);
   for (const e of effectiveDates) if (truth?.claims?.[e.key]) e.status = 'PASS';
 
+  // 3d-quinquies. NAMED-STATUTE THRESHOLDS (IMP-183 — 08-17 Critic mandate #1, RC2). "SB 53 exempts
+  // any company below $500 million in revenue or model training costs from coverage" was wrong in
+  // both its criterion and its effect, and the unit's conclusion rested on it. A statute cited beside
+  // a monetary or proportional threshold now resolves only against the bill's own text.
+  const statuteClaims = statuteThresholdClaims(body, briefDate);
+  for (const e of statuteClaims) if (truth?.claims?.[e.key]) e.status = 'PASS';
+
   // 3d-bis. SOURCE CONCLUSIONS (IMP-143 — the 08-07 mandate #2, re-prescribed 08-08 as #2a after
   // it vanished without code, row or deferral). A bullet leaning on a named source's report/study/
   // talk must record that source's OWN conclusion; unresolved blocks at the Morning Truth Gate,
@@ -6074,6 +6235,7 @@ function main() {
     ...sourceConclusions,
     ...issuerCausals,
     ...attrSuperlatives,
+    ...statuteClaims, // IMP-183
   ].filter(c => c.tier === 'critical' && c.status === 'UNVERIFIED');
   if (!allowUnverified) {
     for (const c of unverifiedCritical) {
@@ -6165,6 +6327,7 @@ function main() {
     ...sourceConclusions,
     ...issuerCausals,
     ...attrSuperlatives,
+    ...statuteClaims, // IMP-183
   ];
 
   // Ledger output (the worklist the editorial agents clear by verify-and-correct).
@@ -6186,6 +6349,7 @@ function main() {
       derivedPrices: derivedClaims.length, // IMP-120
       sourceConclusions: sourceConclusions.length, // IMP-143
       issuerCausals: issuerCausals.length, // IMP-166
+      statuteThresholds: statuteClaims.length, // IMP-183
       pass: allClaims.filter(c => c.status === 'PASS').length,
       fail: allClaims.filter(c => c.status === 'FAIL').length,
       unverified: allClaims.filter(c => c.status === 'UNVERIFIED').length,
@@ -6221,7 +6385,7 @@ function main() {
 
   console.log(`fact-gate — ${path.basename(briefPath)}`);
   console.log(
-    `  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} · derived-prices: ${derivedClaims.length} · source-conclusions: ${sourceConclusions.length} · issuer-causals: ${issuerCausals.length} · attributed-superlatives: ${attrSuperlatives.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`
+    `  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} · derived-prices: ${derivedClaims.length} · source-conclusions: ${sourceConclusions.length} · issuer-causals: ${issuerCausals.length} · attributed-superlatives: ${attrSuperlatives.length} · statute-thresholds: ${statuteClaims.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`
   );
   console.log(
     `  archive: ${archiveAssetsKnown} assets known from our last ${archiveDays} briefs`

@@ -118,6 +118,67 @@ export function checkRow(
 }
 
 /* ---------------------------------------------------------------------------
+ * IMP-188 — TWO ROWS, ONE SENTENCE, INCOMPATIBLE PRESCRIPTIONS (2026-08-17, RC3).
+ *
+ * WHAT HAPPENED. COR-014 and COR-016 both corrected the SAME Hormuz-continuity sentence in the SAME
+ * published file, and their prescribed wordings diverged mid-sentence:
+ *   COR-014 …since Iran's late-February closure, WITH THE MEMORANDUM'S 60-DAY SAFE-PASSAGE WINDOW…
+ *   COR-016 …since Iran's late-February closure; THE DECLARED STATUS HAS FLIPPED REPEATEDLY, WITH…
+ * `checkRow` requires each row's `correct` literal to be a substring of the file. The characters
+ * after "closure" cannot be both, so **satisfying either row necessarily broke the other and the
+ * gate could never exit 0.** It had been RED for two days, and the RED read "a claim we PROVED false
+ * is still live" — which was not true after 2026-08-17's morning pass. Both paths had been corrected;
+ * what remained was an unsatisfiable constraint wearing the costume of a live falsehood.
+ *
+ * THAT IS THE EXPENSIVE PART, and it is the CARRY/TREE lesson again (2026-08-14, IMP-174): a gate
+ * that manufactures a red nobody can clear does not raise an alarm, it teaches the next session to
+ * skim reds. Two sessions read this one and neither could close it, because the fix was not in the
+ * file — it was in the pair.
+ *
+ * SO THE PAIR IS NOW CHECKED. Any two OPEN rows targeting the same file whose `correct` literals
+ * share a prefix and then diverge are reported as CONFLICTING PRESCRIPTIONS — a distinct, named
+ * verdict that tells the reader to merge the rows rather than to edit the file. Resolution on
+ * 2026-08-17: publish COR-016's fuller dated record (a strict superset of COR-014's content) and
+ * shorten COR-014's expected literal to the clause both wordings share.
+ * --------------------------------------------------------------------------- */
+/** The longest common prefix of two strings. */
+function commonPrefix(a: string, b: string): string {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return a.slice(0, i);
+}
+/**
+ * CONFLICTING PRESCRIPTIONS: two rows on one file whose corrections cannot both be substrings.
+ * The signature is a SUBSTANTIAL shared prefix (≥40 chars — the same sentence) followed by a
+ * divergence, with neither literal containing the other (nesting is fine: a shorter literal inside
+ * a longer one is satisfied by the same bytes).
+ */
+export function conflictingPrescriptions(rows: Row[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    for (let j = i + 1; j < rows.length; j++) {
+      const a = rows[i]!,
+        b = rows[j]!;
+      if (a.file !== b.file) continue;
+      const ca = needle(a.correct),
+        cb = needle(b.correct);
+      if (!ca || !cb) continue;
+      if (ca.includes(cb) || cb.includes(ca)) continue; // nested — both can hold
+      const pre = commonPrefix(ca, cb);
+      if (pre.length < 40) continue;
+      out.push(
+        `${a.id} + ${b.id}: CONFLICTING PRESCRIPTIONS — both rows correct the SAME SENTENCE in ${a.file}, ` +
+          `sharing ${pre.length} characters ("…${pre.slice(-50)}") and then diverging. No file can satisfy both, ` +
+          `so this pair can never exit 0 and editing the file cannot fix it. MERGE THE ROWS: publish one sentence ` +
+          `carrying every verified fact, then point both \`correct\` literals at a clause the published wording ` +
+          `actually contains. A gate that manufactures a red nobody can clear teaches the next session to skim reds.`
+      );
+    }
+  }
+  return out;
+}
+
+/* ---------------------------------------------------------------------------
  * IMP-179 — THE FORMAT SEAM AND THE ID SEAM (2026-08-16, brief-morning receipt, RC1).
  *
  * WHAT HAPPENED THIS MORNING. The Sunday Morning Truth Gate proved two published briefs false
@@ -432,6 +493,77 @@ function selftest(): number {
         return checkProseOnly(rs, md).length + checkIdIntegrity(rs).length > 0;
       },
     ],
+    // --- IMP-188: CONFLICTING PRESCRIPTIONS. The fixture is the REAL 08-14/08-16 pair, verbatim. ---
+    [
+      'FIRES on two rows correcting the SAME sentence with wordings that diverge (the real COR-014/COR-016 pair)',
+      true,
+      () =>
+        conflictingPrescriptions([
+          {
+            ...row,
+            id: 'COR-014',
+            file: 'content/daily-updates/2026-08-15.md',
+            correct:
+              "`The American blockade of Iran's ports, first imposed 13 April, was lifted by the June 17 memorandum and reimposed in early August; Hormuz has been shut or conditional since Iran's late-February closure, with the memorandum's 60-day safe-passage window the last real opening`",
+          },
+          {
+            ...row,
+            id: 'COR-016',
+            file: 'content/daily-updates/2026-08-15.md',
+            correct:
+              "`The American blockade of Iran's ports, first imposed 13 April, was lifted by the June 17 memorandum and reimposed in early August; Hormuz has been shut or conditional since Iran's late-February closure; the declared status has flipped repeatedly, with a 17 April reopening`",
+          },
+        ]).length > 0,
+    ],
+    [
+      'SILENT when one literal NESTS inside the other — the same bytes satisfy both (the 08-17 resolution)',
+      false,
+      () =>
+        conflictingPrescriptions([
+          {
+            ...row,
+            id: 'COR-014',
+            file: 'content/daily-updates/2026-08-15.md',
+            correct: "`Hormuz has been shut or conditional since Iran's late-February closure`",
+          },
+          {
+            ...row,
+            id: 'COR-016',
+            file: 'content/daily-updates/2026-08-15.md',
+            correct:
+              "`Hormuz has been shut or conditional since Iran's late-February closure; the declared status has flipped repeatedly`",
+          },
+        ]).length > 0,
+    ],
+    [
+      'SILENT on two rows in DIFFERENT files, however similar their corrections',
+      false,
+      () =>
+        conflictingPrescriptions([
+          { ...row, id: 'COR-001', file: 'a.md', correct: '`' + 'x'.repeat(60) + 'AAA`' },
+          { ...row, id: 'COR-002', file: 'b.md', correct: '`' + 'x'.repeat(60) + 'BBB`' },
+        ]).length > 0,
+    ],
+    [
+      'SILENT on two unrelated corrections in one file (short shared prefix)',
+      false,
+      () =>
+        conflictingPrescriptions([
+          { ...row, id: 'COR-001', file: 'a.md', correct: '`The Fed held rates at 4.25 percent`' },
+          { ...row, id: 'COR-002', file: 'a.md', correct: '`Brent settled at $82.40 on Friday`' },
+        ]).length > 0,
+    ],
+    [
+      'the LIVE ledger now carries NO conflicting pair (COR-014 repointed 2026-08-17)',
+      false,
+      () => {
+        const p = path.join(process.cwd(), 'system/Corrections_Ledger.md');
+        if (!fs.existsSync(p)) return false;
+        return (
+          conflictingPrescriptions(parseLedger(fs.readFileSync(p, 'utf8'))).length > 0
+        );
+      },
+    ],
     [
       'parses the live ledger',
       false,
@@ -486,6 +618,11 @@ function main(): number {
   const ledgerMd = fs.readFileSync(ledgerPath, 'utf8');
   fails.push(...checkProseOnly(rows, ledgerMd).map(f => `[LEDGER]    ${f}`));
   fails.push(...checkIdIntegrity(rows).map(f => `[LEDGER]    ${f}`));
+  // IMP-188: a pair no file can satisfy. Named separately so the verdict says "merge the rows",
+  // not "apply the correction" — the 08-15/16/17 red said the latter and it was unactionable.
+  fails.push(
+    ...conflictingPrescriptions(rows).map(f => `[LEDGER]    ${f}`)
+  );
   for (const r of rows)
     fails.push(...checkRow(r, readLocal).map(f => `[LOCAL]     ${f}`));
 
