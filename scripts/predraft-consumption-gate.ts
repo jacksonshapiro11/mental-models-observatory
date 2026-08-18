@@ -441,6 +441,194 @@ function intersect(anchorList: string[], haystack: string): string[] {
   );
 }
 
+// ---------- CONDITIONAL ADMISSION (IMP-191 — 2026-08-18 Critic mandate #1, RC2) ----------
+//
+// WHY THIS EXISTS — the receipt, in full, because it is the cleanest statement of the hole.
+// The 2026-08-18 cc-predraft wrote, in red, against Candidate 3:
+//
+//   🔴 FIGURE CONFLICT, UNRESOLVED — DO NOT PRINT BOTH: one verified line gives USDe at ~$253M
+//   … ~43 percent of the chain's stablecoin supply … a third gives the three-token total above
+//   $650M. $253M cannot be 43 percent of $650M (it is 39 percent) … Resolve against DefiLlama
+//   on one date, or print the share and the growth without the levels.
+//   Selection rationale: … Admit only after the DefiLlama read.
+//
+// The DefiLlama read never happened (egress was blocked all night). All three figures shipped in
+// C&C-3. The v2 manifest recorded "PREDRAFT-OVERRIDE lines emitted: NONE" and THIS GATE EXITED 0
+// with 0 FAIL and 0 FLAG. The system had already done the division, written the verdict, and named
+// two legal exits — and nothing downstream could hear it, because **every gate in the chain asked
+// whether the pre-draft was READ, and none asked whether it was OBEYED.**
+//
+// THE TWO LEGS, and why the scoping of each is load-bearing:
+//   1. FORBIDDEN LITERALS — scoped to the PROHIBITION PARAGRAPH, never to the candidate block.
+//      The same 08-18 pre-draft carries a second, OBEYED prohibition ("DO NOT PRINT the
+//      Potter/Gerli '$511k → $377k' ASP series") inside a candidate that shipped and that prints
+//      plenty of other numbers. Widening the literal scope to the candidate would condemn a
+//      candidate that followed its instruction — so the literals come from the red line itself.
+//      A single shared literal is not a violation: "print the share and the growth WITHOUT the
+//      levels" is an exit the pre-draft explicitly authorises, and it leaves one figure standing.
+//      The violation is the CONJUNCTION the pre-draft forbade — two or more, together.
+//   2. ADMISSION CONDITION — scoped to the CANDIDATE. `Admit only after <artifact>` is a
+//      precondition on the whole bullet, so it only bites when that candidate actually shipped.
+//
+// THE ESCAPE, and it is the point of the gate rather than a loophole: emit
+// `PREDRAFT-CONDITION-SATISFIED: <artifact> — <what it resolved>` in the brief or the pre-draft
+// manifest. The gate is not trying to stop the brief from printing a number; it is trying to stop
+// it from printing one the system had already proven false while claiming nothing happened.
+
+// TRIGGER SET, narrowed on evidence rather than on taste. The first build triggered on any
+// "do not print" and produced false FAILs on 08-15 and 08-16, because the everyday form of that
+// instruction is narrow and single-figured — "Do not print $43B as a deal size", "do not print a
+// gold level", "do not print the name off the release" — and it sits mid-line beside unrelated
+// verified figures that the brief is entitled to use. What the mandate names is not a prohibition
+// on ONE number; it is a declared CONFLICT between several that cannot all be true. So the trigger
+// is the conflict declaration itself. The narrowing costs nothing that the ≥2-literal rule was
+// catching anyway, and it takes the check's false-positive rate over 08-12..18 from 3/7 to 0/7.
+const PROHIBITION_RE =
+  /(DO NOT PRINT BOTH|FIGURE CONFLICT|CONFLICT,\s*UNRESOLVED|UNRESOLVED\s*[—–-]{1,2}\s*DO NOT|🔴[^\n]{0,140}\bCONFLICT\b)/i;
+const SATISFIED_RE = /PREDRAFT-CONDITION-SATISFIED\s*:/i;
+
+const MAGNITUDE: Record<string, number> = {
+  k: 1e3,
+  thousand: 1e3,
+  m: 1e6,
+  mn: 1e6,
+  million: 1e6,
+  bn: 1e9,
+  b: 1e9,
+  billion: 1e9,
+  tn: 1e12,
+  trillion: 1e12,
+};
+
+/**
+ * Numeric literals in canonical form, so `~$253M` in a pre-draft and `roughly $253 million` in the
+ * brief are the SAME literal. Without this the check is defeated by house style alone — the
+ * pre-drafts write $650M and the brief always writes $650 million.
+ */
+export function numericLiterals(text: string): Set<string> {
+  const t = text.replace(/[*_`>~]/g, '');
+  const out = new Set<string>();
+  for (const m of t.matchAll(
+    /\$\s?(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|mn|million|bn|billion|tn|trillion|m|b)?\b/gi
+  )) {
+    const n = parseFloat(m[1]!.replace(/,/g, ''));
+    if (!isFinite(n)) continue;
+    const mul = m[2] ? (MAGNITUDE[m[2]!.toLowerCase()] ?? 1) : 1;
+    out.add(`$${Math.round(n * mul)}`);
+  }
+  for (const m of t.matchAll(/(\d+(?:\.\d+)?)\s*(?:percent\b|%)/gi))
+    out.add(`p${parseFloat(m[1]!)}`);
+  return out;
+}
+
+/**
+ * Prohibition spans: from the conflict declaration to the END OF ITS LINE. Not the paragraph —
+ * pre-drafts run `**Source:** …` and `**Event:** …` hard against the red line with no blank line
+ * between, and paragraph scoping swept their (legitimate, verified) figures into the forbidden
+ * set. Not a sentence either — a conflict declaration routinely spans three, listing the rival
+ * figures, doing the division, and naming the exits. The line is the unit the writer actually uses.
+ */
+function prohibitionSpans(md: string): string[] {
+  const out: string[] = [];
+  for (const line of stripComments(md).split('\n')) {
+    const m = PROHIBITION_RE.exec(line);
+    if (m) out.push(line.slice(m.index));
+  }
+  return out;
+}
+
+interface CandidateBlock {
+  headline: string;
+  text: string;
+}
+
+/** `## Candidate N: <headline>` … up to the next candidate or top-level rule. */
+function candidateBlocks(md: string): CandidateBlock[] {
+  const src = stripComments(md);
+  const re = /^##\s*Candidate\s*\d+\s*:\s*(.+)$/gim;
+  const starts: Array<{ i: number; headline: string }> = [];
+  for (const m of src.matchAll(re))
+    starts.push({ i: m.index ?? 0, headline: m[1]!.trim() });
+  return starts.map((s, k) => ({
+    headline: s.headline,
+    text: src.slice(s.i, k + 1 < starts.length ? starts[k + 1]!.i : undefined),
+  }));
+}
+
+/**
+ * @param drafts  every on-disk pre-draft for the night, as [label, contents]
+ * @param shipped the brief being gated (v1 / v1.5 / v2), comments INCLUDED — a
+ *                PREDRAFT-CONDITION-SATISFIED receipt is legitimately written as a comment
+ * @param receiptExtra manifest text, a second legal home for the receipt
+ */
+export function checkConditionalAdmission(
+  drafts: Array<[string, string]>,
+  shipped: string,
+  receiptExtra = ''
+): Finding[] {
+  const findings: Finding[] = [];
+  const satisfied = SATISFIED_RE.test(shipped) || SATISFIED_RE.test(receiptExtra);
+  const receiptText = `${shipped}\n${receiptExtra}`;
+  const shippedBody = stripComments(shipped);
+  const shippedNums = numericLiterals(shippedBody);
+
+  for (const [label, draft] of drafts) {
+    // ---- LEG 1: forbidden literals, scoped to the prohibition paragraph ----
+    for (const para of prohibitionSpans(draft)) {
+      const forbidden = [...numericLiterals(para)];
+      const printed = forbidden.filter(f => shippedNums.has(f));
+      if (printed.length < 2) continue;
+      if (satisfied) continue;
+      const trigger = PROHIBITION_RE.exec(para)?.[1] ?? 'prohibition';
+      findings.push({
+        check: 'conditional-admission',
+        severity: 'FAIL',
+        component: label,
+        message:
+          `FORBIDDEN CONJUNCTION SHIPPED — the ${label} pre-draft wrote "${trigger}" and the brief prints ` +
+          `${printed.length} of the literals that block names together (${printed.join(', ')}), with NO ` +
+          `PREDRAFT-CONDITION-SATISFIED receipt anywhere. Prohibition: "${para.replace(/\s+/g, ' ').slice(0, 260)}…". ` +
+          `2026-08-18 receipt: the cc-predraft computed $253M/$650M = 39% in a 🔴 DO NOT PRINT BOTH block, ` +
+          `named two legal exits, and "$650 million" + "$253 million" + "43 percent" all shipped in C&C-3 at gate exit 0. ` +
+          `Take one of the pre-draft's own exits (drop a level, or resolve against the named source), or emit ` +
+          `PREDRAFT-CONDITION-SATISFIED: <artifact> — <what it resolved>.`,
+      });
+    }
+
+    // ---- LEG 2: admission condition, scoped to the candidate ----
+    for (const cand of candidateBlocks(draft)) {
+      const m = /Admit only after\s+([^.\n]{3,120})/i.exec(cand.text);
+      if (!m) continue;
+      // ANCHORS COME FROM HEADLINE **PLUS** THE `**Event:**` LINE. The 08-18 candidate this leg
+      // exists for is headlined "A brokerage launched a chain and the deposits that showed up pay
+      // a yield it does not control" — a thesis sentence with ZERO proper nouns, so a
+      // headline-only anchor set is empty and the leg silently never runs on the exact case the
+      // mandate named. The Event line carries the entities (Robinhood, Ethena, USDe). Broader
+      // anchors intersect more freely, so the shipped threshold rises to 3 to compensate.
+      const ev = /^.*\*\*Event:\*\*(.*)$/im.exec(cand.text)?.[1] ?? '';
+      const a = [...new Set([...anchors(cand.headline), ...anchors(ev.slice(0, 600))])];
+      // A candidate with no usable anchors cannot be proven to have shipped; silence is the only
+      // honest answer there, and it is the same anchor-thinness posture as the consumption check.
+      if (a.length < 2) continue;
+      if (intersect(a, shippedBody).length < 3) continue; // candidate did not ship — condition moot
+      if (satisfied && new RegExp(esc(m[1]!.trim().split(/\s+/)[0] ?? ''), 'i').test(receiptText))
+        continue;
+      if (satisfied) continue;
+      findings.push({
+        check: 'conditional-admission',
+        severity: 'FAIL',
+        component: label,
+        message:
+          `CANDIDATE ADMITTED WITHOUT ITS CONDITION — "${cand.headline.slice(0, 80)}…" shipped, and its ` +
+          `${label} pre-draft admits it only after ${m[1]!.trim()}. No PREDRAFT-CONDITION-SATISFIED receipt exists. ` +
+          `An admission condition the Writer may ignore silently is not a condition. Perform the named read and ` +
+          `emit PREDRAFT-CONDITION-SATISFIED: ${m[1]!.trim()} — <what it resolved>, or cut the candidate.`,
+      });
+    }
+  }
+  return findings;
+}
+
 // ---------- component specs ----------
 interface Component {
   name: string;
@@ -865,9 +1053,19 @@ function run(
   const architectLog = fs.existsSync(logPath)
     ? fs.readFileSync(logPath, 'utf8')
     : null;
+  // IMP-191 — 08-18 mandate #1. Consumption asks whether the pre-draft was READ; this asks
+  // whether its red lines were OBEYED. Different question, different failure, same inputs.
+  const drafts: Array<[string, string]> = comps
+    .filter(c => c.draftPath)
+    .map(c => [c.name, fs.readFileSync(c.draftPath!, 'utf8')] as [string, string]);
+  const manifestPath = path.join(dir, `${date}-predraft-manifest.md`);
+  const manifest = fs.existsSync(manifestPath)
+    ? fs.readFileSync(manifestPath, 'utf8')
+    : '';
   return [
     ...checkPredraftConsumption(v1, comps, architectLog),
     ...checkPreKill(v1, intel),
+    ...checkConditionalAdmission(drafts, v1, manifest),
   ];
 }
 
@@ -1245,6 +1443,73 @@ function selftest(): number {
       /* tmpdir cleanup is best-effort */
     }
   }
+
+  // --- IMP-191 (2026-08-18 Critic mandate #1, RC2): CONDITIONAL ADMISSION, both directions ---
+  const admitOn = (date: string) => {
+    const v2 = path.join(dir, `${date}-v2.md`);
+    if (!fs.existsSync(v2)) return null;
+    const comps = buildComponents(dir, date).filter(c => c.draftPath);
+    if (!comps.length) return null;
+    const manifestP = path.join(dir, `${date}-predraft-manifest.md`);
+    return checkConditionalAdmission(
+      comps.map(c => [c.name, fs.readFileSync(c.draftPath!, 'utf8')] as [string, string]),
+      fs.readFileSync(v2, 'utf8'),
+      fs.existsSync(manifestP) ? fs.readFileSync(manifestP, 'utf8') : ''
+    );
+  };
+
+  const a18 = admitOn('2026-08-18');
+  if (a18) {
+    assert(
+      'CONDITIONAL-ADMISSION FIRES leg 1 on REAL 08-18 C&C — the pre-draft wrote 🔴 FIGURE CONFLICT / DO NOT PRINT BOTH and $650M + $253M + 43% all shipped in C&C-3, with no PREDRAFT-CONDITION-SATISFIED receipt. The gate exited 0 on this on the night',
+      a18.some(f => /FORBIDDEN CONJUNCTION SHIPPED/.test(f.message) && f.component === 'C&C'),
+      JSON.stringify(a18.map(f => f.message.slice(0, 60)))
+    );
+    assert(
+      'CONDITIONAL-ADMISSION FIRES leg 2 on REAL 08-18 C&C — the candidate shipped and its pre-draft admits it "only after the DefiLlama read", which never happened',
+      a18.some(f => /CANDIDATE ADMITTED WITHOUT ITS CONDITION/.test(f.message)),
+      JSON.stringify(a18.map(f => f.message.slice(0, 60)))
+    );
+    // The escape hatch must actually silence the gate, or it is decoration and the check is a trap.
+    const v2_18 = fs.readFileSync(path.join(dir, '2026-08-18-v2.md'), 'utf8');
+    const comps18 = buildComponents(dir, '2026-08-18').filter(c => c.draftPath);
+    assert(
+      'CONDITIONAL-ADMISSION SILENT once the brief emits a PREDRAFT-CONDITION-SATISFIED receipt (the escape hatch works)',
+      checkConditionalAdmission(
+        comps18.map(c => [c.name, fs.readFileSync(c.draftPath!, 'utf8')] as [string, string]),
+        v2_18 + '\n<!-- PREDRAFT-CONDITION-SATISFIED: DefiLlama 2026-08-17 series — USDe $253M / chain $650M read on one date. -->\n'
+      ).length === 0,
+      ''
+    );
+  } else {
+    assert('CONDITIONAL-ADMISSION: 08-18 fixtures present', false, 'fixture missing');
+  }
+
+  // FALSE-POSITIVE FLOOR. Six consecutive healthy nights, each carrying ordinary narrow "do not
+  // print" instructions (a gold level, a $43B deal size, a name off a release). Every one of them
+  // false-FAILED the first build of this check; if any fires again, the trigger set has drifted
+  // back to condemning normal editorial caution and the gate must not ship.
+  for (const d of ['2026-08-17', '2026-08-16', '2026-08-15', '2026-08-14', '2026-08-13', '2026-08-12']) {
+    const r = admitOn(d);
+    if (r === null) continue;
+    assert(
+      `CONDITIONAL-ADMISSION SILENT on REAL ${d} (healthy night, narrow single-figure prohibitions obeyed)`,
+      r.length === 0,
+      JSON.stringify(r.map(f => f.message.slice(0, 90)))
+    );
+  }
+
+  // Canonicalisation is the whole reason the check can see across house styles: the pre-drafts
+  // write $650M, the brief always writes $650 million. If these stop being the same literal the
+  // gate goes permanently, silently blind — the worst failure mode a gate has.
+  assert(
+    'numericLiterals canonicalises $253M ≡ $253 million ≡ ~$253M, and 43 percent ≡ 43%',
+    numericLiterals('~$253M and 43 percent').has('$253000000') &&
+      numericLiterals('roughly $253 million and 43%').has('$253000000') &&
+      numericLiterals('~$253M and 43 percent').has('p43') &&
+      numericLiterals('roughly $253 million and 43%').has('p43'),
+    ''
+  );
 
   console.log('predraft-consumption-gate --selftest');
   let failed = 0;

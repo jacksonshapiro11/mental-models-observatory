@@ -368,6 +368,243 @@ function truthScopeTerms(truthPath: string): Set<string> {
   return out;
 }
 
+// ---------- 6. WATCH BINDING (IMP-190 — 2026-08-18 Critic mandate #3, RC5) ----------
+//
+// WHY THIS EXISTS. On 2026-08-18 `assembly-gate` exited 0 on a payoff the Critic graded FAIL.
+// The conclusion was "a position is worth whatever it costs to leave it" (MECHANISM); the watch
+// line was "Watch Home Depot before the open this morning, with Walmart on Thursday behind it";
+// and what HD/WMT actually settle is M&M-1's "whether the miss was a consumer or a calendar" —
+// which touches switching cost nowhere. PAYOFF SCOPE UNBOUND (IMP-167, the 08-13 fix) passed,
+// correctly: Home Depot and Walmart ARE bound in a body section. **Entity binding passed while
+// CLAIM binding failed.** The 08-13 check was never designed to ask whether the observable
+// advances the conclusion, and it had quietly become load-bearing for that question.
+//
+// Ceiling_Doctrine §4 / Phase 15 element (c): the watch must advance THE CONCLUSION, not merely
+// appear somewhere in the body. This check asks the missing question, in three steps:
+//   watch sentence → the body unit its entities resolve → does that unit share a content term
+//   with the payoff's own conclusion clause?
+//
+// KNOWN AND MEASURED FALSE POSITIVE, stated rather than tuned away. Across 2026-08-12..18 this
+// check fires on 08-18 (the mandated FIRE) and on 08-15, and is silent on the other five. 08-15's
+// watch — "the final University of Michigan reading… if it revises back toward 55.2, the August
+// collapse was a survey window rather than a household decision" — DOES advance that night's
+// mechanism ("the number that settled the outcome was not held by anyone inside the transaction":
+// the survey window decided it, not households), but says so in entirely different vocabulary,
+// and that night's Critic passed the payoff. A term-overlap proxy cannot see synonymy. The
+// loosening was stopped there on purpose: further widening to silence 08-15 would have been
+// fitting the instrument to n=1 and would have put the mandated 08-18 FIRE at risk. One advisory
+// flag in seven, with a one-comment remedy, is the honest calibration.
+//
+// ESCAPE HATCH, deliberately cheap. Term overlap is a proxy and a proxy can be wrong in the
+// writer's favour: a watch may advance the mechanism in words the mechanism never uses. So the
+// brief may instead emit `<!-- WATCH-BINDING: <unit> — <one line on how it tests the mechanism> -->`
+// and the check goes silent. That converts a false FLAG into one sentence of reasoning on disk,
+// which is the trade this system wants — the flag is advisory in any case (the brief always ships).
+//
+// FLAG only, never FAIL. Same posture as every other check in this file.
+
+/** Sentence split that does not break on "$7.1 bn.", "H.15", "U.S." or decimal numerals. */
+function sentencesOf(text: string): string[] {
+  return text
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?])\s+(?=[A-Z"“*(])/)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+const TERM_STOP = new Set(
+  (
+    'the a an and or but if then so that this these those there their them they it its is are was ' +
+    'were be been being has have had do does did not no nor for from with without within into onto ' +
+    'over under about above below after before while when where what which who whom whose why how ' +
+    'than as at by in of on to up out off again once here now today tonight tomorrow yesterday ' +
+    'more most less least much many other another some such only own same very can will just should ' +
+    'would could may might must shall each every both few all any one two three four five six seven ' +
+    'eight nine ten first second third last next monday tuesday wednesday thursday friday saturday ' +
+    'sunday january february march april may june july august september october november december ' +
+    // `week`/`month`/`quarter` are NOT stopped. They look like filler and are not: on 2026-08-16 the
+    // conclusion was about "THE WEEK's frightening numbers" and the watch about "every comfortable
+    // explanation THIS WEEK produced" — the same referent, and the only term the two share. Stopping
+    // it turned the Critic's named PASS case into a flag. A window word is a content word here.
+    'morning afternoon evening night open close before behind ahead still ' +
+    'because since though although however whether either neither also thing things something ' +
+    'brief tonight’s tonights watch percent cent cents'
+  ).split(/\s+/)
+);
+
+/** Content terms: lowercase alphabetic stems ≥4 chars, minus the stoplist. Plural-normalised. */
+function contentTerms(s: string): Set<string> {
+  const out = new Set<string>();
+  for (const raw of s.toLowerCase().split(/[^a-z]+/)) {
+    if (raw.length < 4) continue;
+    if (TERM_STOP.has(raw)) continue;
+    // Crude but symmetric stemming — applied to BOTH sides, so it can only add matches, and a
+    // watch-binding check erring toward silence is the safe direction for an advisory flag.
+    const stem = raw
+      .replace(/(ies)$/, 'y')
+      .replace(/(sses|shes|ches)$/, m => m.slice(0, -2))
+      .replace(/([^s])s$/, '$1')
+      .replace(/(ing|ed)$/, '');
+    if (stem.length >= 4 && !TERM_STOP.has(stem)) out.add(stem);
+  }
+  return out;
+}
+
+/**
+ * Entities of a sentence: capitalised tokens that are NOT sentence-initial, plus acronyms and
+ * tickers. Deliberately narrow — a false entity sends the search to the wrong unit, and a wrong
+ * unit produces a flag about a binding nobody claimed.
+ */
+function entitiesOf(sentence: string): string[] {
+  const toks = sentence.split(/\s+/);
+  const out = new Set<string>();
+  toks.forEach((tok, i) => {
+    const w = tok.replace(/^[^A-Za-z0-9$]+|[^A-Za-z0-9.]+$/g, '');
+    if (w.length < 2) return;
+    const bare = w.replace(/[.'’]s$/, '').replace(/\.$/, '');
+    if (SCOPE_STOP.has(bare.toLowerCase()) || TERM_STOP.has(bare.toLowerCase())) return;
+    const startsSentence = i === 0 || /[.!?:]$/.test(toks[i - 1] ?? '');
+    const isCap = /^[A-Z]/.test(bare) && /[a-z]/.test(bare);
+    const isAcronym = /^[A-Z][A-Z0-9.]{1,}$/.test(bare);
+    if ((isCap && !startsSentence) || isAcronym) out.add(bare);
+  });
+  return [...out];
+}
+
+/**
+ * The payoff's CONCLUSION clause = the first intro sentence that states a general claim, i.e.
+ * carries no entity. That is what MECHANISM and TENSION classes ARE — a claim about how the world
+ * works, not an instance of it ("a position is worth whatever it costs to leave it"; "the week's
+ * frightening numbers kept getting smaller under inspection"). Instance sentences name Stripe and
+ * Mastercard; the conclusion does not. Fallback, if every sentence carries an entity: the sentence
+ * immediately preceding the watch, which is where the payoff spec puts the conclusion.
+ */
+function payoffConclusion(intro: string): string | null {
+  const sents = sentencesOf(intro.replace(/[*_]/g, ''));
+  if (!sents.length) return null;
+  const watchIdx = sents.findIndex(s => /^\s*Watch\b/i.test(s));
+  const pool = watchIdx > 0 ? sents.slice(0, watchIdx) : sents;
+  // UNION, not the single best sentence. A TENSION conclusion is routinely stated across two
+  // abstract sentences — 2026-08-16 said it in "The week's frightening numbers kept getting
+  // smaller under inspection" AND "One number refused to shrink", and picking either one alone
+  // condemned a payoff the Critic named as the PASS case. Taking the union is also the safe
+  // direction: more conclusion terms ⇒ more chances to find the overlap ⇒ fewer false flags.
+  const abstract = pool.filter(s => entitiesOf(s).length === 0);
+  if (abstract.length) return abstract.join(' ');
+  return watchIdx > 0 ? (sents[watchIdx - 1] ?? null) : null;
+}
+
+/** The watch = the intro sentence opening with "Watch". Absent → nothing to bind, stay silent. */
+function watchSentence(intro: string): string | null {
+  const sents = sentencesOf(intro.replace(/[*_]/g, ''));
+  for (let i = sents.length - 1; i >= 0; i--)
+    if (/^\s*Watch\b/i.test(sents[i]!)) return sents[i]!;
+  return null;
+}
+
+const UNIT_PREFIX: Array<[RegExp, string]> = [
+  [/^Markets\s*&\s*Macro/i, 'M&M'],
+  [/^Companies\s*&\s*Crypto/i, 'C&C'],
+  [/^AI\s*&\s*Tech/i, 'AI&T'],
+  [/^Geopolitics/i, 'Geo'],
+  [/^The\s+Wild\s+Card/i, 'WC'],
+  [/^The\s+Signal/i, 'Signal'],
+];
+
+/** Body units = the numbered bullets under each ▸ THE SIX section, in publication order. */
+function bodyUnits(brief: string): Array<{ id: string; text: string }> {
+  const body = bodyAfterIntro(brief);
+  const lines = body.split('\n');
+  const units: Array<{ id: string; text: string }> = [];
+  let prefix: string | null = null;
+  let n = 0;
+  let cur: { id: string; text: string } | null = null;
+  const flush = () => {
+    if (cur) units.push(cur);
+    cur = null;
+  };
+  for (const line of lines) {
+    const h = /^##\s+(.+)$/.exec(line);
+    if (h) {
+      flush();
+      const found = UNIT_PREFIX.find(([re]) => re.test(h[1]!.trim()));
+      prefix = found ? found[1] : null;
+      n = 0;
+      continue;
+    }
+    if (/^#\s*▸/.test(line)) {
+      flush();
+      prefix = null;
+      continue;
+    }
+    if (!prefix) continue;
+    if (/^\s*[-*]\s+\*\*/.test(line)) {
+      flush();
+      cur = { id: `${prefix}-${++n}`, text: line };
+    } else if (cur) {
+      cur.text += ' ' + line;
+    }
+  }
+  flush();
+  return units;
+}
+
+export function checkWatchBinding(brief: string): string[] {
+  const stripped = brief.replace(/<!--[\s\S]*?-->/g, ' ');
+  if (/<!--\s*WATCH-BINDING:/i.test(brief)) return []; // declared on disk — one sentence beats a proxy
+  const intro = introBlock(stripped);
+  if (!intro.trim()) return [];
+  const watch = watchSentence(intro);
+  const concl = payoffConclusion(intro);
+  if (!watch || !concl) return []; // no watch or no statable conclusion — other checks own that
+  const cTerms = contentTerms(concl);
+  // LEG A — DIRECT BINDING. If the watch itself speaks the conclusion's language, element (c) is
+  // satisfied on the page and no unit hop is needed. This leg is what keeps 2026-08-16 silent:
+  // its watch says "every comfortable explanation this WEEK produced has no purchase" against a
+  // conclusion about "the WEEK's frightening numbers". Checking the cheap, direct thing first
+  // also removes the whole class of false flags caused by hopping to the wrong body unit.
+  if ([...contentTerms(watch)].some(t => cTerms.has(t))) return [];
+  const ents = entitiesOf(watch);
+  if (!ents.length) return []; // undated/unentitied watch is Phase 15's problem, not this check's
+  const units = bodyUnits(brief);
+  if (!units.length) return [];
+  // IDF WEIGHTING. A raw hit count sends the search wherever a common noun lands: on 2026-08-16
+  // the watch's "Fed" matched C&C-2 and the check condemned a unit the watch never pointed at.
+  // Weight each watch entity by how FEW units contain it, so "H.15" outranks "Fed" and a
+  // ubiquitous entity contributes almost nothing to the choice of unit.
+  const df = new Map<string, number>();
+  for (const e of ents) df.set(e, units.filter(u => u.text.includes(e)).length);
+  let best: { id: string; text: string; hits: number; score: number } | null = null;
+  const candidates: Array<{ id: string; text: string }> = [];
+  for (const u of units) {
+    const matched = ents.filter(e => u.text.includes(e));
+    if (!matched.length) continue;
+    candidates.push(u);
+    const score = matched.reduce((s, e) => s + 1 / (df.get(e) || 1), 0);
+    if (!best || score > best.score) best = { ...u, hits: matched.length, score };
+  }
+  if (!best) return []; // watch resolves to no body unit — PAYOFF SCOPE UNBOUND owns that failure
+  // LEG B — ANY candidate, not merely the best-scored one. A watch legitimately lands in more than
+  // one unit, and IDF picks which is most SPECIFIC, not which is the binding. 2026-08-15's watch
+  // ("the final University of Michigan reading") scored to WC-1 while its Michigan-sentiment
+  // subject also sits in M&M-1; demanding the binding come from the top-scored unit alone flagged
+  // a payoff that night's Critic passed. Only when NO resolved unit speaks the conclusion's
+  // language is the watch genuinely orphaned.
+  if (candidates.some(u => [...contentTerms(u.text)].some(t => cTerms.has(t)))) return [];
+  return [
+    `WATCH ORPHANED FROM PAYOFF CLASS — the watch line resolves ${best.id} (${best.hits} of ` +
+      `${ents.length} watch entit${ents.length === 1 ? 'y' : 'ies'} matched: ${ents.slice(0, 4).join(', ')}), ` +
+      `and ${best.id} shares ZERO content terms with the payoff's own conclusion clause. ` +
+      `Conclusion: "${concl.slice(0, 140)}${concl.length > 140 ? '…' : ''}". ` +
+      `Watch: "${watch.slice(0, 120)}${watch.length > 120 ? '…' : ''}". ` +
+      `Ceiling_Doctrine §4 element (c) requires the observable to advance the CONCLUSION, not merely to ` +
+      `appear in the body — entity binding (PAYOFF SCOPE, IMP-167) is satisfied here and is not the same test. ` +
+      `2026-08-18 receipt: conclusion terms were position/cost/leave/switching, M&M-1's were consumer/calendar/Prime Day, ` +
+      `and this gate exited 0. Either re-point the watch at an observable that tests the mechanism, or emit ` +
+      `<!-- WATCH-BINDING: ${best.id} — one line on how it tests the mechanism -->.`,
+  ];
+}
+
 // FIRE fixture = the real 2026-07-10 QG FRESH-FRAME SCAN (verbatim — the under-swept scan the
 // Critic's mandate #3 named); SILENT fixture = a scan that sweeps the Signals + Take.
 const FIRE_FF = `**FRESH-FRAME SCAN (≥3 candidate MECHANISMS across distinct clusters, required before NONE):** (1) **concentration/saturation** — SK Hynix (memory demand), DTCC (settlement), Hyperliquid (perp share): all **C&C cluster only** → below cross-cluster bar. (2) **withdrawal** — options hedges removed (M&M-1) + gold non-response (M&M-3): 2 sections, below threshold. (3) **commoditization/margin-migration** — AI-3 (model→app) + C&C-3 (CEX→DEX): 2 sections AND restates 07-07's "Deployment Premium" frame (3d stale) → reject. None is a clean ≥3-section shared MECHANISM. → **CONVERGENCE = NONE for assembly**.`;
@@ -424,6 +661,48 @@ function selftest(): number {
       'leftover marker silent on a clean brief',
       false,
       () => checkLeftoverMarker(SILENT_MARKER) !== null,
+    ],
+    // ── IMP-190 (08-18 Critic mandate #3, RC5): WATCH BINDING, both directions, on REAL files ──
+    [
+      'WATCH-BINDING FIRES: the real 2026-08-18-v2 — watch resolves M&M-1 (Home Depot/Walmart, 3/3 entities), M&M-1 shares ZERO terms with the conclusion "a position is worth whatever it costs to leave it". assembly-gate exited 0 on this on the night; the Critic graded the payoff FAIL on element (c)',
+      true,
+      () => {
+        const p = path.join(process.cwd(), 'daily-briefs/2026-08-18-v2.md');
+        if (!fs.existsSync(p)) return true;
+        const out = checkWatchBinding(fs.readFileSync(p, 'utf8'));
+        return out.length === 1 && /WATCH ORPHANED FROM PAYOFF CLASS/.test(out[0]!) && /M&M-1/.test(out[0]!);
+      },
+    ],
+    [
+      'WATCH-BINDING SILENT on the Critic\'s named PASS case: the real 2026-08-16-v2 — its TENSION conclusion ("the week\'s frightening numbers kept getting smaller under inspection") and its dated H.15 watch ("every comfortable explanation this week produced has no purchase") share their subject. A gate that condemns this is not a gate',
+      false,
+      () => {
+        const p = path.join(process.cwd(), 'daily-briefs/2026-08-16-v2.md');
+        if (!fs.existsSync(p)) return false;
+        return checkWatchBinding(fs.readFileSync(p, 'utf8')).length > 0;
+      },
+    ],
+    [
+      'WATCH-BINDING ESCAPE HATCH works: the 08-18 brief goes silent once it declares <!-- WATCH-BINDING: ... -->. The remedy for the known synonymy false-positive (08-15) must actually silence the check, or the escape hatch is decoration',
+      false,
+      () => {
+        const p = path.join(process.cwd(), 'daily-briefs/2026-08-18-v2.md');
+        if (!fs.existsSync(p)) return false;
+        const b = fs.readFileSync(p, 'utf8');
+        return (
+          checkWatchBinding(
+            b + '\n<!-- WATCH-BINDING: M&M-1 — the retail block prices what a shopper pays to switch stores. -->\n'
+          ).length > 0
+        );
+      },
+    ],
+    [
+      'WATCH-BINDING does not flag a brief with no watch line at all (Phase 15 owns absence, not this check)',
+      false,
+      () =>
+        checkWatchBinding(
+          '### A Title\n\n*A regime sentence. A general claim about how the world works.*\n\n---\n\n# ▸ THE SIX\n\n## Markets & Macro\n\n- **A lead.** Body text.\n'
+        ).length > 0,
     ],
     // ── IMP-176 (08-15 Critic mandate #2, RC3): class transcription + rotation, on REAL files ──
     [
@@ -632,6 +911,11 @@ function main() {
     scopeTruth
   ))
     findings.push({ severity: 'FLAG', message: `UNRESOLVED-FACT: ${msg}` });
+
+  // WATCH BINDING (IMP-190 — 08-18 mandate #3). Claim binding, where PAYOFF SCOPE does entity
+  // binding. The 08-18 payoff satisfied the latter and failed the former at gate exit 0.
+  for (const msg of checkWatchBinding(brief))
+    findings.push({ severity: 'FLAG', message: msg });
 
   // QG-log-coupled checks (payoff class + fresh-frame sweep).
   const dateM = path.basename(briefPath).match(/(\d{4}-\d{2}-\d{2})/);
