@@ -43,6 +43,11 @@ PUBLISH_HEALTH_INITIAL_DELAY = 15   # brief pause before first poll (push → de
 # Worst case all-fail: 2 attempts × (8s API + 12s git) + 3s backoff = ~43s.
 # Success path is unaffected (succeeds in <2s).
 MAX_RETRIES = 2
+
+# Set the first time api.github.com fails at the CONNECTION level (see github_request). Once true,
+# every later REST call in this process returns ({}, 0) immediately so the git clone fallback gets
+# the time budget instead of the timeout loop. IMP-194.
+_API_TUNNEL_BLOCKED = False
 RETRY_BACKOFF_BASE = 3  # seconds — doubles each attempt (3, 6)
 
 # Pre-publish validation: required sections in full brief
@@ -103,15 +108,42 @@ def github_request(url, token, method="GET", data=None):
     if data:
         req.data = json.dumps(data).encode("utf-8")
 
-    # Hard 15s timeout — without this, a stalled proxy CONNECT can hang the
-    # socket indefinitely, killing the whole script before the git fallback
-    # ever fires. This is the bug that caused the 2026-05-15 silent failure.
+    # TUNNEL SHORT-CIRCUIT (IMP-194, 2026-08-18 — RC7 pipeline integrity).
+    #
+    # The 8s per-request timeout below stopped ONE call from hanging forever; it did not stop the
+    # SCRIPT from paying that timeout on every one of the dozen-plus API calls a publish makes,
+    # twice, before the git fallback ever runs. When the sandbox proxy refuses api.github.com —
+    # which it does, permanently, `curl` to it returns HTTP 000 — the whole budget is spent
+    # discovering the same fact over and over. Receipts, two consecutive sessions on 2026-08-18:
+    # `brief-morning`'s first publish.py invocation TIMED OUT at 178s inside this loop; the full
+    # brief survived on the git fallback but the companion LIGHT brief did not, and the run was
+    # killed before printing any sentinel — the 2026-05-15 silent-failure shape exactly. The light
+    # reached origin/main thirteen minutes late, so the 05:45 ET audio cron ran against a 404 and
+    # the podcast episode fell through to a retry cron. `verify-brief-publish` then HUNG over eight
+    # minutes in the same loop and had to be killed.
+    #
+    # A connection-level failure to api.github.com is a fact about the NETWORK, not about the
+    # request, so it is true for every subsequent call in this process. Learn it once. HTTP errors
+    # are NOT treated this way on purpose: a 403 or a 404 means we REACHED GitHub and got an
+    # answer, which the callers are written to interpret.
+    global _API_TUNNEL_BLOCKED
+    if _API_TUNNEL_BLOCKED:
+        return {}, 0
     try:
         with urlopen(req, timeout=8) as resp:
             return json.loads(resp.read().decode("utf-8")), resp.status
     except HTTPError as e:
         body = e.read().decode("utf-8")
         return json.loads(body) if body else {}, e.code
+    except (URLError, TimeoutError, OSError) as e:
+        _API_TUNNEL_BLOCKED = True
+        print(
+            f"⚠️  api.github.com unreachable ({type(e).__name__}: {e}). "
+            "Short-circuiting the REST path for the rest of this run and going straight to the "
+            "git clone fallback — the tunnel does not reopen mid-publish, and re-proving that "
+            "costs the budget the fallback needs."
+        )
+        return {}, 0
 
 
 def ensure_branch_exists(branch, token):
