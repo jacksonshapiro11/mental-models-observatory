@@ -231,7 +231,29 @@ export function mandateCoverage(
       `${mmdd}\\s+Critic\\s+mandate\\s+#${n}(?![0-9])`,
       'i'
     );
-    const hit = rows.filter(r => re.test(r.summary));
+    // MANDATE-CITATION-CELLS (IMP-195, 2026-08-19, RC7). SEARCH `source` AND `summary`.
+    //
+    // THE FAILURE THIS FIXES IS A FALSE RED, WHICH IS THE MOST EXPENSIVE KIND OF GATE BUG.
+    // v1 read `r.summary` only, because the 20+ rows that existed when IMP-142 was written all
+    // carried the citation parenthetically inside the summary prose. On 2026-08-18 the session
+    // put the citation in the column literally named `source` — "08-18 Critic mandate #1 (leg a)"
+    // — which is the semantically CORRECT home, and all four rows (IMP-190/191/192/193) landed
+    // with working code, both-direction tests, and the 08-19 Critic's own certification:
+    // "MANDATE TRACE 3/3 LANDED with mechanical checks and both-direction tests, best landing
+    // night in window." verify-improvements nonetheless printed "0 applied · 0 deferred ·
+    // 3 uncovered" and exited 1, on the best mandate night in the tracked window.
+    //
+    // A registry that reds on work that DID land teaches the next session to skim it — the exact
+    // lesson the CARRY/TREE rule paid for on 2026-08-13, when a bare `git status --porcelain`
+    // manufactured "three nights of PUBLISHED content exist ONLY in this working tree" for four
+    // consecutive tasks while all six files sat on origin/main the whole time. The 08-14 Critic
+    // called the resulting RED "the largest single risk in the repository tonight" — not because
+    // the risk was real, but because a nightly false alarm is how a real one gets missed.
+    //
+    // This does NOT loosen the requirement. A citation is still mandatory, still day-scoped
+    // (a row citing 08-06's #1 does not discharge 08-07's), and still exact on the number
+    // (#10 does not satisfy #1). Only the CELL it may live in widens, from one to two.
+    const hit = rows.filter(r => re.test(r.summary) || re.test(r.source));
     if (!hit.length) {
       out.uncovered.push(n);
       continue;
@@ -712,6 +734,53 @@ function selftest(): number {
     t2(
       wrongDay.uncovered.length === 1,
       "[IMP-142] a row citing a DIFFERENT day's mandate #1 does not cover this one"
+    );
+
+    // IMP-195 — MANDATE-CITATION-CELLS, both directions.
+    // POSITIVE: the real 08-18 shape. The citation lives in the `source` cell, the summary is
+    // pure prose about the defect. v1 read summary only and called this UNCOVERED, reddening the
+    // registry on a night the Critic certified 3/3 LANDED.
+    const inSource = (id: string, source: string): Row => ({
+      ...mkRow(id, 'THE PAYOFF WATCH RESOLVED A DIFFERENT BULLET.', '2026-08-18'),
+      source,
+    });
+    const sourceCell = mandateCoverage(
+      [
+        inSource('IMP-190', '08-18 Critic mandate #3'),
+        inSource('IMP-191', '08-18 Critic mandate #1 (leg a)'),
+        inSource('IMP-193', '08-18 Critic mandate #2'),
+      ],
+      '2026-08-18',
+      [1, 2, 3]
+    );
+    t2(
+      sourceCell.uncovered.length === 0 && sourceCell.applied.length === 3,
+      '[IMP-195] a citation in the `source` cell discharges the mandate — the real 08-18 shape'
+    );
+
+    // NEGATIVE 1: widening the cell must not widen anything else. A row whose `source` cites the
+    // WRONG DAY still leaves the mandate uncovered — otherwise a stale row would launder a gap
+    // through the newly-read cell, which is exactly the hole this must not open.
+    const sourceWrongDay = mandateCoverage(
+      [inSource('IMP-907', '08-17 Critic mandate #1')],
+      '2026-08-18',
+      [1]
+    );
+    t2(
+      sourceWrongDay.uncovered.length === 1,
+      "[IMP-195] …but a `source` citing a DIFFERENT day does not cover it (no laundering)"
+    );
+
+    // NEGATIVE 2: a row with no citation in EITHER cell is still UNCOVERED. This is the 08-07 #2
+    // shape — the failure IMP-142 was built for — and it must survive the widening intact.
+    const neitherCell = mandateCoverage(
+      [inSource('IMP-908', 'pipeline defect (no critic)')],
+      '2026-08-18',
+      [1]
+    );
+    t2(
+      neitherCell.uncovered.length === 1,
+      '[IMP-195] …and a row citing NO mandate in either cell is still UNCOVERED (08-07 #2 shape holds)'
     );
 
     // REAL PARSE: both live critic reports, including the 08-07 one that carries the heading twice.

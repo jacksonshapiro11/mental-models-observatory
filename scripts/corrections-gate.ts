@@ -118,6 +118,67 @@ export function checkRow(
 }
 
 /* ---------------------------------------------------------------------------
+ * IMP-199 — THE COMPANION SWEEP (2026-08-19, RC3). A CORRECTION APPLIED TO ONE PRODUCT DOES NOT
+ * REACH THE OTHER, AND NOTHING COMPARED THEM.
+ *
+ * WHAT HAPPENED, this morning. The 08-19 Morning Truth Gate proved two claims false and corrected
+ * the FULL brief — "the report rates overall AUTONOMY risk low, up from very low" (it was
+ * MISALIGNMENT risk in high-stakes settings) and the Signal's "500 to 999 band at 109 percent"
+ * (uncorroborable; the HRA Council's own release names the 50+ FTE band). Both corrections landed
+ * in `content/daily-updates/2026-08-19.md`. Then `-light.md` PUBLISHED BOTH FALSEHOODS ANYWAY,
+ * because the morning pass corrects the full brief and nothing was checking the companion for the
+ * same defect. It was caught by eye, republished, and re-diffed — twenty minutes after the system
+ * had already proven the claims false. As the session's own status line put it: *"a truth fix
+ * applied to the full brief does not propagate to -light.md and no gate compares them."*
+ *
+ * THIS IS THE SECOND OCCURRENCE, WHICH IS WHY IT GETS CODE AND NOT PROSE. COR-012/013 (2026-08-16)
+ * record the identical shape: the published 2026-08-14 brief **and its -light.md** both asserted a
+ * cancelled SEC vote as a future event. The class was visible in the ledger three days ago with no
+ * gate attached to it.
+ *
+ * WHY THE EXISTING GATE COULD NOT SEE IT: `checkRow` reads `r.file` — ONE path. A correction row
+ * names the product it was written against, so the companion is outside the gate's field of view
+ * by construction. Every layer reported done, and one of the two reader surfaces stayed false.
+ * That is the 2026-07-11 blindness arriving through a THIRD seam: v1 read the wrong COPY, v2 read
+ * only one FORM (IMP-179), and this read only one PRODUCT.
+ *
+ * THE ASYMMETRY IS DELIBERATE. Only the WRONG text is checked in the companion. The `correct`
+ * literal is NOT required there — the light is a compression and legitimately omits most claims,
+ * so demanding the corrected sentence appear in it would red the registry on every correction to
+ * a full-brief-only passage. What must never be true is that a sentence we have PROVEN FALSE is
+ * live on a reader surface. Absence is a valid fix for the companion; falsehood is not.
+ */
+export function companionOf(file: string): string | null {
+  const m = file.match(/^(content\/daily-updates\/\d{4}-\d{2}-\d{2})(-light)?\.md$/);
+  if (!m) return null;
+  return m[2] ? `${m[1]}.md` : `${m[1]}-light.md`;
+}
+
+export function checkCompanion(
+  r: Row,
+  readFile: (p: string) => string | null
+): string[] {
+  const companion = companionOf(r.file);
+  if (!companion) return [];
+  const body = readFile(companion);
+  if (body === null) return []; // no companion published that day — not a failure
+  const wrong = needle(r.wrong);
+  if (!wrong) return []; // malformed rows are already reported by checkRow
+  if (!body.includes(wrong)) return [];
+  return [
+    `${r.id}: OPEN FALSEHOOD IN THE COMPANION — the wrong text is corrected in ${r.file} but STILL LIVE ` +
+      `in ${companion}: "${wrong.slice(0, 90)}". We proved this false on ${r.found} ` +
+      `(${r.source.slice(0, 70)}) and fixed one of the two reader surfaces. ` +
+      `A correction applied to one product is not a correction; the reader of the other product is ` +
+      `still being lied to. Apply it to the companion and re-publish, or cut the sentence there — ` +
+      `absence is a valid fix for a companion, falsehood is not. ` +
+      `RECEIPT, 2026-08-19: the Morning Truth Gate corrected "autonomy risk low, up from very low" and ` +
+      `the Signal's "109 percent" in the full brief, and -light.md published both anyway, twenty minutes ` +
+      `after the system had proven them false. Second occurrence — COR-012/013 (2026-08-14) is the first.`,
+  ];
+}
+
+/* ---------------------------------------------------------------------------
  * IMP-188 — TWO ROWS, ONE SENTENCE, INCOMPATIBLE PRESCRIPTIONS (2026-08-17, RC3).
  *
  * WHAT HAPPENED. COR-014 and COR-016 both corrected the SAME Hormuz-continuity sentence in the SAME
@@ -573,6 +634,119 @@ function selftest(): number {
         return parseLedger(fs.readFileSync(p, 'utf8')).length === 0; // fires (=true) if it parses to zero rows
       },
     ],
+    // ── IMP-199 — THE COMPANION SWEEP, both directions on the real 08-19 incident ─────────────
+    // The fixture is verbatim from this morning: the full brief was corrected and the light
+    // published the same falsehood anyway. Reader-facing text, one product true, one false.
+    [
+      'IMP-199 FIRES when the full brief is corrected and the COMPANION LIGHT still carries the falsehood (the real 2026-08-19 state at 05:20 ET)',
+      true,
+      () => {
+        const r: Row = {
+          id: 'COR-TEST-COMPANION',
+          found: '2026-08-19',
+          file: 'content/daily-updates/2026-08-19.md',
+          wrong: '`rates overall autonomy risk low, up from very low`',
+          correct: '`raised misalignment risk in high-stakes settings`',
+          source: 'Morning Truth Gate (Unite.AI, OECD.AI, SiliconANGLE)',
+          applied: '2026-08-19',
+        };
+        return (
+          checkCompanion(r, p =>
+            p.endsWith('-light.md')
+              ? 'The report rates overall autonomy risk low, up from very low.'
+              : 'The report raised misalignment risk in high-stakes settings.'
+          ).length > 0
+        );
+      },
+    ],
+    [
+      'IMP-199 SILENT once the companion is corrected too (the state after the second push)',
+      false,
+      () => {
+        const r: Row = {
+          id: 'COR-TEST-COMPANION',
+          found: '2026-08-19',
+          file: 'content/daily-updates/2026-08-19.md',
+          wrong: '`rates overall autonomy risk low, up from very low`',
+          correct: '`raised misalignment risk in high-stakes settings`',
+          source: 'Morning Truth Gate',
+          applied: '2026-08-19',
+        };
+        return (
+          checkCompanion(
+            r,
+            () => 'The report raised misalignment risk in high-stakes settings.'
+          ).length > 0
+        );
+      },
+    ],
+    [
+      'IMP-199 SILENT when the companion omits the passage entirely — absence is a valid fix for a compression, and the `correct` literal is deliberately NOT required there',
+      false,
+      () => {
+        const r: Row = {
+          id: 'COR-TEST-COMPANION',
+          found: '2026-08-19',
+          file: 'content/daily-updates/2026-08-19.md',
+          wrong: '`rates overall autonomy risk low, up from very low`',
+          correct: '`raised misalignment risk in high-stakes settings`',
+          source: 'Morning Truth Gate',
+          applied: '2026-08-19',
+        };
+        return checkCompanion(r, () => 'A brief with no Anthropic line at all.').length > 0;
+      },
+    ],
+    [
+      'IMP-199 SILENT when no companion exists that day (a missing light is a publish question, not a truth one)',
+      false,
+      () => {
+        const r: Row = {
+          id: 'COR-TEST-COMPANION',
+          found: '2026-08-19',
+          file: 'content/daily-updates/2026-08-19.md',
+          wrong: '`rates overall autonomy risk low`',
+          correct: '`raised misalignment risk`',
+          source: 'Morning Truth Gate',
+          applied: '2026-08-19',
+        };
+        return checkCompanion(r, () => null).length > 0;
+      },
+    ],
+    [
+      'IMP-199 the mapping is SYMMETRIC — a row written against the light points back at the full brief',
+      true,
+      () => {
+        const r: Row = {
+          id: 'COR-TEST-COMPANION-REV',
+          found: '2026-08-19',
+          file: 'content/daily-updates/2026-08-19-light.md',
+          wrong: '`the 500 to 999 band at 109 percent`',
+          correct: '`applicable large employers, 50 or more FTEs`',
+          source: 'Morning Truth Gate (HRA Council)',
+          applied: '2026-08-19',
+        };
+        return (
+          companionOf(r.file) === 'content/daily-updates/2026-08-19.md' &&
+          checkCompanion(r, () => 'growth ran hottest in the 500 to 999 band at 109 percent')
+            .length > 0
+        );
+      },
+    ],
+    [
+      'IMP-199 SILENT on the LIVE ledger against the LIVE files — every logged correction is clean in BOTH products right now',
+      false,
+      () => {
+        const p = path.join(process.cwd(), 'system/Corrections_Ledger.md');
+        if (!fs.existsSync(p)) return false;
+        const readLocal = (f: string): string | null => {
+          const fp = path.join(process.cwd(), f);
+          return fs.existsSync(fp) ? fs.readFileSync(fp, 'utf8') : null;
+        };
+        return parseLedger(fs.readFileSync(p, 'utf8')).some(
+          r => checkCompanion(r, readLocal).length > 0
+        );
+      },
+    ],
   ];
   let fails = 0;
   for (const [name, shouldFire, fn] of cases) {
@@ -625,6 +799,9 @@ function main(): number {
   );
   for (const r of rows)
     fails.push(...checkRow(r, readLocal).map(f => `[LOCAL]     ${f}`));
+  // IMP-199: the OTHER product. A row names one file; the day ships two reader surfaces.
+  for (const r of rows)
+    fails.push(...checkCompanion(r, readLocal).map(f => `[COMPANION] ${f}`));
 
   // THE COPY THAT CAN LIE TO A READER. Never skipped silently.
   if (localOnly) {
@@ -643,6 +820,15 @@ function main(): number {
       }
       fails.push(
         ...checkRow(r, () => body as string | null).map(f => `[PUBLISHED] ${f}`)
+      );
+      // IMP-199 on the copy that can lie to a reader. The 08-19 light was PUBLISHED false while
+      // the full brief on the same commit was true, so the companion sweep has to run here too —
+      // a local-only companion check would have gone green on exactly that morning.
+      fails.push(
+        ...checkCompanion(r, p => {
+          const b = readPublished(p);
+          return b === UNPROVEN ? null : (b as string | null);
+        }).map(f => `[PUB/COMPANION] ${f}`)
       );
     }
   }

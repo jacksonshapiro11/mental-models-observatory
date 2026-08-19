@@ -3115,6 +3115,199 @@ function derivedPercentageFindings(
   return findings;
 }
 
+// ─── IMP-196 — DASHBOARD LEVEL RECENCY (2026-08-19 Critic mandate #1, RC2, root RC5) ─────────
+//
+// THE FAILURE: the 08-19 Dashboard printed *"the thirty-year Treasury yield HELD its 2007 high
+// near 5.31 percent"* and built the day's conclusion on it — *"today the long end held while gold
+// gave ground, which makes it a trade about the cost of capital."* 5.31 was MONDAY's print.
+// Tuesday made a NEW 19-year intraday high at 5.33 and then closed DOWN more than 2bp at ~5.285
+// (CNBC, both days). The level was stale, the verb was wrong, and the paragraph's conclusion was
+// the exact inverse of what the session did.
+//
+// It got there through a DECLARATION. The v2's own owed-block, written before the error, reads:
+// "NO TREASURY LEVEL PUBLISHES TONIGHT, 5th consecutive day … attributed to five same-week
+// secondary confirmations, not to a primary print." Five confirmations all confirming the same
+// week — and the week moved. **A declaration is not a check.** Nothing on disk compared the
+// number about to be printed against the number already printed.
+//
+// WHAT THIS CHECKS: for each instrument named in the Dashboard, take the PRECISE level attached
+// to it. If that exact level already appears against the same instrument in any of the last 3
+// published Dashboards, AND the sentence carrying it attaches a directional or stasis verb
+// (held / rose / fell / unchanged / sat at / topped), emit UNRESOLVED-FACT naming the instrument,
+// the repeated level, and the brief it repeats from.
+//
+// WHY "PRECISE" IS PART OF THE TEST, AND NOT A LOOPHOLE. Built to fire on ANY repeated number,
+// this flags the 08-19 Dashboard's *"WTI ran to roughly $84 and Brent touched $91"* against the
+// 08-18 Dashboard's *"Brent near $91 and WTI near $84"* — two ROUNDED crude levels that recur
+// across days for the ordinary reason that crude spent two days near those handles. A gate whose
+// first live night produces two false alarms beside one true one is a flag generator, and the
+// ledger's proxy-discipline rule (rule 6) exists because that pace is the documented anti-pattern.
+// A rounded whole-dollar handle repeating is not evidence of staleness; 5.31 repeating to the
+// cent, under "held", is. So: ≥1 decimal place, or ≥4 significant digits.
+const DASH_VERB_RE =
+  /\b(held|holds|holding|rose|rises|fell|falls|unchanged|flat at|sat at|sits at|stayed at|remains? at|topped|tops)\b/i;
+
+// One entry per instrument the Dashboard actually prices. `pct: true` means the instrument's
+// LEVEL is quoted as a percentage (a yield), so a percent token near it is a level, not a change.
+const DASH_INSTRUMENTS: { key: string; re: RegExp; pct: boolean }[] = [
+  { key: 'thirty-year Treasury yield', re: /\b(?:thirty|30)[-\s]year\s+(?:treasury|bond|yield|us treasury)/i, pct: true },
+  { key: 'ten-year Treasury yield', re: /\b(?:ten|10)[-\s]year\s+(?:treasury|note|yield|us treasury)/i, pct: true },
+  { key: 'two-year Treasury yield', re: /\b(?:two|2)[-\s]year\s+(?:treasury|note|yield)/i, pct: true },
+  { key: 'gold', re: /\bgold\b/i, pct: false },
+  { key: 'silver', re: /\bsilver\b/i, pct: false },
+  { key: 'WTI', re: /\bWTI\b/i, pct: false },
+  { key: 'Brent', re: /\bBrent\b/i, pct: false },
+  { key: 'bitcoin', re: /\bbitcoin\b/i, pct: false },
+  { key: 'ether', re: /\bether(?:eum)?\b/i, pct: false },
+  { key: 'the S&P 500', re: /\bS&P\s*500\b/i, pct: false },
+  { key: 'the Nasdaq', re: /\bNasdaq\b/i, pct: false },
+  { key: 'the Dow', re: /\bDow\b/i, pct: false },
+];
+
+/**
+ * The Dashboard region of a brief — everything under `# ▸ THE DASHBOARD` up to the next `# ▸`.
+ *
+ * Done by index, not by one regex. The obvious form — `/^#\s*▸\s*THE DASHBOARD\s*$([\s\S]*?)
+ * (?=^#\s*▸|\s*$)/m` — returns the EMPTY STRING on every real brief, because under `/m` the
+ * alternative `\s*$` matches immediately at the start of the lazy capture (the newline ending the
+ * header line satisfies `\s*`, and `$` then holds). It compiles, it runs, it silently reads no
+ * Dashboard at all. Caught here on 2026-08-19 only because the mandate came with a case that had
+ * to FIRE; a check whose only test was "stays silent on healthy briefs" would have shipped green
+ * and inert. That is the argument for both-direction receipts in one line.
+ */
+export function dashboardRegion(body: string): string {
+  const src = stripComments(body);
+  const m = src.match(/^#[ \t]*▸[ \t]*THE DASHBOARD[ \t]*$/m);
+  if (!m || m.index == null) return '';
+  const from = m.index + m[0].length;
+  const rest = src.slice(from);
+  const next = rest.match(/^#[ \t]*▸/m);
+  return next && next.index != null ? rest.slice(0, next.index) : rest;
+}
+
+/** A level is PRECISE if it carries a decimal, or has 4+ significant digits (64,170 / 4,387.25). */
+function isPreciseLevel(raw: string): boolean {
+  if (raw.includes('.')) return true;
+  return raw.replace(/[^0-9]/g, '').replace(/^0+/, '').length >= 4;
+}
+
+export interface DashLevel {
+  instrument: string;
+  level: string;
+  sentence: string;
+}
+
+/**
+ * (instrument → precise level) pairs printed in a Dashboard. The level is the FIRST precise
+ * number after the instrument's name that is not closer to some OTHER instrument's name — the
+ * same nearest-owner discipline `valueNearAttributed` enforces, and for the same reason: the
+ * 07-13 receipt in this file is a gate committing the transposition class it exists to catch.
+ */
+export function dashboardLevels(region: string): DashLevel[] {
+  const out: DashLevel[] = [];
+  for (const inst of DASH_INSTRUMENTS) {
+    const re = new RegExp(inst.re.source, 'gi');
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(region)) !== null) {
+      const from = m.index + m[0].length;
+      let window = region.slice(from, from + 120);
+      // Stop at the next instrument named — a number past it belongs to that one, not this.
+      let cut = window.length;
+      for (const other of DASH_INSTRUMENTS) {
+        if (other.key === inst.key) continue;
+        const om = new RegExp(other.re.source, 'i').exec(window);
+        if (om && om.index < cut) cut = om.index;
+      }
+      window = window.slice(0, cut);
+      // A $-price for everything; a percent ONLY for the yield instruments, where the percent
+      // IS the level. Elsewhere a percent is a change ("gold slipped 0.60 percent") and must
+      // never enter the archive as a level.
+      const pm = inst.pct
+        ? window.match(/(\d[\d,]*(?:\.\d+)?)\s*(?:%|percent\b)/i)
+        : window.match(/\$\s?(\d[\d,]*(?:\.\d+)?)/);
+      if (!pm) continue;
+      const raw = pm[1]!.replace(/,/g, '');
+      if (!isPreciseLevel(raw)) continue;
+      // CONTEXT IS A WINDOW, NOT A SENTENCE. `sentenceAround` breaks on `.`, and every level in
+      // a Dashboard is a decimal — so it returns "…held its 2007 high near 5." and, for the next
+      // instrument, the orphan fragment "31 percent and gold spot slipped 0." A verb-adjacency
+      // test run on debris is a coin flip. The window spans the clause on both sides of the name.
+      out.push({
+        instrument: inst.key,
+        level: raw,
+        sentence: region
+          .slice(Math.max(0, m.index - 40), Math.min(region.length, from + 140))
+          .replace(/\s+/g, ' ')
+          .trim(),
+      });
+      break; // first precise level per instrument per Dashboard
+    }
+  }
+  return out;
+}
+
+function dashboardLevelStalenessFindings(
+  body: string,
+  briefPath: string,
+  briefDate: string | null
+): Finding[] {
+  const findings: Finding[] = [];
+  const region = dashboardRegion(body);
+  if (!region) return findings;
+  const dir = findArchiveDir(briefPath);
+  if (!dir) return findings;
+
+  let files: string[];
+  try {
+    files = fs.readdirSync(dir);
+  } catch {
+    return findings;
+  }
+  const prior = files
+    .filter(f => /^\d{4}-\d{2}-\d{2}\.md$/.test(f)) // never the -light siblings
+    .map(f => ({ f, d: f.slice(0, 10) }))
+    .filter(x => (briefDate ? x.d < briefDate : true)) // strictly prior; never self
+    .sort((a, b) => (a.d < b.d ? 1 : -1))
+    .slice(0, 3); // "the last 3 published briefs", per the mandate
+
+  const seen = new Map<string, { date: string; sentence: string }>();
+  for (const { f, d } of prior) {
+    let txt: string;
+    try {
+      txt = fs.readFileSync(path.join(dir, f), 'utf8');
+    } catch {
+      continue;
+    }
+    for (const lv of dashboardLevels(dashboardRegion(txt))) {
+      const k = `${lv.instrument}|${lv.level}`;
+      if (!seen.has(k)) seen.set(k, { date: d, sentence: lv.sentence });
+    }
+  }
+
+  for (const lv of dashboardLevels(region)) {
+    const hit = seen.get(`${lv.instrument}|${lv.level}`);
+    if (!hit) continue;
+    if (!DASH_VERB_RE.test(lv.sentence)) continue;
+    const verb = lv.sentence.match(DASH_VERB_RE)![0];
+    findings.push({
+      check: 'dashboard-level-staleness',
+      severity: 'FLAG',
+      message:
+        `UNRESOLVED-FACT: dashboard-level-staleness — the Dashboard prints ${lv.instrument} at ${lv.level} ` +
+        `and attaches the verb "${verb}", but ${lv.level} is the level THIS BRIEF ALREADY PUBLISHED for ` +
+        `${lv.instrument} on ${hit.date} ("${hit.sentence.slice(0, 140)}"). A repeated precise level under a ` +
+        `directional or stasis verb is a claim about TODAY'S session made out of an EARLIER session's number. ` +
+        `Resolve against a same-session primary or a dated-today secondary before publish. If no such source ` +
+        `exists, the level may be printed only as "as of ${hit.date}" — never with a verb describing today's ` +
+        `move. Receipt, 2026-08-19: "the thirty-year Treasury yield held its 2007 high near 5.31 percent" was ` +
+        `Monday's print; Tuesday made a new 19-year high at 5.33 and CLOSED DOWN more than 2bp. The brief's ` +
+        `own owed-block had DECLARED that no Treasury level would publish. A declaration is not a check. ` +
+        `Section: ${sectionOf(body, body.indexOf(lv.sentence.slice(0, 40)))}.`,
+    });
+  }
+  return findings;
+}
+
 // Superlative contradictions (FAIL) + price-vs-archive deviations (FLAG).
 function archiveBackstop(
   superlatives: Claim[],
@@ -3556,6 +3749,154 @@ function carriesUnresolvedHarmonization(line: string): boolean {
       !PRIMARY_SOURCE_RE.test(clause) &&
       !HARMONIZE_NEGATED_RE.test(clause)
   );
+}
+
+// ---------------------------------------------------------------------------
+// DERIVED-FIGURE CONTRADICTION (IMP-193, 2026-08-18 Critic mandate #2 — RC2).
+//
+// WORKED FAILURE, and it is the ugliest shape a truth failure takes: the system computed a number,
+// noticed the number disagreed with what the world publishes, chose its own arithmetic, and then
+// DELETED the published figure so nothing downstream could see the disagreement. The 08-18
+// cc-predraft status line read:
+//
+//   "C1 arithmetic catch — 12.9% x $371,500 = $47.9k contradicts the widely-printed $55k/home,
+//    $55k omitted from prose per IMP-120"
+//
+// and its body: "The depth treatment below therefore prints the percentage and the ASP and derives
+// ~$48,000, and omits the $55,000 entirely." The lead of a top slot then shipped "Lennar is
+// spending roughly $48,000 a house to close a sale." Four published sources put the per-home
+// incentive near $55,000 and the ASP at $371,000; 12.9% reconciles to $55,000 only against a
+// ~$426,000 GROSS price, i.e. the pre-draft applied the incentive rate to the price NET of
+// incentives. The error was ~$7,000 a house, in the headline, and every gate exited 0 — because
+// the only figure on the page was internally consistent with the only other figure on the page.
+//
+// THE RULE THIS ENCODES: when your arithmetic disagrees with published sources, the arithmetic is
+// the HYPOTHESIS, not the finding. Print the published figure and reconcile in the body, or drop
+// the number. What may never happen is the third thing: ship the derivation and suppress its rival.
+//
+// SCOPE, deliberately tight so it accuses only this shape:
+//   • PRE-DRAFTS ONLY, never the intel packet. The mandate is explicit that AI&T-1's "$2 trillion"
+//     must stay silent — that was a correct SELECTION between two sourced estimates ($2tn Azhar
+//     over $2.4tn WSJ), recorded at intel-packet line 626. A selection is not a derivation, and a
+//     gate that cannot tell them apart punishes the one place the judgment was made correctly.
+//   • the line must carry a derivation marker (=, x, computed, derives, arithmetic catch,
+//     contradicts, does not reconcile);
+//   • the two figures must be within a factor of 3 of each other — rival measurements of ONE
+//     quantity, not the unrelated magnitudes every bullet prints;
+//   • exactly one of the two may appear in the brief. If both appear, the reconciliation is on the
+//     page and there is nothing to hide; if neither appears, the pre-draft's caution was heeded.
+// FLAG, resolved at the Morning Truth Gate — the evening session has no browser to adjudicate
+// which figure is right, and the whole point is that the arithmetic alone cannot settle it.
+
+// TWO MARKERS, BOTH REQUIRED — a derivation AND a declared conflict with something published.
+// The first build asked only for a derivation marker, and `=`, `x` and "computed" are ubiquitous
+// in a pre-draft's rung notes: it produced three false rows on 2026-08-15 by pairing Riot's cost
+// to mine ($49,912) against its underwater basis ($18,964) and its contracted NOI ($40,719) —
+// three different quantities that merely sat within a factor of three of one another. What makes
+// the 08-18 case a defect is not that a division happened; it is that the pre-draft SAID the
+// result disagreed with the published figure and then dropped the published figure. So the line
+// has to say so: "not the '$55,000 per home' the coverage repeats", "omits the $55,000 entirely".
+const DERIVATION_MARKER_RE =
+  /(arithmetic catch|\bcomputed?\b|\bderive[sd]?\b|=|\s[x×]\s)/i;
+const CONTRADICTION_MARKER_RE =
+  /(contradicts?\b|do(?:es)? not reconcile|\bomit(?:s|ted|ting)?\b|\bsuppress(?:es|ed)?\b|widely[- ]printed|coverage repeats|\bnot the\b|\binstead of\b)/i;
+
+/** `$47.9k` → 47900, `$55,000` → 55000, `$371,500` → 371500, `$1.8 billion` → 1.8e9. */
+function derivedMoneyValues(text: string): Array<{ v: number; raw: string }> {
+  const MUL: Record<string, number> = {
+    k: 1e3, thousand: 1e3, m: 1e6, mn: 1e6, million: 1e6,
+    bn: 1e9, b: 1e9, billion: 1e9, tn: 1e12, trillion: 1e12,
+  };
+  const out: Array<{ v: number; raw: string }> = [];
+  for (const m of text.matchAll(
+    /\$\s?(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|mn|million|bn|billion|tn|trillion|m|b)?\b/gi
+  )) {
+    const n = parseFloat(m[1]!.replace(/,/g, ''));
+    if (!isFinite(n)) continue;
+    const mul = m[2] ? (MUL[m[2]!.toLowerCase()] ?? 1) : 1;
+    out.push({ v: n * mul, raw: m[0]!.trim().replace(/[.,;:]$/, '') });
+  }
+  return out;
+}
+
+/** Present in the brief within 2% — "$47,900" derived and "roughly $48,000" printed are one figure. */
+function briefCarries(v: number, briefValues: number[]): boolean {
+  return briefValues.some(b => b > 0 && Math.abs(b - v) / v <= 0.02);
+}
+
+export function derivedFigureContradictionFindings(
+  body: string,
+  predrafts: Array<[string, string]>
+): Finding[] {
+  const findings: Finding[] = [];
+  const briefValues = derivedMoneyValues(body).map(m => m.v);
+  const seen = new Set<string>();
+  for (const [label, draft] of predrafts) {
+    for (const line of draft.replace(/<!--[\s\S]*?-->/g, ' ').split('\n')) {
+      if (!DERIVATION_MARKER_RE.test(line)) continue;
+      if (!CONTRADICTION_MARKER_RE.test(line)) continue;
+      const vals = derivedMoneyValues(line);
+      if (vals.length < 2) continue;
+      for (let i = 0; i < vals.length; i++)
+        for (let j = i + 1; j < vals.length; j++) {
+          const a = vals[i]!;
+          const b = vals[j]!;
+          if (a.v === b.v || !a.v || !b.v) continue;
+          const ratio = Math.max(a.v, b.v) / Math.min(a.v, b.v);
+          if (ratio > 3) continue; // unrelated magnitudes, not rival readings of one quantity
+          const aIn = briefCarries(a.v, briefValues);
+          const bIn = briefCarries(b.v, briefValues);
+          if (aIn === bIn) continue; // both on the page (reconciled) or neither (caution heeded)
+          const shipped = aIn ? a : b;
+          const suppressed = aIn ? b : a;
+          // One row per SUPPRESSED figure. The 08-18 pre-draft states the same conflict twice
+          // ("$47,900, not the $55,000" and "derives ~$48,000, and omits the $55,000"); that is one
+          // defect and one morning-gate resolution, not two.
+          const key = `${label}:${Math.round(suppressed.v)}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          findings.push({
+            check: 'derived-figure-contradiction',
+            severity: 'FLAG',
+            message:
+              `UNRESOLVED-FACT: DERIVED FIGURE SHIPPED, ITS RIVAL SUPPRESSED — the ${label} pre-draft names ` +
+              `${shipped.raw} and ${suppressed.raw} on one derivation line, and the brief prints ${shipped.raw} ` +
+              `while ${suppressed.raw} appears nowhere. Line: "${line.replace(/\s+/g, ' ').trim().slice(0, 220)}…". ` +
+              `MORNING GATE: verify which figure the published sources carry. When the system's own arithmetic ` +
+              `disagrees with what is published, the arithmetic is the HYPOTHESIS — print the published figure and ` +
+              `reconcile in the body, or drop the number; never ship the derivation with its rival deleted. ` +
+              `Receipt, 2026-08-18 C&C-1: "12.9% x $371,500 = $47.9k contradicts the widely-printed $55k/home, ` +
+              `$55k omitted from prose" — "roughly $48,000 a house" led a top slot, and 12.9% reconciles to ` +
+              `$55,000 only against a ~$426,000 GROSS price. The rate had been applied to the price NET of ` +
+              `incentives; the error was ~$7,000 a house, in the headline, at gate exit 0.`,
+          });
+        }
+    }
+  }
+  return findings;
+}
+
+/** Every on-disk pre-draft for the night, as [label, contents]. Pre-drafts ONLY — see scope note. */
+export function loadPredrafts(
+  briefPath: string,
+  briefDate: string | null
+): Array<[string, string]> {
+  if (!briefDate) return [];
+  const out: Array<[string, string]> = [];
+  for (const suffix of ['cc-predraft', 'take-draft', 'signal-draft', 'discovery-draft']) {
+    for (const dir of [
+      path.dirname(briefPath),
+      path.join(path.dirname(briefPath), '..', 'daily-briefs'),
+      path.join(process.cwd(), 'daily-briefs'),
+    ]) {
+      const p = path.join(dir, `${briefDate}-${suffix}.md`);
+      if (fs.existsSync(p)) {
+        out.push([suffix.replace(/-.*/, '').toUpperCase(), fs.readFileSync(p, 'utf8')]);
+        break;
+      }
+    }
+  }
+  return out;
 }
 
 function findQgLog(briefPath: string, briefDate: string | null): string | null {
@@ -5739,6 +6080,82 @@ function selftest(): number {
   console.log(
     `  [IMP-165] NO RETRO: silent on a pre-2026-08-12 brief date (IMP-125's rule): ${okAttrNoRetro ? '✓' : '✗'}`
   );
+  // ── IMP-193 (2026-08-18 Critic mandate #2, RC2): DERIVED-FIGURE CONTRADICTION, both directions
+  // on real artifacts. FIRE = the night the derivation shipped and the published rival was deleted.
+  // SILENT = eight further nights, plus the two cases the mandate explicitly protects: C&C-2's
+  // $1.8B/$30B → "roughly six cents" (a derivation contradicting nothing) and AI&T-1's "$2 trillion"
+  // (a SELECTION between two sourced estimates, recorded in the intel packet — which this check
+  // never reads, by design). "The gate must not punish the one place tonight where this judgment
+  // was made correctly."
+  const dfcOn = (d: string) => {
+    const p = path.join(root, `daily-briefs/${d}-v2.md`);
+    if (!fs.existsSync(p)) return null;
+    return derivedFigureContradictionFindings(
+      fs.readFileSync(p, 'utf8'),
+      loadPredrafts(p, d)
+    );
+  };
+  const dfc18 = dfcOn('2026-08-18');
+  const okDfcFire =
+    dfc18 !== null &&
+    dfc18.length === 1 &&
+    /\$55,000/.test(dfc18[0]!.message) &&
+    /\$47,900|\$48,000/.test(dfc18[0]!.message);
+  console.log(
+    `  [IMP-193] FIRES on REAL 08-18 C&C-1 (derived ~$48k from 12.9% x a NET ASP, said it contradicted the widely-printed $55k/home, omitted the $55k, and the $48k led a top slot at gate exit 0): ${okDfcFire ? '✓' : '✗'}${dfc18 && !okDfcFire ? ` (got ${dfc18.length})` : ''}`
+  );
+  const dfcNoisy: string[] = [];
+  for (const d of [
+    '2026-08-17', '2026-08-16', '2026-08-15', '2026-08-14', '2026-08-13',
+    '2026-08-12', '2026-08-11', '2026-08-10',
+  ]) {
+    const r = dfcOn(d);
+    if (r && r.length) dfcNoisy.push(`${d}:${r.length}`);
+  }
+  const okDfcNoStorm = dfcNoisy.length === 0;
+  console.log(
+    `  [IMP-193] NO STORM: silent across eight healthy nights — a derivation marker alone is ubiquitous in pre-draft rung notes (08-15 paired Riot's $49,912 cost-to-mine against its $18,964 basis and $40,719 NOI); the DECLARED conflict is what makes it a defect: ${okDfcNoStorm ? '✓' : '✗'}${dfcNoisy.length ? ` (got ${dfcNoisy.join(', ')})` : ''}`
+  );
+
+  // ── IMP-196 — DASHBOARD LEVEL RECENCY, both directions on the real files ─────────────────────
+  // The mandate named its own receipts, so they are the fixtures: the v2 that shipped the false
+  // sentence must FIRE, the corrected published copy must be SILENT, and eight healthy nights
+  // must stay quiet. The middle case is the one that matters most — it proves the check keys on
+  // STALENESS and not merely on the presence of a Treasury level, which the 5-day blackout would
+  // otherwise have made indistinguishable.
+  const dlsOn = (p: string, d: string): Finding[] => {
+    const f = path.join(root, p);
+    return fs.existsSync(f)
+      ? dashboardLevelStalenessFindings(fs.readFileSync(f, 'utf8'), f, d)
+      : [];
+  };
+  const dls19v2 = dlsOn('daily-briefs/2026-08-19-v2.md', '2026-08-19');
+  const okDlsFire =
+    dls19v2.length === 1 &&
+    /thirty-year Treasury yield/.test(dls19v2[0]!.message) &&
+    /5\.31/.test(dls19v2[0]!.message) &&
+    /"held"/.test(dls19v2[0]!.message);
+  console.log(
+    `  [IMP-196] FIRES on REAL 08-19 v2 (Dashboard printed MONDAY's 5.31 as Tuesday's under "held", while Tuesday made a new 19-year high at 5.33 and closed DOWN >2bp — the day's conclusion was built on the inverted move): ${okDlsFire ? '✓' : '✗'}${dls19v2.length !== 1 ? ` (got ${dls19v2.length})` : ''}`
+  );
+  const dls19pub = dlsOn('content/daily-updates/2026-08-19.md', '2026-08-19');
+  const okDlsSilent = dls19pub.length === 0;
+  console.log(
+    `  [IMP-196] SILENT on the CORRECTED published 08-19 (same instrument, same slot, level now 5.33 and verb "topped" — keys on staleness, not on the presence of a Treasury level): ${okDlsSilent ? '✓' : '✗'}${dls19pub.length ? ` (got ${dls19pub.length})` : ''}`
+  );
+  const dlsNoisy: string[] = [];
+  for (const d of [
+    '2026-08-18', '2026-08-17', '2026-08-15', '2026-08-14',
+    '2026-08-13', '2026-08-12', '2026-08-11', '2026-08-10',
+  ]) {
+    const r = dlsOn(`content/daily-updates/${d}.md`, d);
+    if (r.length) dlsNoisy.push(`${d}:${r.length}`);
+  }
+  const okDlsNoStorm = dlsNoisy.length === 0;
+  console.log(
+    `  [IMP-196] NO STORM: silent across eight healthy nights — the precision floor (a decimal, or 4+ significant digits) is what buys this, since rounded crude handles like "$84"/"$91" legitimately repeat across days and firing on them would make the gate a flag generator on its first live night: ${okDlsNoStorm ? '✓' : '✗'}${dlsNoisy.length ? ` (got ${dlsNoisy.join(', ')})` : ''}`
+  );
+
   const ok =
     okDaFire &&
     okDaSilentSettledAt &&
@@ -5912,7 +6329,12 @@ function selftest(): number {
     okLocSilentWork &&
     okLocNoStorm &&
     okLocNoRetro &&
-    okLocNotProse;
+    okLocNotProse &&
+    okDfcFire &&
+    okDfcNoStorm &&
+    okDlsFire &&
+    okDlsSilent &&
+    okDlsNoStorm;
   if (ok) {
     console.log(
       '\n✅ SELFTEST PASS — gate bites the 07-10/07-11/07-13 failures (reuse, transposition, entity misattribution, harmonize-to-published, release-date falsehood) and stays silent on the corrected/healthy cases — including its own two false positives.'
@@ -6212,6 +6634,19 @@ function main() {
   findings.push(...takeExtraordinaryFindings(body, briefDate)); // IMP-115
   // IMP-120 leg (b): the offline half — a bullet that contradicts its own printed prices.
   findings.push(...derivedPercentageFindings(body, briefDate));
+
+  // 4i. Derived-figure contradiction (IMP-193, 08-18 Critic mandate #2): the brief ships a figure
+  // its own pre-draft COMPUTED, and the published rival that pre-draft named is nowhere on the
+  // page. derivedPercentageFindings sees a bullet contradicting ITSELF; this sees a bullet made
+  // consistent by deletion — the failure that stays invisible precisely because it tidied up.
+  findings.push(
+    ...derivedFigureContradictionFindings(body, loadPredrafts(briefPath, briefDate))
+  );
+
+  // 4j. Dashboard level recency (IMP-196, 08-19 Critic mandate #1): a precise level repeated from
+  // one of the last 3 published Dashboards, under a verb describing today's move. The archive
+  // rails above ask whether a price is PLAUSIBLE; this asks whether it is TODAY'S.
+  findings.push(...dashboardLevelStalenessFindings(body, briefPath, briefDate));
 
   // 5. Truth cross-check (if truth present)
   if (truth) findings.push(...crossCheck(claims, truth));

@@ -595,6 +595,200 @@ export function truthKeysFor(briefPath: string): Set<string> {
   return out;
 }
 
+// ---------- INTERNAL RATIO (IMP-192 — 2026-08-18 Critic mandate #1, second leg; RC2) ----------
+//
+// THE CLASS. A bullet prints a share and the two magnitudes it is a share OF, and the three do not
+// reconcile. This needs NO external source to falsify — the bullet contradicts itself on the page,
+// which is the cheapest kind of lie to catch and the most expensive to publish. 2026-08-18 C&C-3
+// shipped "passed $650 million", "roughly $253 million" and "near 43 percent" in one bullet;
+// 253/650 = 38.9%. Every source-facing gate in the stack exited 0, correctly — each figure was
+// individually sourced. Nothing was asking whether they were true TOGETHER.
+//
+// Deliberately narrow, because the false-positive surface here is large: a bullet routinely prints
+// two magnitudes and a percent that are simply unrelated ("$32.5 billion guidance … down 2 percent
+// year over year"). Four constraints keep it honest:
+//   • the percent must sit within 300 characters of BOTH magnitudes (the mandate's window);
+//   • the two magnitudes must share an order of magnitude scale such that the smaller/larger
+//     quotient lands in 1–99% — a ratio outside that is not a share claim;
+//   • at least ONE ordering must reconcile. If any pairing in the window lands within tolerance the
+//     bullet is coherent and the check is silent — the writer is not obliged to print the operands
+//     adjacent to the share;
+//   • tolerance 3 percentage points, per the mandate.
+// FLAG, not FAIL: ceiling-lint is advisory by construction, and the Editor and Critic act on flags.
+
+const RATIO_WINDOW = 300;
+const RATIO_TOLERANCE_PP = 3;
+const RATIO_STOP = new Set(
+  (
+    'the a an and or but its their this that these those with from into onto over under about ' +
+    'total which what when where than then them they there here also more most less least ' +
+    'been being have has had was were are all any own same such very just only other another ' +
+    // MAGNITUDE AND HEDGE WORDS ARE NOT REFERENTS. Leaving "billion" in the referent set let
+    // "77 percent of it. Annualised that is roughly $9 BILLION…" bind to any nearby dollar figure
+    // purely because both sentences said the word "billion" — a unit is never what a share is OF.
+    'billion million trillion thousand percent times dollar cent roughly about near nearly'
+  ).split(/\s+/)
+);
+
+const COUNT_REFERENTS = [
+  'share',
+  'vote',
+  'seat',
+  'unit',
+  'employee',
+  'customer',
+  'user',
+  'subscriber',
+  'household',
+  'member',
+  'holder',
+  'barrel',
+  'ounce',
+  'tonne',
+  'acre',
+];
+
+interface Magnitude {
+  value: number;
+  raw: string;
+  at: number;
+}
+
+const RATIO_MAG: Record<string, number> = {
+  k: 1e3,
+  thousand: 1e3,
+  m: 1e6,
+  mn: 1e6,
+  million: 1e6,
+  bn: 1e9,
+  b: 1e9,
+  billion: 1e9,
+  tn: 1e12,
+  trillion: 1e12,
+};
+
+function currencyMagnitudes(text: string): Magnitude[] {
+  const out: Magnitude[] = [];
+  for (const m of text.matchAll(
+    /\$\s?(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|mn|million|bn|billion|tn|trillion|m|b)?\b/gi
+  )) {
+    const n = parseFloat(m[1]!.replace(/,/g, ''));
+    if (!isFinite(n)) continue;
+    const mul = m[2] ? (RATIO_MAG[m[2]!.toLowerCase()] ?? 1) : 1;
+    out.push({ value: n * mul, raw: m[0]!.trim(), at: m.index ?? 0 });
+  }
+  return out;
+}
+
+export function checkInternalRatio(bullets: Bullet[]): Flag[] {
+  const flags: Flag[] = [];
+  for (const b of bullets) {
+    const text = b.text.replace(/<!--[\s\S]*?-->/g, ' ');
+    const mags = currencyMagnitudes(text);
+    if (mags.length < 2) continue; // Signal-1's bare "90%+ quarter-on-quarter" stays silent here
+    // SHARE CLAIMS ONLY — `N percent OF <something>`. The mandate said "a percent token within 300
+    // characters of two currency magnitudes"; built that literally, the check produced 23 flags
+    // across 2026-08-10..18 and exactly ONE was a real defect. The reason is that most percents in
+    // a bullet are not shares at all — they are premiums ("a 49 percent premium" beside a $13.59
+    // and a $20.25 price), growth rates, YoY changes and margin moves, and dividing the two nearest
+    // dollar figures produces a number that was never claimed. Only `percent of` asserts that one
+    // printed magnitude IS that fraction of another, which is the only claim arithmetic can audit.
+    // This is the difference between a check and a flag generator, and it takes the false-positive
+    // count over those nine nights from 22 to 0 while keeping the mandated 08-18 FIRE.
+    for (const pm of text.matchAll(/(\d+(?:\.\d+)?)\s*(?:percent|%)\s+of\b/gi)) {
+      const pct = parseFloat(pm[1]!);
+      const at = pm.index ?? 0;
+      if (!isFinite(pct) || pct <= 0 || pct >= 100) continue;
+      const near = mags.filter(m => Math.abs(m.at - at) <= RATIO_WINDOW);
+      if (near.length < 2) continue;
+      // REFERENT BINDING. `percent of` alone still left six false flags over nine nights, because
+      // the thing the share is OF is usually not either printed magnitude: "82 percent of the
+      // VOTES" sat beside a $21 and a $28.50 share price and the quotient was never claimed. So
+      // the denominator has to earn the role — the noun phrase after "of" must reappear beside the
+      // larger magnitude. On 08-18 "43 percent of the CHAIN's STABLECOIN balances" binds to
+      // "STABLECOIN supply on the CHAIN passed $650 million", which is exactly the claim; on 08-15
+      // "of the votes" binds to nothing, and the check goes correctly quiet. This is the line
+      // between auditing an assertion and dividing whatever numbers happen to be adjacent.
+      // The referent phrase STOPS AT ITS SENTENCE. Reading 70 raw characters spilled across the
+      // full stop on 2026-08-10 — "…retired more than 40 percent of APPLE. Against all of it:
+      // $4.5 billion is 1.2 percent of the CASH pile…" — so a share of Apple's share count picked
+      // up "cash" from the next sentence and bound to a dollar figure it has nothing to do with.
+      const ofPhrase = text
+        .slice(at + pm[0]!.length, at + pm[0]!.length + 70)
+        .split(/(?<=[.!?;])\s/)[0]!;
+      const ofTerms = new Set(
+        ofPhrase
+          .toLowerCase()
+          .split(/[^a-z]+/)
+          .filter(w => w.length >= 4 && !RATIO_STOP.has(w))
+          .map(w => w.replace(/([^s])s$/, '$1'))
+      );
+      if (!ofTerms.size) continue;
+      // A SHARE OF A COUNT IS NOT A SHARE OF A SUM. This check divides one currency magnitude by
+      // another; when the referent is a countable population the quotient is meaningless no matter
+      // which dollars sit nearby. Receipt, 2026-08-07: "the first post-IPO lockup lifted the public
+      // float from 4.9 percent of SHARES OUTSTANDING to 11.8" flagged against a $108.27 close over
+      // a $125.33 close — two share prices and a float percentage, three true numbers and no
+      // relation between them. Every entry here is a deliberate blindness; keep the list short.
+      if (COUNT_REFERENTS.some(w => ofTerms.has(w))) continue;
+      const binds = (m: Magnitude) => {
+        const ctx = text
+          .slice(Math.max(0, m.at - 90), m.at + 90)
+          .toLowerCase()
+          .split(/[^a-z]+/)
+          .map(w => w.replace(/([^s])s$/, '$1'));
+        return ctx.some(w => w.length >= 4 && ofTerms.has(w));
+      };
+      // NUMERATOR = THE NEAREST MAGNITUDE PRECEDING THE SHARE, not any smaller one in the window.
+      // English puts the quantity and its share in that order — "went to $253 MILLION in a month
+      // and now sits near 43 PERCENT OF the chain's balances" — and leaving the numerator free is
+      // what produced the last two false flags: on 08-15 the check paired Workday's $43bn market
+      // value against Silver Lake's $55bn EA deal to audit "kept just 5.5 percent of the equity",
+      // a sentence about neither. With this rule that night's nearest preceding magnitude IS the
+      // denominator, no ordered pair exists, and the check is correctly silent.
+      const before = near.filter(m => m.at < at);
+      if (!before.length) continue;
+      const a = before.reduce((x, y) => (y.at > x.at ? y : x));
+      // DENOMINATORS ARE SEARCHED ACROSS THE WHOLE BULLET, not the 300-character window the
+      // mandate specified. Receipt: 2026-08-10 C&C-1 wrote "$4.5 billion is 1.2 percent of the
+      // cash pile" — TRUE against the $365.5bn cash figure stated earlier in the same bullet, but
+      // that figure sits outside 300 characters while "$98 billion of idle CASH" sits inside and
+      // binds on the word "cash". A window that can exclude the true denominator while admitting a
+      // false one manufactures exactly the accusation this check exists to make. Widening is also
+      // the safe direction: a flag requires EVERY candidate pairing to fail, so more candidates can
+      // only exonerate. The window still governs which magnitude is the NUMERATOR, where proximity
+      // is the whole signal.
+      const pairs: Array<{ a: Magnitude; b: Magnitude; q: number }> = [];
+      for (const c of mags) {
+        if (c === a || !a.value || !c.value || a.value >= c.value) continue;
+        if (!binds(c)) continue; // the denominator must be the quantity the share is OF
+        const q = (a.value / c.value) * 100;
+        if (q < 1 || q > 99) continue; // not a share claim
+        pairs.push({ a, b: c, q });
+      }
+      if (!pairs.length) continue;
+      // ANY reconciling pairing exonerates the bullet. Demanding the nearest pair reconcile would
+      // condemn every bullet that prints an unrelated magnitude between the share and its operands.
+      if (pairs.some(p => Math.abs(p.q - pct) <= RATIO_TOLERANCE_PP)) continue;
+      const best = pairs.reduce((x, y) =>
+        Math.abs(y.q - pct) < Math.abs(x.q - pct) ? y : x
+      );
+      flags.push({
+        check: 'internal-ratio',
+        where: `${b.section} — "${text.replace(/\s+/g, ' ').slice(0, 70)}…"`,
+        message:
+          `INTERNAL RATIO DOES NOT RECONCILE — the bullet prints ${best.a.raw} and ${best.b.raw} and ` +
+          `calls it ${pct} percent, but ${best.a.raw} / ${best.b.raw} = ${best.q.toFixed(1)} percent ` +
+          `(${Math.abs(best.q - pct).toFixed(1)}pp off, tolerance ${RATIO_TOLERANCE_PP}pp). All three cannot be true, ` +
+          `and no external source is needed to know it. 2026-08-18 receipt: C&C-3 shipped "$650 million", ` +
+          `"$253 million" and "near 43 percent" — 253/650 = 38.9 — at every gate exit 0. Fix the share, fix a ` +
+          `magnitude, or print the share and the growth without the levels.`,
+      });
+    }
+  }
+  return flags;
+}
+
 function lint(brief: string): Flag[] {
   const intro = introOf(brief);
   const bullets = sixBullets(brief);
@@ -613,8 +807,125 @@ function lint(brief: string): Flag[] {
   flags.push(...checkCcPricingRung(brief)); // IMP-108 (restored)
   flags.push(...checkModelCanonicalExample(brief)); // IMP-103 (restored)
   flags.push(...checkSingleInstanceGeneralization(bullets)); // IMP-181
+  flags.push(...checkInternalRatio(bullets)); // IMP-192 (08-18 mandate #1, second leg)
+  // IMP-197 (08-19 mandate #2). Whole-brief, not bullets: the 08-19 defect ran in the DASHBOARD
+  // and in a Six bullet simultaneously, and the Dashboard is not a bullet. lint() has no date, so
+  // it runs undated (docs are named but not date-filtered); main() supplies BRIEF_DATE.
+  flags.push(...checkCausalNegative(brief, null));
   // IMP-168 is truth-file coupled, so main() supplies the keys; lint() runs it with an empty
   // set, which is the strictest reading (no rows = every selection undisclosed).
+  return flags;
+}
+
+// ─── IMP-197 — CAUSAL NEGATIVE (2026-08-19 Critic mandate #2, RC2) ───────────────────────────
+//
+// THE FAILURE: the 08-19 brief asserted in TWO sections that the semis selloff had no cause, and
+// printed the disputed cause BETWEEN the two assertions, credited to the account that relayed it.
+//
+//   Dashboard : "a closely watched semiconductor gauge fell 5.5 percent on no company news at all"
+//   M&M-3     : "Tuesday's memory selloff carried no company news"
+//   M&M-3, three sentences earlier: "Charlie Bilello has nine major technology companies carrying
+//               roughly $3 trillion in off-balance-sheet commitments against about $600 billion
+//               of reported capex."
+//
+// 24/7 Wall St. ran BOTH attributions the same day — "WSJ Report Sends Memory Stocks Down.
+// SanDisk Down 9%, Micron Down 7%" (the $3tn off-balance-sheet figure, sourced to the WSJ, named
+// as the cause) and "Micron Falls 5% … as Higher Rates Test the Memory Boom" (the rival). The
+// causal question was DISPUTED IN THE RECORD. The brief resolved it silently, twice, in the
+// direction that suited its thesis, and never saw the conflict — because it credited the relay
+// (Bilello) rather than the publisher (the WSJ), so the figure never looked like a document.
+//
+// THE PRINCIPLE: **a negative causal claim requires the same verification budget as a positive
+// one.** "Nothing caused this" is not a modest sentence; it is the strongest causal claim in the
+// paragraph, and it is the only one nothing was checking.
+//
+// WHICH LEG DOES THE WORK, HONESTLY. The mandate specified two conditions: the negative phrase,
+// and the brief citing a same-session document. The second is satisfied by nearly every brief we
+// publish — most bullets ARE same-day sourcing — so it is not the discriminator and saying it is
+// would be theater. The discriminator is the phrase bound TO A MOVE THAT HAPPENED, and it is a
+// sharp one: across the entire published archive the phrase family appears six times, of which
+// two are the defect shape (2026-04-26, "AMD +14%, Broadcom +11%, NVIDIA +5% on no news") and
+// four are the FORWARD form ("no catalyst for reversal"), which asserts nothing about a past
+// session and is excluded by construction. The document leg's real job is to NAME the document
+// in the message, so the escape is the behaviour we actually want: rule it out by name.
+const CAUSAL_NEG_RE =
+  /\b(?:on\s+)?no\s+(?:company\s+)?news(?:\s+at\s+all)?\b|\bno\s+(?:obvious\s+|specific\s+|apparent\s+)?catalyst\b|\bwithout\s+any\s+announcement\b|\bnothing\s+specific\s+drove\b|\bno\s+headline\s+(?:drove|behind)\b/gi;
+
+// The negative must attach to a move that ALREADY HAPPENED. "no catalyst FOR a reversal" is a
+// forecast about a move that has not occurred; it makes no claim about why anything moved and is
+// the only form in the published archive (4 of 6 hits). Firing on it would be a false-positive.
+const CAUSAL_NEG_FORWARD_RE = /\bno\s+\w*\s*catalyst\s+(?:for|to)\b/i;
+const MOVE_RE =
+  /\b(?:fell|falls|fall|rose|rise|rises|gained|lost|sank|slid|slipped|jumped|surged|tumbled|dropped|selloff|sell-off|plunged|declined|down|up)\b/i;
+
+// A same-session document, from EITHER the reader-facing text or the staleness ledger, which is
+// where sources are enumerated WITH DATES. The ledger is read deliberately: the 08-19 M&M-3 text
+// never says "report" — that is the defect — so a reader-text-only scan would miss the very case
+// the mandate names.
+const DOC_RE =
+  /\b(?:Wall Street Journal|WSJ|Reuters|Bloomberg|Financial Times|SEC|EDGAR)\b[^.\n]{0,80}?\b(?:analysis|report|filing|8-K|10-Q|study|survey|piece|story)\b|\b(?:analysis|report|filing|8-K|10-Q|study|survey|white paper|press release)\s+(?:of|on|by|from)\b/i;
+
+// The sanctioned escape: the negative survives only if the same-day document is ruled out BY
+// NAME. These are the constructions that do that.
+const RULED_OUT_RE =
+  /\b(?:beyond|other than|apart from|aside from|except(?:ing)?|besides|save for)\b/i;
+
+export function checkCausalNegative(
+  brief: string,
+  briefDate: string | null
+): Flag[] {
+  const flags: Flag[] = [];
+  const reader = brief.replace(/<!--[\s\S]*?-->/g, ' ');
+  if (!DOC_RE.test(brief)) return flags; // the brief cites nothing document-shaped: stay quiet
+
+  // Name the same-session document(s) for the message. Ledger rows carry `SOURCE:` and a date;
+  // "within 1 day of the session being described" = BRIEF_DATE or the day before.
+  const near = new Set<string>();
+  if (briefDate) {
+    const d = new Date(`${briefDate}T00:00:00Z`);
+    for (const off of [0, -1]) {
+      const t = new Date(d.getTime() + off * 86400000);
+      near.add(t.toISOString().slice(0, 10));
+    }
+  }
+  const docs: string[] = [];
+  for (const line of brief.split('\n')) {
+    if (!DOC_RE.test(line)) continue;
+    if (near.size && ![...near].some(x => line.includes(x))) continue;
+    const m = line.match(DOC_RE);
+    if (m) docs.push(m[0].replace(/\s+/g, ' ').trim());
+    if (docs.length >= 3) break;
+  }
+
+  const sectionAt = (idx: number): string => {
+    const heads = [...reader.slice(0, idx).matchAll(/^#{1,3}\s*▸?\s*(.+)$/gm)];
+    return heads.length ? heads[heads.length - 1][1]!.trim() : '(preamble)';
+  };
+
+  CAUSAL_NEG_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = CAUSAL_NEG_RE.exec(reader)) !== null) {
+    const at = m.index;
+    const before = reader.slice(Math.max(0, at - 160), at);
+    const after = reader.slice(at, Math.min(reader.length, at + 160));
+    if (CAUSAL_NEG_FORWARD_RE.test(`${m[0]} ${after}`)) continue; // forecast, not an explanation
+    if (!MOVE_RE.test(before)) continue; // no move to explain: nothing is being asserted about a cause
+    if (RULED_OUT_RE.test(before) || RULED_OUT_RE.test(after.slice(0, 80))) continue; // named exclusion
+    flags.push({
+      check: 'causal-negative',
+      where: sectionAt(at),
+      message:
+        `CAUSAL NEGATIVE — "${`${before.slice(-70)}${m[0]}`.replace(/\s+/g, ' ').trim()}" asserts that a move ` +
+        `HAD NO CAUSE, in a brief that cites ${docs.length ? docs.length : 'a'} same-session document(s)` +
+        `${docs.length ? `: ${docs.slice(0, 3).join(' · ')}` : ''}. A negative causal claim requires the same ` +
+        `verification budget as a positive one — it is the strongest claim in the paragraph, not the most modest. ` +
+        `Rule the document out BY NAME ("beyond the WSJ footnote analysis, no company news"), or drop the negative ` +
+        `and print the move alone. And credit the PUBLISHER, not the relay: where a figure originates in a named ` +
+        `outlet's reporting, the outlet is the source and the account that posted it is at most a secondary. ` +
+        `Receipt, 2026-08-19: the brief said "no company news" in TWO sections and printed the disputed $3tn ` +
+        `WSJ figure between them, credited to Charlie Bilello — so the conflict was never visible to it.`,
+    });
+  }
   return flags;
 }
 
@@ -1063,6 +1374,110 @@ function selftest(): number {
     assert(
       rf.length === 0,
       `restored checks SILENT on the REAL 07-31 v2 (clean)${rf.length ? ` (got: ${rf.map(f => `${f.check}@${f.where}`).join(', ')})` : ''}`
+    );
+  }
+
+  // ── IMP-192 (2026-08-18 Critic mandate #1, second leg; RC2): INTERNAL RATIO, both directions,
+  // on real artifacts. The mandate named the receipts; these are them, plus a false-positive floor
+  // over twelve further nights, because the first three builds of this check produced 23, 7 and 5
+  // flags across that window and exactly one was ever a defect.
+  const irBullets = (d: string) => {
+    const p = path.join(process.cwd(), `daily-briefs/${d}-v2.md`);
+    return fs.existsSync(p) ? sixBullets(fs.readFileSync(p, 'utf8')) : null;
+  };
+  const b18 = irBullets('2026-08-18');
+  if (b18) {
+    const f18 = checkInternalRatio(b18);
+    assert(
+      f18.length === 1 &&
+        /253 million/.test(f18[0]!.message) &&
+        /650 million/.test(f18[0]!.message) &&
+        /38\.9/.test(f18[0]!.message),
+      '[IMP-192] FIRES on the REAL 08-18 C&C-3 — "$650 million" + "$253 million" + "near 43 percent" shipped together; 253/650 = 38.9. No external source is needed to know all three cannot be true, and every gate exited 0' +
+        (f18.length !== 1 ? ` (got ${f18.length}: ${f18.map(f => f.message.slice(0, 70)).join(' | ')})` : '')
+    );
+    assert(
+      !f18.some(f => /six cents|1\.8 billion|\$30 billion/.test(f.message)),
+      '[IMP-192] SILENT on the REAL 08-18 C&C-2 — $1.8B/$30B printed as "roughly six cents per dollar of annual flow" is a correct derivation and must not be punished (the mandate\'s named PASS case)'
+    );
+  } else {
+    assert(false, '[IMP-192] 08-18 fixture present');
+  }
+  assert(
+    checkInternalRatio([
+      { section: 'The Signal', text: '**A lead.** Revenue grew 90%+ quarter-on-quarter with no paired magnitudes at all.' },
+    ] as any).length === 0,
+    '[IMP-192] SILENT on a bare percentage with no paired currency magnitudes (the mandate\'s Signal-1 case)'
+  );
+  {
+    const noisy: string[] = [];
+    for (const d of [
+      '2026-08-17', '2026-08-16', '2026-08-15', '2026-08-14', '2026-08-13', '2026-08-12',
+      '2026-08-11', '2026-08-10', '2026-08-09', '2026-08-08', '2026-08-07', '2026-08-06',
+    ]) {
+      const bs = irBullets(d);
+      if (!bs) continue;
+      const n = checkInternalRatio(bs).length;
+      if (n) noisy.push(`${d}:${n}`);
+    }
+    assert(
+      noisy.length === 0,
+      `[IMP-192] FALSE-POSITIVE FLOOR — 0 flags across twelve healthy nights (08-06..08-17). Premiums, growth rates, share counts and share prices all print a percent beside two dollar figures; a check that divides them is a flag generator, not a gate${noisy.length ? ` (got ${noisy.join(', ')})` : ''}`
+    );
+  }
+
+  // ── IMP-197 — CAUSAL NEGATIVE, on the real files the mandate named ──────────────────────────
+  {
+    const read = (p: string): string | null =>
+      fs.existsSync(path.join(process.cwd(), p))
+        ? fs.readFileSync(path.join(process.cwd(), p), 'utf8')
+        : null;
+    const v2 = read('daily-briefs/2026-08-19-v2.md');
+    const cnV2 = v2 ? checkCausalNegative(v2, '2026-08-19') : [];
+    assert(
+      cnV2.length === 2 &&
+        cnV2.some(f => /Equities/i.test(f.where)) &&
+        cnV2.some(f => /Markets & Macro/i.test(f.where)),
+      `[IMP-197] FIRES TWICE on REAL 08-19 v2 — the Dashboard's "on no company news at all" AND M&M-3's "carried no company news", the two assertions with the disputed $3tn WSJ figure printed between them${cnV2.length !== 2 ? ` (got ${cnV2.length})` : ''}`
+    );
+    // C&C-2 is the mandate's named must-stay-silent case: "We do not have the user metric" is an
+    // admitted absence of EVIDENCE, not an asserted absence of a CAUSE. It sits in the same v2, so
+    // the count of exactly 2 above already proves the gate does not punish the one place tonight
+    // where an absence was declared correctly — the distinction the mandate insisted on.
+    const pub = read('content/daily-updates/2026-08-19.md');
+    assert(
+      pub != null && checkCausalNegative(pub, '2026-08-19').length === 0,
+      '[IMP-197] SILENT on the CORRECTED published 08-19 — both clauses replaced with the WSJ attribution'
+    );
+    // RETROACTIVE: the same defect shape sits in the published 2026-04-26 brief ("AMD +14%,
+    // Broadcom +11%, NVIDIA +5% ON NO NEWS"). A check built for tonight that cannot see the same
+    // failure in the archive is fitted to one night.
+    const apr = read('content/daily-updates/2026-04-26.md');
+    assert(
+      apr != null && checkCausalNegative(apr, '2026-04-26').length === 1,
+      '[IMP-197] FIRES retroactively on the published 2026-04-26 brief — the same shape, four months earlier'
+    );
+    // THE FORWARD FORM MUST STAY SILENT. "no catalyst FOR reversal" (2026-02-25) is a forecast
+    // about a move that has not happened; it asserts nothing about why anything moved, and it is
+    // 4 of the 6 occurrences of this phrase family in the whole archive. Firing on it would make
+    // the check a phrase ban.
+    const feb = read('content/daily-updates/2026-02-25.md');
+    assert(
+      feb != null && checkCausalNegative(feb, '2026-02-25').length === 0,
+      '[IMP-197] SILENT on "no catalyst for reversal" — the forward form makes no causal claim about a past session'
+    );
+    const cnNoisy: string[] = [];
+    for (const f of fs
+      .readdirSync(path.join(process.cwd(), 'content/daily-updates'))
+      .filter(x => /^2026-0[78]-\d\d\.md$/.test(x))) {
+      const body = read(`content/daily-updates/${f}`);
+      if (!body) continue;
+      const n = checkCausalNegative(body, f.slice(0, 10)).length;
+      if (n) cnNoisy.push(`${f}:${n}`);
+    }
+    assert(
+      cnNoisy.length === 0,
+      `[IMP-197] FALSE-POSITIVE FLOOR — 0 flags across every published July and August brief${cnNoisy.length ? ` (got ${cnNoisy.join(', ')})` : ''}`
     );
   }
 
