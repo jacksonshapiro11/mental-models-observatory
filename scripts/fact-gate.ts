@@ -2404,6 +2404,107 @@ const EARN_SECTION_RE =
 // 2024 beat" is not a fresh print). A YYYY-MM-DD date >= this; weekly "2026-Wnn" and null are out.
 const EARNINGS_LEG_EFFECTIVE = '2026-07-22';
 
+// ---------------------------------------------------------------------------
+// SERIES-EXTREMUM ATTESTATION (IMP-202, 2026-08-20 — the 08-20 Critic's mandate #1: a LOAD-BEARING
+// SUPERLATIVE THAT WAS FALSE IN BOTH OF ITS PARTS AND REACHED THE READER).
+// (The mandate named this `seriesExtremumFindings`; it is implemented as a CRITICAL CLAIM leg for
+// the same reason `bylineAttributionFindings` became `bylineAttributionClaims` — the mandate's own
+// remedy is "emit UNRESOLVED-FACT unless {BRIEF_DATE}-truth.json carries a `series:` row", and the
+// claim rails ARE that mechanism. A Finding is advisory; a critical claim BLOCKS on
+// --require-resolved, which is what "must not reach the reader" means.)
+//
+// WORKED FAILURE. The 08-20 M&M-3 published: "The personal savings rate ended June at 2.7 percent,
+// NEAR THE LOWEST IN A SERIES BEGINNING IN 1947." Two false claims in one clause:
+//   • FRED PSAVERT — the monthly personal saving rate series BEGINS JANUARY 1959, not 1947.
+//   • Record low is 1.4% (July 2005). 2.7% is a ~FOUR-YEAR low, nowhere near a series low.
+//   • And false a third way: April 2026 already printed 2.6%, so 2.7% is not even the 2026 low.
+// It was LOAD-BEARING — the bullet's conclusion ("a household with no buffer … does not behave like
+// the median household") needs the buffer to be historically extreme, and it is not. Eleven green
+// gates passed it because every existing superlative leg compares a superlative against OUR ARCHIVE
+// (`archiveBackstop`, `superlative-escalation-gate`), and the archive is the wrong referent: it
+// knows what we have printed, not when a federal series began or what its record is.
+//
+// ⭐ THE GENERALISABLE POINT, which is why this is a leg and not a one-off string: A SERIES' START
+// DATE AND ITS RECORD ARE FACTS ABOUT THE SERIES, NOT ABOUT TODAY'S DATUM. The datum can be
+// verified from the release the brief already read; the extremum frame cannot, and it is the half
+// the Writer reaches for from memory. The bullet reached for an extremum it did not need.
+//
+// FIRE CONDITION (all three): an EXTREMUM construction + a NUMERIC LEVEL + an UNBOUNDED-history or
+// SERIES-START anchor. Resolved under `series:<slug>`, so the Morning Truth Gate must name the
+// series identifier, its real start date and its real extremum before publish.
+//
+// NON-FIRE DISCIPLINE — the calibration IS the gate, and the mandate specified it with three cases:
+//   • "the first such split since SEPTEMBER 2016, when George, Mester and Rosengren dissented"
+//     (08-20 M&M-2) stays SILENT: an event-recurrence claim with a NAMED, DATED COMPARABLE is
+//     bounded, checkable and was verified true. A gate that punishes the one historical claim done
+//     correctly teaches the Writer to stop doing it right.
+//   • "$80 million of gross profit, MORE THAN the consolidated total" (08-20 C&C-2) stays SILENT:
+//     an internal comparison, no extremum.
+//   • "a FOUR-YEAR low" stays SILENT — a bounded horizon is the compliant repair, and the whole
+//     point of the mandate is that a four-year low is a four-year low and says so.
+// ---------------------------------------------------------------------------
+const SERIES_EXTREMUM_RE =
+  /\b(?:record\s+(?:low|high)|all[-\s]?time\s+(?:low|high|peak)|(?:near(?:ly)?\s+(?:the\s+)?|the\s+)?(?:lowest|highest|weakest|strongest|deepest)\b|never\s+been\s+(?:lower|higher)|first\s+(?:time\s+)?on\s+record|unprecedented)/i;
+// A series-start year ("in a series beginning in 1947", "since 1947", "dating to 1913") or an
+// unbounded-history phrase. Either one converts a datum into a claim about the whole series.
+const SERIES_UNBOUNDED_RE =
+  /\b(?:in\s+a\s+series\s+(?:beginning|starting|dating)\s+(?:back\s+)?(?:in|to)\s+\d{4}|since\s+the\s+series\s+(?:began|started)|since\s+records?\s+(?:began|start)|on\s+record\b|in\s+(?:recorded\s+)?history|ever\s+recorded|all[-\s]?time|since\s+(?:18|19|20)\d{2}\b|dating\s+(?:back\s+)?to\s+(?:18|19|20)\d{2}\b)/i;
+// HARD SILENCERS. A superlative BOUNDED by a named dated comparable or an explicit horizon is a
+// different (and checkable) species of claim, and it is the compliant form this gate wants more of.
+const SERIES_BOUNDED_RE =
+  /\bsince\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:18|19|20)\d{2}\b|\bsince\s+(?:early|mid|late|last)\s+\w+|\bsince\s+Q[1-4]\b|\b(?:two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)[-\s](?:year|month|week|quarter|decade)s?\s+(?:low|high|peak|trough)\b|\bin\s+(?:more\s+than\s+)?(?:a|one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(?:year|month|decade)s?\b/i;
+const SERIES_LEVEL_RE =
+  /\d+(?:\.\d+)?\s*(?:%|percent|percentage\s+points?|basis\s+points?|bp)\b|(?:\$|USD\s*)\s?\d[\d,.]*/i;
+const SERIES_SECTION_RE =
+  /Markets\s*&\s*Macro|Companies\s*&\s*Crypto|AI\s*&\s*Tech|AI&T|Geopolitics|THE TAKE|The Take|The Signal/i;
+// Enforced from the introduction date FORWARD (mirrors EARNINGS_LEG_EFFECTIVE): the
+// --require-resolved regression fixtures predate this leg and cannot be re-published.
+const SERIES_LEG_EFFECTIVE = '2026-08-20';
+
+export function seriesExtremumClaims(body: string, briefDate: string | null): Claim[] {
+  const claims: Claim[] = [];
+  if (!briefDate || !/^\d{4}-\d{2}-\d{2}$/.test(briefDate) || briefDate < SERIES_LEG_EFFECTIVE) {
+    return claims;
+  }
+  const stripped = stripComments(body);
+  const seen = new Set<string>();
+  for (const s of stripped.matchAll(/[^.!?\n]+[.!?]?/g)) {
+    const text = s[0];
+    const idx = s.index ?? 0;
+    const ext = text.match(SERIES_EXTREMUM_RE);
+    if (!ext) continue;
+    if (!SERIES_UNBOUNDED_RE.test(text)) continue; // bounded or unanchored: not a claim about a series
+    if (SERIES_BOUNDED_RE.test(text)) continue; // named dated comparable / explicit horizon → compliant
+    if (!SERIES_LEVEL_RE.test(text)) continue; // an extremum with no level is rhetoric, not a datum
+    if (!SERIES_SECTION_RE.test(sectionOf(stripped, idx))) continue;
+    const slug = text
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 48);
+    const key = `series:${slug}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const start = text.match(/\b(?:18|19|20)\d{2}\b/);
+    claims.push({
+      key,
+      asset: `series extremum (${ext[0].trim().toLowerCase()}${start ? `, asserted anchor ${start[0]}` : ''})`,
+      tier: 'critical',
+      claimType: 'superlative',
+      direction: 'unknown',
+      magnitudePct: null,
+      level: text.match(SERIES_LEVEL_RE)?.[0] ?? null,
+      section: sectionOf(stripped, idx),
+      sentence: text.trim().slice(0, 220),
+      status: 'UNVERIFIED',
+      superlative: ext[0].trim(),
+      superlativeKind: superlativeKind(ext[0]),
+    });
+  }
+  return claims;
+}
+
 function earningsResultClaims(body: string, briefDate: string | null): Claim[] {
   const claims: Claim[] = [];
   if (
@@ -4973,6 +5074,53 @@ function selftest(): number {
       /Archer Aviation bought/i.test(f.message)
     );
 
+  // --- IMP-202 (08-20 Critic mandate #1): SERIES-EXTREMUM ATTESTATION. The mandate specified the
+  //     acceptance itself — "three cases, two directions, or it is not a gate" — so these are its
+  //     cases, on the real 08-20 bytes, not synthetic ones. ---
+  const sec = (s: string, d = '2026-08-20') =>
+    seriesExtremumClaims(`## Markets & Macro\n\n- ${s}`, d);
+  // FIRE — the sentence that PUBLISHED, false in both parts.
+  const okSeriesFire =
+    sec(
+      'The personal savings rate ended June at 2.7 percent, near the lowest in a series beginning in 1947.'
+    ).length === 1;
+  const okSeriesNamesAnchor = sec(
+    'The personal savings rate ended June at 2.7 percent, near the lowest in a series beginning in 1947.'
+  )[0]?.asset.includes('1947') === true;
+  // SILENT — an event-recurrence claim with a NAMED, DATED comparable, and it was verified TRUE.
+  // A gate that punishes the one historical claim tonight that was done correctly teaches the
+  // Writer to stop doing it right.
+  const okSeriesSilentDated =
+    sec(
+      'Three dissents in the same direction is the first such split since September 2016, when George, Mester and Rosengren dissented for a hike and the Fed delivered one that December.'
+    ).length === 0;
+  // SILENT — an internal comparison. No extremum, no series.
+  const okSeriesSilentInternal =
+    sec(
+      'The segment turned $80 million of gross profit, more than the consolidated total.'
+    ).length === 0;
+  // SILENT — the COMPLIANT REPAIR. A bounded horizon is what the mandate asks the Writer to write
+  // instead ("a four-year low is a four-year low and says so"), so it must never fire.
+  const okSeriesSilentBounded =
+    sec('The personal savings rate ended June at 2.7 percent, a four-year low.').length === 0 &&
+    sec(
+      'The personal savings rate ended June at 2.7 percent, against 4.6 percent a year earlier.'
+    ).length === 0;
+  // SILENT — before the leg's effective date (the --require-resolved regression fixtures predate
+  // it and cannot be re-published; mirrors EARNINGS_LEG_EFFECTIVE).
+  const okSeriesSilentPre =
+    sec(
+      'The personal savings rate ended June at 2.7 percent, near the lowest in a series beginning in 1947.',
+      '2026-07-13'
+    ).length === 0;
+  // CRITICAL RAIL — the claim must land unverified-and-critical, which is what blocks publish.
+  const okSeriesCritical = (() => {
+    const c = sec(
+      'The personal savings rate ended June at 2.7 percent, near the lowest in a series beginning in 1947.'
+    )[0];
+    return c?.tier === 'critical' && c?.status === 'UNVERIFIED' && c.key.startsWith('series:');
+  })();
+
   // --- IMP-083: segment-metric attribution. FIRE on AMD's compound "data-center GPU revenue, $X",
   //     SILENT on a single-qualifier disclosed segment ("Data Center revenue of $X"). ---
   const okSegFire = segmentMetricFindings(
@@ -5485,6 +5633,12 @@ function selftest(): number {
   );
   console.log(
     `  [IMP-161] FIRE: "Delaware told Verisk on Monday" is a dated-event-weekday FLAG: ${okDewFire ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-202] FIRE: "2.7 percent, near the lowest in a series beginning in 1947" is a CRITICAL series claim naming the asserted anchor: ${okSeriesFire && okSeriesNamesAnchor && okSeriesCritical ? '✓' : '✗'}`
+  );
+  console.log(
+    `  [IMP-202] SILENT: dated comparable ("first such split since September 2016") · internal comparison ("more than the consolidated total") · bounded horizon ("a four-year low") · pre-effective-date: ${okSeriesSilentDated && okSeriesSilentInternal && okSeriesSilentBounded && okSeriesSilentPre ? '✓' : '✗'}`
   );
   console.log(
     `  [IMP-161] SILENT on forward markers ("Watch Sunday", "by Sunday you will know"): ${okDewSilentFwd ? '✓' : '✗'}`
@@ -6280,6 +6434,13 @@ function selftest(): number {
     okCorpSilentBare &&
     okCorpReal &&
     okDewFire &&
+    okSeriesFire &&
+    okSeriesNamesAnchor &&
+    okSeriesCritical &&
+    okSeriesSilentDated &&
+    okSeriesSilentInternal &&
+    okSeriesSilentBounded &&
+    okSeriesSilentPre &&
     okDewSilentFwd &&
     okDewSilentMkt &&
     okDewRealFire &&
@@ -6574,6 +6735,14 @@ function main() {
   const derivedClaims = derivedArithmeticClaims(body, briefDate);
   for (const e of derivedClaims) if (truth?.claims?.[e.key]) e.status = 'PASS';
 
+  // 3k. SERIES EXTREMUM (IMP-202, the 08-20 Critic's mandate #1). "2.7 percent, near the lowest in
+  // a series beginning in 1947" was false in BOTH parts (PSAVERT begins 1959; record low 1.4% in
+  // 2005) and load-bearing for the bullet's conclusion. Every prior superlative leg compares against
+  // OUR ARCHIVE, which cannot know when a federal series began. A series' start date and its record
+  // are facts about the SERIES, not about today's datum → CRITICAL, resolved under `series:<slug>`.
+  const seriesClaims = seriesExtremumClaims(body, briefDate);
+  for (const e of seriesClaims) if (truth?.claims?.[e.key]) e.status = 'PASS';
+
   // 4. Archive backstop (zero-network): disprove false superlatives + flag price fabrications.
   const archive = loadArchive(briefPath, briefDate, archiveDays);
   const archiveAssetsKnown = Object.keys(archive).length;
@@ -6667,6 +6836,7 @@ function main() {
     ...headlineClaims,
     ...bylineClaims,
     ...derivedClaims,
+    ...seriesClaims,
     ...sourceConclusions,
     ...issuerCausals,
     ...attrSuperlatives,
@@ -6702,6 +6872,7 @@ function main() {
       headlineClaims.length > 0 ||
       bylineClaims.length > 0 ||
       derivedClaims.length > 0 ||
+      seriesClaims.length > 0 ||
       sourceConclusions.length > 0 ||
       issuerCausals.length > 0);
   if (truthBypass) {
@@ -6759,6 +6930,7 @@ function main() {
     ...headlineClaims,
     ...bylineClaims,
     ...derivedClaims,
+    ...seriesClaims,
     ...sourceConclusions,
     ...issuerCausals,
     ...attrSuperlatives,
@@ -6782,6 +6954,7 @@ function main() {
       headlineAnchors: headlineClaims.length, // IMP-116
       bylines: bylineClaims.length, // IMP-117
       derivedPrices: derivedClaims.length, // IMP-120
+      seriesExtrema: seriesClaims.length, // IMP-202
       sourceConclusions: sourceConclusions.length, // IMP-143
       issuerCausals: issuerCausals.length, // IMP-166
       statuteThresholds: statuteClaims.length, // IMP-189
@@ -6820,7 +6993,7 @@ function main() {
 
   console.log(`fact-gate — ${path.basename(briefPath)}`);
   console.log(
-    `  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} · derived-prices: ${derivedClaims.length} · source-conclusions: ${sourceConclusions.length} · issuer-causals: ${issuerCausals.length} · attributed-superlatives: ${attrSuperlatives.length} · statute-thresholds: ${statuteClaims.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`
+    `  market claims: ${claims.length} · superlatives: ${superlatives.length} · scheduled events: ${eventClaims.length} · aggregates: ${aggClaims.length} · entity-counts: ${entityCounts.length} · effective-dates: ${effectiveDates.length} · ai-products: ${aiProducts.length} · earnings: ${earningsClaims.length} · headline-anchors: ${headlineClaims.length} · bylines: ${bylineClaims.length} · derived-prices: ${derivedClaims.length} · series-extrema: ${seriesClaims.length} · source-conclusions: ${sourceConclusions.length} · issuer-causals: ${issuerCausals.length} · attributed-superlatives: ${attrSuperlatives.length} · statute-thresholds: ${statuteClaims.length} (${ledger.summary.pass} pass, ${ledger.summary.fail} fail, ${ledger.summary.unverified} unverified)`
   );
   console.log(
     `  archive: ${archiveAssetsKnown} assets known from our last ${archiveDays} briefs`

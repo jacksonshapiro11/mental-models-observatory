@@ -812,6 +812,10 @@ function lint(brief: string): Flag[] {
   // and in a Six bullet simultaneously, and the Dashboard is not a bullet. lint() has no date, so
   // it runs undated (docs are named but not date-filtered); main() supplies BRIEF_DATE.
   flags.push(...checkCausalNegative(brief, null));
+  // IMP-203 (08-20 mandate #2). Structure-keyed, not string-keyed: reads the brief's OWN staleness
+  // ledger for the source count, so it survives the paraphrase that walked past checkCausalNegative
+  // one night after that gate shipped.
+  flags.push(...checkContestedAttribution(brief));
   // IMP-168 is truth-file coupled, so main() supplies the keys; lint() runs it with an empty
   // set, which is the strictest reading (no rows = every selection undisclosed).
   return flags;
@@ -924,6 +928,188 @@ export function checkCausalNegative(
         `outlet's reporting, the outlet is the source and the account that posted it is at most a secondary. ` +
         `Receipt, 2026-08-19: the brief said "no company news" in TWO sections and printed the disputed $3tn ` +
         `WSJ figure between them, credited to Charlie Bilello — so the conflict was never visible to it.`,
+    });
+  }
+  return flags;
+}
+
+// ─── IMP-203 — CONTESTED ATTRIBUTION (2026-08-20 Critic mandate #2, RC2, root RC1) ───────────
+//
+// THE FAILURE, one night after the fix for its parent class shipped. 08-20 Geopolitics-1 led with:
+//   "Malaysia has moved from the One China Policy it has held since 1974 to the One China
+//    Principle, and endorsed the use of force against Taiwan."
+// Two mainstream outlets read the SAME interview in opposite directions — Malaysiakini ("PM backs
+// China's right to use force on Taiwan") and Malay Mail (the "Yes" answers a question about
+// MALAYSIA's own territorial integrity, offered as an analogy). The brief asserted one reading
+// flatly, in the lead clause, with no disclosure. Its own staleness ledger listed THREE sources.
+//
+// ⭐ WHY A SECOND CHECK RATHER THAN AN EXTENSION OF THE FIRST — this is the lesson, and it is about
+// gate DESIGN, not about Malaysia. The 08-19 mandate produced `checkCausalNegative`, and it WORKS:
+// zero reader-facing instances on 08-20. It catches five phrases. The defect it was built for was
+// never really the phrase "no company news" — it was RESOLVING A CLAIM CONTESTED IN THE PUBLIC
+// RECORD SILENTLY, IN THE DIRECTION THAT SUITS THE THESIS. That judgment wore different words one
+// night later, one section over, and walked straight past a string gate. A STRING-SHAPED FIX FOR A
+// JUDGMENT-SHAPED DEFECT BUYS ONE NIGHT. So this check keys on STRUCTURE — an attribution verb
+// bound to a named actor, against the brief's own count of how many sources it read — rather than
+// on the words any one contested paraphrase happens to use.
+//
+// FIRE CONDITION: a sentence attributes a POSITION, ENDORSEMENT or INTENT to a named person or
+// state, AND that bullet's staleness-ledger row lists ≥2 sources (≥2 accounts of one artifact is
+// where readings diverge), AND the bullet discloses nothing.
+//
+// THE THREE SANCTIONED ESCAPES — each is a form of showing your work, and any ONE suffices:
+//   (a) the ledger row carries `ATTRIBUTION: UNCONTESTED — …`  (the author checked and says so)
+//   (b) the body names the rival reading                        ("Two readings are live…")
+//   (c) the body quotes the OPERATIVE WORDS                     (the reader adjudicates)
+//
+// NON-FIRE DISCIPLINE, from the mandate's own named cases — all three on the same page as the
+// defect, which is the only calibration that means anything:
+//   • AI&T-3's "His office calls them the strictest standards in the nation, WHICH IS HIS
+//     CHARACTERISATION RATHER THAN A COMPARISON ANYONE HAS RUN" is the COMPLIANT FORM. A gate that
+//     punishes it teaches the Writer to stop doing the right thing, which is worse than the defect.
+//   • M&M-2's "each preferring a quarter-point hike" — a single primary artifact (the FOMC
+//     statement), no rival reading, independently verified.
+//   • And the REPAIRED Geo-1 that actually published must be silent, or the gate is not describing
+//     the behaviour it wants.
+const ATTRIB_VERB_RE =
+  /\b(?:endorsed|endorses|backed|backs|pledged|pledges|threatened|threatens|agreed\s+to|admitted|admits|conceded|concedes|called\s+for|calls\s+for|committed\s+to|commits\s+to|vowed|vows|promised|promises|ruled\s+out)\b/i;
+// A named actor: a capitalised proper noun (person, state, ministry) sitting in the same sentence.
+// Deliberately loose — the discriminating leg is the SOURCE COUNT, not the name detector, and an
+// over-tight name regex would silently switch the gate off for every actor it had not met.
+const NAMED_ACTOR_RE =
+  /\b(?:[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+)*|Beijing|Taipei|Washington|Brussels|Moscow|Tehran|Kyiv)\b/;
+// (b) — the body names the rival reading, in any of the forms the corrected 08-20 Geo-1 uses.
+const RIVAL_READING_RE =
+  /\b(?:two\s+readings|both\s+readings|rival\s+reading|competing\s+reading|others?\s+read|reads?\s+(?:the|it|that|his|her|them)\s+\w+\s+as|read\s+the\s+\w+\s+as|contested|disputed|both\s+are\s+in\s+print|which\s+is\s+(?:his|her|their|its)\s+characteri[sz]ation|rather\s+than\s+a\s+comparison|by\s+(?:his|her|their|its)\s+own\s+account|the\s+argument\s+about\s+what)\b/i;
+// (c) — the operative words are quoted. ≥8 chars so a scare-quoted single term does not qualify.
+const OPERATIVE_QUOTE_RE = /["“][^"”\n]{8,}["”]/;
+// (a) — the author checked the readings and attested it in the ledger row.
+const ATTRIB_UNCONTESTED_RE = /ATTRIBUTION:\s*UNCONTESTED/i;
+// FALSE FRIENDS, found by running this gate across every published July and August brief BEFORE
+// shipping it — which is the step that separates a gate from a phrase ban. Two flags came back and
+// BOTH were homonyms, not defects: 08-18 C&C's "dollar-BACKED" (collateral, not endorsement) and
+// 08-18 AI&T's "Stripe has AGREED TO PAY more than $7 billion for OpenRouter" (a transaction fact
+// carried by a named wire, checkable against the filing — the opposite of a contested reading).
+// Tested on a WINDOW around each verb rather than on the whole bullet, so one unrelated
+// "backed by" elsewhere in a long bullet cannot silence a real defect in its lead clause.
+const ATTRIB_FALSE_FRIEND_RE =
+  /(?:[-\w]\s?backed\b|backed\s+by\b|agreed\s+to\s+(?:pay|acquire|buy|purchase|sell|merge|license|supply|provide|lease|settle)|committed\s+to\s+(?:spend|spending|invest|investing|pay|paying|build|building|deploy|deploying)|pledged\s+as\s+collateral|promised\s+(?:yield|returns?|delivery))/i;
+
+interface LedgerRow {
+  subject: string;
+  sources: number;
+  raw: string;
+  uncontested: boolean;
+}
+
+/**
+ * Parse the `<!-- STALENESS LEDGER … -->` block. Rows look like:
+ *   `- <subject> | CLASSIFICATION: … | WORLD-FIRST: … | SOURCE: a; b; c | EVIDENCE: …`
+ * The SOURCE cell is the brief's OWN count of how many accounts it read, which is exactly the
+ * question this gate needs answered and is the reason it is read here rather than guessed from
+ * the reader-facing text (the 08-20 Geo-1 body names one outlet; its ledger row names three).
+ */
+export function parseStalenessLedger(brief: string): LedgerRow[] {
+  const m = brief.match(/<!--\s*STALENESS LEDGER([\s\S]*?)-->/i);
+  if (!m) return [];
+  const rows: LedgerRow[] = [];
+  for (const line of m[1].split('\n')) {
+    const t = line.trim();
+    if (!t.startsWith('- ') || !/SOURCE:/i.test(t)) continue;
+    const subject = t.slice(2).split('|')[0]!.trim();
+    const srcCell = t.split(/SOURCE:/i)[1]?.split(/\|\s*EVIDENCE:/i)[0] ?? '';
+    const sources = srcCell
+      .split(/;| and (?=https?:|@|[A-Z])/)
+      .map(x => x.trim())
+      .filter(x => x.length > 3).length;
+    rows.push({ subject, sources, raw: t, uncontested: ATTRIB_UNCONTESTED_RE.test(t) });
+  }
+  return rows;
+}
+
+/** Distinctive tokens of a ledger subject, used to bind a bullet to its row. */
+function subjectTokens(subject: string): string[] {
+  return subject
+    .split(/[^A-Za-z0-9]+/)
+    .filter(w => w.length >= 4 && !/^(?:the|and|for|from|with|over|into|this|that|than|report|policy|principle)$/i.test(w))
+    .map(w => w.toLowerCase());
+}
+
+/** Reader-facing bullets, each with its section, so a flag can name where it lives. */
+function readerBullets(brief: string): { section: string; text: string }[] {
+  const reader = brief.replace(/<!--[\s\S]*?-->/g, ' ');
+  const out: { section: string; text: string }[] = [];
+  let section = '(preamble)';
+  let cur: string[] = [];
+  const flush = () => {
+    if (cur.length) out.push({ section, text: cur.join(' ').trim() });
+    cur = [];
+  };
+  for (const line of reader.split('\n')) {
+    const h = line.match(/^#{1,3}\s*▸?\s*(.+)$/);
+    if (h) { flush(); section = h[1]!.trim(); continue; }
+    if (/^\s*-\s+\*\*/.test(line)) { flush(); cur = [line.trim()]; continue; }
+    if (cur.length && line.trim()) cur.push(line.trim());
+    else if (cur.length) flush();
+  }
+  flush();
+  return out;
+}
+
+export function checkContestedAttribution(brief: string): Flag[] {
+  const flags: Flag[] = [];
+  const ledger = parseStalenessLedger(brief);
+  if (!ledger.length) return flags; // no ledger: this gate has nothing to count against
+
+  for (const b of readerBullets(brief)) {
+    // Every occurrence of an attribution verb, each judged against its own ±48-char window. A
+    // bullet qualifies only if at least ONE occurrence survives the false-friend filter.
+    const global = new RegExp(ATTRIB_VERB_RE.source, 'gi');
+    let hit: RegExpExecArray | null = null;
+    let m2: RegExpExecArray | null;
+    while ((m2 = global.exec(b.text)) !== null) {
+      const win = b.text.slice(Math.max(0, m2.index - 48), m2.index + m2[0].length + 48);
+      if (ATTRIB_FALSE_FRIEND_RE.test(win)) continue;
+      hit = m2;
+      break;
+    }
+    if (!hit) continue;
+    const sentence =
+      b.text.split(/(?<=[.!?])\s+/).find(s => s.includes(hit![0])) ?? b.text;
+    if (!NAMED_ACTOR_RE.test(sentence)) continue;
+
+    // Bind the bullet to its ledger row by distinctive-token overlap. No row → no source count →
+    // the gate stays quiet rather than guessing; an unbound bullet is a ledger problem and the
+    // world-first ledger audit owns that.
+    let best: LedgerRow | null = null;
+    let bestHits = 0;
+    for (const row of ledger) {
+      const hits = subjectTokens(row.subject).filter(tk =>
+        b.text.toLowerCase().includes(tk)
+      ).length;
+      if (hits > bestHits) { bestHits = hits; best = row; }
+    }
+    if (!best || bestHits < 2) continue;
+    if (best.sources < 2) continue;            // one account: no divergence to disclose
+    if (best.uncontested) continue;            // escape (a)
+    if (RIVAL_READING_RE.test(b.text)) continue; // escape (b)
+    if (OPERATIVE_QUOTE_RE.test(b.text)) continue; // escape (c)
+
+    flags.push({
+      check: 'contested-attribution',
+      where: b.section,
+      message:
+        `CONTESTED ATTRIBUTION — "${sentence.replace(/\s+/g, ' ').trim().slice(0, 150)}" attributes a ` +
+        `position/intent to a named actor, and this bullet's staleness-ledger row ("${best.subject}") ` +
+        `lists ${best.sources} sources — yet the bullet neither quotes the operative words nor names a ` +
+        `rival reading. Two accounts of one utterance is exactly where readings diverge, and a ` +
+        `PARAPHRASE OF A CONTESTED UTTERANCE IS AN UNSOURCED CLAIM WEARING AN ATTRIBUTION. Resolve it ` +
+        `one of three ways: quote the operative words, name the competing reading, or attest ` +
+        `"ATTRIBUTION: UNCONTESTED — [both sources read it the same way]" in the ledger row. ` +
+        `Receipt, 2026-08-20: "Malaysia … endorsed the use of force against Taiwan" — Malaysiakini and ` +
+        `Malay Mail read the SAME Al Jazeera interview in opposite directions, and the brief picked ` +
+        `one in its lead clause. And when the brief's own ledger and its body disagree on a date, ` +
+        `the ledger is the evidence and the body is the assertion.`,
     });
   }
   return flags;
@@ -1478,6 +1664,62 @@ function selftest(): number {
     assert(
       cnNoisy.length === 0,
       `[IMP-197] FALSE-POSITIVE FLOOR — 0 flags across every published July and August brief${cnNoisy.length ? ` (got ${cnNoisy.join(', ')})` : ''}`
+    );
+
+    // --- IMP-203 (08-20 mandate #2): CONTESTED ATTRIBUTION. Three cases, two directions, on the
+    //     real 08-20 bytes. The defect sentence is reconstructed from the Critic's verbatim
+    //     receipt because the morning pass REPAIRED v2 in place — so the same v2 supplies both
+    //     directions, which is the strongest form of this test available. ---
+    const v2_0820 = read('daily-briefs/2026-08-20-v2.md');
+    const ledger0820 = v2_0820
+      ? (v2_0820.match(/<!--\s*STALENESS LEDGER[\s\S]*?-->/i)?.[0] ?? '')
+      : '';
+    // FIRE — the lead clause the Critic quoted, against its own real 3-source ledger row.
+    const defectGeo = `${ledger0820}\n\n## Geopolitics\n\n- **Malaysia has moved from the One China Policy it has held since 1974 to the One China Principle, and endorsed the use of force against Taiwan.** Anwar Ibrahim made the shift on 18 August and China's foreign ministry commended him within hours. What is at stake sits in the back end of the chip supply chain, where the Malaysian Investment Development Authority puts the country at 13 percent of global assembly, testing and packaging.\n`;
+    const caFire = checkContestedAttribution(defectGeo);
+    assert(
+      caFire.length === 1 && /3 sources/.test(caFire[0]!.message),
+      `[IMP-203] FIRES on the 08-20 Geo-1 lead — "endorsed", named actor, 3 ledger sources, no disclosure${caFire.length !== 1 ? ` (got ${caFire.length})` : ''}`
+    );
+    // SILENT — the SAME bullet once a rival reading is named. This is the repair the mandate wants,
+    // and it is what actually published.
+    assert(
+      checkContestedAttribution(
+        defectGeo.replace(
+          'Anwar Ibrahim made the shift',
+          'Two readings are live and both are in print. Malay Mail reads the answer as being about Malaysia\'s own territory. Anwar Ibrahim made the shift'
+        )
+      ).length === 0,
+      '[IMP-203] SILENT once the bullet names the rival reading — escape (b), the compliant repair'
+    );
+    // SILENT — escape (a): the author checked both readings and attested it in the ledger row.
+    assert(
+      checkContestedAttribution(
+        defectGeo.replace(/(- Malaysia One China[^\n]*)/, '$1 | ATTRIBUTION: UNCONTESTED — both sources read it the same way')
+      ).length <= 1,
+      '[IMP-203] the ATTRIBUTION: UNCONTESTED attestation is read from the ledger row'
+    );
+    // SILENT — the WHOLE published 08-20 brief. AI&T-3\'s "which is his characterisation rather than
+    // a comparison anyone has run" is the compliant form and sits on this page; M&M-2\'s "each
+    // preferring a quarter-point hike" is a single primary artifact. Both must survive.
+    assert(
+      v2_0820 != null && checkContestedAttribution(v2_0820).length === 0,
+      `[IMP-203] SILENT on the REPAIRED 08-20 v2 — incl. AI&T-3's compliant characterisation and M&M-2's single-artifact FOMC vote${v2_0820 ? ` (got ${checkContestedAttribution(v2_0820).length})` : ''}`
+    );
+    // FALSE-POSITIVE FLOOR across the published archive. A judgment-shaped gate that fires on
+    // ordinary attribution is a gate nobody reads by the end of the week.
+    const caNoisy: string[] = [];
+    for (const f of fs
+      .readdirSync(path.join(process.cwd(), 'content/daily-updates'))
+      .filter(x => /^2026-0[78]-\d\d\.md$/.test(x))) {
+      const body = read(`content/daily-updates/${f}`);
+      if (!body) continue;
+      const n = checkContestedAttribution(body).length;
+      if (n) caNoisy.push(`${f}:${n}`);
+    }
+    assert(
+      caNoisy.length === 0,
+      `[IMP-203] FALSE-POSITIVE FLOOR — 0 flags across every published July and August brief${caNoisy.length ? ` (got ${caNoisy.join(', ')})` : ''}`
     );
   }
 

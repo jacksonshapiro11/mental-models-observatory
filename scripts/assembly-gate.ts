@@ -494,6 +494,96 @@ function payoffConclusion(intro: string): string | null {
   return watchIdx > 0 ? (sents[watchIdx - 1] ?? null) : null;
 }
 
+// ─── IMP-204 — TITLE / PAYOFF DEMOTION INTERLOCK (2026-08-20 Critic mandate #3, RC3) ─────────
+//
+// THE FAILURE. The 08-20 Daily Title — which is also the podcast episode name — was "At Least Four
+// Billion", bound by the brief's own DAILY TITLE BINDING block to the Treasury buyback ceiling. The
+// payoff intro's second and third sentences read: "THAT WAS THE LOUDEST NUMBER OF THE DAY. THE MORE
+// CONSEQUENTIAL PATTERN WAS QUIETER, and it was about electricity," and its conclusion landed on the
+// delivered watt. The reader's first impression and the brief's own conclusion pointed in opposite
+// directions.
+//
+// ⭐ AND IT WAS MANUFACTURED BY AN IMPROVEMENT, which is why this is an interlock rather than a
+// content check. The QG's FRESH-FRAME SCAN now deliberately hunts a payoff mechanism AWAY from the
+// day's loudest story — on 08-20 its own log says it "ceded the day's loudest story to The Six per
+// the breadth principle" — and that is the ambition the system spent weeks asking for. The Daily
+// Title step still runs off the LEAD STORY. THE BETTER THE FRESH-FRAME SCAN GETS, THE MORE OFTEN
+// THESE TWO WILL DISAGREE. Nobody wired them together. An upstream improvement manufactured a
+// downstream inconsistency, and the fix belongs at the seam, not in either endpoint.
+//
+// WHY NOT A CONTENT PROXY. Proxy discipline (Ceiling Doctrine v0.5 §9 / Ledger rule 6) forbids
+// building a structural-judgment detector on a same-day n=1, and the demotion construction occurs
+// EXACTLY ONCE in the entire published July-August corpus — this night. So this does not try to
+// judge whether a title "matches" a conclusion by term overlap; that is a Goodhart machine. It is a
+// CONDITIONAL INTERLOCK: silent by construction on every ordinary night, and on the specific nights
+// where the intro demotes its own lead story it requires the two steps to have been wired — either
+// the title's terms reach the conclusion, or the Writer attests the decision in one line.
+// RC3 is a coordination root cause, and a coordination rule is its sanctioned fix.
+const DEMOTION_RE =
+  /\b(?:that was the loudest|the loudest number of the day|the more consequential|the bigger story (?:was|is)|(?:was|is) quieter|the quieter (?:story|pattern|number)|matters less than|the real story (?:was|is) elsewhere)\b/i;
+// The attestation. One line, in the DAILY TITLE BINDING block the brief already writes.
+const TITLE_ALIGNMENT_RE = /PAYOFF-ALIGNMENT:\s*\S/i;
+
+/**
+ * FIRE only when the intro demotes its own opening story AND the title's content terms are absent
+ * from the payoff conclusion AND no alignment attestation exists. Three conditions, so an ordinary
+ * night — no demotion — cannot produce a flag at all.
+ */
+export function checkTitlePayoffDemotion(brief: string): string[] {
+  const intro = introBlock(brief).replace(/<!--[\s\S]*?-->/g, '');
+  if (!intro.trim()) return [];
+  const dem = intro.match(DEMOTION_RE);
+  if (!dem) return []; // the intro does not demote its own lead: nothing to coordinate
+  if (TITLE_ALIGNMENT_RE.test(brief)) return []; // the Writer wired it and said so
+
+  const title = dailyTitle(brief);
+  if (!title) return [];
+  // The FINAL conclusion sentence, not `payoffConclusion`'s union. That function deliberately
+  // returns the union of every entity-free sentence because watch-binding errs toward SILENCE, and
+  // for that check more terms means fewer false flags. Here the same generosity inverts: on 08-20
+  // the union swept in "Pennsylvania can now stop a data centre because roughly A BILLION dollars
+  // goes into a hundred-megawatt site" — entity-free only because `Pennsylvania` is
+  // sentence-initial — and that stray "billion" matched the title's "Four Billion" and silenced the
+  // very defect this check exists for. The payoff's conclusion is its LAST general claim before the
+  // watch; that is the sentence the Critic quoted, and it is the one the title should agree with.
+  const concl = (() => {
+    const sents = sentencesOf(intro.replace(/[*_]/g, ''));
+    const watchIdx = sents.findIndex(s => /^\s*Watch\b/i.test(s));
+    const pool = watchIdx > 0 ? sents.slice(0, watchIdx) : sents;
+    const abstract = pool.filter(s => entitiesOf(s).length === 0);
+    return abstract.length
+      ? abstract[abstract.length - 1]!
+      : (watchIdx > 0 ? (sents[watchIdx - 1] ?? null) : null);
+  })();
+  if (!concl) return [];
+
+  const titleTerms = [...contentTerms(title)];
+  if (!titleTerms.length) return []; // an all-stopword title ("At Least Four Billion" numerals
+  // aside) carries no term to bind; the headline-anchor rails in fact-gate own the numeral.
+  const conclTerms = contentTerms(concl);
+  const hits = titleTerms.filter(t => conclTerms.has(t));
+  if (hits.length) return []; // the title already points at the conclusion
+
+  // Where DOES it point? Naming the demoted sentence is what makes the flag actionable.
+  const lead = sentencesOf(intro.replace(/[*_]/g, ''))[0] ?? '';
+  const leadTerms = contentTerms(lead);
+  const pointsAtLead = titleTerms.some(t => leadTerms.has(t));
+
+  return [
+    `DAILY TITLE vs PAYOFF DEMOTION — the title "${title}" shares no content term with the payoff ` +
+      `conclusion ("${concl.slice(0, 120)}…") while the intro explicitly demotes its own opening ` +
+      `story ("${dem[0]}")${pointsAtLead ? ', and the title\'s terms DO appear in that demoted opening sentence' : ''}. ` +
+      `The title is the podcast episode name and the reader's first impression; the conclusion is ` +
+      `what the brief actually decided. Pointing them in opposite directions is not a coincidence — ` +
+      `the QG's FRESH-FRAME SCAN now deliberately cedes the day's loudest story, and the title step ` +
+      `still runs off the lead. RESOLVE: retitle to the conclusion, or add one line to the DAILY ` +
+      `TITLE BINDING block — "PAYOFF-ALIGNMENT: <why the title names the demoted story anyway>". ` +
+      `Receipt, 2026-08-20: title "At Least Four Billion" (Treasury buybacks) against a payoff whose ` +
+      `conclusion was the delivered watt, two sentences after the intro called the title's own ` +
+      `number "the loudest number of the day."`,
+  ];
+}
+
 /** The watch = the intro sentence opening with "Watch". Absent → nothing to bind, stay silent. */
 function watchSentence(intro: string): string | null {
   const sents = sentencesOf(intro.replace(/[*_]/g, ''));
@@ -629,6 +719,23 @@ const TRAILING = [
   'daily-briefs/2026-08-11-v2.md',
   'daily-briefs/2026-08-10-v2.md',
 ].map(f => path.join(process.cwd(), f));
+
+// The real 2026-08-20 header, verbatim from `content/daily-updates/2026-08-20.md` — the published
+// bytes, not a reconstruction. IMP-204's acceptance runs against this.
+const AUG20_HEADER = `# MARKETS, MEDITATIONS & MENTAL MODELS
+
+*A floor tells you the smallest thing someone is willing to do. It has never once told you what they intend.*
+
+## Thursday, August 20, 2026
+
+### At Least Four Billion
+
+*Treasury announced on Wednesday morning that from 9 September it will lift the ceiling on its long-dated buybacks from $2 billion per operation to at least $4 billion, and the long end rallied about nine basis points while the dollar fell almost one percent. That was the loudest number of the day. The more consequential pattern was quieter, and it was about electricity. Mining lost money at the gross line inside Core Scientific while renting the same buildings to AI tenants threw off more gross profit than the whole company earned. Analog Devices guided nine percent above consensus at a seventy-four percent margin on the power-conversion layer nobody benchmarks. Pennsylvania can now stop a data centre because roughly a billion dollars goes into a hundred-megawatt site before a permit matters. And a silicon carbide industry built for electric cars is being kept alive by eight-hundred-volt server racks. The scarce input in artificial intelligence has moved from the chip to the delivered watt and the permission to deliver it, which is why the assets now deciding the buildout are mostly assets nobody built for it. Watch Analog Devices' fiscal fourth quarter in late November, the first print that tests whether the layer between the racks holds its pricing while the layer above it reprices.*
+
+---
+
+# ▸ THE SIX
+`;
 
 function selftest(): number {
   const cases: Array<[string, boolean, () => boolean]> = [
@@ -850,6 +957,65 @@ function selftest(): number {
         checkPayoffScope(fs.readFileSync(REAL13, 'utf8'), '2026-08-12', new Set())
           .length > 0,
     ],
+    // --- IMP-204 (08-20 mandate #3): TITLE / PAYOFF DEMOTION INTERLOCK. Built on the REAL 08-20
+    //     header, intro and title, which is the only night this construction occurs in the whole
+    //     published July-August corpus. Four cases, both directions. ---
+    [
+      '[IMP-204] FIRES on the REAL 08-20 header — title "At Least Four Billion" vs a payoff whose conclusion is the delivered watt, two sentences after the intro calls that number the loudest of the day',
+      true,
+      () => checkTitlePayoffDemotion(AUG20_HEADER).length > 0,
+    ],
+    [
+      '[IMP-204] SILENT once the Writer attests the decision — "PAYOFF-ALIGNMENT:" in the DAILY TITLE BINDING block, the one-line coordination escape',
+      false,
+      () =>
+        checkTitlePayoffDemotion(
+          `${AUG20_HEADER}\n<!-- DAILY TITLE BINDING: PAYOFF-ALIGNMENT: the title names the loudest number deliberately; the conclusion is the argument the reader arrives at. -->\n`
+        ).length > 0,
+    ],
+    [
+      '[IMP-204] SILENT on an intro with NO demotion — the ordinary night, and the reason this cannot become a nightly false alarm',
+      false,
+      () =>
+        checkTitlePayoffDemotion(
+          AUG20_HEADER.replace(
+            /That was the loudest number of the day\. The more consequential pattern was quieter, and it was about electricity\./,
+            'The buyback ceiling is the number that matters.'
+          )
+        ).length > 0,
+    ],
+    [
+      '[IMP-204] SILENT when the title already points AT the conclusion — retitling is the other sanctioned repair and must not be punished',
+      false,
+      () =>
+        checkTitlePayoffDemotion(
+          AUG20_HEADER.replace('### At Least Four Billion', '### The Delivered Watt')
+        ).length > 0,
+    ],
+    [
+      '[IMP-204] SILENT across every OTHER published July and August brief — 0 flags on 40+ files; the trigger is absent by construction on an ordinary night',
+      false,
+      () =>
+        fs
+          .readdirSync(path.join(process.cwd(), 'content/daily-updates'))
+          .filter(x => /^2026-0[78]-\d\d\.md$/.test(x) && !x.startsWith('2026-08-20'))
+          .some(
+            f =>
+              checkTitlePayoffDemotion(
+                fs.readFileSync(path.join(process.cwd(), 'content/daily-updates', f), 'utf8')
+              ).length > 0
+          ),
+    ],
+    [
+      '[IMP-204] FIRES on the REAL PUBLISHED content/daily-updates/2026-08-20.md — the reader-facing bytes, the strongest form of this receipt',
+      true,
+      () => {
+        const p = path.join(process.cwd(), 'content/daily-updates/2026-08-20.md');
+        return fs.existsSync(p)
+          ? checkTitlePayoffDemotion(fs.readFileSync(p, 'utf8')).length > 0
+          : true;
+      },
+    ],
   ];
   let fails = 0;
   for (const [name, shouldFire, fn] of cases) {
@@ -916,6 +1082,12 @@ function main() {
   // binding. The 08-18 payoff satisfied the latter and failed the former at gate exit 0.
   for (const msg of checkWatchBinding(brief))
     findings.push({ severity: 'FLAG', message: msg });
+
+  // TITLE / PAYOFF DEMOTION INTERLOCK (IMP-204 — 08-20 mandate #3). The seam between an improvement
+  // that ships (FRESH-FRAME SCAN cedes the loudest story) and a step that did not move with it
+  // (the title runs off the lead story). Silent unless the intro demotes its own opening.
+  for (const msg of checkTitlePayoffDemotion(brief))
+    findings.push({ severity: 'FLAG', message: `UNRESOLVED-FACT: ${msg}` });
 
   // QG-log-coupled checks (payoff class + fresh-frame sweep).
   const dateM = path.basename(briefPath).match(/(\d{4}-\d{2}-\d{2})/);
