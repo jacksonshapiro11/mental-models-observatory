@@ -149,3 +149,65 @@ body: this must not be cited later as a fix.**
 
 **Standing lesson (L-0820-15): a pre-registered threshold should name the DIRECTION it expects, not
 just the magnitude.** "2+ flips" should have been "2+ flips toward stricter."
+
+---
+
+# ADDENDUM 2 — THE TRIPLE-GRADE (owner ruling 2026-08-20, decision 1)
+
+Same night, same 25 units, same rubric, same transcripts, same model class, same prompt. Four
+independent isolated runs, plus the full-context run from Addendum 1.
+
+| run | condition | individual OK | unanimous |
+|---|---|---|---|
+| R0 | isolated | **40/75 = 53.3%** | 8/25 |
+| R1 | isolated | **39/75 = 52.0%** | 7/25 |
+| R2 | isolated | **38/75 = 50.7%** | 8/25 |
+| R3 | isolated | **36/75 = 48.0%** | 7/25 |
+| A | *full context* | *37/75 = 49.3%* | *7/25* |
+| **production** | **as logged live** | **68/75 = 90.7%** | **22/25** |
+
+**RE-RUN CLUSTER: 48.0% – 53.3%. Spread 4 grades = 5.3 points.**
+**PRODUCTION SITS 37.3 POINTS OUTSIDE IT.**
+
+Four-way agreement on OK-vs-not-OK: **64/75 = 85%**. Exact label agreement: 55/75 = 73% (the gap is
+MISSING↔WRONG relabelling of grades that fail either way).
+
+## THE PRE-REGISTERED BRANCH RESOLVES CLEANLY
+
+The ruling named two outcomes in advance. **The first one happened: the re-runs cluster and
+production sits outside.** So the grader is **not** noisy, the metric does **not** need ensembling,
+and **the investigation goes to the production grading path — not to the rubric.**
+
+## AND IT NARROWS THE PATH FURTHER THAN THE RULING ASKED
+
+The ruling listed three candidates for the production path: *environment, code path, or claim-first
+anchoring*. **Two of the three are already eliminated by data in hand:**
+
+- **Claim-first anchoring — ELIMINATED.** Condition A graded the claim leg first, with the prose in
+  view, exactly as production does. It returned **49.3%, inside the cluster.**
+- **Input context — ELIMINATED** (Addendum 1). Full context and isolated land 4 points apart, both
+  in the cluster.
+
+🔴 **THE LEADING REMAINING CANDIDATE IS THE ONE MY DESIGN DID NOT CONTROL: THE MODEL.** Every one of
+these five re-grades ran on a **Sonnet** subagent. Production grading is done inline by the nightly
+session, on whatever model that session runs. **That is a difference between my re-runs and
+production which I introduced and never varied, and it is the most obvious untested explanation for a
+37-point systematic gap.** Naming it as my design limitation, not as a finding about production.
+
+**NEXT TEST, cheap and decisive: re-grade this same night on the production session's model class.
+If it lands near 90%, the metric is model-dependent and every historical row inherits the model that
+graded it. If it lands in the 48–53% cluster, the gap is environmental and the search continues.**
+
+## STATUS OF NUMBERS QUOTED EARLIER IN THIS FILE
+
+🔴 **SUSPECT-PENDING-VARIANCE — do not cite either until the model test reports:**
+
+- **the 90.3% all-history baseline** (926/1026). Production-produced, and production is now the
+  measured outlier.
+- **"the loop agreed with the brief 4/4"** (L-0820-1). Same provenance — those four units were graded
+  by production runs, and every production number in this file is on the far side of a 37-point gap
+  from every re-run.
+
+**What is NOT suspect:** the 9-unit retro grades and the 5 re-grades of 08-19. Those were produced
+under controlled, repeated, clustered conditions. **The re-runs are the reliable numbers here. The
+production history is the anomaly.**
