@@ -1,3 +1,26 @@
+> # 🔴 SUPERSEDED-BY-MIGRATION — 2026-08-20
+>
+> **This manifest is closed. Do not install from it.** The body it describes has moved into the repo
+> under the selection-judge pattern:
+>
+> `BODY_brief-editor_REPLACEMENT.md` → **`system/task-bodies/brief-editor/SKILL.md`**
+>
+> - `git mv`, recorded as **R100** — a pure rename, history preserved.
+> - sha256 **before and after**: `fb60597a722dc008774556bffdad1f6b66aa94086fc8e702edc4873a2504f354`,
+>   byte-identical, and equal to the hash this manifest declared.
+> - 🔴 **The destination is inside gitignored `system/`.** It is tracked ONLY because `git mv` moved an
+>   already-tracked file; `.gitignore` governs untracked files. **A plain `mv` + `git add` would have
+>   silently no-opped and deleted the body from version control entirely** — the 2026-08-15 failure,
+>   with the source deleted in the same commit. Verified before the move, not after.
+> - Consequence to know: the file is now **tracked-but-ignored**. If it ever leaves the index it
+>   cannot be re-added without `git add -f`. `system/task-bodies/selection-judge/SKILL.md` has been
+>   in this state since `548868b` and is the precedent this follows.
+>
+> **The owner repoints the app task himself.** Nothing under `~/Documents/Claude/Scheduled/` was
+> touched by this session.
+
+---
+
 # INSTALL MANIFEST — 2026-08-19
 
 **One round. All of it or none of it.** Piecemeal installs are how a canonical filename ends up with a

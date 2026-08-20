@@ -136,6 +136,8 @@ type Meta = {
   templateHash: string;
   promptHash: string;
   units: Unit[];
+  claimsTotal?: number; // total claim rows, which may exceed units.length when a claim was never drafted
+  findings?: SegmentFindings;
   hurriedTemplateHash?: string; // optional: absent on runs prepared before 2026-08-10
   hurriedPromptHash?: string;
   assumedKnowledgeTemplateHash?: string; // optional: absent on runs prepared before 2026-08-16
@@ -177,8 +179,21 @@ const rbPath = (date: string, ...p: string[]): string =>
  *  MATCHING IS BY SECTION LABEL, NOT POSITION, for the full brief: the sidecar lists `intro` LAST
  *  while it appears FIRST in the document, and positional pairing would have silently attached every
  *  id to the wrong prose — a corruption that passes a count check. */
+/** 🔴 SECTION LABELS ARE NOT STABLE ACROSS NIGHTS AND THE SEGMENTER WAS BUILT AGAINST ONE OF THEM.
+ *  2026-08-19 writes `Dashboard/Equities` and `Intro Summary (payoff)`; 2026-08-10 writes
+ *  `Dashboard / Equities` and `Intro Summary`. Verified on both files, not assumed. A comparison
+ *  that is exact-match on a label the pipeline reformats will report four healthy units as
+ *  undrafted — which it did, on the first run of the CLAIM-UNDRAFTED policy. Normalise: case,
+ *  whitespace, spaces around a slash, a trailing parenthetical, and and/&. */
 const normLabel = (x: string): string =>
-  x.trim().toUpperCase().replace(/\s+/g, ' ');
+  x
+    .trim()
+    .toUpperCase()
+    .replace(/\([^)]*\)\s*$/, '')
+    .replace(/\s*\/\s*/g, '/')
+    .replace(/\s+&\s+/g, ' AND ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 function candidatesFull(
   md: string
@@ -291,38 +306,187 @@ function candidates(
   return out;
 }
 
+export type SegmentFindings = {
+  claimUndrafted: { unit: string; section: string; claim: string }[];
+  proseUnclaimed: { section: string; words: number }[];
+};
+/** Side channel for cmdPrepare. segment() must keep returning Unit[] — every caller depends on it. */
+let LAST_FINDINGS: SegmentFindings = { claimUndrafted: [], proseUnclaimed: [] };
+let SEG_SCORES: { unit: string; score: number; paired: boolean }[] = [];
+export const lastFindings = (): SegmentFindings => LAST_FINDINGS;
+
+/** 🔴 CLAIM-UNDRAFTED POLICY (owner ruling 2026-08-20, decision 2).
+ *
+ *  Pairs claims to prose blocks by SECTION LABEL, greedily, in document order. A claim with no
+ *  unpaired prose block in its section is CLAIM-UNDRAFTED: it is NAMED and it is NOT graded.
+ *  A prose block with no claim is PROSE-UNCLAIMED: also named, also not graded (there is nothing
+ *  to grade it against).
+ *
+ *  🔴 THIS REPLACES A HARD ABORT WITH A NAMED FINDING, AND THAT IS THE WHOLE POINT. The abort was
+ *  correct about the defect and wrong about the consequence: on 2026-08-10 and 2026-08-11 it
+ *  refused to grade 21 good units because 1 claim was never drafted, so ten days of read-back data
+ *  was lost to protect against a mispairing that label-pairing already prevents. A guard that
+ *  discards the measurable to avoid an unmeasurable is not conservative, it is expensive.
+ *
+ *  What is NOT relaxed: the pairing itself. A claim only ever pairs with prose carrying its own
+ *  section label. Nothing is paired by position, and nothing is invented. */
+/** Share of the CLAIM's content words that appear in the prose block. Directional on purpose: a
+ *  claim is a compressed restatement of its prose, so the right block contains nearly all of it
+ *  while a wrong block in the same section shares only topic words. Measured on the two real
+ *  mismatched nights before this was written — right pairs scored 0.68–1.00, wrong pairs 0.05–0.32.
+ *  The gap is what makes the floor safe; the floor is not a guess. */
+export function overlapScore(claim: string, prose: string): number {
+  const tk = (t: string) =>
+    new Set(
+      t
+        .toLowerCase()
+        .replace(/[^a-z0-9$%.\s-]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !STOP.has(w))
+    );
+  const c = tk(claim);
+  if (!c.size) return 0;
+  const p = tk(prose);
+  let hit = 0;
+  for (const w of c) if (p.has(w)) hit++;
+  return hit / c.size;
+}
+
+/** Reporting annotation ONLY — a pairing below this is printed WEAK so a human looks at it.
+ *  🔴 IT IS NOT A GATE, AND IT USED TO BE. As a gate it dropped 3 correctly-paired units from the
+ *  2026-08-19 brief (24/24 -> 21/24), because it was calibrated on THE SIX's long bullets and then
+ *  applied to Dashboard lines and the intro, which are short and restate rather than repeat.
+ *  Caught by a byte-level regression check against the known-good 08-19 pairing. The fix was to
+ *  DELETE the threshold from the decision, not to tune it: see pairByLabel. */
+export const PAIR_WEAK = 0.45;
+
+/** 🔴 PAIRING IS BY SECTION LABEL **AND CONTENT**, NEVER BY POSITION WITHIN A SECTION.
+ *
+ *  The first cut of this function paired greedily in document order inside each section, and on
+ *  2026-08-10 it attached `ait-2`'s claim (Meta ad growth) to `ait-3`'s prose (the Claude Code
+ *  permission test) and reported `ait-3` as the undrafted one. Both halves wrong: a unit graded
+ *  against a claim about a different story, and the finding named the wrong row. **That is the
+ *  exact corruption the hard abort existed to prevent, reintroduced by the relaxation that
+ *  replaced it.** When a section's counts differ, position carries no information — the gap can be
+ *  anywhere — so the claim text itself has to decide.
+ *
+ *  Best-match first, globally within the section, so a strong pair can never be displaced by a
+ *  weaker one that happens to come first. Every score is printed by the caller: no pairing
+ *  decision here is silent. */
+export function pairByLabel(
+  md: string,
+  cands: { section: string; start: number; end: number }[],
+  claims: Claim[]
+): {
+  units: Unit[];
+  findings: SegmentFindings;
+  scores: { unit: string; score: number; paired: boolean }[];
+} {
+  const pool = cands.map((c, i) => ({ ...c, i, used: false }));
+  const byUnit = new Map<string, { start: number; end: number; score: number }>();
+  const scores: { unit: string; score: number; paired: boolean }[] = [];
+
+  const groups = new Map<string, { cl: Claim[]; pr: typeof pool }>();
+  const grp = (k: string) => {
+    if (!groups.has(k)) groups.set(k, { cl: [], pr: [] });
+    return groups.get(k)!;
+  };
+  for (const cl of claims) grp(normLabel(cl.section)).cl.push(cl);
+  for (const pb of pool) grp(normLabel(pb.section)).pr.push(pb);
+
+  for (const { cl, pr } of groups.values()) {
+    // ── BALANCED SECTION: counts agree, so the label already forces the assignment. Pair in
+    //    document order and do NOT consult content. This is the 2026-08-19 path — 24/24, verified
+    //    byte-identical before and after content matching was added — and it must stay untouched.
+    if (cl.length === pr.length) {
+      cl.forEach((c, i) => {
+        pr[i]!.used = true;
+        byUnit.set(c.unit, { start: pr[i]!.start, end: pr[i]!.end, score: -1 });
+      });
+      continue;
+    }
+    // ── UNBALANCED SECTION: the gap can be anywhere, so position carries no information and the
+    //    claim text has to decide. Assign BEST-FIRST until one side runs out. Whoever is left over
+    //    is the finding — RANK, NOT THRESHOLD. 🔴 There is deliberately no magic number here: the
+    //    count difference already tells us exactly how many claims must be undrafted, so the only
+    //    question is WHICH, and that is answered by taking the strongest matches first.
+    const cells: { ci: number; pi: number; s: number }[] = [];
+    cl.forEach((c, ci) =>
+      pr.forEach((b, pi) =>
+        cells.push({ ci, pi, s: overlapScore(c.claim, md.slice(b.start, b.end)) })
+      )
+    );
+    cells.sort((a, b) => b.s - a.s);
+    const tookC = new Set<number>(),
+      tookP = new Set<number>();
+    for (const cell of cells) {
+      if (tookC.has(cell.ci) || tookP.has(cell.pi)) continue;
+      tookC.add(cell.ci);
+      tookP.add(cell.pi);
+      pr[cell.pi]!.used = true;
+      byUnit.set(cl[cell.ci]!.unit, {
+        start: pr[cell.pi]!.start,
+        end: pr[cell.pi]!.end,
+        score: cell.s,
+      });
+    }
+    // every claim in an unbalanced section reports its best score, paired or not
+    cl.forEach((c, ci) =>
+      scores.push({
+        unit: c.unit,
+        score: cells.filter(x => x.ci === ci).reduce((m, x) => Math.max(m, x.s), 0),
+        paired: tookC.has(ci),
+      })
+    );
+  }
+
+  // emit in CLAIMS-FILE ORDER: the sidecar defines the units and their order
+  const units: Unit[] = [];
+  const claimUndrafted: SegmentFindings['claimUndrafted'] = [];
+  for (const cl of claims) {
+    const hit = byUnit.get(cl.unit);
+    if (!hit) {
+      claimUndrafted.push({ unit: cl.unit, section: cl.section, claim: cl.claim });
+      continue;
+    }
+    units.push({
+      id: cl.unit,
+      section: cl.section,
+      idx: units.length,
+      start: hit.start,
+      end: hit.end,
+      sha: sha(md.slice(hit.start, hit.end)),
+    });
+  }
+  const proseUnclaimed = pool
+    .filter(c => !c.used)
+    .map(c => ({ section: c.section, words: md.slice(c.start, c.end).trim().split(/\s+/).length }));
+  return { units, findings: { claimUndrafted, proseUnclaimed }, scores };
+}
+
 /** 🔴 The claims file is authoritative. This VALIDATES the prose against it and never invents units. */
 function segment(md: string, claims: Claim[], product = ''): Unit[] {
   const full = product === 'full';
   const cands = full ? candidatesFull(md) : candidates(md);
-  // 🔴 FULL BRIEF: pair by SECTION LABEL in document order, never by position.
-  if (full && cands.length === claims.length) {
-    const pool = cands.map(c => ({ ...c, used: false }));
-    const paired: Unit[] = [];
-    for (let i = 0; i < claims.length; i++) {
-      const want = normLabel(claims[i]!.section);
-      const hit = pool.find(c => !c.used && normLabel(c.section) === want);
-      if (!hit) {
-        console.error(
-          `\n❌ SECTION LABEL MISMATCH — claim "${claims[i]!.unit}" wants section "${claims[i]!.section}" and no unpaired prose block carries it.`
-        );
-        console.error(
-          `   Prose labels seen: ${[...new Set(cands.map(c => c.section))].join(' · ')}`
-        );
-        process.exit(1);
-      }
-      hit.used = true;
-      paired.push({
-        id: claims[i]!.unit,
-        section: claims[i]!.section,
-        idx: i,
-        start: hit.start,
-        end: hit.end,
-        sha: sha(md.slice(hit.start, hit.end)),
-      });
+  // 🔴 FULL BRIEF: pair by SECTION LABEL in document order, never by position — always, whether or
+  // not the counts agree. Counts agreeing was never what made the pairing safe; the labels are.
+  if (full) {
+    const { units, findings, scores } = pairByLabel(md, cands, claims);
+    LAST_FINDINGS = findings;
+    SEG_SCORES = scores;
+    if (!units.length) {
+      console.error(
+        `\n❌ ZERO UNITS PAIRED — ${claims.length} claim(s), ${cands.length} prose block(s), no section label in common.`
+      );
+      console.error(`   Prose labels: ${[...new Set(cands.map(c => c.section))].join(' · ')}`);
+      console.error(`   Claim labels: ${[...new Set(claims.map(c => c.section))].join(' · ')}`);
+      console.error(`   A segmenter returning zero units is a finding, never a pass.`);
+      process.exit(1);
     }
-    return paired;
+    return units;
   }
+  LAST_FINDINGS = { claimUndrafted: [], proseUnclaimed: [] };
+  SEG_SCORES = [];
   if (cands.length !== claims.length) {
     const byS = (xs: { section: string }[]) =>
       xs.reduce<Record<string, number>>(
@@ -446,6 +610,8 @@ function cmdPrepare(light: string, claimsPath: string): void {
     hurriedPromptHash: sha(hurriedPrompt),
     assumedKnowledgeTemplateHash: sha(ASSUMED_KNOWLEDGE_TEMPLATE),
     assumedKnowledgePromptHash: sha(akPrompt),
+    claimsTotal: claims.length,
+    findings: lastFindings(),
   };
   fs.writeFileSync(rbPath(date, 'meta.json'), JSON.stringify(meta, null, 2));
   fs.writeFileSync(
@@ -453,8 +619,36 @@ function cmdPrepare(light: string, claimsPath: string): void {
     JSON.stringify(claims, null, 2)
   );
 
+  const F = lastFindings();
+  if (F.claimUndrafted.length || F.proseUnclaimed.length) {
+    console.log('');
+    console.log(
+      `🔴 RED — CLAIM-UNDRAFTED. ${units.length} of ${claims.length} claim(s) paired to prose. The rest are named below and will NOT be graded.`
+    );
+    const byUnitScore = new Map(SEG_SCORES.map(x => [x.unit, x]));
+    for (const c of F.claimUndrafted) {
+      const sc = byUnitScore.get(c.unit);
+      console.log(
+        `   ✗ CLAIM-UNDRAFTED  ${c.unit}  [${c.section}]  best content match ${sc ? sc.score.toFixed(2) : 'n/a'} — no prose in its section restates it` +
+          `\n        claim: "${c.claim.slice(0, 110)}${c.claim.length > 110 ? '…' : ''}"`
+      );
+    }
+    const weak = SEG_SCORES.filter(x => x.paired && x.score < PAIR_WEAK);
+    for (const w of weak)
+      console.log(`   ⚠ WEAK PAIR       ${w.unit}  matched at ${w.score.toFixed(2)} in an unbalanced section — paired by rank, look at it`);
+    for (const c of F.proseUnclaimed)
+      console.log(`   ✗ PROSE-UNCLAIMED  [${c.section}]  ${c.words} words drafted with no claim row — ungradeable, there is nothing to grade it against`);
+    console.log(
+      `   The drafted units ARE graded. This is a RED line in pipeline status, not a reason to grade nothing —`
+    );
+    console.log(
+      `   and it is NOT fixed by editing the claims file to match the prose.`
+    );
+    console.log('');
+  }
   console.log(
-    `✓ PREPARED ${date} — ${units.length} units validated against the claims file`
+    `✓ PREPARED ${date} — ${units.length} units validated against the claims file` +
+      (claims.length !== units.length ? `  (of ${claims.length} claim rows — see RED above)` : '')
   );
   for (const u of units)
     console.log(`    U${u.idx + 1}  ${u.section.padEnd(20)} ${u.id}`);
@@ -1199,7 +1393,19 @@ function printPanel(date: string): number {
     const r = surfaceRoster(true, meta.units.length, f =>
       fs.existsSync(`${dir}/${f}`) ? fs.readFileSync(`${dir}/${f}`, 'utf-8') : null
     );
-    console.log(`  ${surface}  ${dir}  ·  ${r.units} units prepared`);
+    const F = meta.findings;
+    const undraft = (F?.claimUndrafted?.length ?? 0) + (F?.proseUnclaimed?.length ?? 0);
+    console.log(
+      `  ${surface}  ${dir}  ·  ${r.units} units prepared` +
+        (meta.claimsTotal && meta.claimsTotal !== r.units ? `  of ${meta.claimsTotal} claim rows` : '')
+    );
+    if (undraft) {
+      red++;
+      for (const c of F!.claimUndrafted)
+        console.log(`      🔴 CLAIM-UNDRAFTED  ${c.unit}  [${c.section}]  — a claim row written and never drafted`);
+      for (const c of F!.proseUnclaimed)
+        console.log(`      🔴 PROSE-UNCLAIMED  [${c.section}] ${c.words}w  — drafted with no claim row`);
+    }
     for (const L of r.legs) {
       const shown = L.counts.map(c => (c < 0 ? '—' : String(c)));
       const tally = L.counts.length > 1 ? `${L.counts.length}×[${shown.join(',')}]` : shown[0]!;
@@ -1793,6 +1999,58 @@ function selftest(): number {
       akAudit(HALF_L8, l8, ['line-8']).some(r => r.applicable && !r.found)
     );
   }
+
+  // ── CLAIM-UNDRAFTED POLICY (owner ruling 2026-08-20, decision 2) ──────────
+  t('overlapScore is 1.0 when the claim is fully contained', overlapScore('alpha beta gamma', 'alpha beta gamma delta') === 1);
+  t('overlapScore is 0 on disjoint content', overlapScore('alpha beta', 'zulu yankee') === 0);
+  t('overlapScore ignores stopwords, so "the of and" cannot manufacture a match', overlapScore('the of and', 'zulu yankee') === 0);
+
+  const MD =
+    '## S\n- **alpha widget** the alpha widget shipped tuesday\n\n- **charlie widget** the charlie widget shipped friday\n';
+  const CANDS = [
+    { section: 'S', start: MD.indexOf('- **alpha'), end: MD.indexOf('\n\n- **charlie') },
+    { section: 'S', start: MD.indexOf('- **charlie'), end: MD.length },
+  ];
+  const CL3 = [
+    { unit: 'a', section: 'S', claim: 'alpha widget shipped tuesday' },
+    { unit: 'b', section: 'S', claim: 'bravo gadget recalled wednesday' },
+    { unit: 'c', section: 'S', claim: 'charlie widget shipped friday' },
+  ];
+  const r3 = pairByLabel(MD, CANDS, CL3);
+  t(
+    'UNBALANCED section: the MIDDLE claim is named undrafted, not the last — the 2026-08-10 ait-2 bug',
+    r3.findings.claimUndrafted.length === 1 && r3.findings.claimUndrafted[0]!.unit === 'b'
+  );
+  t(
+    'UNBALANCED section: the surviving claims keep their OWN prose, never the neighbour\'s',
+    r3.units.length === 2 &&
+      MD.slice(r3.units[0]!.start, r3.units[0]!.end).includes('alpha') &&
+      MD.slice(r3.units[1]!.start, r3.units[1]!.end).includes('charlie')
+  );
+  t('every claim in an unbalanced section reports a score', r3.scores.length === 3);
+
+  const CL2 = [
+    { unit: 'a', section: 'S', claim: 'totally unrelated words here' },
+    { unit: 'c', section: 'S', claim: 'nothing in common at all' },
+  ];
+  const r2 = pairByLabel(MD, CANDS, CL2);
+  t(
+    'BALANCED section pairs in document order and NEVER consults content — a low score cannot drop a unit',
+    r2.units.length === 2 && r2.findings.claimUndrafted.length === 0 && r2.scores.length === 0
+  );
+
+  const r1 = pairByLabel(MD, CANDS, [{ unit: 'a', section: 'S', claim: 'alpha widget shipped tuesday' }]);
+  t('prose with no claim row is named PROSE-UNCLAIMED, never silently graded', r1.findings.proseUnclaimed.length === 1);
+
+  t(
+    'normLabel absorbs the 08-10/08-19 convention drift: "Dashboard / Equities" == "Dashboard/Equities"',
+    normLabel('Dashboard / Equities') === normLabel('Dashboard/Equities')
+  );
+  t(
+    'normLabel absorbs a trailing parenthetical: "Intro Summary" == "Intro Summary (payoff)"',
+    normLabel('Intro Summary') === normLabel('Intro Summary (payoff)')
+  );
+  t('normLabel does NOT collapse two genuinely different sections', normLabel('Dashboard/Crypto') !== normLabel('Dashboard/Equities'));
 
   // ── RULING 2: ranked flags ────────────────────────────────────────────────
   const RANKED =
