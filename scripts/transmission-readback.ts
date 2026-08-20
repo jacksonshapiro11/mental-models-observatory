@@ -66,19 +66,31 @@ const STERNER = `\n\nIMPORTANT: your previous answer reused the brief's own word
  *  consequence test on Inner Game. There is no CLEAN now. It reports a COUNT, the terms, and whether
  *  the sentence could have carried the gloss. The TREND is the signal; owner marks set the good
  *  number. Template changed, so its hash changed — declared, not silent. */
-const ASSUMED_KNOWLEDGE_TEMPLATE = `You are a smart nineteen-year-old. You are curious and you read carefully, but you have no specialized background in markets, technology, policy or geopolitics, and you have not read anything else this publication has written.
+const ASSUMED_KNOWLEDGE_TEMPLATE = `You are a smart nineteen-year-old. You are curious and you read carefully, but you have no specialized background in markets, technology, policy or geopolitics, and you have not read anything else this publication has written — not the longer edition, not yesterday's, nothing.
 
-Read the passage below. Your ONLY job is to report what it expects you to already know.
+Read the passage below. Your ONLY job is to report what each numbered item expects you to already know. You are not judging the writing and you are not grading anything.
 
-For each numbered item, list every term of art, concept, mechanism, institution, or background fact that the text USES but does not EXPLAIN in plain words in the sentence that uses it. Include anything you would have to look up to follow the claim. Do not list things you merely find interesting, and do not judge the writing.
+Do TWO passes over every item. Judge each item ALONE: something named in a DIFFERENT numbered item does not count, because a reader may only ever see this one.
 
+FIRST PASS — WHAT IT ASSUMES.
+List every term of art, concept, mechanism, institution, background fact, OR compressed statement that the item USES but does not EXPLAIN in plain words in the sentence that uses it. Include anything you would have to look up to follow the claim.
+A STATEMENT counts here, not just a term. The test is whether you could restate it in your own words. If the only thing you can do is repeat it back, list it — that is a sentence that sounds like it explained something and did not.
 For EACH thing you list, add one word: CARRYABLE if a short plain-words gloss could have ridden inside the sentence that used it, or STANDALONE if explaining it would have needed its own sentence.
 
-Output one line per item and nothing else:
-U<n>: <count> | <term> (CARRYABLE|STANDALONE); <term> (CARRYABLE|STANDALONE); …
+SECOND PASS — WHAT IT POINTS AT.
+Read the item again looking ONLY at pointing words: it, its, they, them, their, this, that, these, those, he, she, his, her, such, the former, the latter — plus any "the <noun>" where that noun was never introduced in this item, and any "you" or "we" where it is not clear who is meant.
+For each one ask: is the thing it points at NAMED somewhere inside THIS numbered item?
+ · If yes, ignore it.
+ · If you have to guess, or you would have to have read something else to know — report it, and say what you think it means, or UNKNOWN if you cannot guess.
+Report your guess even when you are fairly confident. A guess you got right and a guess you got wrong look identical from where you sit, and the difference is the whole point of asking.
 
-If an item lists nothing, write:
-U<n>: 0 |
+Do not list things you merely find interesting.
+
+Output one line per item and nothing else:
+U<n>: <total across both passes> | AK: <term> (CARRYABLE|STANDALONE); … | REF: "<pointing word, verbatim>" → <your best guess, or UNKNOWN>; …
+
+Write a dash for a pass that found nothing. An item clean on both looks like:
+U<n>: 0 | AK: — | REF: —
 
 {artifact}`;
 
@@ -453,7 +465,13 @@ function cmdPrepare(light: string, claimsPath: string): void {
     `  → ALSO spawn 1 HURRIED Reader [ADVISORY — never counted toward actuation] on ${rbPath(date, 'hurried-prompt.txt')} (same isolation: pass the file's TEXT); save its reply to ${rbPath(date, 'readback-hurried.txt')}; grade it to ${rbPath(date, 'hurried-grades.json')} as {"<unit-id>":{"grade":"TRANSMITTED|DISTORTED|LOST","sowhat":"OK|MISSING|WRONG"}}`
   );
   console.log(
-    `  → ALSO spawn 1 ASSUMED-KNOWLEDGE Reader [ADVISORY — C2, never counted toward actuation] on ${rbPath(date, 'assumed-knowledge-prompt.txt')} (same isolation: pass the file's TEXT); save its reply to ${rbPath(date, 'readback-assumed-knowledge.txt')}; it returns a LIST OF TERMS, never a grade`
+    `  → ALSO spawn 1 FRESHMAN (assumed-knowledge) Reader — 🔴 EVERY NIGHT, NOT OPTIONAL, on BOTH surfaces [ADVISORY — C2, actuates nothing] on ${rbPath(date, 'assumed-knowledge-prompt.txt')} (same isolation: pass the file's TEXT); save its reply to ${rbPath(date, 'readback-assumed-knowledge.txt')}; it returns TWO PASSES PER UNIT — assumed knowledge and dangling REFERENTS — never a grade`
+  );
+  console.log(
+    `  → then: check ${date}  (prints the PANEL ROSTER)  ·  panel ${date}  (roster alone, exit 1 on a RED-LEG)  ·  akcheck ${date}  (calibration)`
+  );
+  console.log(
+    `  🔴 SKIPPING A LEG IS NOT SILENT ANY MORE. The roster enumerates readers/hurried/freshman every night and prints RED-LEG for any that did not run. The hurried reader skipped 2026-08-17 and nobody knew for three days; the full brief's loop never ran at all for eight weeks.`
   );
   console.log(`  HURRIED_HASH ${meta.hurriedTemplateHash}`);
   console.log(
@@ -517,7 +535,7 @@ function cmdCheck(date: string): void {
     );
   } else {
     console.log(
-      `  ○ hurried read-back absent (${hf}) — advisory lane not run this night`
+      `  ○ hurried read-back absent (${hf}) — advisory lane not run this night [see the PANEL roster below; absence is a RED-LEG there]`
     );
   }
 
@@ -527,6 +545,14 @@ function cmdCheck(date: string): void {
       ? `\n✗ ${flagged} parroted read-back(s). Append ${rbPath(date, 'sterner-suffix.txt')} to the prompt and re-run those readers ONCE.`
       : `\n✓ PARROT GUARD CLEAN — no read-back exceeded ${PARROT_THRESHOLD * 100}% non-entity overlap.`
   );
+
+  // 🔴 THE ROSTER RIDES THE COMMAND THE NIGHTLY ALREADY RUNS. No task-body edit, no install —
+  // the same channel that shipped the hurried and freshman readers. `check` PRINTS it; the
+  // standalone `panel` command EXITS 1 on a RED-LEG, which is the half that can stop a caller.
+  // `check` deliberately does NOT take that exit code: it is the parrot guard, and a red leg
+  // must not be able to abort the loop mid-night.
+  console.log('');
+  printPanel(date);
 }
 
 function cmdTabulate(date: string): void {
@@ -900,12 +926,43 @@ function cmdDirty(date: string, publishedPath: string, mark: boolean): number {
  *  taken from the owner's own marks. A detector with no known positives cannot fail, and a detector
  *  that cannot fail is not an instrument. Seeds live in system/panel-calibration.json.
  *  Usage: akcheck <DATE>  — reads .readback/<DATE>/readback-assumed-knowledge.txt */
+/** Slice one pass out of a v3 assumed-knowledge line.
+ *  v3 lines are `U<n>: <count> | AK: … | REF: …`; v2 lines are `U<n>: <count> | …` with no
+ *  labels at all. A seed with no `segment` matches the WHOLE line, which is what keeps the three
+ *  2026-08-17 seeds working unchanged across the template change — and is also why a seed that
+ *  MUST come from one pass has to say so: without a segment, an `x402` flagged as a referent
+ *  would satisfy a seed that exists to prove the vocabulary pass fires. */
+export function isLabelled(body: string): boolean {
+  return /\b(AK|REF)\s*:/i.test(body);
+}
+
+/** Slice one pass out of an assumed-knowledge line.
+ *  Returns `null` when the caller asked for a pass and the line HAS NO PASSES — i.e. a v2
+ *  transcript, written before the referent pass existed.
+ *
+ *  🔴 WHY null AND NOT ''. The first version returned '' there, and it was wrong in the way that
+ *  matters most: the two CONTROL seeds (x402, USDC) are present and correct in the real 08-19 v2
+ *  transcript, and they read MISSED — a format mismatch reported as a detection failure. That
+ *  output cannot distinguish "the detector is broken" from "the transcript predates the pass",
+ *  which are opposite findings, and it would have made every historical night look like a failing
+ *  detector. Three states exist, so three states are reported. Blending them into one number is
+ *  the thing this system does not do. */
+export function akSegment(body: string, segment?: string): string | null {
+  if (!segment) return body;
+  const S = segment.toUpperCase();
+  if (S !== 'AK' && S !== 'REF') return body;
+  if (!isLabelled(body)) return null; // pre-v3 line: not a miss, not a hit — N/A
+  const m = body.match(new RegExp(`\\b${S}\\s*:(.*?)(?=\\|\\s*(?:AK|REF)\\s*:|$)`, 'i'));
+  return m ? m[1]! : '';
+}
+
 export function akAudit(
   transcript: string,
-  seeds: { unit: string; term: string; match: string }[],
+  seeds: { unit: string; term: string; match: string; segment?: string }[],
   unitIds: string[]
-): { seed: string; unit: string; found: boolean }[] {
-  // transcript lines look like:  U<n>: <count> | <term> (CARRYABLE); <term> (STANDALONE); …
+): { seed: string; unit: string; found: boolean; applicable: boolean; segment?: string }[] {
+  // v2 lines:  U<n>: <count> | <term> (CARRYABLE); …
+  // v3 lines:  U<n>: <count> | AK: <term> (CARRYABLE); … | REF: "<word>" → <guess>; …
   const byIdx: Record<number, string> = {};
   for (const line of transcript.split('\n')) {
     const m = line.match(/^\s*U(\d+)\s*:\s*(.*)$/);
@@ -913,12 +970,15 @@ export function akAudit(
   }
   return seeds.map(sd => {
     const i = unitIds.indexOf(sd.unit);
-    const body = i >= 0 ? (byIdx[i + 1] ?? '') : '';
+    const body = i >= 0 ? akSegment(byIdx[i + 1] ?? '', sd.segment) : '';
     return {
       seed: sd.term,
       unit: sd.unit,
+      segment: sd.segment,
+      // null = the transcript has no passes to slice; the seed is N/A, not missed.
+      applicable: i >= 0 && body !== null,
       // 'i' is applied here, not embedded: an inline (?i) is Python syntax and throws in JS.
-      found: i >= 0 && new RegExp(sd.match, 'i').test(body),
+      found: i >= 0 && body !== null && new RegExp(sd.match, 'i').test(body),
     };
   });
 }
@@ -943,7 +1003,11 @@ function cmdAkCheck(date: string): number {
     console.log(
       `AK-CALIBRATION ${date} — 0/${seeds.length} · no detector output at ${tPath}. The reader has not run. Absence, not a pass.`
     );
-    return 0;
+    // 🔴 EXIT 1, changed 2026-08-20. This branch used to return 0: seeds asserted, reader absent,
+    // and the command reported success. That is the exact shape of the failure this whole order
+    // exists to close — a leg that did not run reading as health. Prose said "absence, not a pass"
+    // while the exit code said pass, and the exit code is the half a caller can act on.
+    return 1;
   }
   const meta: Meta = JSON.parse(
     fs.readFileSync(rbPath(date, 'meta.json'), 'utf-8')
@@ -953,17 +1017,179 @@ function cmdAkCheck(date: string): number {
     seeds,
     meta.units.map(u => u.id)
   );
-  const hit = res.filter(r => r.found).length;
+  const asserted = res.filter(r => r.applicable);
+  const na = res.filter(r => !r.applicable);
+  const hit = asserted.filter(r => r.found).length;
   console.log(
-    `AK-CALIBRATION ${date} — ${hit}/${res.length} seed(s) flagged by the detector`
+    `AK-CALIBRATION ${date} — ${hit}/${asserted.length} seed(s) flagged` +
+      (na.length
+        ? `  ·  ${na.length} N/A (transcript predates the pass that seed asserts — NOT counted either way)`
+        : '')
   );
-  for (const r of res)
-    console.log(`  ${r.found ? '✓' : '✗ MISSED'}  ${r.unit}  ${r.seed}`);
-  if (hit < res.length)
+  for (const r of res) {
+    const seg = r.segment ? ` [${r.segment}]` : '';
+    if (!r.applicable) console.log(`  ·  N/A   ${r.unit}${seg}  ${r.seed}`);
+    else console.log(`  ${r.found ? '✓     ' : '✗ MISS'}  ${r.unit}${seg}  ${r.seed}`);
+  }
+  if (na.length)
+    console.log(
+      `  ⓘ  ${na.length} seed(s) assert a pass this transcript does not contain. Re-run akcheck on the first night the v3 reader runs; until then they are unmeasured, which is not the same as passing and not the same as failing.`
+    );
+  if (!asserted.length) {
+    console.log(
+      '  🔴 ZERO SEEDS MEASURABLE. Nothing was asserted about this transcript, so nothing was proved. This is an absence with its denominator printed, not a pass.'
+    );
+    return 1;
+  }
+  if (hit < asserted.length)
     console.log(
       '  🔴 CALIBRATION FAILS. A seed is an owner receipt: a term a real reader actually bounced off. Missing one means the detector does not yet see what he sees.'
     );
-  return hit === res.length ? 0 : 1;
+  return hit === asserted.length ? 0 : 1;
+}
+
+/** 🔴 THE PANEL ROSTER — THE CONSUMER (2026-08-20, FRESHMAN READER order item 2).
+ *
+ *  THE LESSON THIS IS BUILT FROM, stated so it is not re-learned a third time: the full brief's
+ *  read-back was broken for eight weeks and the hurried reader silently skipped 2026-08-17, and
+ *  BOTH survived because NOTHING CONSUMED THE COUNT. A leg that does not run produces no file,
+ *  no error and no line — and absence reads exactly like health.
+ *
+ *  So the roster is a FIXED ENUMERATION, never derived from what happens to be on disk. Every leg
+ *  named here prints a row every night whether it ran or not. A missing leg is a RED-LEG, which is
+ *  a claim with a denominator; it is never silence.
+ *
+ *  EXIT CODE: 1 if any RED-LEG. That makes this an instrument rather than decoration — a check
+ *  that only prints cannot stop the next command. 🔴 BUT IT FAILS THE PANEL CLAIM, NEVER THE
+ *  BRIEF. THE BRIEF ALWAYS SHIPS. Nothing here may be wired into a publish gate.
+ */
+const PANEL_LEGS = [
+  { key: 'readers', files: ['readback-1.txt', 'readback-2.txt', 'readback-3.txt'], label: 'readers ', advisory: false },
+  { key: 'hurried', files: ['readback-hurried.txt'], label: 'hurried ', advisory: true },
+  { key: 'ak', files: ['readback-assumed-knowledge.txt'], label: 'ak (freshman)', advisory: true },
+] as const;
+
+/** Counts DISTINCT answered units in any panel transcript.
+ *  Two shapes in play: the readers and the hurried reader emit `U<n> CLAIM: …`, the freshman
+ *  reader emits `U<n>: …`. Both are covered; the colon is REQUIRED.
+ *  🔴 The colon is not pedantry. A looser match (`U\d+` anywhere at line start) would count a
+ *  reader's prose aside as an answered unit, and an over-count turns a SHORT leg into a GREEN one
+ *  — a counter that errs toward permission, which is the defect logged against the Thesis_Tracker
+ *  rotation counter on 2026-08-19. Under-counting shows up as SHORT and gets looked at; the error
+ *  is deliberately pointed at the alarm. */
+export function countUnitLines(text: string): number {
+  const seen = new Set<number>();
+  for (const line of text.split('\n')) {
+    const m = line.match(/^\s*U(\d+)\s*(?:CLAIM)?\s*:/i);
+    if (m) seen.add(Number(m[1]));
+  }
+  return seen.size;
+}
+
+export type LegRow = {
+  leg: string;
+  counts: number[]; // one per expected file; -1 means the file is absent
+  expected: number;
+  state: 'GREEN' | 'SHORT' | 'RED-LEG';
+  note: string;
+};
+
+export function legState(counts: number[], expected: number): { state: LegRow['state']; note: string } {
+  if (counts.every(c => c < 0))
+    return { state: 'RED-LEG', note: 'transcript absent — the leg did not run' };
+  if (counts.some(c => c < 0))
+    return { state: 'RED-LEG', note: `${counts.filter(c => c < 0).length} of ${counts.length} transcript(s) absent` };
+  if (counts.some(c => c === 0))
+    return { state: 'RED-LEG', note: 'transcript present but zero units parsed — the leg produced nothing readable' };
+  if (counts.some(c => c > expected))
+    return { state: 'RED-LEG', note: `answered MORE units than exist (${Math.max(...counts)} > ${expected}) — parse or isolation failure` };
+  if (counts.some(c => c < expected))
+    return { state: 'SHORT', note: `${Math.min(...counts)}/${expected} units answered — a partial pass is a hole, not a pass` };
+  return { state: 'GREEN', note: '' };
+}
+
+export function surfaceRoster(
+  dirExists: boolean,
+  units: number,
+  read: (f: string) => string | null
+): { prepared: boolean; units: number; legs: LegRow[] } {
+  if (!dirExists) return { prepared: false, units: 0, legs: [] };
+  const legs: LegRow[] = PANEL_LEGS.map(L => {
+    const counts = L.files.map(f => {
+      const t = read(f);
+      return t === null ? -1 : countUnitLines(t);
+    });
+    const { state, note } = legState(counts, units);
+    return { leg: L.key, counts, expected: units, state, note };
+  });
+  return { prepared: true, units, legs };
+}
+
+/** Prints the roster for both surfaces of one date. Returns the RED-LEG count. */
+function printPanel(date: string): number {
+  let red = 0;
+  console.log(`PANEL ${date} — every leg prints, run or not. Absence is a RED-LEG, never a blank.`);
+  for (const [suffix, surface] of [['', 'light'], ['-full', 'full ']] as const) {
+    const dir = `${RB_DIR}/${date}${suffix}`;
+    const metaPath = `${dir}/meta.json`;
+    if (!fs.existsSync(metaPath)) {
+      if (surface.trim() === 'light') {
+        red++;
+        console.log(`  ${surface}  🔴 RED-LEG — NOT PREPARED. The light loop is standing; a night with no ${dir}/meta.json is a night the loop did not run at all.`);
+      } else {
+        console.log(`  ${surface}  ·  NOT PREPARED — full-brief loop not activated for this date (editor install gates it). Printed, not hidden: this is the state, and it turns RED the moment ${dir} exists.`);
+      }
+      continue;
+    }
+    const meta: Meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    const r = surfaceRoster(true, meta.units.length, f =>
+      fs.existsSync(`${dir}/${f}`) ? fs.readFileSync(`${dir}/${f}`, 'utf-8') : null
+    );
+    console.log(`  ${surface}  ${dir}  ·  ${r.units} units prepared`);
+    for (const L of r.legs) {
+      const shown = L.counts.map(c => (c < 0 ? '—' : String(c)));
+      const tally = L.counts.length > 1 ? `${L.counts.length}×[${shown.join(',')}]` : shown[0]!;
+      const icon = L.state === 'GREEN' ? '✓' : L.state === 'SHORT' ? '🟡 SHORT ' : '🔴 RED-LEG ';
+      if (L.state === 'RED-LEG') red++;
+      const leg = PANEL_LEGS.find(x => x.key === L.leg)!;
+      console.log(
+        `      ${leg.label.padEnd(14)} ${String(tally).padStart(12)} / ${String(r.units).padEnd(3)} ${icon}${L.note}`
+      );
+    }
+  }
+  // Calibration rides the same command. An akcheck nobody runs is the pathology this file exists
+  // to close, one level up.
+  if (fs.existsSync(PANEL_CALIBRATION)) {
+    const cal = JSON.parse(fs.readFileSync(PANEL_CALIBRATION, 'utf-8'));
+    const seeds = (cal.assumed_knowledge?.seeds ?? []).filter(
+      (x: { date: string }) => x.date === date
+    );
+    if (!seeds.length) {
+      console.log(`  calibration  ·  0 seeds registered for ${date} — nothing asserted, which is an absence, not a pass`);
+    } else {
+      const tPath = rbPath(date, 'readback-assumed-knowledge.txt');
+      if (!fs.existsSync(tPath)) {
+        red++;
+        console.log(`  calibration  🔴 RED-LEG — ${seeds.length} seed(s) registered and no freshman transcript to audit`);
+      } else {
+        const meta: Meta = JSON.parse(fs.readFileSync(rbPath(date, 'meta.json'), 'utf-8'));
+        const res = akAudit(fs.readFileSync(tPath, 'utf-8'), seeds, meta.units.map(u => u.id));
+        const app = res.filter(r => r.applicable);
+        const hit = app.filter(r => r.found).length;
+        console.log(
+          `  calibration  ·  ${hit}/${app.length} seed(s) flagged` +
+            (res.length - app.length ? `  ·  ${res.length - app.length} N/A (transcript predates the pass asserted)` : '') +
+            `   → akcheck ${date} for the breakdown`
+        );
+      }
+    }
+  }
+  console.log(
+    red === 0
+      ? '  ALL LEGS GREEN — the panel is claimed AND the claim has a denominator.'
+      : `  🔴 ${red} RED-LEG(S). This fails the PANEL claim. It does not fail the brief — THE BRIEF ALWAYS SHIPS.`
+  );
+  return red;
 }
 
 // ── SELFTEST (both directions, per the IMP standard) ──────────────────────────
@@ -1112,13 +1338,28 @@ function selftest(): number {
   t('the AK calibration set exists on disk', calOk);
   if (calOk) {
     const cal = JSON.parse(fs.readFileSync(PANEL_CALIBRATION, 'utf-8'));
-    const sd = cal.assumed_knowledge?.seeds ?? [];
-    t('three owner seeds are registered', sd.length === 3);
+    const all = cal.assumed_knowledge?.seeds ?? [];
+    const sd = all.filter((x: { date: string }) => x.date === '2026-08-10');
+    t('the three 2026-08-10 owner seeds are still registered', sd.length === 3);
+    t(
+      'the five 2026-08-19 owner marks are registered',
+      all.filter((x: { date: string }) => x.date === '2026-08-19').length === 5
+    );
+    t(
+      'no duplicate seed (same date + unit + matcher)',
+      new Set(
+        all.map((x: Record<string, string>) => `${x.date}|${x.unit}|${x.match}`)
+      ).size === all.length
+    );
     t(
       'every seed names a date, a unit, a term and a matcher',
-      sd.every(
+      all.every(
         (x: Record<string, string>) => x.date && x.unit && x.term && x.match
       )
+    );
+    t(
+      'the calibration file records the template hash it was written against',
+      cal.assumed_knowledge?.template_hash === sha(ASSUMED_KNOWLEDGE_TEMPLATE)
     );
     const ids = ['six:markets-macro:1', 'six:geopolitics:2', 'signal:2'];
     const good = akAudit(
@@ -1127,7 +1368,7 @@ function selftest(): number {
       ids
     );
     t(
-      'auditor confirms a detector that flagged all three seeds',
+      'auditor confirms a detector that flagged all three 2026-08-10 seeds',
       good.every(r => r.found)
     );
     const bad = akAudit('U1: 0 |\nU2: 0 |\nU3: 0 |', sd, ids);
@@ -1370,8 +1611,142 @@ function selftest(): number {
     attachHurried({ final: 'PASS' }, undefined).hurried_read === null
   );
 
+
+  // ── FRESHMAN READER + PANEL ROSTER (2026-08-20) ────────────────────────────
+  const V3 = 'U1: 3 | AK: USDC (STANDALONE); x402 transfers (STANDALONE) | REF: "it" → UNKNOWN';
+  const V2 = 'U1: 2 | USDC (STANDALONE); x402 transfers (STANDALONE)';
+
+  t('countUnitLines reads the reader/hurried shape', countUnitLines('U1 CLAIM: a | WHY: b') === 1);
+  t('countUnitLines reads the freshman shape', countUnitLines(V3) === 1);
+  t(
+    'countUnitLines does NOT count a colon-less prose line — over-counting would turn SHORT into GREEN',
+    countUnitLines('U1 is the interesting one here') === 0
+  );
+  t(
+    'countUnitLines counts DISTINCT units, so a repeated answer cannot inflate the leg',
+    countUnitLines('U1 CLAIM: a\nU1 CLAIM: a again\nU2 CLAIM: b') === 2
+  );
+
+  t('legState: every transcript absent is RED-LEG', legState([-1, -1, -1], 25).state === 'RED-LEG');
+  t('legState: one of three absent is RED-LEG, not SHORT', legState([25, -1, 25], 25).state === 'RED-LEG');
+  t('legState: a transcript that parses to zero units is RED-LEG', legState([0], 25).state === 'RED-LEG');
+  t(
+    'legState: answering MORE units than exist is RED-LEG (parse or isolation failure)',
+    legState([26], 25).state === 'RED-LEG'
+  );
+  t('legState: a partial pass is SHORT, printed with its numbers', legState([18], 25).state === 'SHORT');
+  t('legState: full coverage is GREEN', legState([25, 25, 25], 25).state === 'GREEN');
+  t(
+    'legState: SHORT reports the WORST of the three readers, never the best',
+    legState([25, 18, 25], 25).note.includes('18/25')
+  );
+
+  t('akSegment with no segment returns the whole body — the 2026-08-17 seeds are unchanged', akSegment(V3) === V3);
+  t('akSegment ak slices only the first pass', akSegment(V3, 'ak').includes('USDC') && !akSegment(V3, 'ak').includes('UNKNOWN'));
+  t('akSegment ref slices only the second pass', akSegment(V3, 'ref').includes('UNKNOWN') && !akSegment(V3, 'ref').includes('USDC'));
+  t(
+    'akSegment ref on a v3 line with no REF content is EMPTY (a real miss), not null (N/A)',
+    akSegment('U1: 1 | AK: x402 (STANDALONE) | REF: —', 'ref')!.trim() === '—'
+  );
+
+  const segIds = ['line-8'];
+  t(
+    'akAudit finds a referent seed in the REF pass',
+    akAudit(V3, [{ unit: 'line-8', term: 'dangling it', match: '["“]it["”]|\\bit\\b\\s*(?:→|->)', segment: 'ref' }], segIds)[0]!.found
+  );
+  t(
+    'akAudit does NOT let a REF flag satisfy an AK seed — the whole reason segment exists',
+    akAudit(
+      'U1: 1 | AK: — | REF: "x402" → UNKNOWN',
+      [{ unit: 'line-8', term: 'x402', match: 'x402', segment: 'ak' }],
+      segIds
+    )[0]!.found === false
+  );
+  t(
+    'akAudit unsegmented still matches anywhere on the line (backward compatibility)',
+    akAudit(V3, [{ unit: 'line-8', term: 'x402', match: 'x402' }], segIds)[0]!.found
+  );
+
+  t('AK template v3 carries BOTH passes', /FIRST PASS/.test(ASSUMED_KNOWLEDGE_TEMPLATE) && /SECOND PASS/.test(ASSUMED_KNOWLEDGE_TEMPLATE));
+  t(
+    'AK template v3 asks for the referent GUESS, not just the flag',
+    /UNKNOWN/.test(ASSUMED_KNOWLEDGE_TEMPLATE)
+  );
+  t(
+    'AK template v3 judges each unit ALONE — the line-8 defect was full-brief dependency',
+    /ALONE/.test(ASSUMED_KNOWLEDGE_TEMPLATE)
+  );
+  t(
+    'AK template v3 does NOT contain the calibration clause itself — teaching to the test would make the seed pass without detection power',
+    !/constraint is a successor/i.test(ASSUMED_KNOWLEDGE_TEMPLATE)
+  );
+  t('AK template still has exactly one interpolation slot', (ASSUMED_KNOWLEDGE_TEMPLATE.match(/\{artifact\}/g) ?? []).length === 1);
+
+  t(
+    'akSegment returns null (N/A) on a pre-v3 line, so a format mismatch is never reported as a detection miss',
+    akSegment(V2, 'ak') === null && akSegment(V2, 'ref') === null
+  );
+  t(
+    'akAudit marks a pre-v3 line NOT APPLICABLE rather than not-found',
+    akAudit(V2, [{ unit: 'line-8', term: 'x402', match: 'x402', segment: 'ak' }], ['line-8'])[0]!.applicable === false
+  );
+  t(
+    'akAudit keeps unsegmented seeds APPLICABLE on a pre-v3 line — the 2026-08-17 seeds still measure',
+    akAudit(V2, [{ unit: 'line-8', term: 'x402', match: 'x402' }], ['line-8'])[0]!.applicable === true
+  );
+
+  // ── THE SHIPPED SEEDS, ROUND-TRIPPED ──────────────────────────────────────
+  // Tests the matchers that are actually on disk, not hand-written copies of them. A regex that
+  // works in the test and not in the file is the failure this guards.
+  if (fs.existsSync(PANEL_CALIBRATION)) {
+    const cal = JSON.parse(fs.readFileSync(PANEL_CALIBRATION, 'utf-8'));
+    const live = (cal.assumed_knowledge?.seeds ?? []) as {
+      date: string; unit: string; term: string; match: string; segment?: string;
+    }[];
+    t('every shipped matcher compiles as a JS regex', live.every(sd => { try { new RegExp(sd.match, 'i'); return true; } catch { return false; } }));
+
+    const l8 = live.filter(sd => sd.unit === 'line-8');
+    const tk = live.filter(sd => sd.unit === 'take');
+    // A synthetic v3 line carrying exactly what a working freshman reader should return for line-8.
+    const GOOD_L8 =
+      'U1: 4 | AK: x402 (STANDALONE); USDC (CARRYABLE) | REF: "you" → UNKNOWN; "it" → the AI agent, I think';
+    const GOOD_TAKE =
+      'U1: 2 | AK: solvent deletion (CARRYABLE); "the constraint is a successor and not a lender" (STANDALONE) | REF: —';
+    t(
+      `all ${l8.length} shipped line-8 seeds fire on a correct v3 answer`,
+      l8.length > 0 && akAudit(GOOD_L8, l8, ['line-8']).every(r => r.applicable && r.found)
+    );
+    t(
+      `all ${tk.length} shipped take seed(s) fire on a correct v3 answer`,
+      tk.length > 0 && akAudit(GOOD_TAKE, tk, ['take']).every(r => r.applicable && r.found)
+    );
+    // The negative direction: the v2 answer the detector ACTUALLY gave on 08-19 must NOT satisfy
+    // the referent seeds. If it did, the seeds would be measuring nothing.
+    const REAL_V2_L8 = 'U1: 2 | USDC (STANDALONE); x402 transfers (STANDALONE)';
+    t(
+      'the real 08-19 v2 answer satisfies NO segmented line-8 seed — the gap is real, not a matcher artifact',
+      akAudit(REAL_V2_L8, l8.filter(x => x.segment), ['line-8']).every(r => !r.found)
+    );
+    // And a v3 answer that flags the vocabulary but still misses the referents must FAIL.
+    const HALF_L8 = 'U1: 2 | AK: x402 (STANDALONE); USDC (CARRYABLE) | REF: —';
+    t(
+      'a v3 answer that catches the words but not the referents FAILS calibration — that is the whole point of the second pass',
+      akAudit(HALF_L8, l8, ['line-8']).some(r => r.applicable && !r.found)
+    );
+  }
+
+  t('surfaceRoster reports an unprepared surface as prepared:false, never as green', surfaceRoster(false, 0, () => null).prepared === false);
+  t(
+    'surfaceRoster enumerates ALL THREE legs even when nothing ran — the roster is fixed, not derived',
+    surfaceRoster(true, 25, () => null).legs.length === 3 &&
+      surfaceRoster(true, 25, () => null).legs.every(l => l.state === 'RED-LEG')
+  );
+
   console.log(
     `\n${fail ? '✗' : '✓'} selftest ${pass}/${pass + fail} passed  ·  TEMPLATE_HASH ${sha(READER_TEMPLATE)}  ·  HURRIED_HASH ${sha(HURRIED_TEMPLATE)}`
+  );
+  console.log(
+    `  ASSUMED_KNOWLEDGE_HASH ${sha(ASSUMED_KNOWLEDGE_TEMPLATE)}  [v3 two-pass · advisory · actuates nothing]`
   );
   if (!fail) console.log('SCRIPT-OK');
   return fail ? 1 : 0;
@@ -1410,6 +1785,9 @@ switch (cmd) {
       die('usage: dirty <DATE> <published.md> [--mark] [--product=full]');
     process.exit(cmdDirty(a, b, flags.includes('--mark')));
   // eslint-disable-next-line no-fallthrough
+  case 'panel':
+    if (!a) die('usage: panel <DATE>   — roster for BOTH surfaces; exit 1 on any RED-LEG');
+    process.exit(printPanel(a) === 0 ? 0 : 1);
   case 'akcheck':
     if (!a) die('usage: akcheck <DATE>');
     process.exit(cmdAkCheck(a));
@@ -1423,7 +1801,7 @@ switch (cmd) {
       'transmission-readback.ts — mechanical half of the read-back loop. Never calls a model.'
     );
     console.log(
-      '  prepare <light.md> <claims.json> | check <DATE> | tabulate <DATE> | assemble <DATE> | ledger <DATE> | dirty <DATE> <published.md> [--mark] | akcheck <DATE> | --selftest'
+      '  prepare <light.md> <claims.json> | check <DATE> | panel <DATE> | tabulate <DATE> | assemble <DATE> | ledger <DATE> | dirty <DATE> <published.md> [--mark] | akcheck <DATE> | --selftest'
     );
     console.log(
       '  --product=full routes state to .readback/<DATE>-full/ so the full brief and the light never collide.'
