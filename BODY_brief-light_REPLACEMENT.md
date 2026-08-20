@@ -207,6 +207,26 @@ rewrite.** It starts driving rewrites after ~3 nights of baseline.
 Element tags (ACTOR / DIRECTION / MAGNITUDE / CAUSALITY / JARGON) print as **advisory only tonight** —
 the rubric is not written yet, so do not act on the tag, just record it.
 
+
+🔴 **THE SO_WHAT LEG IS GRADED IN ISOLATION (recalibration event, 2026-08-20).**
+
+**Grade the so_what leg as a SEPARATE PASS, after the claim leg, from ONLY two things: the unit's
+logged `so_what`, and the three readers' WHY strings. Do not look at the prose. Do not look at the
+logged claim. Do not carry over what you just decided about the claim.**
+
+Why this is written down rather than left to judgment: a grader holding the article in mind can
+supply the missing half of a so_what without noticing, which is the defect Ruling B fixed one layer
+up in the selection judge.
+
+🔴 **HONEST NOTE ON WHAT THE EVIDENCE ACTUALLY SHOWED, because this rule fired on a pre-registered
+trigger and not on a large effect.** 2026-08-19's 25 units were re-graded both ways. Full context
+returned 37/75 OK; isolated returned 40/75. **Three units flipped, which met the pre-registered
+threshold, but they flipped in BOTH directions — two toward lenient, one toward strict — and 17 of
+the 24 individual disagreements were MISSING-versus-WRONG relabelling of grades that failed either
+way.** The input hypothesis is therefore NOT supported: isolation moves the number by +3 of 75, in
+the lenient direction. **This rule is kept because it is cheap, removes a confound, and the trigger
+was agreed in advance — not because it was measured to fix anything.** Do not cite it as a fix.
+
 ### 4b.3 — Actuate: unanimous only, two cycles max
 
 🔴 **SEVERITY-WEIGHTED ACTUATION (owner, 2026-08-09).** **A DIRECTION INVERSION ACTUATES AT

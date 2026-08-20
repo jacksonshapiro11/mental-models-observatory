@@ -276,3 +276,24 @@ Write a **FAIL** line if you produced no v2. Write the `readback-full` line **ev
 errored or was skipped** — `readback=ERROR` with a reason is data. A silent failure is what cost the
 2026-07-27 Critic and evening super-brief: the task ran, wrote nothing, said nothing, and nobody knew
 until 5 AM. SKIPPED is valid. Silence is not.
+
+---
+
+🔴 **THE SO_WHAT LEG IS GRADED IN ISOLATION (recalibration event, 2026-08-20).**
+
+**Grade the so_what leg as a SEPARATE PASS, after the claim leg, from ONLY two things: the unit's
+logged `so_what`, and the three readers' WHY strings. Do not look at the prose. Do not look at the
+logged claim. Do not carry over what you just decided about the claim.**
+
+Why this is written down rather than left to judgment: a grader holding the article in mind can
+supply the missing half of a so_what without noticing, which is the defect Ruling B fixed one layer
+up in the selection judge.
+
+🔴 **HONEST NOTE ON WHAT THE EVIDENCE ACTUALLY SHOWED, because this rule fired on a pre-registered
+trigger and not on a large effect.** 2026-08-19's 25 units were re-graded both ways. Full context
+returned 37/75 OK; isolated returned 40/75. **Three units flipped, which met the pre-registered
+threshold, but they flipped in BOTH directions — two toward lenient, one toward strict — and 17 of
+the 24 individual disagreements were MISSING-versus-WRONG relabelling of grades that failed either
+way.** The input hypothesis is therefore NOT supported: isolation moves the number by +3 of 75, in
+the lenient direction. **This rule is kept because it is cheap, removes a confound, and the trigger
+was agreed in advance — not because it was measured to fix anything.** Do not cite it as a fix.

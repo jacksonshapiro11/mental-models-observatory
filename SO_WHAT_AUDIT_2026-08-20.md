@@ -103,3 +103,49 @@ does not.** Readers carry what they would act on and drop what the writer found 
   quote-the-delivery form. **The Ruling B analogy pointed at the wrong layer and this audit is what
   found that out.**
 
+
+---
+
+# ADDENDUM — THE BOTH-WAYS RE-GRADE (owner ruling 2026-08-20, decision 1)
+
+2026-08-19 light. 25 units. Same rubric, same reader transcripts, same logged so_whats. Two
+independent graders differing in ONE thing: what they were shown.
+
+| condition | what it saw | individual OK | unanimous |
+|---|---|---|---|
+| **A — full context** | prose + logged claim + full CLAIM/WHY, claim leg graded first | **37/75 = 49.3%** | 7/25 |
+| **B — isolated** | logged so_what + three WHY strings, nothing else | **40/75 = 53.3%** | 8/25 |
+| *production, live* | *the same night as actually logged* | ***68/75 = 90.7%*** | *22/25* |
+
+**Unit flips: 3.** U2 and U9 fail→pass under isolation; U7 pass→fail. **Both directions.**
+**Individual disagreements: 24/75 — but only 7 are material (OK↔not-OK); 17 are MISSING↔WRONG
+relabelling of grades that failed either way.** Net effect of isolation: **+3 of 75, lenient.**
+
+## THE INPUT HYPOTHESIS IS DEAD
+
+The audit above proposed that the gap lives in the grader's input — that a grader holding the
+article in mind supplies the missing half of a so_what. **It does not.** Full context and isolation
+land within 4 percentage points of each other, and isolation is the *more* lenient of the two.
+
+## WHAT THE CONTROL FOUND INSTEAD
+
+🔴 **Neither re-grade is anywhere near production. 90.7% logged; 49.3% and 53.3% on re-run.** The
+variance is not between the two input conditions the ruling asked about — **it is between the
+production run and any re-run.** `so_what OK %` measures which grader ran at least as much as it
+measures the brief, and that reaches the 90.3% all-history baseline quoted four times in this file.
+Carried as **L-0820-14**, with the three-run spread test owed.
+
+## THE RULE WAS APPLIED ANYWAY
+
+3 flips met the pre-registered threshold, so **isolation is applied** — written into
+`BODY_brief-light_REPLACEMENT.md` §4b and `system/task-bodies/brief-editor/SKILL.md`, recalibration
+event logged in `system/selection-ledger.json`.
+
+🔴 **It is applied on the letter of the pre-registration, not on the effect.** A threshold agreed in
+advance and then reinterpreted once the data arrives was never pre-registered at all — including when
+the inconvenient answer is "this change does nothing." Isolation is cheap and removes a confound, so
+the discipline costs approximately zero here. **The recalibration event carries a warning in its own
+body: this must not be cited later as a fix.**
+
+**Standing lesson (L-0820-15): a pre-registered threshold should name the DIRECTION it expects, not
+just the magnitude.** "2+ flips" should have been "2+ flips toward stricter."
