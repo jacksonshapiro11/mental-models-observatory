@@ -145,6 +145,90 @@ const rbPath = (date: string, ...p: string[]): string =>
 /** Split the artifact into candidate units. A unit is a bold-led block, OR — when a `## ▸` section
  *  contains no bold-led block — that section's whole body. The Explore-model hyperlink is never a
  *  unit. Returns [{section, start, end}] in document order. */
+/** 🔴 PART 2 (2026-08-19) — THE FULL BRIEF IS A DIFFERENT SHAPE AND THE OLD SEGMENTER WAS BLIND TO IT.
+ *  Measured before building: `prepare content/daily-updates/2026-08-19.md ... --product=full` returned
+ *  **prose 19 / claims 24**, collapsing every Six section to ONE unit and returning ZERO for Discovery,
+ *  Inner Game and the Dashboard. The light brief is `## ▸ SECTION` + bold-led blocks; the full brief is
+ *  `# ▸ MAJOR` with `## Subsection` and `- **bold**` LIST ITEMS. A segmenter that returns the wrong
+ *  units is not a pass, and one that returns zero is a finding.
+ *
+ *  THE CLAIMS SIDECAR REMAINS AUTHORITATIVE (rule 1). This does not invent units — it teaches the
+ *  parser the full brief's shape so it can REPRODUCE the sidecar, including the Dashboard rows the
+ *  sidecar counts and the `## ▸ OVERNIGHT` block it does not.
+ *
+ *  MATCHING IS BY SECTION LABEL, NOT POSITION, for the full brief: the sidecar lists `intro` LAST
+ *  while it appears FIRST in the document, and positional pairing would have silently attached every
+ *  id to the wrong prose — a corruption that passes a count check. */
+const normLabel = (x: string): string =>
+  x.trim().toUpperCase().replace(/\s+/g, ' ');
+
+function candidatesFull(
+  md: string
+): { section: string; start: number; end: number }[] {
+  const out: { section: string; start: number; end: number }[] = [];
+  const push = (section: string, start: number, end: number) => {
+    const t = md.slice(start, end).replace(/\s+$/, '');
+    if (t.trim().length > 40)
+      out.push({ section, start, end: start + t.length });
+  };
+  const majors = [...md.matchAll(/^#\s*▸\s*(.+)$/gm)];
+  // 1. the payoff intro: the `### …` block before the first major
+  if (majors.length) {
+    const pre = md.slice(0, majors[0]!.index!);
+    const m = pre.match(/^###\s+.+$/m);
+    if (m)
+      push('Intro Summary (payoff)', pre.indexOf(m[0]!), majors[0]!.index!);
+  }
+  for (let i = 0; i < majors.length; i++) {
+    const name = majors[i]!['1']!.trim();
+    const from = majors[i]!.index! + majors[i]![0]!.length;
+    const to = i + 1 < majors.length ? majors[i + 1]!.index! : md.length;
+    const body = md.slice(from, to);
+    const N = normLabel(name);
+    if (N === 'THE DASHBOARD') {
+      const subs = [...body.matchAll(/^###\s+(.+)$/gm)];
+      subs.forEach((sm, k) =>
+        push(
+          `Dashboard/${sm[1]!.trim()}`,
+          from + sm.index! + sm[0]!.length,
+          from + (k + 1 < subs.length ? subs[k + 1]!.index! : body.length)
+        )
+      );
+    } else if (N === 'THE SIX') {
+      const subs = [...body.matchAll(/^##(?!#)\s*(.+)$/gm)];
+      subs.forEach((sm, k) => {
+        const sname = sm[1]!.trim();
+        const sf = sm.index! + sm[0]!.length;
+        const st = k + 1 < subs.length ? subs[k + 1]!.index! : body.length;
+        const sbody = body.slice(sf, st);
+        const isSignal = /signal/i.test(sname);
+        const raws = isSignal
+          ? [
+              ...sbody.matchAll(
+                /^\*\*[\s\S]*?(?=\n\s*\n\*\*(?!Watch:)|\n\s*\n#|(?![\s\S]))/gm
+              ),
+            ]
+          : [
+              ...sbody.matchAll(
+                /^-\s+[\s\S]*?(?=\n\s*\n-\s|\n\s*\n#|\n##|(?![\s\S]))/gm
+              ),
+            ];
+        for (const it of raws.filter(x => !/^\*\*Watch:/i.test(x[0]!)))
+          push(
+            sname,
+            from + sf + it.index!,
+            from + sf + it.index! + it[0]!.length
+          );
+      });
+    } else if (N === 'OVERNIGHT') {
+      continue; // present in the artifact, absent from the sidecar — excluded by contract
+    } else {
+      push(name, from, to);
+    }
+  }
+  return out;
+}
+
 function candidates(
   md: string
 ): { section: string; start: number; end: number }[] {
@@ -190,8 +274,37 @@ function candidates(
 }
 
 /** 🔴 The claims file is authoritative. This VALIDATES the prose against it and never invents units. */
-function segment(md: string, claims: Claim[]): Unit[] {
-  const cands = candidates(md);
+function segment(md: string, claims: Claim[], product = ''): Unit[] {
+  const full = product === 'full';
+  const cands = full ? candidatesFull(md) : candidates(md);
+  // 🔴 FULL BRIEF: pair by SECTION LABEL in document order, never by position.
+  if (full && cands.length === claims.length) {
+    const pool = cands.map(c => ({ ...c, used: false }));
+    const paired: Unit[] = [];
+    for (let i = 0; i < claims.length; i++) {
+      const want = normLabel(claims[i]!.section);
+      const hit = pool.find(c => !c.used && normLabel(c.section) === want);
+      if (!hit) {
+        console.error(
+          `\n❌ SECTION LABEL MISMATCH — claim "${claims[i]!.unit}" wants section "${claims[i]!.section}" and no unpaired prose block carries it.`
+        );
+        console.error(
+          `   Prose labels seen: ${[...new Set(cands.map(c => c.section))].join(' · ')}`
+        );
+        process.exit(1);
+      }
+      hit.used = true;
+      paired.push({
+        id: claims[i]!.unit,
+        section: claims[i]!.section,
+        idx: i,
+        start: hit.start,
+        end: hit.end,
+        sha: sha(md.slice(hit.start, hit.end)),
+      });
+    }
+    return paired;
+  }
   if (cands.length !== claims.length) {
     const byS = (xs: { section: string }[]) =>
       xs.reduce<Record<string, number>>(
@@ -284,7 +397,7 @@ function cmdPrepare(light: string, claimsPath: string): void {
     ,
     'undated',
   ])[1]!;
-  const units = segment(md, claims);
+  const units = segment(md, claims, PRODUCT_SUFFIX.replace('-', ''));
 
   let art = '';
   units.forEach((u, i) => {
@@ -514,7 +627,7 @@ function cmdAssemble(date: string): void {
   const claims: Claim[] = JSON.parse(
     fs.readFileSync(rbPath(date, 'claims.json'), 'utf-8')
   );
-  const after = segment(out, claims);
+  const after = segment(out, claims, PRODUCT_SUFFIX.replace('-', ''));
   const drift = meta.units.filter(
     u => !touched.has(u.id) && after.find(a => a.id === u.id)?.sha !== u.sha
   );
@@ -647,7 +760,7 @@ function dirtyUnits(
   md: string,
   claims: Claim[]
 ): { id: string; section: string; before: string; after: string }[] {
-  const now = segment(md, claims);
+  const now = segment(md, claims, PRODUCT_SUFFIX.replace('-', ''));
   return graded
     .filter(u => now.find(a => a.id === u.id)?.sha !== u.sha)
     .map(u => ({
@@ -718,7 +831,11 @@ function cmdDirty(date: string, publishedPath: string, mark: boolean): number {
   const assembledPath = rbPath(date, 'assembled.md');
   const usedAssembled = fs.existsSync(assembledPath);
   const baseline = usedAssembled
-    ? segment(fs.readFileSync(assembledPath, 'utf-8'), claims)
+    ? segment(
+        fs.readFileSync(assembledPath, 'utf-8'),
+        claims,
+        PRODUCT_SUFFIX.replace('-', '')
+      )
     : meta.units;
   const changed = dirtyUnits(baseline, md, claims);
   console.log(
@@ -1034,6 +1151,158 @@ function selftest(): number {
     'assumed-knowledge asks for terms, never for a grade',
     /does not EXPLAIN/.test(ASSUMED_KNOWLEDGE_TEMPLATE) &&
       !/TRANSMITTED|DISTORTED|LOST/.test(ASSUMED_KNOWLEDGE_TEMPLATE)
+  );
+
+  // 🔴 PART 2 — FULL-BRIEF SEGMENTATION. The old parser returned prose 19 / claims 24 on the real
+  // 2026-08-19 brief, collapsing every Six section to one unit. These assertions are the contract.
+  const fullMd = [
+    '# MARKETS, MEDITATIONS & MENTAL MODELS',
+    '',
+    '## Wednesday, August 19, 2026',
+    '',
+    '### The Payoff Headline',
+    '',
+    '*An intro paragraph long enough to clear the forty character floor for a real unit.*',
+    '',
+    '## ▸ OVERNIGHT',
+    '',
+    'Overnight prose that the claims sidecar deliberately does not count as a unit at all.',
+    '',
+    '# ▸ THE DASHBOARD',
+    '',
+    '### Equities',
+    'Equities commentary long enough to clear the forty character floor for a unit.',
+    '',
+    '### Crypto',
+    'Crypto commentary long enough to clear the forty character floor for a unit.',
+    '',
+    '# ▸ THE SIX',
+    '',
+    '## Markets & Macro',
+    '',
+    '- **Alpha lead.** Alpha body with enough characters to clear the floor test here.',
+    '',
+    '- **Beta lead.** Beta body with enough characters to clear the floor test here.',
+    '',
+    '## The Signal',
+    '',
+    '**Signal one lead.** Signal one body with enough characters to clear the floor.',
+    '',
+    '**Watch:** this continuation belongs to signal one and is never its own unit.',
+    '',
+    '# ▸ THE TAKE',
+    '',
+    '**Take lead.** Take body with enough characters to clear the forty character floor.',
+    '',
+    '# ▸ DISCOVERY',
+    '',
+    'Discovery prose long enough to clear the forty character floor for a standalone major.',
+    '',
+  ].join('\n');
+  const fullClaims: Claim[] = [
+    {
+      unit: 'dash-equities',
+      section: 'Dashboard/Equities',
+      claim: 'dash equities claim words',
+      so_what: 'x',
+    },
+    {
+      unit: 'dash-crypto',
+      section: 'Dashboard/Crypto',
+      claim: 'dash crypto claim words',
+      so_what: 'x',
+    },
+    {
+      unit: 'mm-1',
+      section: 'Markets & Macro',
+      claim: 'alpha claim words here',
+      so_what: 'x',
+    },
+    {
+      unit: 'mm-2',
+      section: 'Markets & Macro',
+      claim: 'beta claim words here',
+      so_what: 'x',
+    },
+    {
+      unit: 'signal-1',
+      section: 'The Signal',
+      claim: 'signal claim words here',
+      so_what: 'x',
+    },
+    {
+      unit: 'take',
+      section: 'THE TAKE',
+      claim: 'take claim words here',
+      so_what: 'x',
+    },
+    {
+      unit: 'discovery',
+      section: 'DISCOVERY',
+      claim: 'discovery claim words here',
+      so_what: 'x',
+    },
+    // 🔴 intro is LAST in the sidecar and FIRST in the document — positional pairing would corrupt
+    {
+      unit: 'intro',
+      section: 'Intro Summary (payoff)',
+      claim: 'intro claim words here',
+      so_what: 'x',
+    },
+  ];
+  const fc = candidatesFull(fullMd);
+  t(
+    'full: segments the same COUNT as the sidecar',
+    fc.length === fullClaims.length
+  );
+  t(
+    'full: OVERNIGHT is excluded by contract',
+    !fc.some(c => /overnight/i.test(c.section))
+  );
+  t(
+    'full: each Dashboard subsection is its own unit',
+    fc.filter(c => c.section.startsWith('Dashboard/')).length === 2
+  );
+  t(
+    'full: Six list items segment individually, not one per section',
+    fc.filter(c => c.section === 'Markets & Macro').length === 2
+  );
+  t(
+    'full: **Watch:** is folded into its Signal, never a unit',
+    fc.filter(c => c.section === 'The Signal').length === 1
+  );
+  t(
+    'full: the payoff intro is a unit',
+    fc.some(c => c.section === 'Intro Summary (payoff)')
+  );
+  const fu = segment(fullMd, fullClaims, 'full');
+  t(
+    'full: pairs by SECTION LABEL, so out-of-order claims still land right',
+    fu.every(x => {
+      const body = fullMd.slice(x.start, x.end).toLowerCase();
+      return x.id !== 'intro' || body.includes('payoff headline');
+    })
+  );
+  t(
+    'full: intro prose is NOT the discovery prose',
+    fu.find(x => x.id === 'intro')!.sha !==
+      fu.find(x => x.id === 'discovery')!.sha
+  );
+  t(
+    'full: no degenerate units — every unit clears 40 chars',
+    fu.every(x => fullMd.slice(x.start, x.end).trim().length > 40)
+  );
+  t(
+    'full: every unit id is unique',
+    new Set(fu.map(x => x.id)).size === fu.length
+  );
+  t(
+    'full: a segmenter returning ZERO units is a finding, not a pass',
+    candidatesFull('# MARKETS\n\nnothing here at all\n').length === 0
+  );
+  t(
+    'light segmentation is UNCHANGED by the full-brief work',
+    candidates(md).length === claims.length
   );
 
   // prompt isolation

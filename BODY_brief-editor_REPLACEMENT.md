@@ -152,6 +152,24 @@ you cannot resolve in two minutes → SKIP THE REST OF THIS STEP, hand off the v
 node --experimental-strip-types scripts/transmission-readback.ts --selftest && echo SCRIPT-OK
 ```
 
+🔴 **ALWAYS PASS `--product=full`. EVERY COMMAND. NO EXCEPTIONS.**
+
+```bash
+node --experimental-strip-types scripts/transmission-readback.ts \
+  prepare daily-briefs/{BRIEF_DATE}-v2.md daily-briefs/{BRIEF_DATE}-claims.json --product=full
+```
+
+Without it the full brief writes into `.readback/{DATE}/` and **silently overwrites the light brief's
+graded state for the same date.** `--product=full` routes to `.readback/{DATE}-full/`.
+
+🔴 **THE SEGMENTER WAS TAUGHT THE FULL BRIEF ON 2026-08-19 AND VERIFIED AGAINST A REAL NIGHT.** Before
+that it returned **prose 19 / claims 24** on 08-19 — one unit per Six section, zero for Discovery,
+Inner Game and the Dashboard. It now reproduces the sidecar exactly, pairing by SECTION LABEL rather
+than position (the sidecar lists `intro` last while the document puts it first). **If `prepare` reports
+a UNIT COUNT MISMATCH or a SECTION LABEL MISMATCH, that is a finding — a claim row was written and
+never drafted, or a unit was drafted with no claim row. Do not "fix" it by editing the claims file to
+match the prose. A segmenter returning zero units is a finding, never a pass.**
+
 If `SCRIPT-OK`, run `prepare` → (you spawn readers) → `check` → (you grade) → `tabulate` →
 (you redraft) → `assemble` → `ledger`, exactly as the brief-light body describes, against
 `daily-briefs/{BRIEF_DATE}-v2.md` and `daily-briefs/{BRIEF_DATE}-claims.json`. Note `via=script`.
@@ -191,7 +209,22 @@ Also grade the reader's **WHY** against the logged **so_what** → `SO_WHAT: OK 
 Element tags (ACTOR / DIRECTION / MAGNITUDE / CAUSALITY / JARGON) are **advisory only** — the rubric
 is unwritten. Record, do not act.
 
-### 2c.3 — Actuate: unanimous only, two cycles max
+### 2c.3 — Actuate: the standing law, inherited, no improvisation
+
+🔴 **THIS SURFACE'S ACTUATION IS THE SAME LAW THE LIGHT BRIEF RUNS. Do not invent a variant.**
+
+- **Unanimous-of-3 to rewrite, for this surface's FIRST SEVEN NIGHTS.** Night eight, majority-of-3.
+  The seven nights are counted for the FULL BRIEF specifically — the light brief's seven are spent and
+  do not transfer, because this is a different surface with a different baseline.
+- 🔴 **DIRECTION INVERSIONS ACTUATE AT 2-OF-3, IMMEDIATELY, from night one.** A reader who states the
+  claim backwards is not a near-miss. Receipt: the TTD inversion graded TRANSMITTED 3/3 with so-what
+  OK while one reader had the relation exactly reversed.
+- **GRADED BYTES EQUAL SHIPPED BYTES.** Any unit touched after grading — by you, by the Critic, by the
+  Morning Truth Gate — is **DIRTY** and re-enters the loop. Every pass with rewrite authority sits
+  inside the loop's jurisdiction; that is law, not courtesy.
+- **Two cycles maximum, then ship what you have** and write a residual row.
+
+### 2c.3b — The mechanics
 
 🔴 **SEVERITY-WEIGHTED ACTUATION (owner, 2026-08-09).** **A DIRECTION INVERSION ACTUATES AT
 2-OF-3, IMMEDIATELY — it does not wait for the week-one rule.** Everything else keeps unanimous-of-3
