@@ -75,7 +75,7 @@ Do TWO passes over every item. Judge each item ALONE: something named in a DIFFE
 FIRST PASS — WHAT IT ASSUMES.
 List every term of art, concept, mechanism, institution, background fact, OR compressed statement that the item USES but does not EXPLAIN in plain words in the sentence that uses it. Include anything you would have to look up to follow the claim.
 A STATEMENT counts here, not just a term. The test is whether you could restate it in your own words. If the only thing you can do is repeat it back, list it — that is a sentence that sounds like it explained something and did not.
-For EACH thing you list, add one word: CARRYABLE if a short plain-words gloss could have ridden inside the sentence that used it, or STANDALONE if explaining it would have needed its own sentence.
+For EACH thing you list, add TWO words in brackets: CARRYABLE if a short plain-words gloss could have ridden inside the sentence that used it, or STANDALONE if explaining it would have needed its own sentence — then BLOCKING or MINOR.
 
 SECOND PASS — WHAT IT POINTS AT.
 Read the item again looking ONLY at pointing words: it, its, they, them, their, this, that, these, those, he, she, his, her, such, the former, the latter — plus any "the <noun>" where that noun was never introduced in this item, and any "you" or "we" where it is not clear who is meant.
@@ -84,10 +84,16 @@ For each one ask: is the thing it points at NAMED somewhere inside THIS numbered
  · If you have to guess, or you would have to have read something else to know — report it, and say what you think it means, or UNKNOWN if you cannot guess.
 Report your guess even when you are fairly confident. A guess you got right and a guess you got wrong look identical from where you sit, and the difference is the whole point of asking.
 
+RANK EVERYTHING. Two levels, and the line between them is whether you could keep reading:
+ · BLOCKING — a pointing word you could not resolve, or background you could not bridge. You could not follow the claim without looking something up or guessing.
+ · MINOR — you followed it fine; it could simply have been said plainer.
+**A referent you had to guess at is BLOCKING, always.** Be strict about MINOR: if you understood the sentence, the flag is MINOR, however inelegant the wording. **Most items should be MINOR. If everything you list is BLOCKING, you have not ranked, you have re-listed.**
+Within each pass, put the BLOCKING items first.
+
 Do not list things you merely find interesting.
 
 Output one line per item and nothing else:
-U<n>: <total across both passes> | AK: <term> (CARRYABLE|STANDALONE); … | REF: "<pointing word, verbatim>" → <your best guess, or UNKNOWN>; …
+U<n>: <total across both passes> | AK: <term> (CARRYABLE|STANDALONE, BLOCKING|MINOR); … | REF: "<pointing word, verbatim>" → <your best guess, or UNKNOWN> (BLOCKING|MINOR); …
 
 Write a dash for a pass that found nothing. An item clean on both looks like:
 U<n>: 0 | AK: — | REF: —
@@ -1086,6 +1092,54 @@ export function countUnitLines(text: string): number {
   return seen.size;
 }
 
+/** RULING 2 (2026-08-20) — the drift number the flag policy is graded on.
+ *  Counts flags per unit and splits them BLOCKING / MINOR across a whole freshman transcript.
+ *  🔴 THE WIN CONDITION IS THIS NUMBER TRENDING DOWN. ZERO IS NOT THE TARGET — a freshman reader
+ *  that flags nothing has stopped reading, which is the hurried reader's parrot failure wearing a
+ *  different hat. A rise after a template change is a template effect, not a writing effect:
+ *  windows either side of a hash move are different measurements and never pool. */
+export function flagStats(transcript: string): {
+  units: number; total: number; blocking: number; minor: number; unranked: number; preV3: number; perUnit: number;
+} {
+  let units = 0, total = 0, blocking = 0, minor = 0, unranked = 0, preV3 = 0;
+  for (const line of transcript.split('\n')) {
+    const m = line.match(/^\s*U(\d+)\s*:\s*(.*)$/);
+    if (!m) continue;
+    units++;
+    const body = m[2] ?? '';
+    // Items are ';'-separated inside each pass. A bare dash is an empty pass, not an item.
+    if (!isLabelled(body)) preV3++; // pre-v3 line: it has flags, they just cannot be split or ranked
+    for (const seg of ['ak', 'ref'] as const) {
+      const part = akSegment(body, seg);
+      if (part === null) continue; // pre-v3 line: no passes to split
+      for (const raw of part.split(';')) {
+        const it = raw.trim();
+        if (!it || it === '—' || it === '-') continue;
+        total++;
+        if (/\bBLOCKING\b/i.test(it)) blocking++;
+        else if (/\bMINOR\b/i.test(it)) minor++;
+        else unranked++;
+      }
+    }
+  }
+  return { units, total, blocking, minor, unranked, preV3, perUnit: units ? total / units : 0 };
+}
+
+/** One line, and it REFUSES to state a rate it cannot compute.
+ *  🔴 A pre-v3 transcript has flags that cannot be split or ranked — total would compute to 0 and
+ *  print `0.0/unit`, which reads as a flawless brief. That is the permissive direction, the same
+ *  error shape as the rotation counter logged on 2026-08-19 and as the first cut of akSegment
+ *  earlier tonight. Third instance; the rule is that an uncomputable number is named, never zeroed. */
+export function flagLine(f: ReturnType<typeof flagStats>): string {
+  if (f.preV3)
+    return `flags        ·  NOT COMPUTABLE — ${f.preV3}/${f.units} unit(s) are pre-v3 (no AK:/REF: passes to split or rank). NOT zero flags; unmeasured flags.`;
+  return (
+    `flags        ·  ${f.perUnit.toFixed(1)}/unit  (${f.blocking} blocking, ${f.minor} minor` +
+    (f.unranked ? `, ${f.unranked} UNRANKED — the reader ignored the rank` : '') +
+    `) over ${f.units} unit(s)   ↓ is the win; 0 is not the target`
+  );
+}
+
 export type LegRow = {
   leg: string;
   counts: number[]; // one per expected file; -1 means the file is absent
@@ -1164,7 +1218,10 @@ function printPanel(date: string): number {
     const seeds = (cal.assumed_knowledge?.seeds ?? []).filter(
       (x: { date: string }) => x.date === date
     );
+    const akPath = rbPath(date, 'readback-assumed-knowledge.txt');
     if (!seeds.length) {
+      if (fs.existsSync(akPath))
+        console.log('  ' + flagLine(flagStats(fs.readFileSync(akPath, 'utf-8'))));
       console.log(`  calibration  ·  0 seeds registered for ${date} — nothing asserted, which is an absence, not a pass`);
     } else {
       const tPath = rbPath(date, 'readback-assumed-knowledge.txt');
@@ -1173,7 +1230,9 @@ function printPanel(date: string): number {
         console.log(`  calibration  🔴 RED-LEG — ${seeds.length} seed(s) registered and no freshman transcript to audit`);
       } else {
         const meta: Meta = JSON.parse(fs.readFileSync(rbPath(date, 'meta.json'), 'utf-8'));
-        const res = akAudit(fs.readFileSync(tPath, 'utf-8'), seeds, meta.units.map(u => u.id));
+        const txt = fs.readFileSync(tPath, 'utf-8');
+        console.log('  ' + flagLine(flagStats(txt)));
+        const res = akAudit(txt, seeds, meta.units.map(u => u.id));
         const app = res.filter(r => r.applicable);
         const hit = app.filter(r => r.found).length;
         console.log(
@@ -1342,8 +1401,8 @@ function selftest(): number {
     const sd = all.filter((x: { date: string }) => x.date === '2026-08-10');
     t('the three 2026-08-10 owner seeds are still registered', sd.length === 3);
     t(
-      'the five 2026-08-19 owner marks are registered',
-      all.filter((x: { date: string }) => x.date === '2026-08-19').length === 5
+      'the four 2026-08-19 owner seeds are registered (the it-seed merged into the you-seed, owner ruling 2026-08-20)',
+      all.filter((x: { date: string }) => x.date === '2026-08-19').length === 4
     );
     t(
       'no duplicate seed (same date + unit + matcher)',
@@ -1735,6 +1794,32 @@ function selftest(): number {
     );
   }
 
+  // ── RULING 2: ranked flags ────────────────────────────────────────────────
+  const RANKED =
+    'U1: 3 | AK: x402 (STANDALONE, BLOCKING); jargon-y phrase (CARRYABLE, MINOR) | REF: "it" → UNKNOWN (BLOCKING)';
+  t('flagStats counts every item across both passes', flagStats(RANKED).total === 3);
+  t('flagStats splits BLOCKING from MINOR', flagStats(RANKED).blocking === 2 && flagStats(RANKED).minor === 1);
+  t('flagStats reports per-unit', flagStats(RANKED + '\nU2: 1 | AK: — | REF: —').perUnit === 1.5);
+  t('an empty pass contributes no items', flagStats('U1: 0 | AK: — | REF: —').total === 0);
+  t(
+    'an UNRANKED item is counted and named, never quietly binned as minor',
+    flagStats('U1: 1 | AK: x402 (STANDALONE) | REF: —').unranked === 1
+  );
+  t(
+    'a pre-v3 transcript is NOT reported as zero flags — that is the permissive error',
+    flagStats(V2).preV3 === 1 && flagLine(flagStats(V2)).includes('NOT COMPUTABLE')
+  );
+  t('a ranked transcript does report a rate', flagLine(flagStats(RANKED)).includes('/unit'));
+  t('v4 template ranks: BLOCKING and MINOR both defined', /BLOCKING/.test(ASSUMED_KNOWLEDGE_TEMPLATE) && /MINOR/.test(ASSUMED_KNOWLEDGE_TEMPLATE));
+  t(
+    'v4 template makes an unresolved referent BLOCKING by definition',
+    /referent you had to guess at is BLOCKING/i.test(ASSUMED_KNOWLEDGE_TEMPLATE)
+  );
+  t(
+    'v4 template guards against everything-is-blocking, which would un-rank the list',
+    /Most items should be MINOR/i.test(ASSUMED_KNOWLEDGE_TEMPLATE)
+  );
+
   t('surfaceRoster reports an unprepared surface as prepared:false, never as green', surfaceRoster(false, 0, () => null).prepared === false);
   t(
     'surfaceRoster enumerates ALL THREE legs even when nothing ran — the roster is fixed, not derived',
@@ -1746,7 +1831,7 @@ function selftest(): number {
     `\n${fail ? '✗' : '✓'} selftest ${pass}/${pass + fail} passed  ·  TEMPLATE_HASH ${sha(READER_TEMPLATE)}  ·  HURRIED_HASH ${sha(HURRIED_TEMPLATE)}`
   );
   console.log(
-    `  ASSUMED_KNOWLEDGE_HASH ${sha(ASSUMED_KNOWLEDGE_TEMPLATE)}  [v3 two-pass · advisory · actuates nothing]`
+    `  ASSUMED_KNOWLEDGE_HASH ${sha(ASSUMED_KNOWLEDGE_TEMPLATE)}  [v4 two-pass + ranked · advisory · actuates nothing]`
   );
   if (!fail) console.log('SCRIPT-OK');
   return fail ? 1 : 0;
