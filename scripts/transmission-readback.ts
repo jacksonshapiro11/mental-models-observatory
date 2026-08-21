@@ -1501,6 +1501,176 @@ function printPanel(date: string): number {
   return red;
 }
 
+/** 🔴 THE SO_WHAT ENSEMBLE AND ITS ACTUATION LADDER (owner adoption 2026-08-20).
+ *
+ *  WHY AN ENSEMBLE AT ALL. The single-pass so_what grader was measured on 2026-08-19 and it does
+ *  not reproduce: four undefined-rubric re-runs landed 48.0-53.3%, three defined-rubric off-packet
+ *  runs landed 54.7-62.7%, and the LIVE PRODUCTION run of that same night logged 90.7%. Defining
+ *  the rubric killed the MISSING/WRONG boundary (9 inter-run disagreements -> 0) but did NOT
+ *  collapse the spread — it widened to 8 points once in-sample anchors were removed. The
+ *  pre-registered consequence was an ensemble, and this is it.
+ *
+ *  🔴 THE 90.7% IS RETIRED. It is an artifact of a path that no longer exists, and it is never
+ *  quoted as a quality number again. Neither is the 90.3% all-history baseline built from it.
+ *
+ *  SHAPE. Three graders each grade three reader WHYs per unit against the logged so_what, in
+ *  isolation, on the defined rubric with off-packet anchors. Majority per (unit, reader) is the
+ *  ensemble verdict. A 2-1 split is resolved by the majority and COUNTED, because the split rate is
+ *  the leg's own noise reading.
+ *
+ *  THE LADDER — the standing actuation law, applied to a leg that has only just earned trust:
+ *    · WRONG at 2-of-3 readers actuates IMMEDIATELY, on any night. A WRONG is a direction
+ *      inversion: the reader believes something the so_what denies, and a reader acting on it acts
+ *      backwards. That is not a degree of misunderstanding.
+ *    · MISSING-or-WRONG at 3-of-3 actuates during the leg's first seven graded nights.
+ *    · From the eighth graded night, MISSING-or-WRONG at 2-of-3 actuates.
+ *  Nights are COUNTED FROM THE LEDGER, never from the calendar: a night the leg did not grade is
+ *  not a night it learned anything.
+ *
+ *  ONE PASS. The writer redrafts the DELIVERING SENTENCE — the clause carrying the actionable
+ *  point, per the carried-clause rule — and one reader re-checks. Then it ships. 🔴 THE BRIEF
+ *  ALWAYS SHIPS. Nothing here may block a publish.
+ *
+ *  INHERITED LAWS. Redrafting is rewrite authority, so this pass sits inside the loop's
+ *  jurisdiction. Units that were not actuated must be BYTE-IDENTICAL between graded and shipped. */
+export type SowhatGrade = 'OK' | 'MISSING' | 'WRONG';
+export const SOWHAT_LADDER_NIGHTS = 7;
+
+/** Parses one grader transcript. Lines look like `U<n> SO_WHAT: OK/MISSING/WRONG`. */
+export function parseSowhatGrades(text: string): Record<number, SowhatGrade[]> {
+  const out: Record<number, SowhatGrade[]> = {};
+  for (const line of text.split('\n')) {
+    const m = line.match(/^\s*U(\d+)\s*(?:SO_WHAT)?\s*:\s*([A-Za-z]+)\s*\/\s*([A-Za-z]+)\s*\/\s*([A-Za-z]+)/i);
+    if (!m) continue;
+    const g = [m[2]!, m[3]!, m[4]!].map(x => x.toUpperCase()) as SowhatGrade[];
+    if (g.some(x => x !== 'OK' && x !== 'MISSING' && x !== 'WRONG')) continue;
+    out[Number(m[1])] = g;
+  }
+  return out;
+}
+
+/** Majority per position across three graders. Returns the verdict and whether it was a 2-1 split.
+ *  🔴 A three-way disagreement (OK/MISSING/WRONG) has no majority. It resolves to the WORST grade
+ *  present, because the alternative is resolving a unit nobody agreed on toward OK, and this leg
+ *  spent a full day being audited for exactly that direction of error. It is counted as a split. */
+export function ensembleVerdict(three: SowhatGrade[][]): { verdict: SowhatGrade; split: boolean } {
+  const c: Record<string, number> = {};
+  for (const g of three) c[g[0]!] = (c[g[0]!] ?? 0) + 1;
+  const top = Object.entries(c).sort((a, b) => b[1] - a[1])[0]!;
+  if (top[1] >= 2) return { verdict: top[0] as SowhatGrade, split: top[1] === 2 };
+  const worst: SowhatGrade = three.some(g => g[0] === 'WRONG')
+    ? 'WRONG'
+    : three.some(g => g[0] === 'MISSING')
+      ? 'MISSING'
+      : 'OK';
+  return { verdict: worst, split: true };
+}
+
+export type SowhatAction = 'HOLD' | 'REDRAFT' | 'REDRAFT-INVERSION';
+
+/** The ladder. `nightsGraded` = how many nights this leg has ALREADY graded before tonight. */
+export function sowhatActuation(
+  verdicts: SowhatGrade[],
+  nightsGraded: number
+): { action: SowhatAction; reason: string } {
+  const wrong = verdicts.filter(v => v === 'WRONG').length;
+  const failed = verdicts.filter(v => v === 'WRONG' || v === 'MISSING').length;
+  const n = verdicts.length;
+  if (wrong >= 2)
+    return {
+      action: 'REDRAFT-INVERSION',
+      reason: `WRONG ${wrong}/${n} — a direction inversion actuates at 2-of-3 on any night; a reader acting on it acts backwards`,
+    };
+  const unanimousOnly = nightsGraded < SOWHAT_LADDER_NIGHTS;
+  if (unanimousOnly) {
+    if (failed === n)
+      return { action: 'REDRAFT', reason: `MISSING/WRONG ${failed}/${n} — unanimous (ladder night ${nightsGraded + 1} of ${SOWHAT_LADDER_NIGHTS}: unanimous-only)` };
+    return { action: 'HOLD', reason: `${failed}/${n} failed — logged and left alone (ladder night ${nightsGraded + 1} of ${SOWHAT_LADDER_NIGHTS}: unanimous-only)` };
+  }
+  if (failed >= 2)
+    return { action: 'REDRAFT', reason: `MISSING/WRONG ${failed}/${n} — majority (night ${nightsGraded + 1}, past the unanimous-only window)` };
+  return { action: 'HOLD', reason: `${failed}/${n} failed — below the majority bar` };
+}
+
+/** How many nights this leg has already graded on the ensemble basis. Read from the ledger, never
+ *  from the calendar: a night the leg did not grade is not a night it learned anything. */
+function sowhatNightsGraded(product: string): number {
+  if (!fs.existsSync(LEDGER)) return 0;
+  const rows = JSON.parse(fs.readFileSync(LEDGER, 'utf-8')) as Record<string, unknown>[];
+  const prod = product || 'light';
+  return new Set(
+    rows
+      .filter(r => r['sowhat_basis'] === 'ens/3' && (r['product'] ?? 'light') === prod)
+      .map(r => r['date'])
+  ).size;
+}
+
+function cmdSowhat(date: string): number {
+  const product = PRODUCT_SUFFIX.replace('-', '') || 'light';
+  const files = [1, 2, 3].map(n => rbPath(date, `sowhat-grader-${n}.txt`));
+  console.log(`SO_WHAT ENSEMBLE ${date} (${product}) — 3 graders, majority per reader`);
+
+  const present = files.map(f => fs.existsSync(f));
+  files.forEach((f, i) => console.log(`  grader ${i + 1}  ${present[i] ? '✓' : '🔴 ABSENT'}  ${f}`));
+  if (present.some(x => !x)) {
+    console.log(
+      `  🔴 RED-LEG — ${present.filter(x => !x).length} of 3 grader transcripts missing. An ensemble of fewer than three is not an ensemble, and a partial tally is NOT a lower number — it is an unmeasured one.`
+    );
+    return 1;
+  }
+
+  const parsed = files.map(f => parseSowhatGrades(fs.readFileSync(f, 'utf-8')));
+  const meta: Meta = JSON.parse(fs.readFileSync(rbPath(date, 'meta.json'), 'utf-8'));
+  const idx = meta.units.map(u => u.idx + 1);
+  const short = parsed.map((p, i) => ({ i, missing: idx.filter(n => !p[n]) })).filter(x => x.missing.length);
+  if (short.length) {
+    for (const s of short)
+      console.log(`  🔴 RED-LEG — grader ${s.i + 1} did not grade ${s.missing.length} unit(s): ${s.missing.map(n => 'U' + n).join(', ')}`);
+    console.log(`  A short grader is an unmeasured brief, not a worse one. Re-run that grader.`);
+    return 1;
+  }
+
+  const nights = sowhatNightsGraded(product);
+  let ok = 0, splits = 0, total = 0;
+  const acts: { unit: string; n: number; v: SowhatGrade[]; a: SowhatAction; why: string }[] = [];
+  for (const u of meta.units) {
+    const n = u.idx + 1;
+    const verdicts: SowhatGrade[] = [];
+    for (let r = 0; r < 3; r++) {
+      const e = ensembleVerdict(parsed.map(p => [p[n]![r]!]));
+      verdicts.push(e.verdict);
+      if (e.split) splits++;
+      if (e.verdict === 'OK') ok++;
+      total++;
+    }
+    const { action, reason } = sowhatActuation(verdicts, nights);
+    if (action !== 'HOLD') acts.push({ unit: u.id, n, v: verdicts, a: action, why: reason });
+  }
+
+  console.log(
+    `  units ${meta.units.length} · grades ${total} · OK ${ok}/${total} = ${((100 * ok) / total).toFixed(1)}%   [basis ens/3, RESET 2026-08-20]`
+  );
+  console.log(
+    `  🔴 NOT COMPARABLE to any pre-reset number. The retired single-pass path logged 90.7% on 2026-08-19 and 90.3% all-history; both are artifacts of a path that no longer exists.`
+  );
+  console.log(`  2-1 splits ${splits}/${total} = ${((100 * splits) / total).toFixed(0)}%  — the leg's own noise reading`);
+  console.log(
+    `  ── ACTUATION · ladder night ${nights + 1}${nights < SOWHAT_LADDER_NIGHTS ? ` of ${SOWHAT_LADDER_NIGHTS} (unanimous-only)` : ' (past the window: majority)'} · WRONG at 2-of-3 immediate ──`
+  );
+  if (!acts.length) console.log(`  ✓ no unit meets the bar tonight. Nothing redrafts.`);
+  for (const a of acts)
+    console.log(`  🔴 ${a.a.padEnd(18)} ${a.unit.padEnd(20)} U${a.n}  ${a.v.join('/')}\n        ${a.why}`);
+  if (acts.length) {
+    console.log(
+      `  → ${acts.length} unit(s) to redraft. Rewrite the DELIVERING SENTENCE so the actionable point lands (carried-clause rule). ONE reader re-checks.`
+    );
+    console.log(
+      `  → ONE PASS, then ship regardless. 🔴 THE BRIEF ALWAYS SHIPS. Untouched units must be BYTE-IDENTICAL between graded and shipped.`
+    );
+  }
+  return 0;
+}
+
 // ── SELFTEST (both directions, per the IMP standard) ──────────────────────────
 function selftest(): number {
   let pass = 0,
@@ -2044,6 +2214,39 @@ function selftest(): number {
     );
   }
 
+  // ── SO_WHAT ENSEMBLE + ACTUATION LADDER (owner adoption 2026-08-20) ───────
+  const G = (x: string) => parseSowhatGrades(x);
+  t('parseSowhatGrades reads the grader line shape', Object.keys(G('U1 SO_WHAT: OK/MISSING/WRONG')).length === 1);
+  t('parseSowhatGrades keeps reader order', G('U1 SO_WHAT: OK/MISSING/WRONG')[1]!.join('/') === 'OK/MISSING/WRONG');
+  t('parseSowhatGrades ignores a line with an unknown label', Object.keys(G('U1 SO_WHAT: OK/MAYBE/WRONG')).length === 0);
+  t('parseSowhatGrades ignores prose', Object.keys(G('these units were hard to grade')).length === 0);
+
+  const E = (a: string, b: string, c: string) => ensembleVerdict([[a as SowhatGrade], [b as SowhatGrade], [c as SowhatGrade]]);
+  t('ensemble: unanimous OK is OK and not a split', E('OK', 'OK', 'OK').verdict === 'OK' && !E('OK', 'OK', 'OK').split);
+  t('ensemble: 2-1 takes the majority and IS counted as a split', E('OK', 'OK', 'MISSING').verdict === 'OK' && E('OK', 'OK', 'MISSING').split);
+  t('ensemble: 2-1 the other way', E('MISSING', 'MISSING', 'OK').verdict === 'MISSING');
+  t(
+    'ensemble: a three-way disagreement resolves to the WORST grade, never to OK',
+    E('OK', 'MISSING', 'WRONG').verdict === 'WRONG' && E('OK', 'MISSING', 'WRONG').split
+  );
+
+  const L = (v: string[], n: number) => sowhatActuation(v as SowhatGrade[], n);
+  t('ladder: unanimous MISSING actuates on night 1', L(['MISSING', 'MISSING', 'MISSING'], 0).action === 'REDRAFT');
+  t('ladder: 2-of-3 MISSING HOLDS inside the unanimous-only window', L(['MISSING', 'MISSING', 'OK'], 0).action === 'HOLD');
+  t('ladder: 2-of-3 MISSING actuates from the 8th graded night', L(['MISSING', 'MISSING', 'OK'], 7).action === 'REDRAFT');
+  t(
+    'ladder: WRONG at 2-of-3 actuates on night 1 — an inversion never waits',
+    L(['WRONG', 'WRONG', 'OK'], 0).action === 'REDRAFT-INVERSION'
+  );
+  t('ladder: a single WRONG does not actuate on night 1', L(['WRONG', 'OK', 'OK'], 0).action === 'HOLD');
+  t('ladder: all OK holds on any night', L(['OK', 'OK', 'OK'], 0).action === 'HOLD' && L(['OK', 'OK', 'OK'], 99).action === 'HOLD');
+  t(
+    'ladder: mixed MISSING+WRONG counts as failed for the unanimous bar',
+    L(['MISSING', 'WRONG', 'MISSING'], 0).action === 'REDRAFT'
+  );
+  t('ladder: the reason always names the night, so a verdict can be audited later', L(['OK', 'OK', 'OK'], 2).reason.includes('night 3'));
+  t('ladder window is 7 nights', SOWHAT_LADDER_NIGHTS === 7);
+
   // ── CLAIM-UNDRAFTED POLICY (owner ruling 2026-08-20, decision 2) ──────────
   t('overlapScore is 1.0 when the claim is fully contained', overlapScore('alpha beta gamma', 'alpha beta gamma delta') === 1);
   t('overlapScore is 0 on disjoint content', overlapScore('alpha beta', 'zulu yankee') === 0);
@@ -2172,6 +2375,9 @@ switch (cmd) {
       die('usage: dirty <DATE> <published.md> [--mark] [--product=full]');
     process.exit(cmdDirty(a, b, flags.includes('--mark')));
   // eslint-disable-next-line no-fallthrough
+  case 'sowhat':
+    if (!a) die('usage: sowhat <DATE> [--product=full]   — ensemble of 3 graders + actuation ladder');
+    process.exit(cmdSowhat(a));
   case 'panel':
     if (!a) die('usage: panel <DATE>   — roster for BOTH surfaces; exit 1 on any RED-LEG');
     process.exit(printPanel(a) === 0 ? 0 : 1);
@@ -2188,7 +2394,7 @@ switch (cmd) {
       'transmission-readback.ts — mechanical half of the read-back loop. Never calls a model.'
     );
     console.log(
-      '  prepare <light.md> <claims.json> | check <DATE> | panel <DATE> | tabulate <DATE> | assemble <DATE> | ledger <DATE> | dirty <DATE> <published.md> [--mark] | akcheck <DATE> | --selftest'
+      '  prepare <light.md> <claims.json> | check <DATE> | panel <DATE> | sowhat <DATE> | tabulate <DATE> | assemble <DATE> | ledger <DATE> | dirty <DATE> <published.md> [--mark] | akcheck <DATE> | --selftest'
     );
     console.log(
       '  --product=full routes state to .readback/<DATE>-full/ so the full brief and the light never collide.'

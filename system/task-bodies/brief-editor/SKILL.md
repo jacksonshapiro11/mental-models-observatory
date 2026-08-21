@@ -352,6 +352,63 @@ pattern-match it onto one. Agriculture is nowhere in this brief; markets are eve
 **When this anchor set is used on a packet containing a vineyard or irrigation unit, re-domain it
 again.** The requirement is distance from THE PACKET, not distance from finance.
 
+---
+
+🔴 **THE SO_WHAT LEG IS AN ENSEMBLE AND IT NOW ACTUATES (owner adoption 2026-08-20). BOTH SURFACES, NIGHTLY.**
+
+**STEP 1 — SPAWN THREE GRADERS, NOT ONE.** Each gets the SAME isolated packet: the definitions
+above, the three off-packet anchors above, and for every unit its logged `so_what` plus the three
+readers' WHY strings. **Nothing else — no prose, no logged claim, no claim-leg verdict.** Save to
+`.readback/{DATE}/sowhat-grader-{1,2,3}.txt`, one line per unit:
+`U<n> SO_WHAT: <OK|MISSING|WRONG>/<OK|MISSING|WRONG>/<OK|MISSING|WRONG>`
+
+**STEP 2 — TALLY MECHANICALLY. Do not hand-count 75 grades.**
+
+```
+node --experimental-strip-types scripts/transmission-readback.ts sowhat {DATE}          # light
+node --experimental-strip-types scripts/transmission-readback.ts sowhat {DATE} --product=full
+```
+
+It computes the majority per (unit, reader), prints `so_what OK %` on the **ens/3 basis with its
+denominator**, prints the 2-1 split rate, and applies the ladder. **It exits 1 and prints RED-LEG if
+any grader transcript is absent or short — an ensemble of fewer than three is not an ensemble, and a
+partial tally is not a lower number, it is an unmeasured one.**
+
+**STEP 3 — ACTUATE ON WHAT IT NAMES.**
+
+| verdict across the three readers | first 7 graded nights | 8th night on |
+|---|---|---|
+| **WRONG at 2-of-3** | 🔴 **REDRAFT-INVERSION — immediately** | same |
+| MISSING-or-WRONG at 3-of-3 | 🔴 **REDRAFT** | REDRAFT |
+| MISSING-or-WRONG at 2-of-3 | logged, left alone | 🔴 **REDRAFT** |
+
+**An inversion never waits for the window.** A WRONG means the reader believes something the
+so_what denies, and a reader acting on it acts backwards — that is not a degree of misunderstanding.
+**Nights are counted from the ledger, not the calendar: a night the leg did not grade is not a night
+it learned anything.** The command does the counting.
+
+**STEP 4 — REDRAFT THE DELIVERING SENTENCE, ONCE.** Not the unit. **The clause that carries the
+actionable point.** Per THE CARRIED CLAUSE in `system/Craft_Standard.md`: the so_what ends on what
+the reader would act on; an analytical extension past the takeaway either becomes the point or gets
+cut. Instruction to yourself:
+
+> Unit {n}'s why-care did not arrive. You meant: "{logged so_what}". Three first-time readers took
+> away: "{WHY 1}" / "{WHY 2}" / "{WHY 3}". Rewrite ONLY the delivering sentence so the actionable
+> point lands. Keep every fact and its counter. Change nothing else in the unit.
+
+**STEP 5 — ONE READER RE-CHECKS, THEN SHIP.** Re-read only the redrafted units, one reader round.
+**One pass. Then ship whatever you have.** 🔴 **THE BRIEF ALWAYS SHIPS — nothing in this leg may
+block a publish.**
+
+**INHERITED LAWS, both binding here.** Redrafting is rewrite authority, so this pass sits **inside
+the loop's jurisdiction**. And **units that were not actuated must be BYTE-IDENTICAL between the
+bytes that were graded and the bytes that ship** — reassemble from the untouched units plus the
+redrafted ones and verify, exactly as the claim leg does.
+
+🔴 **THE OLD SINGLE-PASS SO_WHAT PATH IS RETIRED.** Its 90.7% on 2026-08-19 and its 90.3%
+all-history baseline are artifacts of a path that no longer exists. **They are never quoted as
+quality numbers again — only as the artifact they were.**
+
 🔴 **AND THE NIGHTLY so_what GRADE IS AN ENSEMBLE: THREE GRADERS, MAJORITY WINS.** This fires under
 the pre-registered rule — the definitions were expected to collapse the spread and **they did not.**
 
