@@ -816,6 +816,7 @@ function lint(brief: string): Flag[] {
   // ledger for the source count, so it survives the paraphrase that walked past checkCausalNegative
   // one night after that gate shipped.
   flags.push(...checkContestedAttribution(brief));
+  flags.push(...checkInversionSourcing(brief)); // IMP-206 (08-21 Critic mandate #2)
   // IMP-168 is truth-file coupled, so main() supplies the keys; lint() runs it with an empty
   // set, which is the strictest reading (no rows = every selection undisclosed).
   return flags;
@@ -1110,6 +1111,111 @@ export function checkContestedAttribution(brief: string): Flag[] {
         `Malay Mail read the SAME Al Jazeera interview in opposite directions, and the brief picked ` +
         `one in its lead clause. And when the brief's own ledger and its body disagree on a date, ` +
         `the ledger is the evidence and the body is the assertion.`,
+    });
+  }
+  return flags;
+}
+
+// ---------------------------------------------------------------------------
+// IMP-206 — INVERSION SOURCING (2026-08-21 Critic mandate #2, RC2).
+//
+// RECEIPT, 2026-08-21 C&C-1: lead clause — "…and because much of the sales miss behind the selloff
+// is a price control, not a shopper." Body — "No wire carried this: BestStocks attributes about 125
+// basis points of the shortfall to pharmacy Maximum Fair Price deflation, WHICH PUTS THE COMP NEAR
+// 3.9 PERCENT, ABOVE THE CONSENSUS the whole day was built on."
+// VERIFIED: adj EPS $0.81 vs $0.74 ✓ · US comp 2.6% vs 3.5–3.8% ✓ · close $103.84 / −9.15% ✓.
+// NOT CORROBORATED: the 125bp MFP attribution — ONE secondary outlet, and it is the ONLY source for
+// the claim that converts a 2.6% MISS into a ~3.9% BEAT.
+//
+// The datum does not support the bullet's thesis — IT IS the bullet's thesis, and it inverts the
+// entire market's read of the print. "No wire carried this" is a claim about NOVELTY; the reader
+// needs a claim about CONFIDENCE, and the brief made the flattering one.
+//
+// WHY THE LEDGER SOURCE COUNT CANNOT BE THE DISCRIMINATOR — and this is the whole design decision.
+// The mandate words the trigger as "the staleness-ledger row names ≤1 source for that specific
+// figure", but the 08-21 ledger row for this bullet lists FIVE reads, so every source-count check on
+// the page read healthy. The Critic names the reason in the next breath: FIVE SOURCES FOR THE PRINT
+// AND ONE FOR THE INVERSION IS NOT FIVE SOURCES FOR THE INVERSION. The ledger counts per BULLET; the
+// question is per FIGURE; and no per-figure count exists anywhere in the artifact. A leg keyed on
+// `row.sources <= 1` would therefore be SILENT ON ITS OWN RECEIPT — green, shipped, and worthless.
+// So the discriminator is the one the mandate also names and that does exist on disk: whether the
+// READER is told the confidence. One escape, and it is deliberately reader-facing —
+// "not in the ledger, and never as a boast about exclusivity".
+//
+// THE COMPLIANT TWIN, on the same page, is what calibrates this: M&M-3 carries a single-sourced
+// inverting datum too ("a record 63.4 percent in July 2016 to under 4 percent") and discloses it in
+// the body — "on Liz Ann Sonders' READING of the series. That is HER COUNT, her extremum and her
+// exclusion of the COVID crash". Same defect shape, opposite handling, and a gate that punished it
+// would teach the Writer to stop doing the right thing.
+
+// A claim that the brief's datum reverses the prevailing read. Each alternative is lifted from the
+// mandate's own list; `which puts the … near/at/above` is the construction that does the actual
+// inverting work (it restates a reported figure as a different figure).
+// CALIBRATED AGAINST ALL 171 PUBLISHED BRIEFS BEFORE SHIPPING — the step that separates a gate from
+// a phrase ban, and it moved this gate a long way. The mandate's literal phrase list fired on 12
+// archive briefs and ALL TWELVE WERE FALSE FRIENDS. Two whole alternatives had to go:
+//   • `the opposite of what` — 6 of the 12, zero true positives. In this brief's voice it is an
+//     ANALYTICAL contrast, not a sourcing claim: "positioned for the opposite of what just happened"
+//     (04-12), "pricing the opposite of what the Fed is promising" (06-23), "the opposite of what
+//     export controls were supposed to cost the incumbent" (08-14). Banning it would punish the
+//     house style for the shape of a defect it does not have.
+//   • bare `above the consensus` — 05-21's "the whisper number was above the consensus number"
+//     describes OTHER people's expectations against each other. The brief is not inverting anything.
+// And `run` had to leave the reported-verb list: 08-04's "Nobody has run it through a flat year" and
+// 08-20's "no one runs an evaluation on a voltage regulator" are literal statements about the world.
+// What survives is the shape that actually inverts: an EXCLUSIVITY BOAST, or a RESTATEMENT OF A
+// REPORTED FIGURE AS A DIFFERENT FIGURE. Both legs additionally require a NUMBER in the sentence —
+// an inversion with no number is a reframe, and reframes are the section's job (08-10's "which puts
+// the agent inside the state rather than outside it" is good writing, not an unsourced datum).
+const INVERSION_RE = new RegExp(
+  [
+    String.raw`no\s+wire\s+carried`,
+    String.raw`(?:nobody|no\s+one|no\s+outlet|no\s+other\s+outlet)\s+(?:has\s+)?(?:reported|carried|written|noted)`,
+    String.raw`which\s+puts\s+the\s+[\w\s'’-]{0,40}?\s*(?:near|at|above|below|closer\s+to)\s+[^.]{0,24}\d`,
+  ].join('|'),
+  'i'
+);
+/** An inversion is only a SOURCING problem when it restates a quantity. */
+const INVERSION_FIGURE_RE = /\d/;
+// THE ONE ESCAPE — the reader-facing text names the single outlet AND marks its tier/singularity, so
+// the reader can discount it. Every alternative here is a real form from the archive, and the third
+// is precisely M&M-3's compliant disclosure.
+const INVERSION_DISCLOSED_RE = new RegExp(
+  [
+    String.raw`\b(?:on|per|from)\s+(?:one|a\s+single|just\s+one|only\s+one)\s+(?:outlet|source|shop|site|account|read(?:ing)?)`,
+    String.raw`\bthat\s+is\s+(?:her|his|their|its)\s+(?:own\s+)?(?:count|read|reading|estimate|number|figure|attribution|series|arithmetic)`,
+    String.raw`\bon\s+[A-Z][\w.&'’-]*(?:\s+[A-Z][\w.&'’-]*){0,3}(?:'s|’s)\s+(?:reading|count|estimate|attribution|number|series|measure|telling|arithmetic)`,
+    String.raw`\b(?:single[-\s]sourced|uncorroborated|not\s+corroborated|unconfirmed\s+by|no\s+second\s+source|sole\s+(?:source|outlet)|one\s+secondary\s+outlet)`,
+    String.raw`\bnobody\s+else\s+(?:has\s+)?(?:run|carried|reported)\s+(?:it|this|the\s+number)\b[^.]{0,60}\bso\s+treat`,
+  ].join('|'),
+  'i'
+);
+
+export function checkInversionSourcing(brief: string): Flag[] {
+  const flags: Flag[] = [];
+  for (const b of readerBullets(brief)) {
+    const m = b.text.match(INVERSION_RE);
+    if (!m) continue;
+    if (INVERSION_DISCLOSED_RE.test(b.text)) continue; // the one escape
+    const sentence =
+      b.text.split(/(?<=[.!?])\s+/).find(s => s.includes(m[0])) ?? b.text;
+    if (!INVERSION_FIGURE_RE.test(sentence)) continue; // a reframe, not a restated quantity
+    flags.push({
+      check: 'inversion-sourcing',
+      where: b.section,
+      message:
+        `INVERSION CLAIM WITHOUT A CONFIDENCE CLAIM — "${sentence.replace(/\s+/g, ' ').trim().slice(0, 170)}" ` +
+        `asserts that this brief's datum REVERSES the day's consensus ("${m[0]}"), and the reader is never told ` +
+        `how well attested the inverting figure is. A CLAIM THAT REVERSES THE DAY'S CONSENSUS CARRIES A HIGHER ` +
+        `SOURCING BAR THAN THE CONSENSUS IT REVERSES. "No wire carried this" is a claim about NOVELTY; the reader ` +
+        `needs one about CONFIDENCE, and a bullet that offers the first in place of the second has made the ` +
+        `flattering trade. NOTE THE LEDGER CANNOT CLEAR THIS: five sources for the PRINT and one for the ` +
+        `INVERSION is not five sources for the inversion, which is why the escape is reader-facing. Fix it in the ` +
+        `BULLET, one of two ways: name the outlet and its tier ("on one outlet's attribution"), or corroborate the ` +
+        `figure independently and say so. RECEIPT (2026-08-21 C&C-1): one secondary outlet's 125bp MFP attribution ` +
+        `was the sole support for converting a 2.6% comp MISS into a ~3.9% BEAT — and on the SAME PAGE, M&M-3 ` +
+        `disclosed its own single-sourced extremum correctly: "on Liz Ann Sonders' reading of the series. That is ` +
+        `her count, her extremum and her exclusion of the COVID crash."`,
     });
   }
   return flags;
@@ -1720,6 +1826,66 @@ function selftest(): number {
     assert(
       caNoisy.length === 0,
       `[IMP-203] FALSE-POSITIVE FLOOR — 0 flags across every published July and August brief${caNoisy.length ? ` (got ${caNoisy.join(', ')})` : ''}`
+    );
+
+    // --- IMP-206 (08-21 mandate #2): INVERSION SOURCING. The strongest form of this test is
+    //     available here: the DEFECT and its REPAIR are the SAME BULLET on the same date. The
+    //     evening v2 said "No wire carried this: BestStocks attributes…"; the Morning Truth Gate
+    //     corroborated the figure overnight and the PUBLISHED brief says the opposite — "a figure
+    //     Walmart's own deck and three separate wires carried on the day". Fire on one, silent on
+    //     the other, no fixtures involved. ---
+    const v2_0821 = read('daily-briefs/2026-08-21-v2.md');
+    const pub_0821 = read('content/daily-updates/2026-08-21.md');
+    const invFire = v2_0821 ? checkInversionSourcing(v2_0821) : [];
+    assert(
+      invFire.length === 1 && invFire[0]!.where === 'Companies & Crypto',
+      `[IMP-206] FIRES on the 08-21 evening C&C-1 — "No wire carried this" + "which puts the comp near 3.9 percent", no confidence claim${invFire.length !== 1 ? ` (got ${invFire.length})` : ''}`
+    );
+    assert(
+      pub_0821 != null && checkInversionSourcing(pub_0821).length === 0,
+      `[IMP-206] SILENT on the PUBLISHED 08-21 — the same bullet after the morning pass corroborated the 125bp figure${pub_0821 ? ` (got ${checkInversionSourcing(pub_0821).length})` : ''}`
+    );
+    // SILENT — the mandate's two named same-page controls, both correct on the night.
+    assert(
+      invFire.filter(f => f.where === 'Geopolitics').length === 0,
+      '[IMP-206] SILENT on 08-21 Geo-2 — Kpler single-source but no inversion claim, primary quoted directly'
+    );
+    assert(
+      invFire.filter(f => f.where === 'Markets & Macro').length === 0,
+      "[IMP-206] SILENT on 08-21 M&M-3 — THE COMPLIANT TWIN: a single-sourced inverting extremum that DISCLOSES itself (\"on Liz Ann Sonders' reading … that is her count\")"
+    );
+    // The escape is the behaviour this gate is buying — prove it clears, or the gate is a phrase ban.
+    const invDefect =
+      '# X\n\n## Companies & Crypto\n\n- **Lead.** No wire carried this: BestStocks attributes about 125 basis points of the shortfall to pharmacy Maximum Fair Price deflation, which puts the comp near 3.9 percent, above the consensus the whole day was built on.\n';
+    assert(
+      checkInversionSourcing(invDefect).length === 1,
+      '[IMP-206] the isolated defect sentence fires on its own'
+    );
+    assert(
+      checkInversionSourcing(
+        invDefect.replace(
+          'No wire carried this: BestStocks attributes',
+          'On one outlet’s attribution, BestStocks puts'
+        )
+      ).length === 0,
+      '[IMP-206] SILENT once the bullet names the single outlet and its tier — THE ONE ESCAPE, reader-facing'
+    );
+    // FALSE-POSITIVE FLOOR across the WHOLE archive. This is the leg that reshaped the gate: the
+    // mandate's literal phrase list fired on 12 published briefs and all 12 were false friends
+    // ("the opposite of what positioning expected", "Nobody has run it through a flat year"). Two
+    // alternatives were deleted and a figure requirement added; the floor is now zero.
+    const invNoisy: string[] = [];
+    for (const f of fs
+      .readdirSync(path.join(process.cwd(), 'content/daily-updates'))
+      .filter(x => /^2026-\d\d-\d\d\.md$/.test(x))) {
+      const body = read(`content/daily-updates/${f}`);
+      if (!body) continue;
+      const n = checkInversionSourcing(body).length;
+      if (n) invNoisy.push(`${f}:${n}`);
+    }
+    assert(
+      invNoisy.length === 0,
+      `[IMP-206] FALSE-POSITIVE FLOOR — 0 flags across ALL published briefs${invNoisy.length ? ` (got ${invNoisy.join(', ')})` : ''}`
     );
   }
 

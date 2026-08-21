@@ -2037,6 +2037,211 @@ export function settleObservationRail(
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// IMP-205 — THE OBSERVATION-KIND LEG (2026-08-21 Critic mandate #3, RC2).
+//
+// 2026-08-21 Dashboard, Crypto: "…it OPENED Thursday at $69,289.44, up 7.1 percent from Wednesday's
+// OPEN, trading $71,980.32 BY 9:15 ET while ether OPENED at $2,251.93". Bitcoin has no open and no
+// close. Same page, same night: Equities carried four correct CLOSES and Commodities two correct
+// SETTLES, and the sentence said "settled". THE DASHBOARD KNOWS HOW TO DO THIS — it did it twice on
+// the same page. Third consecutive night the Dashboard carried the brief's worst data defect
+// (E-DASHBOARD-INFERENCE-01, opened 08-20).
+//
+// WHY EVERY EXISTING LEG WAS SILENT, and it is not the reason you would guess:
+//   • IMP-173's settle-observation asks whether an `observedAt` PRECEDES an instrument's settle.
+//     For a continuously-traded asset there IS no settle to compare against, so it is silent by
+//     construction — that is the Critic's diagnosis and it is correct.
+//   • IMP-196 asks whether a level is stale against the archive — it checks the NUMBER, and nothing
+//     checked the SENTENCE built on it.
+//   • AND A THIRD REASON THE CRITIC COULD NOT SEE: settleObservationRail keys exclusively off
+//     `price:` claim rows, and THAT SCHEMA IS DECAYING. Measured this session across every truth
+//     file on disk: `price:` rows appear on 2026-08-14 (12 rows — the night IMP-173 shipped), then
+//     10 · 5 · 8 · **0** · 3 · **0**. TWO OF THE LAST THREE NIGHTS HAD ZERO `price:` ROWS, including
+//     08-21 itself. A leg hung off that key would have been BORN DEAD and still passed a synthetic
+//     selftest forever. See ESC-018.
+//
+// So this leg reads the READER-FACING DASHBOARD PROSE, which is where the mandate's own
+// discriminator lives ("unless the reader-facing sentence states the observation time") and which
+// exists on every brief regardless of truth-file schema drift. Truth rows are consulted when
+// present, never depended on.
+//
+// ONE LEG — THE CATEGORY ERROR: a session verb (opened / closed / Wednesday's open) bound to an
+// instrument that never closes. NO TIMESTAMP REPAIRS THIS — an asset with no open did not open — so
+// the fix is to rewrite the observation ("was trading $71,980.32 at 09:15 ET"), not to date the
+// fiction. This is why the mandate's "unless the reader-facing sentence states the observation time"
+// is NOT wired as an escape on this leg: on 08-21 the "$71,980.32 by 9:15 ET" clause states its age
+// and is CORRECT, while "opened Thursday at $69,289.44" states a day and is still a category error.
+//
+// A SECOND LEG WAS BUILT AND THEN DELETED, and the deletion is the more useful record. It flagged
+// any crypto level with no stated observation age — the mandate's other half. Swept across all 171
+// published briefs judged in force it produced 231 flags on 150 nights, essentially all of them the
+// legacy `| Asset | Price | 1D | …` Dashboard TABLE and ordinary prose ("Vitalik sold ~$18M in ETH
+// over recent weeks"). That is a flag generator, not a gate. PROXY DISCIPLINE (Ceiling Doctrine §9):
+// build for the RECURRING class, and every proxy pays a Goodhart tax. The recurring class here — the
+// third consecutive night of E-DASHBOARD-INFERENCE-01 — is the category error, and that is all this
+// ships. If unstated age recurs on its own, it earns its own check then.
+const OBSERVATION_KIND_EFFECTIVE_FROM = '2026-08-21'; // IMP-125: no retroactive condemnation.
+
+/** Instruments that trade continuously (crypto, FX) — loaded from system/entity-bindings.json,
+ *  the registry the mandate names. Falls back to a documented literal only if the file or the key
+ *  is unreadable, so a registry edit changes behaviour and a registry outage does not silence the
+ *  gate. */
+function continuouslyTradedMatchers(): { id: string; re: RegExp }[] {
+  const fallback = [
+    { id: 'bitcoin', re: /\b(?:bitcoin|BTC)\b/i },
+    { id: 'ether', re: /\b(?:ether|ethereum|ETH)\b/i },
+  ];
+  try {
+    const p = path.join(process.cwd(), 'system', 'entity-bindings.json');
+    const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+    const rows = Array.isArray(j?.continuouslyTraded) ? j.continuouslyTraded : null;
+    if (!rows || !rows.length) return fallback;
+    const out: { id: string; re: RegExp }[] = [];
+    for (const r of rows) {
+      const key = String(r?.key ?? '').trim();
+      if (!key) continue;
+      try {
+        out.push({ id: String(r?.id ?? key), re: new RegExp(key, 'i') });
+      } catch {
+        /* a malformed pattern is skipped, never fatal — one bad row cannot dark the gate */
+      }
+    }
+    return out.length ? out : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** The Dashboard's `### <label>` sub-blocks, in order. Comments stripped: the reader never sees them. */
+function dashboardBlocks(brief: string): { label: string; text: string }[] {
+  const reader = brief.replace(/<!--[\s\S]*?-->/g, ' ');
+  const m = reader.match(/^#\s*▸\s*THE DASHBOARD\s*$/m);
+  if (!m || m.index == null) return [];
+  const rest = reader.slice(m.index + m[0].length);
+  const end = rest.match(/^#\s*▸/m);
+  const region = end && end.index != null ? rest.slice(0, end.index) : rest;
+  const out: { label: string; text: string }[] = [];
+  const parts = region.split(/^###\s+/m).slice(1);
+  for (const part of parts) {
+    const nl = part.indexOf('\n');
+    if (nl < 0) continue;
+    out.push({ label: part.slice(0, nl).trim(), text: part.slice(nl + 1).trim() });
+  }
+  return out;
+}
+
+// SESSION VERBS — the vocabulary of an instrument that HAS a session. `open` as a NOUN is included
+// deliberately ("from Wednesday's open"): the 08-21 defect used the verb and the noun in one
+// sentence, and the noun is the more confident of the two.
+//
+// CALIBRATED AGAINST ALL 171 PUBLISHED BRIEFS JUDGED IN FORCE — not against the handful of recent
+// nights, which is what made the first build look clean. Three corrections came out of that sweep:
+//   • BARE `close`/`closes` DELETED — 11 of 28 leg-A hits, zero true positives. "if BTC CLOSES above
+//     the 200-period EMA" (02-27) is standard candle-close chart language about a future bar, and
+//     "The weekly CLOSE matters" is a convention, not a claimed session level. The defect is an
+//     asserted past observation, so only the past-tense/possessive forms survive.
+//   • `settle`/`settles` present-tense DELETED for the same reason.
+//   • Bare co-occurrence in a sentence was not enough: 03-09's "Gold … floor held at $5,094
+//     intraday, CLOSED ~$5,131" fired because BTC was named elsewhere in the same sentence. GOLD
+//     closes; the verb has to be bound to the 24/7 instrument, so the instrument must appear within
+//     PROXIMITY_CHARS before the verb.
+const SESSION_VERB_RE =
+  /\b(?:opened|reopened|closed|settled)\b|\b(?:the|its|his|her|a|yesterday's|today's|Monday's|Tuesday's|Wednesday's|Thursday's|Friday's|Saturday's|Sunday's)\s+(?:open|close|settle)\b|\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(?:open|close)\b/i;
+/** How far before a session verb the instrument may sit and still be its subject. */
+const PROXIMITY_CHARS = 60;
+// A stated observation time: a clock reading, or an explicit trailing-window phrase. "early Monday",
+// "this morning" and "on the session" are ages a reader can act on for a 24/7 asset; "Thursday" alone
+// is not, but a bare weekday only ever reaches leg (B) when no session verb is present.
+// A DAY-PART is a stated age even without a clock: "early Monday", "this morning", "late Thursday"
+// all give the reader a window they can act on. Calibrated on the real archive — WITHOUT the weekday
+// alternation this leg flagged 2026-08-17's "Bitcoin traded at $63,445 EARLY MONDAY", which states
+// its age in the compliant way and is exactly the silence a storm-free gate has to hold.
+const STATED_OBSERVATION_TIME_RE =
+  /\b\d{1,2}:\d{2}\s*(?:a\.?m\.?|p\.?m\.?)?\s*(?:ET|EDT|EST|UTC|GMT|London|Singapore|HKT)?\b|\bas of\b|\bat\s+(?:the\s+)?time\s+of\s+writing\b|\b(?:this|early|late|mid-?)\s+(?:morning|afternoon|evening|today|yesterday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b|\b(?:over|across|on)\s+(?:the\s+)?(?:past|trailing|last)\s+(?:twenty-four|24)\s*(?:-|\s)?\s*hours?\b|\btwenty-four\s+hours?\b|\b24h\b|\bon the session\b|\bintraday\b|\bthis morning\b/i;
+// A money level or an index handle — the thing whose age is in question.
+const LEVEL_RE = /[$€£¥]\s?\d[\d,]*(?:\.\d+)?|\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/;
+
+export function checkObservationKind(
+  brief: string,
+  truth: any,
+  briefDate: string | null,
+  requireResolved: boolean
+): { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] {
+  const out: { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] = [];
+  if (briefDate && briefDate < OBSERVATION_KIND_EFFECTIVE_FROM) return out;
+  const matchers = continuouslyTradedMatchers();
+  if (!matchers.length) return out;
+
+  for (const block of dashboardBlocks(brief)) {
+    // Sentence-scoped, so one correct clause cannot launder an incorrect one and one incorrect
+    // clause cannot condemn a correct one. Both directions matter: on 08-21 the SAME PARAGRAPH
+    // holds the defect and a compliant "by 9:15 ET" observation.
+    // Markdown TABLE rows are excluded. The Dashboard was a `| Asset | Price | 1D | …` table for
+    // most of the archive, and a table cell is a schema, not a sentence making an observation —
+    // firing on 150 nights of legacy format would bury the one night that matters.
+    const prose = block.text
+      .split('\n')
+      .filter(l => !/^\s*\|/.test(l))
+      .join('\n');
+    const sentences = prose.split(/(?<=[.!?])\s+/);
+    for (const s of sentences) {
+      const named = matchers.filter(m => m.re.test(s));
+      if (!named.length) continue;
+      if (!LEVEL_RE.test(s)) continue; // a sentence with no level makes no observation
+      const ids = [...new Set(named.map(n => n.id))].join(', ');
+
+      // EVERY session verb whose SUBJECT is the 24/7 instrument, not just the first — the 08-21
+      // defect used three ("Wednesday close", "opened", "Wednesday's open") in one sentence, and a
+      // message naming one of them would send the Editor to fix a quarter of the problem.
+      const verbs: string[] = [];
+      const g = new RegExp(SESSION_VERB_RE.source, 'gi');
+      let vm: RegExpExecArray | null;
+      while ((vm = g.exec(s)) !== null) {
+        const before = s.slice(Math.max(0, vm.index - PROXIMITY_CHARS), vm.index);
+        if (!named.some(n => n.re.test(before))) continue; // gold closes; bitcoin does not
+        const v = vm[0].replace(/\s+/g, ' ').trim();
+        if (!verbs.includes(v)) verbs.push(v);
+      }
+      if (verbs.length) {
+        out.push({
+          check: 'observation-kind',
+          severity: requireResolved ? 'FAIL' : 'FLAG',
+          message:
+            `WRONG OBSERVATION KIND FOR A CONTINUOUSLY-TRADED INSTRUMENT — Dashboard "${block.label}" ` +
+            `describes ${ids} with ${verbs.length} session verb(s) [${verbs.join(' · ')}]: "${s.replace(/\s+/g, ' ').trim().slice(0, 180)}". ` +
+            `AN INSTRUMENT THAT NEVER CLOSES HAS NO OPEN, NO CLOSE AND NO SETTLE, so this is a category error and ` +
+            `NO TIMESTAMP REPAIRS IT — dating a fiction does not make it an observation. Rewrite as a level plus its ` +
+            `instant ("was trading $71,980.32 at 09:15 ET") or as a stated window ("up 7.1% over the trailing 24 hours ` +
+            `to 09:15 ET"). RECEIPT (2026-08-21): "it opened Thursday at $69,289.44, up 7.1 percent from Wednesday's ` +
+            `open … while ether opened at $2,251.93" — and on the SAME PAGE, Equities carried four correct closes and ` +
+            `Commodities two correct settles. The Dashboard knows how to do this; it did it twice on the same page.`,
+        });
+      }
+    }
+  }
+
+  // Truth rows are corroboration when present, never the gate's spine — `price:` rows appeared on
+  // 08-14 and were absent on two of the six nights since (ESC-018), so depending on them would make
+  // this leg silently conditional on a schema nobody enforces.
+  const claims = truth?.claims;
+  if (claims && typeof claims === 'object') {
+    for (const [key, row] of Object.entries<any>(claims)) {
+      if (!/^price:/.test(key)) continue;
+      if (!matchers.some(m => m.re.test(key))) continue;
+      if (!/-(?:open|close|settle)-/.test(key)) continue;
+      out.push({
+        check: 'observation-kind',
+        severity: requireResolved ? 'FAIL' : 'FLAG',
+        message:
+          `TRUTH ROW ASSERTS A SESSION EVENT FOR A CONTINUOUSLY-TRADED INSTRUMENT — "${key}" is keyed as an ` +
+          `open/close/settle row, and that instrument has none. Re-key it to the instant observed ` +
+          `(price:<asset>-at-<ISO instant>) and carry observedAt. Row: ${JSON.stringify(row).slice(0, 160)}`,
+      });
+    }
+  }
+  return out;
+}
+
 const ATTR_SUPERLATIVE_EFFECTIVE_FROM = '2026-08-12';
 const ATTR_FRAME_RE = new RegExp(
   [
@@ -6310,7 +6515,132 @@ function selftest(): number {
     `  [IMP-196] NO STORM: silent across eight healthy nights — the precision floor (a decimal, or 4+ significant digits) is what buys this, since rounded crude handles like "$84"/"$91" legitimately repeat across days and firing on them would make the gate a flag generator on its first live night: ${okDlsNoStorm ? '✓' : '✗'}${dlsNoisy.length ? ` (got ${dlsNoisy.join(', ')})` : ''}`
   );
 
+  // ── IMP-205 (08-21 Critic mandate #3, RC2): OBSERVATION KIND ─────────────────────────────────
+  // Four cases, two directions, all on tonight's real bytes, exactly as the mandate specified.
+  const ok0821v2 = path.join(process.cwd(), 'daily-briefs/2026-08-21-v2.md');
+  const okBody0821 = fs.existsSync(ok0821v2)
+    ? fs.readFileSync(ok0821v2, 'utf8')
+    : '';
+  const okFindings = okBody0821
+    ? checkObservationKind(okBody0821, null, '2026-08-21', true)
+    : [];
+  // FIRE — the Crypto entry: two `opened` verbs, a possessive `Wednesday's open`, and a
+  // `Wednesday close` for an asset that has none.
+  const okObsFire =
+    okFindings.length === 1 &&
+    okFindings[0]!.severity === 'FAIL' &&
+    /"Crypto"/.test(okFindings[0]!.message);
+  console.log(
+    `  [IMP-205] FIRES on the 08-21 Dashboard Crypto entry — a session verb bound to a 24/7 instrument: ${okObsFire ? '✓' : '✗'} (${okFindings.length} finding(s))`
+  );
+  // And it must name EVERY session verb, not the first — the Editor cannot fix a quarter of a
+  // sentence it was only told a quarter about.
+  const okObsAllVerbs =
+    okFindings.length === 1 &&
+    /Wednesday close/.test(okFindings[0]!.message) &&
+    /opened/.test(okFindings[0]!.message) &&
+    /Wednesday's open/.test(okFindings[0]!.message);
+  console.log(
+    `  [IMP-205] and it names all three session verbs [Wednesday close · opened · Wednesday's open]: ${okObsAllVerbs ? '✓' : '✗'}`
+  );
+  // SILENT — Equities (four correct closes) and Commodities & Rates (two settles, "settled"), on
+  // the SAME PAGE as the defect. These are the only silence tests that mean anything: the
+  // Dashboard demonstrably knows how to do this, twice, on the page where it got it wrong.
+  const okObsSilentSamePage =
+    okFindings.filter(f => /"Equities"|"Commodities/.test(f.message)).length === 0;
+  console.log(
+    `  [IMP-205] SILENT on the same page's Equities (4 closes) and Commodities & Rates (2 settles): ${okObsSilentSamePage ? '✓' : '✗'}`
+  );
+  // SILENT — the published 2026-08-19 Dashboard, whose crude handles are settle-shaped and whose
+  // crypto entry says "traded near $64,170 … on the session".
+  const p0819 = path.join(process.cwd(), 'content/daily-updates/2026-08-19.md');
+  const okObsSilent0819 = fs.existsSync(p0819)
+    ? checkObservationKind(fs.readFileSync(p0819, 'utf8'), null, '2026-08-21', true)
+        .length === 0
+    : false;
+  console.log(
+    `  [IMP-205] SILENT on the published 2026-08-19 Dashboard, judged IN FORCE (not merely exempt): ${okObsSilent0819 ? '✓' : '✗'}`
+  );
+  // NO-STORM / TRUE-POSITIVE PIN — every published brief, judged in force. This leg was rebuilt
+  // three times against the archive and each rebuild is recorded in the header comment; the final
+  // shape is a PINNED SET rather than a zero, because the archive genuinely contains this defect and
+  // a gate asserting zero here would be asserting something false.
+  //
+  // THE FINDING THAT CAME OUT OF IT: E-DASHBOARD-INFERENCE-01 is not three nights old. Six earlier
+  // published Dashboards carry the same category error — "BTC CLOSED at $67,468 Tuesday" (06-03),
+  // "BTC OPENED at $63,310 Monday" (06-09), "Bitcoin SETTLED near $64,200" (07-19), "Ether carried a
+  // $1,880 valuation into SUNDAY'S CLOSE" (08-04), and on 08-07 a sentence all but byte-identical to
+  // 08-21's: "Ether OPENED at $1,906.96, up 2.1 percent against WEDNESDAY'S OPEN". Seven occurrences
+  // clears the PROXY DISCIPLINE's recurring-class bar (≥2) with room to spare.
+  //
+  // The set is pinned EXACTLY: a new date appearing here is a false friend to diagnose, and a date
+  // disappearing means the gate stopped seeing a defect it used to catch. Either way it reds.
+  const OBS_KNOWN_TRUE_POSITIVES = [
+    '2026-06-01',
+    '2026-06-03',
+    '2026-06-09',
+    '2026-07-19',
+    '2026-08-04',
+    '2026-08-07',
+  ];
+  const obsHits: string[] = [];
+  for (const f of fs
+    .readdirSync(path.join(process.cwd(), 'content/daily-updates'))
+    .filter(x => /^2026-\d\d-\d\d\.md$/.test(x))
+    .filter(x => x.slice(0, 10) !== '2026-08-21')) {
+    const b = fs.readFileSync(
+      path.join(process.cwd(), 'content/daily-updates', f),
+      'utf8'
+    );
+    if (checkObservationKind(b, null, '2026-08-21', true).length)
+      obsHits.push(f.slice(0, 10));
+  }
+  const obsUnexpected = obsHits.filter(d => !OBS_KNOWN_TRUE_POSITIVES.includes(d));
+  const obsMissing = OBS_KNOWN_TRUE_POSITIVES.filter(d => !obsHits.includes(d));
+  const okObsNoStorm = obsUnexpected.length === 0 && obsMissing.length === 0;
+  console.log(
+    `  [IMP-205] NO STORM / TRUE-POSITIVE PIN: the archive fires on exactly the 6 known real instances of this defect and nothing else: ${okObsNoStorm ? '✓' : '✗'}${obsUnexpected.length ? ` (UNEXPECTED: ${obsUnexpected.join(', ')})` : ''}${obsMissing.length ? ` (STOPPED CATCHING: ${obsMissing.join(', ')})` : ''}`
+  );
+  // NO-RETRO — IMP-125: the rule binds from 2026-08-21 forward, and the boundary is a real switch,
+  // proven on the SAME BYTES read both ways.
+  const okObsNoRetro =
+    okBody0821 !== '' &&
+    checkObservationKind(okBody0821, null, '2026-08-20', true).length === 0 &&
+    checkObservationKind(okBody0821, null, '2026-08-21', true).length === 1;
+  console.log(
+    `  [IMP-205] NO RETRO: the same 08-21 bytes are EXEMPT judged as 08-20 and FIRE judged as 08-21: ${okObsNoRetro ? '✓' : '✗'}`
+  );
+  // The registry is load-bearing, not decorative — the mandate names entity-bindings.json as the
+  // home for the continuously-traded flag, so prove the gate actually reads it.
+  const okObsRegistry = (() => {
+    try {
+      const j = JSON.parse(
+        fs.readFileSync(
+          path.join(process.cwd(), 'system/entity-bindings.json'),
+          'utf8'
+        )
+      );
+      return (
+        Array.isArray(j?.continuouslyTraded) &&
+        j.continuouslyTraded.length >= 2 &&
+        j.continuouslyTraded.some((r: any) => /bitcoin/i.test(String(r?.id)))
+      );
+    } catch {
+      return false;
+    }
+  })();
+  console.log(
+    `  [IMP-205] the continuously-traded roster is READ FROM system/entity-bindings.json, not hardcoded: ${okObsRegistry ? '✓' : '✗'}`
+  );
+
   const ok =
+    okObsFire &&
+    okObsAllVerbs &&
+    okObsSilentSamePage &&
+    okObsSilent0819 &&
+    okObsNoStorm &&
+    okObsNoRetro &&
+    okObsRegistry &&
     okDaFire &&
     okDaSilentSettledAt &&
     okDaSilentMagnitude &&
@@ -6901,6 +7231,14 @@ function main() {
   // IMP-173 — THE SETTLE-OBSERVATION RAIL (2026-08-14 Critic mandate #3, RC2, new class).
   findings.push(
     ...settleObservationRail(truth, briefDate, requireResolved).map(f => ({
+      check: f.check,
+      severity: f.severity as any,
+      message: f.message,
+    }))
+  );
+  // IMP-205 — THE OBSERVATION-KIND LEG (2026-08-21 Critic mandate #3, RC2).
+  findings.push(
+    ...checkObservationKind(body, truth, briefDate, requireResolved).map(f => ({
       check: f.check,
       severity: f.severity as any,
       message: f.message,
