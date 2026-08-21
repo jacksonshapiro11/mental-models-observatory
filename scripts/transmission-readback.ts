@@ -309,6 +309,7 @@ function candidates(
 export type SegmentFindings = {
   claimUndrafted: { unit: string; section: string; claim: string }[];
   proseUnclaimed: { section: string; words: number }[];
+  mispaired?: { unit: string; section: string; score: number }[];
 };
 /** Side channel for cmdPrepare. segment() must keep returning Unit[] — every caller depends on it. */
 let LAST_FINDINGS: SegmentFindings = { claimUndrafted: [], proseUnclaimed: [] };
@@ -360,6 +361,21 @@ export function overlapScore(claim: string, prose: string): number {
  *  DELETE the threshold from the decision, not to tune it: see pairByLabel. */
 export const PAIR_WEAK = 0.45;
 
+/** 🔴 THE MISPAIR FLAG SITS FAR BELOW PAIR_WEAK, AND THE GAP IS THE WHOLE POINT.
+ *  Calibrated 2026-08-20 against every balanced-section pair on three nights (n = 66 units):
+ *    · the ONE true mispair found — 2026-08-11 The Wild Card, three claims about three different
+ *      stories than the three bullets they were attached to — scored 0.06 / 0.00 / 0.00.
+ *    · every pair verified correct BY HAND scored 0.25 or above, and the low end of that range is
+ *      correct pairs with different vocabulary: 2026-08-19 `wc-1` at 0.25 ("3D-printed gun networks
+ *      buy ammunition from licensed dealers" vs prose saying exactly that in other words),
+ *      `dash-commodities` at 0.44 (claim says crude, prose says WTI and Brent), `intro` at 0.39
+ *      (an intro abstracts the brief, so overlap is low by construction).
+ *  0.15 sits in the empty band between 0.06 and 0.25. **At PAIR_WEAK (0.45) this flag fired on all
+ *  three of those correct 08-19 pairs — a constant calibrated for one job used for another, which
+ *  is the third time today.** n is small; this is a FLAG and never a gate, so the cost of it being
+ *  wrong is a missed warning, not a dropped unit. Widen it if a real mispair ever scores above 0.15. */
+export const MISPAIR_FLAG = 0.15;
+
 /** 🔴 PAIRING IS BY SECTION LABEL **AND CONTENT**, NEVER BY POSITION WITHIN A SECTION.
  *
  *  The first cut of this function paired greedily in document order inside each section, and on
@@ -385,6 +401,7 @@ export function pairByLabel(
   const pool = cands.map((c, i) => ({ ...c, i, used: false }));
   const byUnit = new Map<string, { start: number; end: number; score: number }>();
   const scores: { unit: string; score: number; paired: boolean }[] = [];
+  const mispaired: { unit: string; section: string; score: number }[] = [];
 
   const groups = new Map<string, { cl: Claim[]; pr: typeof pool }>();
   const grp = (k: string) => {
@@ -399,9 +416,21 @@ export function pairByLabel(
     //    document order and do NOT consult content. This is the 2026-08-19 path — 24/24, verified
     //    byte-identical before and after content matching was added — and it must stay untouched.
     if (cl.length === pr.length) {
+      // 🔴 BUT SCORE IT ANYWAY AND FLAG. A balanced count means the COUNTS match. It does not mean
+      // the claims correspond to the prose, and on 2026-08-11 The Wild Card had 3 claims and 3
+      // prose blocks that were THREE DIFFERENT STORIES — wolfsbane enzymes, hippocampus microglia
+      // and an Indian Ocean current, against prose about primate brains, a silver catalyst and
+      // microglia. Positional pairing attached all three to the wrong prose and nothing said a word:
+      // scores 0.06 / 0.00 / 0.00. The shortcut's premise — "a balanced count forces the
+      // assignment" — is simply false, and it failed silently, which is the class this whole
+      // instrument exists to catch.
+      // The flag never RE-ASSIGNS: in a balanced section document order is still the best available
+      // guess, and a low score is a finding for a human, not a licence for the matcher to reorder.
       cl.forEach((c, i) => {
         pr[i]!.used = true;
-        byUnit.set(c.unit, { start: pr[i]!.start, end: pr[i]!.end, score: -1 });
+        const sc = overlapScore(c.claim, md.slice(pr[i]!.start, pr[i]!.end));
+        byUnit.set(c.unit, { start: pr[i]!.start, end: pr[i]!.end, score: sc });
+        if (sc < MISPAIR_FLAG) mispaired.push({ unit: c.unit, section: c.section, score: sc });
       });
       continue;
     }
@@ -461,7 +490,7 @@ export function pairByLabel(
   const proseUnclaimed = pool
     .filter(c => !c.used)
     .map(c => ({ section: c.section, words: md.slice(c.start, c.end).trim().split(/\s+/).length }));
-  return { units, findings: { claimUndrafted, proseUnclaimed }, scores };
+  return { units, findings: { claimUndrafted, proseUnclaimed, mispaired }, scores };
 }
 
 /** 🔴 The claims file is authoritative. This VALIDATES the prose against it and never invents units. */
@@ -485,7 +514,7 @@ function segment(md: string, claims: Claim[], product = ''): Unit[] {
     }
     return units;
   }
-  LAST_FINDINGS = { claimUndrafted: [], proseUnclaimed: [] };
+  LAST_FINDINGS = { claimUndrafted: [], proseUnclaimed: [], mispaired: [] };
   SEG_SCORES = [];
   if (cands.length !== claims.length) {
     const byS = (xs: { section: string }[]) =>
@@ -620,6 +649,21 @@ function cmdPrepare(light: string, claimsPath: string): void {
   );
 
   const F = lastFindings();
+  if (F.mispaired?.length) {
+    console.log('');
+    console.log(
+      `🔴 RED — MISPAIR-SUSPECT. ${F.mispaired.length} unit(s) in a BALANCED section pair to prose that barely shares their words.`
+    );
+    for (const m of F.mispaired)
+      console.log(`   ⚠ MISPAIR-SUSPECT  ${m.unit}  [${m.section}]  content match ${m.score.toFixed(2)}`);
+    console.log(
+      `   A balanced count means the COUNTS match. It does NOT mean the claims correspond to the prose.`
+    );
+    console.log(
+      `   2026-08-11 The Wild Card scored 0.06/0.00/0.00 — three claims about three different stories than the three bullets they were attached to.`
+    );
+    console.log(`   NOT re-assigned. Document order is still the best guess; this is a finding for a human.`);
+  }
   if (F.claimUndrafted.length || F.proseUnclaimed.length) {
     console.log('');
     console.log(

@@ -265,3 +265,59 @@ Those three units are no longer independent measurements** — a grader told the
 it. Every headline number above is therefore reported twice, with and without them. **The finding
 survives the exclusion**: spread 4.5 points, MISSING↔WRONG disagreements still zero, exact agreement
 still 88%. Future packets should anchor on units from a DIFFERENT night.
+
+---
+
+# ADDENDUM 4 — THE AMENDED TRIPLE, AND THE ARC CLOSES
+
+**Option taken: SWAP, not exclude.** Three anchors replaced with off-night ones — clean OK ×3 and
+MISSING ×3 from **2026-08-10**, plus a **synthetic, labeled** WRONG. All 25 units of 08-19 are now
+independent of every anchor. (The WRONG is synthetic because no clean contradiction existed in the
+off-night retro data — those readers were too good. A constructed example teaches the boundary
+without attaching an answer to any real unit, which is the point of the rule.)
+
+| | runs | spread | exact label | **MISSING↔WRONG** |
+|---|---|---|---|---|
+| undefined baseline | 53.3 / 52.0 / 50.7 / 48.0% | 5.3 pts | 73% | **9** |
+| defined, *in-sample* anchors | 58.7 / 56.0 / 60.0% | *4.0 pts* | 89% | **0** |
+| **defined, OFF-NIGHT anchors** | **56.0 / 54.7 / 62.7%** | **8.0 pts** | **89%** | **0** |
+| **ensemble of three** | — | — | — | 8/75 splits |
+
+## 1 · THE BOUNDARY IS DEAD
+
+**MISSING↔WRONG inter-run disagreements: 9 → 0, and zero under BOTH anchor regimes.** That is exactly
+what the definitions were written to do. Exact label agreement 73% → 89%.
+
+## 2 · THE SPREAD DID NOT COLLAPSE — IT WIDENED
+
+🔴 **5.3 → 8.0 points once the in-sample anchors came out.** The 4.0-point figure reported in
+Addendum 3 was flattering itself by almost exactly the amount the amendment predicted. **The
+amendment was not a formality; it changed the answer.**
+
+Two of three runs cluster at 54.7–56.0 and one sits at 62.7. With n=3 a single outlier dominates the
+spread statistic — **and the outlier is real data, not noise to be argued away.**
+
+**Pre-registered consequence fires: the nightly so_what grade is the MAJORITY OF THREE GRADERS.**
+Ensemble on 08-19: **42/75 = 56.0%**, with 8/75 = 11% of grades resolved by a 2-1 split.
+
+## 3 · PRODUCTION IS STILL OUTSIDE — SO THE INVESTIGATION GOES ONE PLACE
+
+| | |
+|---|---|
+| undefined cluster | 48.0 – 53.3% |
+| defined cluster | 54.7 – 62.7% |
+| **ensemble** | **56.0%** |
+| **production, as logged** | **90.7%** |
+
+**28.0 points above the top of the defined cluster.** Defining the rubric moved the level about 4
+points and closed **none** of the gap. Per decision 2: **the investigation goes to the production
+grading path — nowhere else.** The leading untested candidate is unchanged and is mine: **every run
+in this entire arc was a Sonnet subagent** (L-0820-14).
+
+## THE PRODUCTION CONFIGURATION, SHIPPED
+
+**Defined rubric + off-night anchors + ensemble of three, graded in isolation.** Written into
+`BODY_brief-light_REPLACEMENT.md` and `system/task-bodies/brief-editor/SKILL.md`; recalibration event
+in `system/selection-ledger.json`; drift line reads `so_what OK % (ens/3)`.
+
+**METROLOGY ARC CLOSED.** The production-path investigation stays open.

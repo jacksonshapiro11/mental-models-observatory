@@ -313,23 +313,36 @@ three worked examples INSIDE the grader prompt. They are not background reading.
 The MISSING/WRONG line is the only hard call: did the WHY merely fail to carry the point (MISSING),
 or actively say something the so_what denies (WRONG)?
 
-**ANCHORS — ship all three verbatim.**
+🔴 **ANCHOR PROVENANCE RULE (owner amendment 2026-08-20): WORKED EXAMPLES COME FROM A NIGHT OTHER
+THAN THE ONE BEING GRADED.** An anchor inside the sample is teaching-to-the-test — the class the v3
+selftest already guards against at the prompt level, now guarded at the packet level too. **It is not
+theoretical: swapping the three in-sample anchors for off-night ones widened the measured spread from
+4.0 points to 8.0. The in-sample version was flattering itself by exactly that much.**
 
-**Clean OK ×3.** so_what: *"If your employer offers money instead of a plan, you have been handed the
-risk along with the cheque, which is the same trade that turned pensions into 401(k)s."* Actionable
-point: *the risk moved onto you.* All three of "restructures who bears medical inflation risk",
-"you are directly exposed instead of your employer", and "shifts medical inflation risk from
-employers to individuals" are **OK**. None mentions 401(k)s and that does not matter.
+**THE ANCHORS — from 2026-08-10, ship all three verbatim when grading any other night.**
 
-**WRONG.** so_what: *"Orders read a buildout more honestly than revenue does, and a rising discount
-rate marks them down before anyone has read them."* Actionable point: *the order book gets marked
-DOWN.* → *"Order books forecast future spending, so the AI buildout is still accelerating."* =
-**WRONG.** Not merely absent — contradicted.
+**Clean OK ×3.** so_what: *"A detector that only fires when something is disturbed will always
+undercount the population, which is true of far more than black holes."* Point: *a
+disturbance-triggered detector undercounts.* All three of "our counts are systematically incomplete,
+we can only find the ones that happen to act up", "we can only detect these when they're actively
+doing something", and "we only detect what's actively visible, so the true count is larger" are
+**OK** — three wordings, none using the word *detector*.
 
-**MISSING.** so_what: *"You cannot sue a counterparty you cannot find, so machine commerce will be
-secured by posted collateral rather than by law."* Actionable point: *collateral replaces law.* →
-*"Automated systems are building financial infrastructure outside traditional banking."* = **MISSING.**
-Right subject, no point, nothing denied.
+**MISSING ×3.** so_what: *"Every linguistic universal is derived from survivors, so the laws we have
+inferred about language may be laws about which populations expanded."* Point: *the universals are
+survivorship artefacts.* All three of "shifts blame for cultural loss to a much older pattern of
+political consolidation", "reframes language loss as a side effect of concentrated power", and
+"challenges the assumption that colonialism mainly caused it" are **MISSING** — on the subject,
+carrying a different point, contradicting nothing. **Topic contact without the point is MISSING
+however articulate.**
+
+**WRONG — 🔴 SYNTHETIC, LABELED. Constructed to show the boundary, drawn from no brief.** so_what:
+*"Orders lead revenue, so a rising discount rate marks the order book down before anyone has read
+it."* Point: *the book gets marked DOWN.* → *"Order books are forward-looking, so a rising rate
+environment leaves them untouched and the buildout keeps compounding."* = **WRONG.** Asserts the
+opposite, not merely absent. **It is synthetic because no clean contradiction existed in the
+off-night retro data — the readers were too good. A constructed example teaches the boundary without
+attaching an answer to any real unit, which is the point of the provenance rule.**
 
 🔴 **AND THE NIGHTLY so_what GRADE IS AN ENSEMBLE: THREE GRADERS, MAJORITY WINS.** This fires under
 the pre-registered rule — the definitions were expected to collapse the spread and **they did not.**
@@ -339,10 +352,19 @@ the pre-registered rule — the definitions were expected to collapse the spread
 | as-is rubric, 4 runs | 5.3 pts | 73% | **9** |
 | defined rubric, 3 runs | **4.0 pts** | **89%** | **0** |
 
-**The definitions did exactly the job they were written for and no more.** The MISSING/WRONG boundary
-that caused 9 of the inter-run disagreements is **gone — zero, and still zero with the three anchor
-units excluded.** But OK-vs-not-OK agreement moved only 85%→89%: **the residual spread sits on the
-OK call, which is a judgment definitions cannot legislate.** Hence the ensemble.
+**FINAL MEASUREMENT, off-night anchors, 2026-08-19, 75 grades:**
+
+| | runs | spread | exact label | MISSING↔WRONG |
+|---|---|---|---|---|
+| undefined baseline | 53.3 / 52.0 / 50.7 / 48.0% | 5.3 pts | 73% | **9** |
+| defined, in-sample anchors | 58.7 / 56.0 / 60.0% | 4.0 pts | 89% | **0** |
+| **defined, OFF-NIGHT anchors** | **56.0 / 54.7 / 62.7%** | **8.0 pts** | **89%** | **0** |
+
+**The definitions did exactly the job they were written for and no more. The MISSING/WRONG boundary
+that caused 9 of the inter-run disagreements is GONE — zero, under both anchor regimes.** But
+OK-vs-not-OK agreement moved only 85%→89%, and with honest off-night anchors **the spread WIDENED to
+8.0 points.** The residual disagreement sits entirely on the OK call, which is a judgment definitions
+cannot legislate. Hence the ensemble.
 
 **Ensemble on 2026-08-19: 43/75 = 57.3%. All three graders agreed on 67/75 = 89% of grades; 8 were
 2-1 splits, and a 2-1 split flips only if two graders move.** The drift line carries `so_what OK %
