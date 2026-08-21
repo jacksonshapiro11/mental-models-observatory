@@ -211,3 +211,57 @@ graded it. If it lands in the 48–53% cluster, the gap is environmental and the
 **What is NOT suspect:** the 9-unit retro grades and the 5 re-grades of 08-19. Those were produced
 under controlled, repeated, clustered conditions. **The re-runs are the reliable numbers here. The
 production history is the anomaly.**
+
+---
+
+# ADDENDUM 3 — THE DEFINED RUBRIC (owner ruling 2026-08-20, decisions 1–5)
+
+**Decision 1 was already satisfied.** The authorized triple ran on the AS-IS rubric — that is
+Addendum 2. Baseline noise of the undefined instrument: **48.0–53.3%, spread 5.3 points.** Unchanged,
+not re-run.
+
+## THE RE-RUN ON THE DEFINED RUBRIC
+
+Three fresh runs. Definitions and three anchors shipped inside the grader prompt.
+
+| | runs | spread | exact label | OK-vs-not | MISSING↔WRONG disagreements |
+|---|---|---|---|---|---|
+| **as-is** | 53.3 / 52.0 / 50.7 / 48.0% | **5.3 pts** | 73% | 85% | **9** |
+| **defined** | 58.7 / 56.0 / 60.0% | **4.0 pts** | **89%** | 89% | **0** |
+| *defined, anchors excluded* | *60.6 / 57.6 / 62.1%* | *4.5 pts* | *88%* | *88%* | ***0*** |
+
+🔴 **THE DEFINITIONS DID EXACTLY WHAT THEY WERE WRITTEN TO DO AND NO MORE.** The MISSING/WRONG
+boundary that caused 9 of the inter-run disagreements is **gone — zero, and still zero when the three
+anchor units are excluded.** Exact label agreement 73% → 89%.
+
+🔴 **THE SPREAD DID NOT COLLAPSE. 5.3 → 4.0 points is a 25% narrowing.** OK-vs-not-OK agreement moved
+only 85% → 89%: **the residual disagreement now sits entirely on the OK call**, which is the
+substantive judgment and not something a definition can legislate.
+
+**Pre-registered consequence fires: THE NIGHTLY GRADE BECOMES AN ENSEMBLE — three graders, majority
+wins — AND THE DRIFT LINE SAYS SO (`so_what OK % (ens/3)`).** Shipped to both nightly bodies.
+
+**Ensemble on 2026-08-19: 43/75 = 57.3%.** All three agreed on 67/75 = 89%; 8 grades were 2-1 splits,
+and a 2-1 split flips only if two graders move.
+
+## THE LEVEL MOVED, AND PRODUCTION IS STILL FAR AWAY
+
+| | 2026-08-19, 75 grades |
+|---|---|
+| as-is rubric | 48.0 – 53.3% |
+| defined rubric | 56.0 – 60.0% |
+| **defined ensemble** | **57.3%** |
+| **production, as logged** | **90.7%** |
+
+Defining the rubric moved the level up about 6 points — the explicit *"in any words, paraphrase is
+fine"* clause is more permissive than graders were being on their own. **Production remains 31 points
+above even the defined ensemble.** The L-0820-14 gap is not a rubric artifact and the model test
+still owes.
+
+## METHOD CAVEAT ON MY OWN DESIGN
+
+**The three anchors (U4, U12 R3, U13 R1) are drawn from the packet being graded, per the ruling.
+Those three units are no longer independent measurements** — a grader told the answer will reproduce
+it. Every headline number above is therefore reported twice, with and without them. **The finding
+survives the exclusion**: spread 4.5 points, MISSING↔WRONG disagreements still zero, exact agreement
+still 88%. Future packets should anchor on units from a DIFFERENT night.

@@ -297,3 +297,53 @@ the 24 individual disagreements were MISSING-versus-WRONG relabelling of grades 
 way.** The input hypothesis is therefore NOT supported: isolation moves the number by +3 of 75, in
 the lenient direction. **This rule is kept because it is cheap, removes a confound, and the trigger
 was agreed in advance — not because it was measured to fix anything.** Do not cite it as a fix.
+
+---
+
+🔴 **THE so_what GRADING RUBRIC — DEFINED (owner ruling 2026-08-20). Ship these definitions and the
+three worked examples INSIDE the grader prompt. They are not background reading.**
+
+- **OK** = the WHY contains the **ACTIONABLE POINT** of the logged so_what — the clause a reader would
+  act on — **in any words.** Paraphrase is fine. Different vocabulary is fine. The test is whether the
+  point arrived, not whether the wording matches.
+- **MISSING** = topic contact or silence **without** the actionable point, asserting nothing the
+  so_what contradicts.
+- **WRONG** = asserts something the logged so_what **contradicts**.
+
+The MISSING/WRONG line is the only hard call: did the WHY merely fail to carry the point (MISSING),
+or actively say something the so_what denies (WRONG)?
+
+**ANCHORS — ship all three verbatim.**
+
+**Clean OK ×3.** so_what: *"If your employer offers money instead of a plan, you have been handed the
+risk along with the cheque, which is the same trade that turned pensions into 401(k)s."* Actionable
+point: *the risk moved onto you.* All three of "restructures who bears medical inflation risk",
+"you are directly exposed instead of your employer", and "shifts medical inflation risk from
+employers to individuals" are **OK**. None mentions 401(k)s and that does not matter.
+
+**WRONG.** so_what: *"Orders read a buildout more honestly than revenue does, and a rising discount
+rate marks them down before anyone has read them."* Actionable point: *the order book gets marked
+DOWN.* → *"Order books forecast future spending, so the AI buildout is still accelerating."* =
+**WRONG.** Not merely absent — contradicted.
+
+**MISSING.** so_what: *"You cannot sue a counterparty you cannot find, so machine commerce will be
+secured by posted collateral rather than by law."* Actionable point: *collateral replaces law.* →
+*"Automated systems are building financial infrastructure outside traditional banking."* = **MISSING.**
+Right subject, no point, nothing denied.
+
+🔴 **AND THE NIGHTLY so_what GRADE IS AN ENSEMBLE: THREE GRADERS, MAJORITY WINS.** This fires under
+the pre-registered rule — the definitions were expected to collapse the spread and **they did not.**
+
+| | spread | exact label agreement | MISSING↔WRONG disagreements |
+|---|---|---|---|
+| as-is rubric, 4 runs | 5.3 pts | 73% | **9** |
+| defined rubric, 3 runs | **4.0 pts** | **89%** | **0** |
+
+**The definitions did exactly the job they were written for and no more.** The MISSING/WRONG boundary
+that caused 9 of the inter-run disagreements is **gone — zero, and still zero with the three anchor
+units excluded.** But OK-vs-not-OK agreement moved only 85%→89%: **the residual spread sits on the
+OK call, which is a judgment definitions cannot legislate.** Hence the ensemble.
+
+**Ensemble on 2026-08-19: 43/75 = 57.3%. All three graders agreed on 67/75 = 89% of grades; 8 were
+2-1 splits, and a 2-1 split flips only if two graders move.** The drift line carries `so_what OK %
+(ens/3)` so the number always says how it was produced.
