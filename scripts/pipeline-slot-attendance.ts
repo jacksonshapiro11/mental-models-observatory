@@ -200,6 +200,8 @@ export interface Slot {
   hh: number;      // 24h ET
   mm: number;
   clock: string;   // as printed in the table, e.g. "6:55 PM"
+  /** derived minutes after 14:00 ET on BRIEF_DATE-1; NaN when falling back to the table */
+  offsetMin?: number;
 }
 
 /**
@@ -254,19 +256,186 @@ export function eveningSlots(docRoot: string): Slot[] {
  * is stamped after now. The filter can only ever REMOVE lines, so it is never a source of alarm —
  * and a line whose timestamp will not parse is KEPT, so a parse failure resolves toward silence.
  */
-export function boardTasks(file: string, asOf?: Date): Set<string> {
-  const out = new Set<string>();
+/** 🔴 A SELF-HEAL LINE IS PROOF OF ABSENCE, NOT ATTENDANCE (2026-08-21, second pass).
+ *
+ *  The roll call shipped this morning to catch E-PIPELINE-EDITOR-NONFIRE-01 and, run against the
+ *  very night that produced it, reported **FULL ATTENDANCE**. The board's only `brief-editor` line is
+ *
+ *    2026-08-20T23:40:32Z | brief-editor | …-v2.md | SUCCESS | SELF-HEAL (Critic-invoked): the
+ *    scheduled brief-editor slot left NO trace on this board — no CANARY, no SUCCESS, no FAIL…
+ *
+ *  — a line whose own payload states the slot never fired, counted as the slot firing. It carries
+ *  `brief-editor` in field 2 because Brief_Editor's contract REQUIRES the self-heal line to be
+ *  written in the covered slot's name (IMP-072), so the healer is indistinguishable from the healed
+ *  by field 2 alone. This is E-GATE-SELFHEAL-AUDIT-PARADOX-01 one layer over: there `editorRan` and
+ *  `selfHealLine` were satisfied by the same line; here `attended` and `absent` are.
+ *
+ *  So attendance is credited to the task that WROTE the line, and a SELF-HEAL payload proves the
+ *  named slot did not write it. **It is not merely neutral evidence — it is the strongest absence
+ *  signal on the board**, because some other task went and looked and said so in writing. */
+export const SELFHEAL_RE = /\bSELF[- ]?HEAL(ED|ING)?\b/i;
+
+/**
+ * CALIBRATION (2026-08-21, measured over 1,483 status lines on 92 real boards).
+ *
+ * The first cut of this rule was `SELFHEAL_RE` alone — calibrated on n=1, the 08-21 line. Swept
+ * over the archive it condemned **61 lines**, of which 26 were the task's only line that night.
+ * Nearly all were false: a long payload that merely NARRATES a self-heal performed for some other
+ * slot ("v2 (PROVISIONAL — self-heal…)", the Critic's own verdict line reciting what it covered)
+ * is written BY a task that plainly ran. Mentioning a self-heal is not being one. The in-window
+ * sweep missed this entirely because every one of those boards predates EFFECTIVE_FROM and is
+ * exempt — the selftest would have gone green on a rule that was wrong 25 times out of 26.
+ *
+ * So a line is read as coverage only when it BOTH carries the self-heal token AND identifies the
+ * covered slot as its own field 2, by one of two independent markers:
+ *
+ *   (a) an ABSENCE DECLARATION whose subject is field 2's task — "the scheduled brief-editor slot
+ *       left NO trace"; the subject is the last task named in the 70 chars before the phrase; or
+ *   (b) a HEALER MARKER — "Critic-invoked", "on behalf of", "in place of", "covering for" — which
+ *       names an actor other than the slot as the author of the pass.
+ *
+ * MEASURED on the real archive: 3 condemnations, all three brief-editor, all three true. Two of
+ * them (06-22, 06-24) also carry a genuine scheduled brief-editor line later the same night and
+ * are therefore rescued by the both-lines guard in boardAttendance — net absences across 92
+ * boards: ONE, 2026-08-21. Zero false positives.
+ *
+ * RESIDUAL BLINDNESS, stated with its denominator: 58 of the 61 self-heal-token lines carry
+ * neither marker and are read as attendance. That is the safe reading for a narration line and
+ * the WRONG reading for a terse self-heal that declares nothing — see selfHealBlindness(),
+ * recomputed by the selftest so the number cannot rot silently.
+ */
+const ABSENCE_DECL_RE =
+  /\b(never fired|never ran|never started|left NO trace|left no trace|did not fire|did ?n[o']t run|no trace on this board)\b/i;
+const HEALER_MARKER_RE = /\b[a-z-]+-invoked\b|\bon behalf of\b|\bin place of\b|\bcovering for\b/i;
+const TASK_NAME_RE = /\b(brief-[a-z0-9-]+|take-draft|cc-predraft|signal-discovery-draft)\b/g;
+
+/** The slot an absence declaration is ABOUT: the last task named in the 70 chars before it. */
+export function absenceSubject(raw: string): string | null {
+  const m = raw.match(ABSENCE_DECL_RE);
+  if (!m || m.index === undefined) return null;
+  const before = raw.slice(Math.max(0, m.index - 70), m.index);
+  const names = [...before.matchAll(TASK_NAME_RE)];
+  return names.length ? names[names.length - 1]![1]! : null;
+}
+
+/** Field 2 of a line whose payload declares a self-heal OF THAT SLOT — a slot covered for. */
+export function selfHealedTask(raw: string): string | null {
+  if (!SELFHEAL_RE.test(raw)) return null;
+  const t = boardLineTask(raw);
+  if (!t) return null;
+  if (absenceSubject(raw) === t) return t;   // (a) it says so, about itself
+  if (HEALER_MARKER_RE.test(raw)) return t;  // (b) it names someone else as the author
+  return null;                               // narration by a task that ran — not coverage
+}
+
+/**
+ * THE BRACKETED DIALECT. `lineTask` (editor-handoff-gate) requires field 0 to be a BARE timestamp,
+ * so it silently drops the `[2026-06-23T23:58:04Z] | brief-editor | …` form. MEASURED: 12 such
+ * lines across the 92 real boards — 8 of them brief-editor, 3 brief-morning, 1 brief-quality-gate.
+ * To an attendance detector an unparsed line is an ABSENT SLOT: on 2026-06-24 the editor's genuine
+ * scheduled pass is written in this dialect, and without this widening the night reads as a
+ * non-fire. That is the false-alarm direction, and it was caught by the both-lines selftest.
+ *
+ * Widened HERE and not in editor-handoff-gate: that parser is another instrument's, mid-flight,
+ * with its own semantics. The shared-parser gap is carried, not silently patched under it.
+ */
+const BOARD_TS_RE = /^\s*\[?\s*\d{4}-\d{2}-\d{2}T[\d:]+(?:Z|[+-]\d{2}:?\d{2})?\s*\]?\s*$/;
+export function boardLineTask(raw: string): string | null {
+  const direct = lineTask(raw);
+  if (direct) return direct;
+  const f = raw.split('|');
+  if (f.length < 2 || !BOARD_TS_RE.test(f[0]!)) return null;
+  return f[1]!.trim() || null;
+}
+
+/**
+ * THE SECOND, INDEPENDENT ABSENCE PATH. The self-heal rule reads a line written IN the absent
+ * slot's name. This one reads a line written ABOUT it by anybody: "the scheduled brief-editor slot
+ * NEVER FIRED". Two instruments, two conventions — if the self-heal convention changes under us,
+ * this one still fires.
+ *
+ * CONTRADICTION GUARD: testimony is overridden when the accused slot has a clean (non-self-heal)
+ * line of its own. MEASURED over 92 boards: 6 testimony pairs, 2 correctly overridden (08-13
+ * brief-morning, 08-17 brief-quality-gate — both plainly ran), leaving 4, all true: three
+ * brief-draft non-fires in June and 2026-08-21 brief-editor, which BOTH instruments name.
+ */
+export function absenceTestimony(file: string, asOf?: Date): Map<string, string> {
+  const out = new Map<string, string>();
   if (!fs.existsSync(file)) return out;
+  const rows = fs.readFileSync(file, 'utf8').split('\n').filter(l => boardLineTask(l));
+  const visible = asOf
+    ? rows.filter(l => { const ts = parseTs(l); return !ts || ts.getTime() <= asOf.getTime(); })
+    : rows;
+  for (const l of visible) {
+    const accused = absenceSubject(l);
+    if (!accused) continue;
+    if (boardLineTask(l) === accused && !SELFHEAL_RE.test(l)) continue; // a slot reporting on itself
+    const clean = visible.some(x => boardLineTask(x) === accused && !SELFHEAL_RE.test(x));
+    if (clean) continue; // contradicted: the accused wrote a line of its own
+    if (!out.has(accused)) out.set(accused, l.slice(0, 160));
+  }
+  return out;
+}
+
+/**
+ * THE RESIDUAL, COMPUTED. Sweeps the real archive and counts self-heal-token lines by whether
+ * `selfHealedTask` reads them as coverage, and how many of the ones it does NOT read are that
+ * task's only line that night (i.e. where a miss would actually cost an alarm). Exported so the
+ * blindness ships with a denominator instead of a memory of one.
+ */
+export function selfHealBlindness(root: string): {
+  token: number; coverage: number; blind: number; blindSole: number; boards: number;
+} {
+  const dir = DB(root);
+  const boards = fs.existsSync(dir)
+    ? fs.readdirSync(dir).filter(f => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(f)).sort()
+    : [];
+  let token = 0, coverage = 0, blind = 0, blindSole = 0;
+  for (const b of boards) {
+    const rows = fs.readFileSync(path.join(dir, b), 'utf8').split('\n').filter(l => boardLineTask(l));
+    for (const l of rows) {
+      if (!SELFHEAL_RE.test(l)) continue;
+      token++;
+      if (selfHealedTask(l)) { coverage++; continue; }
+      blind++;
+      const t = boardLineTask(l)!;
+      if (!rows.some(x => boardLineTask(x) === t && x !== l)) blindSole++;
+    }
+  }
+  return { token, coverage, blind, blindSole, boards: boards.length };
+}
+
+export function boardTasks(file: string, asOf?: Date): Set<string> {
+  return boardAttendance(file, asOf).attended;
+}
+
+/** Attendance and self-heal coverage, read in one pass so they can never disagree. */
+export function boardAttendance(
+  file: string,
+  asOf?: Date
+): { attended: Set<string>; selfHealed: Map<string, string> } {
+  const attended = new Set<string>();
+  const selfHealed = new Map<string, string>();
+  if (!fs.existsSync(file)) return { attended, selfHealed };
   for (const raw of fs.readFileSync(file, 'utf8').split('\n')) {
-    const t = lineTask(raw);
+    const t = boardLineTask(raw);
     if (!t) continue;
     if (asOf) {
       const ts = parseTs(raw);
       if (ts && ts.getTime() > asOf.getTime()) continue;
     }
-    out.add(t);
+    const healed = selfHealedTask(raw);
+    if (healed) {
+      // The line proves this slot did NOT write it. Record the coverage; do not credit attendance.
+      if (!selfHealed.has(healed)) selfHealed.set(healed, raw.slice(0, 160));
+      continue;
+    }
+    attended.add(t);
   }
-  return out;
+  // A slot with BOTH a self-heal line and a genuine line of its own really did run: the self-heal
+  // is then a second opinion, not a cover. Attendance wins; the coverage note is dropped.
+  for (const k of [...selfHealed.keys()]) if (attended.has(k)) selfHealed.delete(k);
+  return { attended, selfHealed };
 }
 
 /**
@@ -294,6 +463,17 @@ export interface Absentee {
   clock: string;
   deadline: Date;
   line: string;
+  /** The board's own words for WHY this slot is called absent — never our paraphrase. */
+  evidence: string;
+}
+export interface Unterminated {
+  task: string;
+  canaryAt: Date;
+  windowMin: number;
+  ageMin: number;
+  /** reference-period record, so the reader can judge whether this is news or this task's norm */
+  refClosed: number; refTotal: number;
+  line: string;
 }
 export interface RollCall {
   date: string;
@@ -305,6 +485,12 @@ export interface RollCall {
   attended: string[];
   absent: Absentee[];
   exempt: boolean;       // date predates EFFECTIVE_FROM — the pre-canary archive
+  selfHealed: Map<string, string>;  // slot -> the line another task wrote in its name
+  testimony: Map<string, string>;   // slot -> a line declaring it never fired
+  /** WARN-LEVEL. Canary present, no terminal line, past the task's derived window. */
+  unterminated: Unterminated[];
+  /** Rostered slots whose window could not be derived — NAMED, never defaulted. */
+  windowless: string[];
 }
 
 export function rollCall(opts: {
@@ -314,24 +500,45 @@ export function rollCall(opts: {
   now?: Date;
   /** Reconstruct the board as it stood at `now` (see boardTasks). Set by `--now`; never by default. */
   replay?: boolean;
+  /** Injected derived windows (selftests + repeated calls); derived from docRoot when absent. */
+  windows?: Map<string, TaskWindow>;
 }): RollCall {
   const docRoot = opts.docRoot;
   const boardRoot = opts.boardRoot ?? docRoot;
   const now = opts.now ?? new Date();
   const eveningDate = eveningDateOf(opts.date);
 
+  // ── THE WIDENED ROSTER (owner ruling 2026-08-21) ────────────────────────────────────────────
+  // ALL scheduled slots, morning and evening, and the membership is DERIVED: a task is rostered
+  // because the archive shows it canarying, not because a table names it. That matters both ways —
+  // `verify-brief-publish`, `daily-portfolio-monitor` and `selection-judge` canary every day and
+  // appear in NO sequence table, while the table's documented hour for three daytime tasks is
+  // stale by 150-240 minutes (see deriveWindows). The tables are kept only as a cross-check.
+  const windows = opts.windows ?? deriveWindows(docRoot);
   const documented = eveningSlots(docRoot);
   const observed = observedTasks(docRoot);
-  // If the archive is empty (a fresh clone), roster everything — a filter with no evidence behind
-  // it must not silently shrink the roll call.
   const haveArchive = observed.size > 0;
-  const rostered = haveArchive ? documented.filter(s => observed.has(s.task)) : documented;
-  const dropped = documented.filter(s => !rostered.includes(s)).map(s => s.task);
+  const dayStart = etWallClock(eveningDate, 14, 0);
+  const rostered: Slot[] = haveArchive
+    ? [...windows.values()]
+        .filter(w => w.canaryComputable)
+        .sort((a, b) => a.canaryP95 - b.canaryP95)
+        .map(w => {
+          const abs = (PIPELINE_DAY_START_MIN + w.canaryP95) % 1440;
+          return { task: w.task, hh: Math.floor(abs / 60), mm: abs % 60, clock: fmtClock(abs), offsetMin: w.canaryP95 };
+        })
+    : documented.map(d => ({ ...d, offsetMin: NaN }));
+  // Named, never defaulted: rostered-by-observation but with too few canaries to derive a window.
+  const windowless = [...windows.values()].filter(w => !w.canaryComputable).map(w => w.task);
+  const dropped = documented.filter(d => !rostered.some(r => r.task === d.task)).map(d => d.task);
 
-  const present = boardTasks(
-    boardPath(boardRoot, opts.date),
-    opts.replay ? now : undefined
-  );
+  const bp = boardPath(boardRoot, opts.date);
+  const att = boardAttendance(bp, opts.replay ? now : undefined);
+  const present = att.attended;
+  // The second, independent absence path — a line written ABOUT the slot by anybody. It can only
+  // ADD absences (its contradiction guard already spares any slot with a clean line of its own),
+  // so a convention change on one path cannot make the roll call quieter than it should be.
+  const testimony = absenceTestimony(bp, opts.replay ? now : undefined);
 
   const notYetDue: string[] = [];
   const attended: string[] = [];
@@ -342,7 +549,9 @@ export function rollCall(opts: {
 
   for (const s of rostered) {
     const deadline = new Date(
-      etWallClock(eveningDate, s.hh, s.mm).getTime() + GRACE_MIN * 60000
+      (Number.isNaN(s.offsetMin)
+        ? etWallClock(eveningDate, s.hh, s.mm).getTime()
+        : dayStart.getTime() + s.offsetMin * 60000) + GRACE_MIN * 60000
     );
     if (present.has(s.task)) {
       attended.push(s.task);
@@ -358,9 +567,324 @@ export function rollCall(opts: {
       clock: s.clock,
       deadline,
       line: `MISSING-SLOT: ${s.task} — expected by ${fmtET(deadline)}, no canary at ${fmtET(now)}`,
+      // WHY we say so, carried with the finding: the board's own words, not our inference.
+      evidence: att.selfHealed.get(s.task)
+        ? `SELF-HEAL COVERAGE: ${att.selfHealed.get(s.task)}`
+        : testimony.get(s.task)
+          ? `TESTIMONY: ${testimony.get(s.task)}`
+          : 'NO LINE OF ANY KIND on the board for this slot',
     });
   }
-  return { date: opts.date, eveningDate, now, rostered, dropped, notYetDue, attended, absent, exempt };
+  // ── UNTERMINATED — warn-level, never alarms (owner: "the ESC-015 class, warn-level first") ──
+  // SCOPE, stated as plainly as the ABSENT leg's: THIS ANSWERS "DID IT REPORT", NOT "IS IT DEAD".
+  // The archive settles the distinction rather than leaving it to intuition — `daily-improvement`
+  // wrote no terminal line on six of the last seven boards and wrote Improvement_Ledger rows on
+  // every one of them. That is silent COMPLETION. Only tasks the REFERENCE period shows as
+  // RELIABLE are reported, so a task whose own norm is silence is not accused nightly.
+  const unterminated: Unterminated[] = [];
+  const eps = episodes(bp, opts.replay ? now : undefined);
+  if (!exempt) {
+    for (const s2 of rostered) {
+      const w = windows.get(s2.task);
+      const ep = eps.get(s2.task);
+      if (!w || !ep || !ep.stillOpen) continue;
+      if (!w.latComputable || w.reliability !== 'RELIABLE') continue;
+      const ageMin = (now.getTime() - ep.stillOpen.getTime()) / 60000;
+      if (ageMin < w.latP95 + GRACE_MIN) continue;
+      unterminated.push({
+        task: s2.task, canaryAt: ep.stillOpen, windowMin: w.latP95, ageMin,
+        refClosed: w.refClosed, refTotal: w.refTotal,
+        line: `UNTERMINATED: ${s2.task} — canary ${fmtET(ep.stillOpen)}, no terminal line ${ageMin.toFixed(0)} min later (p95 window ${w.latP95.toFixed(0)} min, n=${w.latN}; reference period ${w.refClosed}/${w.refTotal})`,
+      });
+    }
+  }
+  return { date: opts.date, eveningDate, now, rostered, dropped, notYetDue, attended, absent, exempt, selfHealed: att.selfHealed, testimony, unterminated, windowless };
+}
+
+// ---------- THE DERIVED ROSTER: windows measured, never guessed ----------
+//
+// OWNER RULING 2026-08-21: the roster widens to ALL scheduled slots, morning and evening, with two
+// rostered states per slot — ABSENT (no canary past the slot window) and UNTERMINATED (canary but
+// no terminal line past a per-task window; the ESC-015 class, warn-level first). **Windows are
+// DERIVED from the 92-board archive, never guessed** — the same widen-the-window method that found
+// all three of this morning's false greens.
+//
+// 🔴 WHY DERIVATION IS NOT A FORMALITY HERE. The documented Daytime Sequence is STALE for three
+// tasks, and the archive says so with almost no scatter:
+//     daily-improvement       documented 10:03 AM · observed 07:03 (n=22, spread 0 min)  Δ -180m
+//     system-update           documented  9:36 AM · observed 07:06 (n=21, spread 1 min)  Δ -150m
+//     pipeline-health-check   documented 11:06 AM · observed 07:06 (n=21, spread 1 min)  Δ -240m
+// These are not late tasks; they are tasks whose documented hour is wrong. A window taken from the
+// table would call `pipeline-health-check` ABSENT every single morning until 11:16 AM.
+// And the drift runs the other way in the evening: `brief-editor` is documented 6:55 PM, its p95
+// canary is 8:48 PM — **103 minutes past the deadline the table implies.**
+//
+// THE DAY ANCHOR, TAKEN FROM THE BOARDS RATHER THAN FROM THE CLOCK. Wall-clock minutes cannot be
+// averaged across midnight: `brief-feedback` canaries at 8:03 PM and, some nights, just after
+// 00:00, which reads as a 1,250-minute spread and a p05 of 00:00. But the right anchor is not
+// midnight OR 05:00 — it is where a BOARD begins. Board 2026-08-21 carries intel-sweep-4/5/6 from
+// the AFTERNOON of 08-20, the whole evening chain of 08-20, and then brief-morning, intel-sweep-1,
+// system-update, daily-improvement and pipeline-health-check from the MORNING of 08-21. That is
+// the documented routing — "afternoon/evening ET runs use today + 1; morning runs use today" — so
+// one board spans ~14:00 ET on D-1 through midday on D. Anchoring there makes every slot on a
+// board monotonic in one number, and a deadline is simply 14:00 ET on D-1 plus the derived offset.
+/** "6:55 PM" from absolute ET minutes-of-day — the shape the sequence tables print. */
+export function fmtClock(absMin: number): string {
+  const h24 = Math.floor(absMin / 60) % 24, m = Math.round(absMin % 60);
+  const h = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h}:${String(m).padStart(2, '0')} ${h24 < 12 ? 'AM' : 'PM'}`;
+}
+
+export const PIPELINE_DAY_START_MIN = 14 * 60; // 14:00 ET on BRIEF_DATE-1 — where a board begins
+
+/** ET wall-clock minutes since 05:00 ET, wrapping post-midnight lines onto the same pipeline day. */
+export function pipelineDayMin(d: Date): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(d);
+  const h = +parts.find(x => x.type === 'hour')!.value;
+  const m = +parts.find(x => x.type === 'minute')!.value;
+  const raw = h * 60 + m;
+  return raw >= PIPELINE_DAY_START_MIN ? raw - PIPELINE_DAY_START_MIN : raw + 1440 - PIPELINE_DAY_START_MIN;
+  // 14:09 (sweep-4, D-1) -> 9 · 20:48 (editor, D-1) -> 408 · 00:30 (feedback, D) -> 630
+  // 05:06 (morning, D)   -> 906 · 07:06 (health-check, D) -> 1026 · 12:05 (sweep-3, D) -> 1325
+}
+
+/** A line that ENDS an episode. Measured vocabulary — IN-PROGRESS and WRITE-OK are deliberately out. */
+export const TERMINAL_RE =
+  /^(SUCCESS|FAIL|SKIPPED|COMPLETE|HALTED|NO-?OP|PARTIAL|DEGRADED-KNOWN|NO-REPLY|ALERT)\b/i;
+export const isCanaryLine = (raw: string) => /^CANARY/i.test((raw.split('|')[2] || '').trim());
+export const isTerminalLine = (raw: string) => TERMINAL_RE.test((raw.split('|')[3] || '').trim());
+
+/**
+ * MIN_N = 10. Below it the archive demonstrably contains bimodal slots — `selection-judge` has n=6
+ * split between 07:36 and 21:12, an 818-minute spread whose p95 describes neither mode. A window
+ * derived from too few observations is a guess wearing a percentile, so below the floor the window
+ * is NOT COMPUTABLE and is NAMED as unmeasured rather than defaulted (standing rule: an
+ * uncomputable number is named, never zeroed).
+ */
+export const MIN_N = 10;
+export const WINDOW_PCT = 95;
+
+function pctl(a: number[], p: number): number {
+  const s = [...a].sort((x, y) => x - y);
+  return s[Math.min(s.length - 1, Math.ceil((p / 100) * s.length) - 1)]!;
+}
+
+export interface TaskWindow {
+  task: string;
+  canaryN: number;
+  /** p95 pipeline-day minute by which this task has canaried. NaN when uncomputable. */
+  canaryP95: number;
+  latN: number;
+  /** p95 canary -> terminal latency in minutes. NaN when uncomputable. */
+  latP95: number;
+  canaryComputable: boolean;
+  latComputable: boolean;
+  /** boards where a canary opened and no terminal line ever closed it */
+  unterminatedBoards: string[];
+  /** in-force boards EXCLUDING the trailing RECENT_BOARDS — the uncontaminated reference period */
+  refClosed: number; refTotal: number;
+  recentClosed: number; recentTotal: number;
+  /** classification from the REFERENCE period only. See REFERENCE-PERIOD note. */
+  reliability: 'RELIABLE' | 'INTERMITTENT' | 'KNOWN-SILENT' | 'THIN-EVIDENCE';
+}
+
+/**
+ * 🔴 THE REFERENCE PERIOD, AND WHY THE OBVIOUS VERSION IS WRONG.
+ *
+ * The first cut classified each task by its termination rate over the whole in-force window. That
+ * put `daily-improvement` at 67% and `pipeline-health-check` at 71% — "intermittent", unremarkable,
+ * not worth warning about. **Both figures are contaminated by the outage they are supposed to
+ * detect.** Split at the trailing 7 boards the same two tasks read:
+ *
+ *     pipeline-health-check   14/14  ->  1/7   (-86pp)
+ *     daily-improvement       13/14  ->  1/7   (-79pp)
+ *
+ * while every evening slot is 14/14 -> 7/7, unchanged. **A base rate computed over a window that
+ * includes the failure normalises the failure** — the same shape as the exemption that suppressed
+ * the ALARM and quietly suspended the SEMANTICS with it. So reliability is classified from the
+ * REFERENCE period only, and the recent period is what gets judged against it.
+ */
+export const RECENT_BOARDS = 7;
+
+/**
+ * EPISODE PAIRING, and it had to be fixed before any number here meant anything. The first cut
+ * paired each task's EARLIEST canary with its LATEST terminal line on the same board, which for the
+ * afternoon sweeps produced median latencies of ~1,445 MINUTES — a clean 24 hours, because a board
+ * can hold two different days' lines for one task and that pairing straddles them. Same corruption
+ * class as the greedy in-order claim pairing in transmission-readback: pairing across units that do
+ * not belong together, in a way that looks like a measurement. Each CANARY now opens an episode and
+ * the FIRST terminal line after it closes that episode. Receipt: cross-day pairs 51 -> 0, and
+ * intel-sweep-5's median fell from 1,444.7 min to 9.0.
+ */
+export function deriveWindows(root: string): Map<string, TaskWindow> {
+  const dir = DB(root);
+  const boards = fs.existsSync(dir)
+    ? fs.readdirSync(dir).filter(f => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(f)).sort()
+    : [];
+  const canary = new Map<string, number[]>();
+  const lat = new Map<string, number[]>();
+  const open = new Map<string, string[]>();
+  for (const b of boards) {
+    const ev = new Map<string, { ts: Date; kind: 'C' | 'T' }[]>();
+    for (const raw of fs.readFileSync(path.join(dir, b), 'utf8').split('\n')) {
+      const task = boardLineTask(raw);
+      if (!task) continue;
+      const ts = parseTs(raw);
+      if (!ts) continue;
+      const kind = isCanaryLine(raw) ? 'C' : isTerminalLine(raw) ? 'T' : null;
+      if (!kind) continue;
+      if (!ev.has(task)) ev.set(task, []);
+      ev.get(task)!.push({ ts, kind });
+      if (kind === 'C') {
+        if (!canary.has(task)) canary.set(task, []);
+        canary.get(task)!.push(pipelineDayMin(ts));
+      }
+    }
+    for (const [task, list] of ev) {
+      list.sort((a, b2) => +a.ts - +b2.ts);
+      let pending: Date | null = null;
+      for (const e of list) {
+        if (e.kind === 'C') {
+          if (pending) (open.get(task) ?? open.set(task, []).get(task)!).push(b.slice(0, 10));
+          pending = e.ts;
+        } else if (pending) {
+          if (!lat.has(task)) lat.set(task, []);
+          lat.get(task)!.push((+e.ts - +pending) / 60000);
+          pending = null;
+        }
+      }
+      if (pending) (open.get(task) ?? open.set(task, []).get(task)!).push(b.slice(0, 10));
+    }
+  }
+  // Reference vs recent termination rate, over the IN-FORCE boards only.
+  const inForce = boards.filter(b => b.slice(0, 10) >= EFFECTIVE_FROM);
+  const refB = inForce.slice(0, Math.max(0, inForce.length - RECENT_BOARDS));
+  const recB = inForce.slice(-RECENT_BOARDS);
+  const tally = (bs: string[]) => {
+    const m = new Map<string, { c: number; t: number }>();
+    for (const b of bs) {
+      for (const [task, ep] of episodes(path.join(dir, b))) {
+        if (!ep.opened) continue;
+        if (!m.has(task)) m.set(task, { c: 0, t: 0 });
+        const r = m.get(task)!;
+        r.c++;
+        if (!ep.stillOpen) r.t++;
+      }
+    }
+    return m;
+  };
+  const R = tally(refB), C2 = tally(recB);
+
+  const out = new Map<string, TaskWindow>();
+  for (const task of new Set([...canary.keys(), ...lat.keys()])) {
+    const c = canary.get(task) ?? [];
+    const l = lat.get(task) ?? [];
+    const r = R.get(task) ?? { c: 0, t: 0 };
+    const rec = C2.get(task) ?? { c: 0, t: 0 };
+    const rate = r.c ? r.t / r.c : NaN;
+    const reliability: TaskWindow['reliability'] =
+      r.c < 5 ? 'THIN-EVIDENCE' : rate >= 0.9 ? 'RELIABLE' : rate >= 0.5 ? 'INTERMITTENT' : 'KNOWN-SILENT';
+    out.set(task, {
+      task,
+      canaryN: c.length,
+      canaryP95: c.length >= MIN_N ? pctl(c, WINDOW_PCT) : NaN,
+      latN: l.length,
+      latP95: l.length >= MIN_N ? pctl(l, WINDOW_PCT) : NaN,
+      canaryComputable: c.length >= MIN_N,
+      latComputable: l.length >= MIN_N,
+      unterminatedBoards: open.get(task) ?? [],
+      refClosed: r.t, refTotal: r.c,
+      recentClosed: rec.t, recentTotal: rec.c,
+      reliability,
+    });
+  }
+  return out;
+}
+
+/** Per task on one board: did a canary open, and is the FINAL episode still open? */
+export function episodes(file: string, asOf?: Date): Map<string, { opened: number; stillOpen: Date | null }> {
+  const out = new Map<string, { opened: number; stillOpen: Date | null }>();
+  if (!fs.existsSync(file)) return out;
+  const ev = new Map<string, { ts: Date; kind: 'C' | 'T' }[]>();
+  for (const raw of fs.readFileSync(file, 'utf8').split('\n')) {
+    const task = boardLineTask(raw);
+    if (!task) continue;
+    const ts = parseTs(raw);
+    if (!ts) continue;
+    if (asOf && ts.getTime() > asOf.getTime()) continue;
+    const kind = isCanaryLine(raw) ? 'C' : isTerminalLine(raw) ? 'T' : null;
+    if (!kind) continue;
+    if (!ev.has(task)) ev.set(task, []);
+    ev.get(task)!.push({ ts, kind });
+  }
+  for (const [task, list] of ev) {
+    list.sort((a, b) => +a.ts - +b.ts);
+    let pending: Date | null = null, opened = 0;
+    for (const e of list) {
+      if (e.kind === 'C') { opened++; pending = e.ts; }
+      else if (pending) pending = null;
+    }
+    out.set(task, { opened, stillOpen: pending });
+  }
+  return out;
+}
+
+// ---------- the alarm path ----------
+//
+// THE MANDATE (2026-08-21, owner): "a scheduled task whose canary is absent past its window = RED +
+// the alarm-email path. Absent becomes a detected state, not a silent one."
+//
+// TWO CONTRACTS HAD TO BOTH HOLD. Pipeline_Controller L591 and Brief_Critic leg (iv) already ship
+// this check as WARN-LEVEL, and the Critic pastes its output verbatim into a hard-gated evidence
+// block — so flipping the default exit to 1 would retroactively break two documents that are
+// already in force. So the ALARM fires on the STATE, never on a flag: any absentee past its window
+// on an in-force date writes the alert file and prints the email, whatever exit code is requested.
+// `--red` is available for a caller that wants the non-zero exit; the detection does not depend
+// on anyone passing it.
+//
+// AND THE DURABLE HALF IS THE FILE, NOT THE PRINT. A printed instruction an agent may skip is
+// decoration; `{date}-pipeline-alert.md` is on disk and the morning gate can be asked for it.
+// Email transport stays an agent action by design (Controller: "email transport is independent of
+// the mount") — this script cannot send mail, so it writes the exact subject and body to be sent
+// rather than pretending to have sent it.
+
+export const ALARM_SUBJECT = (task: string, date: string) =>
+  `🔴 PIPELINE ALARM — ${task} missing/failed for ${date}`;
+
+/** Appends one 🔴 block per absent task. Idempotent: a task already alarmed for this date is skipped. */
+export function writeAlert(
+  root: string,
+  date: string,
+  rc: RollCall
+): { path: string; wrote: string[]; skipped: string[] } {
+  const file = path.join(DB(root), `${date}-pipeline-alert.md`);
+  const wrote: string[] = [], skipped: string[] = [];
+  if (!rc.absent.length || rc.exempt) return { path: file, wrote, skipped };
+  const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  let out = '';
+  for (const a of rc.absent) {
+    if (existing.includes(ALARM_SUBJECT(a.task, date))) { skipped.push(a.task); continue; }
+    wrote.push(a.task);
+    out +=
+      `\n## 🔴 SLOT ABSENT — ${a.task} (${date})\n\n` +
+      `- **Email subject:** \`${ALARM_SUBJECT(a.task, date)}\`\n` +
+      `- **To:** cosmictrex11@gmail.com\n` +
+      `- **Detected by:** \`scripts/pipeline-slot-attendance.ts\` at ${fmtET(rc.now)}\n` +
+      `- **Finding:** ${a.line}\n` +
+      `- **Evidence (the board's own words):** ${a.evidence}\n` +
+      `- **What this means:** the ${a.task} slot (scheduled ${a.clock}) left no line of its own on ` +
+      `\`${date}-pipeline-status.md\` past its deadline + ${GRACE_MIN}-minute grace. A task that never ` +
+      `starts writes no canary, so no liveness gate can see it.\n` +
+      `- **Manual recovery:** re-run the ${a.task} slot, or self-heal downstream ` +
+      `(\`editor-handoff-gate --can-self-heal ${date}\`) and say on the board that you did.\n`;
+  }
+  if (out) {
+    if (!existing) out = `# Pipeline Alert — ${date}\n` + out;
+    fs.appendFileSync(file, out);
+  }
+  return { path: file, wrote, skipped };
 }
 
 // ---------- selftest ----------
@@ -431,6 +955,7 @@ function selftest(): number {
     '[roster] contains NO daytime or morning task — the roll call is EVENING slots only (Controller L52-54)'
   );
 
+  const WIN = deriveWindows(root);
   const observed = observedTasks(root);
   const drop = names.filter(n => !observed.has(n));
   assert(
@@ -481,9 +1006,17 @@ function selftest(): number {
   const early = boardOK
     ? rollCall({ docRoot: root, date: '2026-08-21', now: etWallClock('2026-08-20', 19, 35), replay: true })
     : null;
+  // THE WINDOW MOVED, AND THE OLD ASSERTION WAS THE THING THAT WAS WRONG. This used to assert that
+  // the untouched 08-21 board names brief-editor absent at 19:35 ET. It did — because the deadline
+  // came from the Evening Sequence table (6:55 PM + 10 min grace = 19:05). But the archive says
+  // brief-editor's p95 canary is 20:48, so the table-derived deadline condemned the slot **103
+  // minutes before it normally starts**. Under derived windows 19:35 is NOT-YET-DUE, which is the
+  // correct answer: at 19:35 the editor is early, not missing. The absence is proved at 23:59.
   assert(
-    !boardOK || early!.absent.some(a => a.task === 'brief-editor'),
-    `[fire] the UNTOUCHED 08-21 board at 19:35 ET also names brief-editor (absent: ${early?.absent.map(a => a.task).join(', ') || 'none'})`
+    !boardOK ||
+      rollCall({ docRoot: root, date: '2026-08-21', now: etWallClock('2026-08-20', 19, 35), replay: true, windows: WIN })
+        .notYetDue.includes('brief-editor'),
+    '[fire] at 19:35 ET brief-editor is NOT-YET-DUE, not absent — its DERIVED p95 canary is 8:48 PM, so the table deadline of 6:55 PM was accusing a slot 103 min before its own normal start'
   );
 
   // ── 2. MUST STAY SILENT — 2026-08-20, the night the OWED-EDITOR GUARD fired and cleared ──────
@@ -521,13 +1054,33 @@ function selftest(): number {
     !boardOK || !rc21!.absent.some(a => /intel-sweep/.test(a.task)),
     '[routing] and NOT ONE of them is reported missing — correct routing is never absence'
   );
+  // ROSTER WIDENED (owner ruling 2026-08-21): daytime rows are rostered in their own right now, so
+  // "an intel-sweep row must not appear in attended" is obsolete — it must appear, for itself. What
+  // still has to hold is that it services ONLY its own slot.
   assert(
-    !boardOK || !rc21!.attended.some(t => /intel-sweep/.test(t)),
-    '[routing] nor counted as attendance for anything — a daytime row cannot service an evening slot'
+    !boardOK ||
+      (rc21!.attended.includes('intel-sweep-4') &&
+        !rc21!.absent.some(a => /^brief-/.test(a.task) && /intel-sweep/.test(a.evidence))),
+    '[routing] a daytime row is rostered for ITSELF and services no other slot — intel-sweep-4 attended, and no brief-* absence excused by a sweep line'
+  );
+  // THE INVERSION (2026-08-21). This assertion previously read `rc21!.absent.length === 0` and
+  // PASSED — it had encoded the very defect the file was built to catch. The live board's only
+  // brief-editor line is the Critic's SELF-HEAL, and crediting it as attendance made the detector
+  // report FULL ATTENDANCE on the one night in the archive where the slot did not fire. A
+  // self-heal payload is now read as PROOF OF ABSENCE (see selfHealedTask), so the UNTOUCHED
+  // bytes fire on their own — no fixture required.
+  assert(
+    !boardOK || rc21!.absent.some(a => a.task === 'brief-editor'),
+    `[selfheal] the LIVE, UNMODIFIED 08-21 board names brief-editor ABSENT — its only brief-editor line is the Critic's SELF-HEAL, which proves the slot did not write it (absent: ${rc21?.absent.map(a => a.task).join(', ') || 'none'})`
   );
   assert(
-    !boardOK || rc21!.absent.length === 0,
-    `[routing] the LIVE 08-21 board is silent overall: brief-editor's self-heal line services the slot (ANY line, not only CANARY) — absent ${rc21?.absent.length}`
+    !boardOK || rc21!.absent.length === 1,
+    `[selfheal] and brief-editor is the ONLY absentee on the live board at 23:59 ET — the self-heal rule condemns exactly one slot, not the night (absent ${rc21?.absent.length})`
+  );
+  assert(
+    !boardOK ||
+      boardAttendance(boardPath(root, '2026-08-21')).selfHealed.get('brief-editor') !== undefined,
+    '[selfheal] the coverage is RECORDED, not merely subtracted — boardAttendance carries the self-heal line that covered brief-editor'
   );
 
   // ── 4. NOT-YET-DUE IS NOT ABSENT ─────────────────────────────────────────────────────────────
@@ -566,9 +1119,33 @@ function selftest(): number {
     const noisy = inWindow
       .map(d => ({ d, n: rollCall({ docRoot: root, date: d }).absent.length }))
       .filter(x => x.n > 0);
+    // KNOWN-ANSWER PIN. Exactly one board in the window is supposed to be noisy: 2026-08-21, the
+    // night brief-editor did not fire (E-PIPELINE-EDITOR-NONFIRE-01). Asserting `noisy.length === 0`
+    // was the old expectation and it PASSED against the broken detector — silence read as health.
+    // Both directions are now pinned: a NEW noisy board is a storm, and 08-21 going quiet is the
+    // detector regressing back to the defect.
+    // THE WIDENED ROSTER'S FIRST CATCH, AND IT IS THE POINT OF THE RULING. Evening-only, these five
+    // boards were silent. Rostering the daytime slots names an intel sweep that never fired on each
+    // — VERIFIED by hand: on every one of these boards the missing sweep appears NOWHERE in the
+    // task list while all of its siblings do. Pipeline_Controller names this exact blindness as a
+    // root cause of E-PIPELINE-FULL-FAILURE-02: "the existing watchdog never caught the missing
+    // intel sweep because it was not on the monitored task list."
+    const KNOWN_NOISY: Record<string, number> = {
+      '2026-08-01': 2, // intel-sweep-4, intel-sweep-1 — board carries 2,3,5,6 only
+      '2026-08-03': 1, // intel-sweep-5 — board carries 1,2,3,4,6
+      '2026-08-05': 1, // intel-sweep-3 — board carries 1,2,4,5,6
+      '2026-08-12': 1, // intel-sweep-5 — board carries 1,2,3,4,6
+      '2026-08-21': 1, // brief-editor  — the non-fire this file was built for
+    };
+    const unexpected = noisy.filter(x => KNOWN_NOISY[x.d] === undefined);
     assert(
-      inWindow.length >= 14 && noisy.length === 0,
-      `[no-storm] SILENT on all ${inWindow.length} real boards from ${EFFECTIVE_FROM} onward${noisy.length ? ' — NOISY: ' + noisy.map(x => `${x.d}(${x.n})`).join(', ') : ''}`
+      inWindow.length >= 14 && unexpected.length === 0,
+      `[no-storm] no board from ${EFFECTIVE_FROM} onward fires except the known non-fire night${unexpected.length ? ' — UNEXPECTED: ' + unexpected.map(x => `${x.d}(${x.n})`).join(', ') : ''} (${inWindow.length} boards swept)`
+    );
+    assert(
+      Object.entries(KNOWN_NOISY).every(([d, n]) => rollCall({ docRoot: root, date: d, windows: WIN }).absent.length === n) &&
+        rollCall({ docRoot: root, date: '2026-08-21', windows: WIN }).absent[0]!.task === 'brief-editor',
+      `[no-storm] and every known non-fire STILL fires — 08-21 brief-editor plus five intel-sweep non-fires the EVENING-ONLY roster could not see (pin both ways: 08-21 silent = the self-heal rule undone; sweeps silent = the roster narrowed)`
     );
     const preWindow = boards.filter(d => d < EFFECTIVE_FROM);
     assert(
@@ -579,6 +1156,232 @@ function selftest(): number {
       rollCall({ docRoot: root, date: '2026-05-17' }).exempt === true &&
         rollCall({ docRoot: root, date: '2026-08-21' }).exempt === false,
       '[no-storm] the boundary is a real switch: 2026-05-17 EXEMPT, 2026-08-21 IN FORCE'
+    );
+  }
+
+  // ── 6b. THE SELF-HEAL RULE, SWEPT OVER THE WHOLE ARCHIVE ─────────────────────────────────────
+  //      Not over the in-window boards — the first cut of this rule passed the in-window sweep
+  //      while being wrong on 25 of 26 historical cases, because those boards are EXEMPT. A rule
+  //      about what a LINE means must be measured on every line, exempt or not.
+  {
+    const EDITOR_SH =
+      '2026-08-20T23:40:32Z | brief-editor | daily-briefs/2026-08-21-v2.md | SUCCESS | SELF-HEAL (Critic-invoked): the scheduled brief-editor slot left NO trace on this board';
+    const CRITIC_NARRATION =
+      '2026-08-20T23:47:57Z | brief-critic | daily-briefs/2026-08-21-critic.md | SUCCESS | 🔴 ARTIFACT STATE FINAL (SELF-HEAL): the scheduled brief-editor slot NEVER FIRED — three polls';
+    assert(
+      selfHealedTask(EDITOR_SH) === 'brief-editor',
+      '[selfheal] a line that declares the absence OF ITS OWN SLOT is coverage — brief-editor, 08-21 (real bytes)'
+    );
+    assert(
+      selfHealedTask(CRITIC_NARRATION) === null,
+      '[selfheal] the Critic line NARRATING that same self-heal is NOT coverage — it names brief-editor as the absent slot, and brief-critic plainly ran (real bytes; this is the 61→3 correction)'
+    );
+    assert(
+      selfHealedTask(
+        '2026-06-24T00:15:42Z | brief-editor | v2.md | SUCCESS | SELF-HEAL: Critic-invoked editor pass on v1.5; 9 fixes applied'
+      ) === 'brief-editor',
+      '[selfheal] and a HEALER MARKER alone suffices — "Critic-invoked" names an author other than the slot (06-24, real bytes)'
+    );
+    assert(
+      selfHealedTask(
+        '2026-07-11T00:10:05Z | brief-email | draft r-1616127471153053776 | SUCCESS | v2 (PROVISIONAL — self-heal copy) emailed'
+      ) === null,
+      '[selfheal] a payload that merely MENTIONS a self-heal is not one — brief-email sent the mail (07-11, real bytes)'
+    );
+
+    const bl = selfHealBlindness(root);
+    assert(
+      bl.token >= 50 && bl.coverage === 3,
+      `[selfheal] over the FULL archive (${bl.boards} boards): ${bl.token} self-heal-token lines, exactly ${bl.coverage} read as coverage — the broad rule condemned 61`
+    );
+    // The residual is REPORTED with its denominator, and CROSS-CHECKED rather than wished to zero.
+    // `blindSole` counts blind lines that are the task's only line that night — but most pipeline
+    // tasks write exactly one line a night, so a sole line is normal, not evidence of a miss. The
+    // assertion that means something is the cross-check: no slot the SECOND instrument accuses is
+    // sitting unnoticed inside the blind set.
+    const missed: string[] = [];
+    {
+      const dir = DB(root);
+      for (const f of fs.readdirSync(dir).filter(x => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(x))) {
+        const bpath = path.join(dir, f);
+        const a = boardAttendance(bpath);
+        for (const t of absenceTestimony(bpath).keys()) if (a.attended.has(t)) missed.push(`${f.slice(0, 10)}:${t}`);
+      }
+    }
+    assert(
+      missed.length === 0,
+      `[selfheal] RESIDUAL CROSS-CHECKED: ${bl.blind}/${bl.token} self-heal-token lines carry neither marker and read as attendance (${bl.blindSole} of them the task's only line that night — normal, most tasks write one). What would be a real miss is a slot the TESTIMONY path accuses while the attendance path still credits it: ${missed.length === 0 ? 'none' : missed.join(', ')}`
+    );
+    assert(
+      bl.blind + bl.coverage === bl.token,
+      `[selfheal] and the residual accounts for itself — ${bl.coverage} coverage + ${bl.blind} blind = ${bl.token} token lines, no third bucket`
+    );
+  }
+
+  // ── 6b-ii. THE SECOND INSTRUMENT ─────────────────────────────────────────────────────────────
+  {
+    const t21 = absenceTestimony(boardPath(root, '2026-08-21'));
+    assert(
+      t21.get('brief-editor') !== undefined,
+      '[testimony] 2026-08-21 brief-editor is named absent by the SECOND, INDEPENDENT path too — the Critic testifies in writing that the slot NEVER FIRED. Two conventions, one verdict.'
+    );
+    assert(
+      t21.size === 1,
+      `[testimony] and it accuses exactly one slot that night, not the night (${[...t21.keys()].join(', ') || 'none'})`
+    );
+    // The contradiction guard, on the two real boards where testimony is WRONG.
+    for (const [d, accused] of [['2026-08-13', 'brief-morning'], ['2026-08-17', 'brief-quality-gate']] as const) {
+      const bpp = boardPath(root, d);
+      if (!fs.existsSync(bpp)) continue;
+      assert(
+        !absenceTestimony(bpp).has(accused),
+        `[testimony] ${d}: a line says "${accused} never ran" but ${accused} wrote clean lines of its own — testimony is OVERRIDDEN by the slot's own work (2 of 6 real testimony pairs are wrong this way)`
+      );
+    }
+    assert(
+      rollCall({ docRoot: root, date: '2026-08-21', now: etWallClock('2026-08-20', 23, 59) })
+        .absent.every(a => a.evidence && a.evidence.length > 20),
+      '[testimony] every absentee carries the BOARD’S OWN WORDS as evidence, not our paraphrase'
+    );
+  }
+
+  // ── 6c. THE BOTH-LINES GUARD ─────────────────────────────────────────────────────────────────
+  //      06-22 and 06-24 each carry a self-heal AND a genuine scheduled brief-editor line. The
+  //      slot really ran; attendance must win and the coverage note must be dropped.
+  for (const d of ['2026-06-22', '2026-06-24']) {
+    const bp = boardPath(root, d);
+    if (!fs.existsSync(bp)) continue;
+    const a = boardAttendance(bp);
+    assert(
+      a.attended.has('brief-editor') && !a.selfHealed.has('brief-editor'),
+      `[selfheal] ${d}: brief-editor self-healed EARLY then its scheduled pass landed — attendance wins, coverage dropped (a slot that ran is never condemned by having also been covered)`
+    );
+  }
+
+  // ── 6d. THE BRACKETED DIALECT ────────────────────────────────────────────────────────────────
+  assert(
+    boardLineTask('[2026-06-23T23:58:04Z] | brief-editor | v2.md | SUCCESS | 2 validator runs') ===
+      'brief-editor' &&
+      lineTask('[2026-06-23T23:58:04Z] | brief-editor | v2.md | SUCCESS | 2 validator runs') === null,
+    '[dialects] the [bracketed] timestamp form is READ here though editor-handoff-gate’s lineTask drops it — 12 such lines on the real boards, 8 of them brief-editor; an unparsed line would read as an absent slot'
+  );
+
+  // ── 6e. THE ALARM PATH ───────────────────────────────────────────────────────────────────────
+  //      Written into a throwaway root — the selftest never touches a real alert file.
+  {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'slot-alarm-'));
+    fs.mkdirSync(path.join(tmp, 'daily-briefs'), { recursive: true });
+    const rcA = rollCall({ docRoot: root, date: '2026-08-21', now: etWallClock('2026-08-20', 23, 59) });
+    const w1 = writeAlert(tmp, '2026-08-21', rcA);
+    assert(
+      w1.wrote.length === 1 && w1.wrote[0] === 'brief-editor' && fs.existsSync(w1.path),
+      `[alarm] an absent slot WRITES A DURABLE ALERT FILE, not just a console line — ${path.basename(w1.path)} (${w1.wrote.join(', ')})`
+    );
+    const body = fs.readFileSync(w1.path, 'utf8');
+    assert(
+      body.includes('🔴 PIPELINE ALARM — brief-editor missing/failed for 2026-08-21') &&
+        body.includes('cosmictrex11@gmail.com'),
+      '[alarm] and it carries the EXACT subject and recipient the Controller mandates (L203), so the email is transcribed, never composed from memory'
+    );
+    assert(
+      body.includes('SELF-HEAL') && body.includes('editor-handoff-gate --can-self-heal'),
+      '[alarm] with the board’s own evidence and the named recovery step — an alert that does not say what to do is a second thing to triage'
+    );
+    const w2 = writeAlert(tmp, '2026-08-21', rcA);
+    assert(
+      w2.wrote.length === 0 && w2.skipped[0] === 'brief-editor',
+      '[alarm] IDEMPOTENT — a second run on the same date does not duplicate the block (health-check + Critic both invoke this check, so double-firing is the normal case, not the edge case)'
+    );
+    // THE N/A STATE (standing rule: no metric ships without its N/A-state selftest).
+    const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), 'slot-alarm-na-'));
+    fs.mkdirSync(path.join(tmp2, 'daily-briefs'), { recursive: true });
+    const rcOK = rollCall({ docRoot: root, date: '2026-08-20', now: etWallClock('2026-08-19', 23, 59) });
+    const w3 = writeAlert(tmp2, '2026-08-20', rcOK);
+    assert(
+      rcOK.absent.length === 0 && w3.wrote.length === 0 && !fs.existsSync(w3.path),
+      '[alarm] N/A STATE: a full-attendance night creates NO alert file at all — an empty alarm file would read as an alarm that fired and found nothing, which is not the same thing as no alarm'
+    );
+    const rcEx = rollCall({ docRoot: root, date: '2026-05-17' });
+    assert(
+      writeAlert(tmp2, '2026-05-17', rcEx).wrote.length === 0,
+      '[alarm] N/A STATE: an EXEMPT pre-canary date never alarms, however many slots are missing from it — the rule binds forward'
+    );
+  }
+
+  // ── 6f. THE WIDENED ROSTER + DERIVED WINDOWS ─────────────────────────────────────────────────
+  {
+    const names2 = new Set(rollCall({ docRoot: root, date: '2026-08-21', windows: WIN }).rostered.map(r => r.task));
+    assert(
+      ['brief-editor', 'brief-morning', 'intel-sweep-1', 'intel-sweep-6', 'daily-improvement', 'pipeline-health-check', 'system-update'].every(t => names2.has(t)),
+      `[roster] WIDENED to all scheduled slots, morning and evening — ${names2.size} rostered (was 10, evening-only)`
+    );
+    assert(
+      ['verify-brief-publish', 'daily-portfolio-monitor'].every(t => names2.has(t)),
+      '[roster] including slots that canary every day and appear in NO sequence table — the roster is derived from the archive, not transcribed from a document'
+    );
+    // The three stale table hours. Derived beats documented, and the gap is the receipt.
+    for (const [t, docMin, expect] of [['pipeline-health-check', 11 * 60 + 6, 240], ['daily-improvement', 10 * 60 + 3, 180], ['system-update', 9 * 60 + 36, 150]] as const) {
+      const w = WIN.get(t)!;
+      const absMin = (PIPELINE_DAY_START_MIN + w.canaryP95) % 1440;
+      assert(
+        Math.abs(docMin - absMin - expect) <= 20 && w.canaryN >= 20,
+        `[roster] the DOCUMENTED hour for ${t} is stale by ~${expect} min — table says ${fmtClock(docMin)}, archive says ${fmtClock(absMin)} across n=${w.canaryN} canaries. A window from the table would call it ABSENT every morning.`
+      );
+    }
+    assert(
+      rollCall({ docRoot: root, date: '2026-08-21', windows: WIN }).windowless.includes('selection-judge'),
+      '[roster] N/A STATE: a slot with too few canaries to derive a window is NAMED windowless, never given a default — selection-judge is n=6 and bimodal (07:36 vs 21:12, 818-min spread), a p95 there describes neither mode'
+    );
+    assert(
+      [...WIN.values()].every(w => !w.canaryComputable || w.canaryN >= MIN_N),
+      `[roster] and no window is derived from fewer than MIN_N=${MIN_N} observations`
+    );
+  }
+
+  // ── 6g. UNTERMINATED — the second rostered state ─────────────────────────────────────────────
+  {
+    const rcU = rollCall({ docRoot: root, date: '2026-08-21', now: etWallClock('2026-08-21', 13, 0), windows: WIN });
+    const u = new Set(rcU.unterminated.map(x => x.task));
+    assert(
+      u.has('pipeline-health-check') && u.has('daily-improvement'),
+      `[unterminated] 2026-08-21 names pipeline-health-check and daily-improvement — both canaried at 07:03/07:06 ET and wrote no terminal line (${[...u].join(', ') || 'none'})`
+    );
+    // 🔴 THE CONTAMINATION LEG. Over the whole in-force window these two sit at 67%/71% — merely
+    // "intermittent", not worth a warning. That figure is computed over a window that CONTAINS the
+    // outage. From the reference period alone they are 13/14 and 14/14 — RELIABLE — so the recent
+    // silence is news. If this ever flips back the classifier has started normalising its own
+    // failures again.
+    for (const t of ['pipeline-health-check', 'daily-improvement']) {
+      const w = WIN.get(t)!;
+      assert(
+        w.reliability === 'RELIABLE' && w.refClosed / w.refTotal >= 0.9 && w.recentClosed / w.recentTotal <= 0.2,
+        `[unterminated] ${t} is classified from the REFERENCE period (${w.refClosed}/${w.refTotal}) not the contaminated whole (recent ${w.recentClosed}/${w.recentTotal}) — a base rate spanning the outage would rate this task "intermittent" and say nothing`
+      );
+    }
+    // A task whose own norm is silence must not be accused nightly.
+    assert(
+      !u.has('intel-sweep-4') && WIN.get('intel-sweep-4')!.reliability === 'INTERMITTENT',
+      '[unterminated] a slot whose REFERENCE record is already patchy (intel-sweep-4, 9/13) is NOT warned nightly — the check reports departures from a task’s own norm, not the norm itself'
+    );
+    assert(
+      !rcU.unterminated.some(x => !WIN.get(x.task)!.latComputable),
+      '[unterminated] N/A STATE: a slot with no computable latency window is never reported unterminated — weekly-draft has written 0 terminal lines ever, which is a convention gap to fix, not a nightly finding'
+    );
+    assert(
+      rcU.unterminated.every(x => /reference period \d+\/\d+/.test(x.line)),
+      '[unterminated] every finding carries the reference record inline, so a reader can tell news from norm without leaving the line'
+    );
+    assert(
+      rollCall({ docRoot: root, date: '2026-05-17', windows: WIN }).unterminated.length === 0,
+      '[unterminated] EXEMPT dates never report it — the rule binds forward, exactly as the ABSENT leg does'
+    );
+    // Warn-level only: the alarm path belongs to ABSENT.
+    const tmp3 = fs.mkdtempSync(path.join(os.tmpdir(), 'slot-unterm-'));
+    fs.mkdirSync(path.join(tmp3, 'daily-briefs'), { recursive: true });
+    const rcNoAbs = { ...rcU, absent: [] } as RollCall;
+    assert(
+      writeAlert(tmp3, '2026-08-21', rcNoAbs).wrote.length === 0,
+      '[unterminated] WARN-LEVEL FIRST (owner ruling): an unterminated slot writes NO alert file and sends no email — only ABSENT alarms'
     );
   }
 
@@ -639,7 +1442,8 @@ function main(): void {
     }
   }
 
-  const rc = rollCall({ docRoot: process.cwd(), date, now, replay: nowIdx >= 0 });
+  const cwdRoot = process.cwd();
+  const rc = rollCall({ docRoot: cwdRoot, date, now, replay: nowIdx >= 0 });
 
   if (argv.includes('--json')) {
     console.log(
@@ -671,14 +1475,26 @@ function main(): void {
 
   console.log(`pipeline-slot-attendance ${date} (evening of ${rc.eveningDate}, now ${fmtET(rc.now)})`);
   console.log(
-    `   roster ${rc.rostered.length} evening slot(s) from system/Pipeline_Controller.md` +
+    `   roster ${rc.rostered.length} slot(s), morning + evening, DERIVED from the archive (windows p95, n>=${MIN_N})` +
       (rc.dropped.length
         ? ` · ${rc.dropped.length} documented-but-never-observed slot(s) NOT rostered: ${rc.dropped.join(', ')}`
         : '')
   );
   console.log(
-    `   attended ${rc.attended.length} · not-yet-due ${rc.notYetDue.length} · MISSING ${rc.absent.length}`
+    `   attended ${rc.attended.length} · not-yet-due ${rc.notYetDue.length} · MISSING ${rc.absent.length} · UNTERMINATED ${rc.unterminated.length}` +
+      (rc.windowless.length ? ` · ${rc.windowless.length} slot(s) NOT ROSTERED, window not computable: ${rc.windowless.join(', ')}` : '')
   );
+  const printUnterminated = () => {
+    if (!rc.unterminated.length) return;
+    console.log(`\n🟡 UNTERMINATED (WARN-LEVEL — never blocks, never emails):`);
+    for (const u of rc.unterminated) console.log('   ' + u.line);
+    console.log(
+      `   THIS ANSWERS "DID IT REPORT", NOT "IS IT DEAD" — the same scope limit the MISSING leg carries.\n` +
+        `   Receipt, 2026-08-21: daily-improvement wrote no terminal line on six of the last seven boards\n` +
+        `   and wrote Improvement_Ledger rows on every one of them. That is silent COMPLETION, and the\n` +
+        `   artifact is what tells the two apart — not this list.`
+    );
+  };
   if (rc.exempt) {
     console.log(
       `\n➖ EXEMPT — ${date} predates EFFECTIVE_FROM ${EFFECTIVE_FROM}, before the CANARY protocol was the norm.\n` +
@@ -689,13 +1505,31 @@ function main(): void {
     process.exit(0);
   }
   if (!rc.absent.length) {
-    console.log('\n✅ FULL ATTENDANCE — every due evening slot for this brief date left a line on the board.');
-    process.exit(0);
+    console.log('\n✅ FULL ATTENDANCE — every due slot for this brief date, morning and evening, left a line of its own.');
+    printUnterminated();
+    process.exit(process.argv.includes('--red') && rc.unterminated.length ? 1 : 0);
   }
+  printUnterminated();
   console.log('');
-  for (const a of rc.absent) console.log(a.line);
+  for (const a of rc.absent) {
+    console.log(a.line);
+    console.log(`   evidence: ${a.evidence}`);
+  }
+
+  // THE ALARM — on the state, not on a flag. See "the alarm path" above.
+  const al = writeAlert(cwdRoot, date, rc);
+  console.log(`\n🔴 ALARM WRITTEN — ${al.path}`);
+  if (al.wrote.length) console.log(`   new alert block(s): ${al.wrote.join(', ')}`);
+  if (al.skipped.length) console.log(`   already alarmed for this date, not duplicated: ${al.skipped.join(', ')}`);
   console.log(
-    `\n⚠️  ${rc.absent.length} slot(s) with NO LINE ON THE BOARD (advisory — this check never blocks the brief).\n` +
+    `\n📧 ALARM EMAIL REQUIRED — this script cannot send mail; the transport is deliberately independent\n` +
+      `   of the workspace mount (Pipeline_Controller, ENVIRONMENT CANARY & ZERO-WRITE ALARM). Send now:\n` +
+      rc.absent.map(a => `     To: cosmictrex11@gmail.com\n     Subject: ${ALARM_SUBJECT(a.task, date)}\n     Body:    ${a.line} · ${a.evidence}`).join('\n')
+  );
+  console.log(
+    `\n⚠️  ${rc.absent.length} slot(s) NOT OBSERVED TO HAVE RUN (advisory — this check never blocks the brief).\n` +
+      `   "Not observed" is wider than "no line": a slot whose only line is another task's SELF-HEAL, or\n` +
+      `   one the board testifies never fired, did not write that line and is counted absent. See evidence.\n` +
       `   A task that never starts writes no canary, so no liveness gate can see it: --liveness, --qg-liveness,\n` +
       `   the RACE GUARD and the OWED-EDITOR GUARD all begin from a line the task wrote.\n` +
       `   THIS CHECK ANSWERS "did it start", NOT "is it dead". Run mid-evening (an early --now), a slot listed\n` +
@@ -707,7 +1541,10 @@ function main(): void {
       `   self-heal downstream (editor-handoff-gate --can-self-heal) and say on the board that you did.\n` +
       `   Receipt: 2026-08-21, brief-editor, zero lines — the Critic ran the whole Editor pass at 23:40:32Z.`
   );
-  process.exit(0); // ADVISORY, ALWAYS. pipeline-health-check must never block a brief.
+  // Exit code: 0 by default, because Pipeline_Controller L591 and Brief_Critic leg (iv) both ship
+  // this check as warn-level and must never block a brief. `--red` is for a caller that wants the
+  // non-zero exit. The DETECTION above does not depend on either — it already happened.
+  process.exit(process.argv.includes('--red') ? 1 : 0);
 }
 
 if (process.argv[1] && process.argv[1].includes('pipeline-slot-attendance')) main();
