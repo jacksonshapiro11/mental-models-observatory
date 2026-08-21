@@ -2022,6 +2022,31 @@ export function settleObservationRail(
     }
   }
 
+  // ── ESC-018 — THE RAIL ANNOUNCES ITS OWN STARVATION (added 2026-08-21, RC7) ──────────────────
+  // NOTHING CHECKS THE CHECKER (IMP-066's lesson, arriving in a second place). This rail's ONLY
+  // input is a claim key prefixed `price:`, and that prefix is a WRITER CONVENTION that no gate
+  // requires. Measured across every truth file on disk the morning of 2026-08-21:
+  //   08-14: 12 rows (the night IMP-173 shipped) · 08-15: 10 · 08-17: 5 · 08-18: 8
+  //   08-19: **0** · 08-20: 3 · 08-21: **0**
+  // TWO OF THE LAST THREE NIGHTS HAD ZERO. On those nights this rail inspected nothing, returned
+  // nothing, and was indistinguishable from a rail that found nothing wrong — the exact shape of
+  // IMP-064's premise registry that "silently returned zero rows while fact-gate printed PASS".
+  // A gate with no input is not passing; it is absent. So it now says so, once, per brief.
+  if (!Object.keys(claims).some(k => k.startsWith('price:'))) {
+    out.push({
+      check: 'settle-observation',
+      severity: 'FLAG',
+      message:
+        `GATE STARVED — the truth file carries ZERO \`price:\` rows, so the settle-observation rail ` +
+        `(IMP-173) inspected NOTHING this run. A gate with no input is not passing, it is ABSENT, and ` +
+        `a green line here would mean only that there was nothing to read. The \`price:\` prefix is a ` +
+        `writer convention that nothing enforces, and its coverage has decayed since the rail shipped ` +
+        `(08-14: 12 rows · 08-15: 10 · 08-17: 5 · 08-18: 8 · 08-19: 0 · 08-20: 3 · 08-21: 0). Key every ` +
+        `Dashboard level as \`price:<asset>-<settle|close|at>-<YYYY-MM-DD>\` with an \`observedAt\`, or ` +
+        `this rail and IMP-205's observation-kind cross-check are both reading an empty table. ESC-018.`,
+    });
+  }
+
   if (missing.length) {
     out.push({
       check: 'settle-observation',
@@ -6633,7 +6658,52 @@ function selftest(): number {
     `  [IMP-205] the continuously-traded roster is READ FROM system/entity-bindings.json, not hardcoded: ${okObsRegistry ? '✓' : '✗'}`
   );
 
+  // ── ESC-018: the settle-observation rail must announce its own starvation ─────────────────────
+  // Both directions, and the FIRE case is a REAL truth file, not a fixture: 2026-08-21's own truth
+  // file carries zero `price:` rows, which is the whole reason this escalation exists.
+  const starveReal = (() => {
+    const p = path.join(process.cwd(), 'daily-briefs/2026-08-21-truth.json');
+    if (!fs.existsSync(p)) return null;
+    try {
+      return JSON.parse(fs.readFileSync(p, 'utf8'));
+    } catch {
+      return null;
+    }
+  })();
+  const okStarveFire =
+    starveReal != null &&
+    settleObservationRail(starveReal, '2026-08-21', false).some(f =>
+      /GATE STARVED/.test(f.message)
+    );
+  console.log(
+    `  [ESC-018] the settle-observation rail FLAGS ITS OWN STARVATION on the real 2026-08-21 truth file (0 price: rows): ${okStarveFire ? '✓' : '✗'}`
+  );
+  const okStarveSilent = !settleObservationRail(
+    {
+      claims: {
+        'price:brent-settle-2026-08-20': {
+          observedAt: '2026-08-20T19:00:00Z',
+        },
+      },
+    },
+    '2026-08-21',
+    false
+  ).some(f => /GATE STARVED/.test(f.message));
+  console.log(
+    `  [ESC-018] SILENT the moment ONE price: row exists — starvation, not emptiness, is what it reports: ${okStarveSilent ? '✓' : '✗'}`
+  );
+  // And it must not condemn the pre-rail archive (IMP-125).
+  const okStarveNoRetro = !settleObservationRail({ claims: {} }, '2026-07-01', false).some(
+    f => /GATE STARVED/.test(f.message)
+  );
+  console.log(
+    `  [ESC-018] NO RETRO: silent before SETTLE_RAIL_EFFECTIVE_FROM: ${okStarveNoRetro ? '✓' : '✗'}`
+  );
+
   const ok =
+    okStarveFire &&
+    okStarveSilent &&
+    okStarveNoRetro &&
     okObsFire &&
     okObsAllVerbs &&
     okObsSilentSamePage &&
