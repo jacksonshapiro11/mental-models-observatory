@@ -336,13 +336,21 @@ political consolidation", "reframes language loss as a side effect of concentrat
 carrying a different point, contradicting nothing. **Topic contact without the point is MISSING
 however articulate.**
 
-**WRONG — 🔴 SYNTHETIC, LABELED. Constructed to show the boundary, drawn from no brief.** so_what:
-*"Orders lead revenue, so a rising discount rate marks the order book down before anyone has read
-it."* Point: *the book gets marked DOWN.* → *"Order books are forward-looking, so a rising rate
-environment leaves them untouched and the buildout keeps compounding."* = **WRONG.** Asserts the
-opposite, not merely absent. **It is synthetic because no clean contradiction existed in the
-off-night retro data — the readers were too good. A constructed example teaches the boundary without
-attaching an answer to any real unit, which is the point of the provenance rule.**
+**WRONG — 🔴 SYNTHETIC, LABELED, AND DELIBERATELY OFF-DOMAIN.** so_what: *"A vineyard that irrigates
+on a fixed calendar waters the calendar, not the vine."* Point: *the schedule replaces the actual
+need.* → *"It shows fixed-calendar irrigation keeps the vines supplied precisely when they need
+water."* = **WRONG.** Asserts the opposite of the point, not merely absent.
+
+It is synthetic because no clean contradiction existed in the off-night retro data — those readers
+were too good. 🔴 **AND IT IS RE-DOMAINED (owner stat note, 2026-08-20). The first version of this
+anchor used order books and discount rates, which is U12's exact subject and very nearly U12's
+sentence — the label had been swapped off the anchor while its CONTENT stayed inside the sample.
+That is teaching-to-the-test wearing a disguise, and it defeats the provenance rule by the back
+door.** A synthetic anchor must be far enough from every unit in the packet that no grader can
+pattern-match it onto one. Agriculture is nowhere in this brief; markets are everywhere in it.
+
+**When this anchor set is used on a packet containing a vineyard or irrigation unit, re-domain it
+again.** The requirement is distance from THE PACKET, not distance from finance.
 
 🔴 **AND THE NIGHTLY so_what GRADE IS AN ENSEMBLE: THREE GRADERS, MAJORITY WINS.** This fires under
 the pre-registered rule — the definitions were expected to collapse the spread and **they did not.**

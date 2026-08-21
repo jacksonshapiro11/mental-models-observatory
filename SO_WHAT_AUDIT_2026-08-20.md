@@ -314,6 +314,30 @@ points and closed **none** of the gap. Per decision 2: **the investigation goes 
 grading path — nowhere else.** The leading untested candidate is unchanged and is mine: **every run
 in this entire arc was a Sonnet subagent** (L-0820-14).
 
+🔴 **STAT NOTE (owner, 2026-08-20) — U12 IS FLAGGED IN EVERY NUMBER THIS PACKET PRODUCED.** The
+synthetic WRONG anchor shipped with the off-night run used *"a rising discount rate marks the order
+book down"* — **U12's exact subject and very nearly U12's sentence.** The anchor's label was
+off-night; its content was not. **U12 is therefore not an independent measurement in the off-night
+results and must be flagged or excluded wherever they are quoted.**
+
+| defined + off-night | all 25 units | **excluding U12** |
+|---|---|---|
+| runs | 56.0 / 54.7 / 62.7% | **56.9 / 55.6 / 63.9%** |
+| spread | 8.0 pts | **8.3 pts** |
+| exact label agreement | 89% | **89%** |
+| OK-vs-not agreement | 89% | **89%** |
+| MISSING↔WRONG | 0 | **0** |
+| ensemble | 56.0% (42/75) | **56.9% (41/72)** |
+
+**Every conclusion survives the exclusion**, which is why the arc still closes: the boundary is still
+dead, the spread still did not collapse, and production's 90.7% is still 27–34 points above the
+cluster. **But the flag stays on, because "it did not change the answer" is a finding, not a licence
+to quote the contaminated denominator.**
+
+**Corrective applied:** the synthetic anchor is re-domained to a vineyard-irrigation example with no
+analogue anywhere in the packet. **The requirement is distance from THE PACKET, not distance from
+finance** — which is the part I got wrong the first time.
+
 ## THE PRODUCTION CONFIGURATION, SHIPPED
 
 **Defined rubric + off-night anchors + ensemble of three, graded in isolation.** Written into
