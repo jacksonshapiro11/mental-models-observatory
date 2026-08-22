@@ -3446,6 +3446,256 @@ function derivedPercentageFindings(
   return findings;
 }
 
+// ─── IMP-208 — COMPOSITION RECONCILIATION (2026-08-22 Critic mandate #1, RC2) ────────────────
+//
+// THE FAILURE. AI&T-3 printed four numbers about ONE release and they did not describe the same
+// world: total Korean exports +61.5% in the first twenty days of August · semiconductors ~47% of
+// everything Korea ships · semiconductors +~200% · "strip semiconductors out and the rest of
+// Korean exports grew roughly 10 percent". Run the decomposition and the headline total refutes
+// the bullet's own residual:
+//
+//     total +61.5%  ->  ex-semiconductor +14.5%   ← the bullet says 10
+//     total +56.0%  ->  ex-semiconductor  +9.3%   ← reconciles with the bullet's own residual
+//
+// The Korea Herald reported +56% on the SAME customs release. The two subsidiary figures were
+// independently verified and both CHECK OUT. So the odd number was the headline — and the bullet
+// carried its own refutation onto the page. `validate-brief`, `fact-gate`, `ceiling-lint` and
+// `novelty-gate` all exited 0, because every one of them checks numbers AGAINST THE OUTSIDE WORLD
+// or AGAINST THE ARCHIVE and not one of them checks them AGAINST EACH OTHER. A bullet that prints
+// both a total and its residual has published an equation; nothing on disk ran it.
+//
+// WHAT THIS CHECKS. Inside a SINGLE bullet — one bullet is one argument, the same unit
+// `derivedPercentageFindings` uses — find all four terms of a composition statement:
+//   (a) a composite growth rate,  (b) a component's share of the composite,
+//   (c) that component's growth rate,  (d) an EXPLICIT residual for the remainder.
+// Recompute (d) from (a)(b)(c) on CURRENT-period shares and FAIL on divergence > 2pp. The message
+// prints the recomputed value AND all four inputs so the Writer can see which of the four is the
+// odd one out — the fix on 08-22 was to strike ONE number, not to renumber the other three.
+//
+// THE ARITHMETIC, and why current-period shares. The share a brief prints is always the
+// component's share of the CURRENT total ("semiconductors are 47 percent of everything Korea
+// ships"), never of the base-period total. So: T1 = 1+g; C1 = s·T1; C0 = C1/(1+c); R0 = 1-C0;
+// R1 = T1-C1; r = R1/R0 - 1. That reproduces the mandate's receipts to two decimals (61.5/47.2/199
+// -> 14.45; 56.0/47.2/199 -> 9.28), and the selftest pins BOTH so a "simplification" of this
+// formula into the base-share version cannot land silently.
+//
+// ANTI-NOISE — THE EXPLICIT RESIDUAL IS THE WHOLE TRIGGER, AND IT IS MEASURED.
+// The tempting construction ("a bullet with four percentages") is a flag generator: the SAME PAGE
+// carries M&M-2, which prints $102.20, ~$170, +28%, +47%, $4.10/$3.83, $5.45/$5.05 — six
+// magnitudes that are not a composite-and-residual set, and a gate that fires there is a gate the
+// Writer learns to route around. So the trigger is the rarest and most self-announcing term:
+// an EXPLICIT EXCLUSION ("strip X out", "excluding X", "ex-X", "net of X") that is followed in the
+// same sentence by a growth rate and names an aggregate noun. Measured across 20,850 bullets in
+// every published brief AND every draft in the repo: 5 bullets reach the exclusion clause, all 5
+// are this one Korea story's lineage, and exactly 2 assemble a complete four-tuple — the v1 and
+// v1.5 copies of the defect. FALSE-POSITIVE FLOOR ACROSS 300 PUBLISHED FILES: 0.
+//
+// SEVERITY. Advisory FLAG in the evening (the brief always ships) and FAIL under
+// --require-resolved, the `checkObservationKind` pattern — because unlike a price, this defect
+// needs no source to resolve: the reader can run the equation, so the Morning Truth Gate can too.
+const COMPOSITION_EFFECTIVE_FROM = '2026-08-22';
+
+// An EXPLICIT exclusion of a named component. Deliberately NOT "without"/"minus"/"other than
+// that" — the loose members of this family appear in ordinary prose ("produces this print without
+// an extra wafer", in the very bullet that fails) and buy nothing, because a real composition
+// bullet announces its subtraction.
+const COMPOSITION_EXCLUSION_RE =
+  /\b(?:strip(?:ping|ped|s)?|exclud(?:e|es|ed|ing)|net\s+of|leav(?:e|ing)\s+out|set(?:ting)?\s+aside|apart\s+from|back(?:ing)?\s+out)\s+(?:out\s+)?(?:the\s+|its\s+|all\s+)?([A-Za-z][A-Za-z-]{3,28})|\bex-([A-Za-z][A-Za-z-]{3,28})/i;
+// A growth rate: a genuine CHANGE verb PRECEDING the figure. "run at 180 to 200 percent" and
+// "a 200 percent growth rate is partly a base effect" are rates DESCRIBED, not changes CLAIMED,
+// and both sit in the 08-22 bullet — reading either as the composite would misattribute the odd
+// number and send the Editor to correct a true sentence.
+const COMPOSITION_GROWTH_RE =
+  /\b(?:grew|grow(?:s|ing|n)?|rose|ris(?:e|es|ing|en)|increas(?:e|es|ed|ing)|expand(?:s|ed|ing)?|climb(?:s|ed|ing)?|advanc(?:e|es|ed|ing)|gain(?:s|ed|ing)?|jump(?:s|ed|ing)?|surg(?:e|es|ed|ing)|up)\b[^.;:]{0,40}?(\d+(?:\.\d+)?)\s*(?:%|percent\b)/i;
+// A SHARE of the composite, in any of the three shapes a brief actually writes.
+const COMPOSITION_SHARE_RE =
+  /(\d+(?:\.\d+)?)\s*(?:%|percent)\s+(?:of|share)\b|\bshare\s+of\b[^.;:]{0,40}?(\d+(?:\.\d+)?)\s*(?:%|percent)|\bat\s+(\d+(?:\.\d+)?)\s*(?:%|percent)\s+concentration/i;
+// The aggregate the composite growth is ABOUT. Requiring the residual clause and the composite
+// clause to name the SAME aggregate is what stops two unrelated growth rates in one bullet from
+// being read as a decomposition.
+const COMPOSITION_AGGREGATE_RE =
+  /\b(exports?|imports?|shipments?|sales|revenues?|turnover|output|production|orders?|bookings?|deliveries|spending|capex|billings|volumes?|the\s+index|the\s+total|the\s+basket)\b/i;
+
+export interface CompositionUnit {
+  component: string; // the excluded component, as the bullet names it
+  aggregate: string; // the composite noun both clauses must share
+  compositePct: number; // (a) the headline growth rate
+  sharePct: number; // (b) the component's share of the CURRENT total
+  componentPct: number; // (c) the component's growth rate
+  residualPct: number; // (d) the residual the bullet states outright
+  compositeSentence: string;
+  residualSentence: string;
+}
+
+/** The residual growth implied by (composite growth, current-period share, component growth). */
+export function reconcileResidualGrowth(
+  compositePct: number,
+  sharePct: number,
+  componentPct: number
+): number | null {
+  const g = compositePct / 100;
+  const s = sharePct / 100;
+  const c = componentPct / 100;
+  if (!(s > 0 && s < 1)) return null; // a share is a proper fraction or it is not a share
+  if (c <= -1 || g <= -1) return null; // a total cannot shrink by more than itself
+  const T1 = 1 + g;
+  const C1 = s * T1;
+  const C0 = C1 / (1 + c);
+  const R0 = 1 - C0;
+  const R1 = T1 - C1;
+  if (R0 <= 0 || R1 < 0) return null; // degenerate: the component alone exceeded the base total
+  return (R1 / R0 - 1) * 100;
+}
+
+/** Sentences of one bullet, with the markdown lead-in bolding removed. */
+function compositionSentences(bullet: string): string[] {
+  return bullet
+    .replace(/\*\*/g, '')
+    .split(/(?<=[.!?])\s+/)
+    .filter(s => s.trim().length > 0);
+}
+
+/** Every complete composition-and-residual set stated inside ONE bullet. Pure — no disk. */
+export function compositionUnits(bullet: string): CompositionUnit[] {
+  const sents = compositionSentences(bullet);
+  // (d) FIRST, because the explicit residual is the trigger: no subtraction announced, no equation.
+  let component = '';
+  let aggregate = '';
+  let residualPct: number | null = null;
+  let residualIdx = -1;
+  for (let i = 0; i < sents.length; i++) {
+    const s = sents[i]!;
+    const ex = s.match(COMPOSITION_EXCLUSION_RE);
+    if (!ex || ex.index == null) continue;
+    const term = (ex[1] ?? ex[2] ?? '').trim();
+    if (!term) continue;
+    // The rate must come AFTER the exclusion — otherwise "a 200 percent growth rate … without an
+    // extra wafer" reads backwards as a residual.
+    const g = s.slice(ex.index + ex[0].length).match(COMPOSITION_GROWTH_RE);
+    if (!g) continue;
+    const agg = s.match(COMPOSITION_AGGREGATE_RE);
+    if (!agg) continue;
+    component = term;
+    aggregate = agg[1]!;
+    residualPct = parseFloat(g[1]!);
+    residualIdx = i;
+    break;
+  }
+  if (!component || residualPct == null || !Number.isFinite(residualPct)) return [];
+
+  const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const stem = component.toLowerCase().replace(/(?:ies|es|s)$/, '');
+  const componentRe = new RegExp('\\b' + esc(stem), 'i');
+  const aggregateRe = new RegExp('\\b' + esc(aggregate), 'i');
+
+  // (b) and (c) live wherever the bullet talks about the COMPONENT.
+  let sharePct: number | null = null;
+  let componentPct: number | null = null;
+  for (let i = 0; i < sents.length; i++) {
+    if (i === residualIdx) continue;
+    const s = sents[i]!;
+    if (!componentRe.test(s)) continue;
+    if (sharePct == null) {
+      const m = s.match(COMPOSITION_SHARE_RE);
+      if (m) sharePct = parseFloat((m[1] ?? m[2] ?? m[3])!);
+    }
+    if (componentPct == null) {
+      const m = s.match(COMPOSITION_GROWTH_RE);
+      if (m) componentPct = parseFloat(m[1]!);
+    }
+  }
+
+  // (a) is the growth rate of the aggregate in a sentence that is NOT about the component. This is
+  // the term the 08-22 published bullet deleted rather than corrected — which is exactly why the
+  // published copy must stay silent here: three of four terms is not an equation.
+  let compositePct: number | null = null;
+  let compositeSentence = '';
+  for (let i = 0; i < sents.length; i++) {
+    if (i === residualIdx) continue;
+    const s = sents[i]!;
+    if (componentRe.test(s)) continue;
+    if (!aggregateRe.test(s)) continue;
+    const m = s.match(COMPOSITION_GROWTH_RE);
+    if (!m) continue;
+    compositePct = parseFloat(m[1]!);
+    compositeSentence = s.trim();
+    break;
+  }
+
+  if (
+    compositePct == null ||
+    sharePct == null ||
+    componentPct == null ||
+    !Number.isFinite(compositePct) ||
+    !Number.isFinite(sharePct) ||
+    !Number.isFinite(componentPct)
+  )
+    return [];
+
+  return [
+    {
+      component,
+      aggregate,
+      compositePct,
+      sharePct,
+      componentPct,
+      residualPct,
+      compositeSentence,
+      residualSentence: sents[residualIdx]!.trim(),
+    },
+  ];
+}
+
+/** IMP-208 — a bullet that prints both a total and its residual has published an equation. */
+export function checkCompositionReconciliation(
+  body: string,
+  briefDate: string | null,
+  requireResolved = false,
+  tolerancePp = 2
+): Finding[] {
+  const findings: Finding[] = [];
+  // NO RETROACTIVE CONDEMNATION (IMP-125): the archive is read, never condemned.
+  if (
+    !briefDate ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(briefDate) ||
+    briefDate < COMPOSITION_EFFECTIVE_FROM
+  )
+    return findings;
+  const stripped = stripComments(body);
+  for (const b of bulletRegions(stripped)) {
+    for (const u of compositionUnits(b.text)) {
+      const implied = reconcileResidualGrowth(
+        u.compositePct,
+        u.sharePct,
+        u.componentPct
+      );
+      if (implied == null) continue;
+      const divergence = Math.abs(implied - u.residualPct);
+      if (divergence <= tolerancePp) continue;
+      findings.push({
+        check: 'composition-reconciliation',
+        severity: requireResolved ? 'FAIL' : 'FLAG',
+        message:
+          `UNRESOLVED-FACT: composition-reconciliation — THIS BULLET CONTRADICTS ITS OWN ARITHMETIC. ` +
+          `It states a composite growth of ${u.compositePct}% for ${u.aggregate}, a ${u.sharePct}% share for ` +
+          `${u.component}, ${u.componentPct}% growth for ${u.component}, and an explicit ex-${u.component} ` +
+          `residual of ${u.residualPct}%. Those four cannot all be true: ${u.compositePct}/${u.sharePct}/${u.componentPct} ` +
+          `implies a residual of ${implied.toFixed(1)}%, which is ${divergence.toFixed(1)}pp from the ${u.residualPct}% printed. ` +
+          `ONE OF THE FOUR IS THE ODD NUMBER — find it before publish; do not renumber the other three to fit. ` +
+          `Solve backwards for each in turn: the composite that would produce a ${u.residualPct}% residual, the share that ` +
+          `would, the component rate that would. Whichever the source supports is the survivor. RECEIPT (2026-08-22, the ` +
+          `defect that shipped): AI&T-3 printed 61.5% total / 47% semiconductors / +200% semiconductors / "roughly 10 ` +
+          `percent" ex-semiconductors. 61.5 implies 14.5; 56.0 implies 9.3; The Korea Herald reported 56% on the same ` +
+          `customs release and BOTH subsidiary figures verified independently — the headline was the odd number and the ` +
+          `fix was to STRIKE it, not to renumber the residual. Section: ${sectionOf(stripped, b.idx)}. ` +
+          `Composite clause: "${u.compositeSentence.replace(/\s+/g, ' ').slice(0, 150)}". ` +
+          `Residual clause: "${u.residualSentence.replace(/\s+/g, ' ').slice(0, 150)}".`,
+      });
+    }
+  }
+  return findings;
+}
+
 // ─── IMP-196 — DASHBOARD LEVEL RECENCY (2026-08-19 Critic mandate #1, RC2, root RC5) ─────────
 //
 // THE FAILURE: the 08-19 Dashboard printed *"the thirty-year Treasury yield HELD its 2007 high
@@ -6700,7 +6950,139 @@ function selftest(): number {
     `  [ESC-018] NO RETRO: silent before SETTLE_RAIL_EFFECTIVE_FROM: ${okStarveNoRetro ? '✓' : '✗'}`
   );
 
+  // ── IMP-208 — COMPOSITION RECONCILIATION (08-22 Critic mandate #1, RC2) ──────────────────────
+  // Three cases, two directions, all on the night's REAL bytes, exactly as the mandate specified.
+  // The arithmetic is pinned FIRST and separately: if the decomposition formula ever regresses to
+  // base-period shares, these two lines red before any file is read, and the failure names itself
+  // instead of arriving as a mysterious silence on a fixture.
+  const cr145 = reconcileResidualGrowth(61.5, 47.2, 199);
+  const cr93 = reconcileResidualGrowth(56.0, 47.2, 199);
+  const okCrMath =
+    cr145 != null &&
+    cr93 != null &&
+    Math.abs(cr145 - 14.5) < 0.3 &&
+    Math.abs(cr93 - 9.3) < 0.3;
+  console.log(
+    `  [IMP-208] THE ARITHMETIC: current-period decomposition reproduces the mandate's receipts — 61.5/47.2/199 -> ${cr145?.toFixed(2)} (expect 14.5) and 56.0/47.2/199 -> ${cr93?.toFixed(2)} (expect 9.3): ${okCrMath ? '✓' : '✗'}`
+  );
+
+  const crOn = (p: string, d: string): Finding[] => {
+    const f = path.join(root, p);
+    return fs.existsSync(f)
+      ? checkCompositionReconciliation(fs.readFileSync(f, 'utf8'), d)
+      : [];
+  };
+  // FIRE — the v1.5 that carried the defect into the Editor. 61.5 / 47 / 200 / "roughly 10".
+  const crFire = crOn('daily-briefs/2026-08-22-v1.5.md', '2026-08-22');
+  const okCrFire =
+    crFire.length === 1 &&
+    crFire[0]!.check === 'composition-reconciliation' &&
+    /61\.5/.test(crFire[0]!.message) &&
+    /implies a residual of 14\.6%/.test(crFire[0]!.message) &&
+    /4\.6pp/.test(crFire[0]!.message);
+  console.log(
+    `  [IMP-208] FIRES on the REAL 2026-08-22 v1.5 AI&T-3 (61.5 total / 47% semis / +200% semis / "roughly 10 percent" residual -> implied 14.6, off by 4.6pp): ${okCrFire ? '✓' : '✗'}${crFire.length !== 1 ? ` (got ${crFire.length})` : ''}`
+  );
+  // SILENT — the CORRECTED form. The published bullet struck the headline total outright ("We
+  // print no headline growth total"), so the published bytes no longer contain a four-tuple at
+  // all; that is its own (weaker) silence case below. The mandate's 56.0 variant therefore has to
+  // be CONSTRUCTED, and it is constructed the only honest way: by substituting 61.5 -> 56.0 in the
+  // REAL fire bytes and changing nothing else, so the only difference between FIRE and SILENT is
+  // the one number the Critic said was wrong.
+  const crFireBody = fs.readFileSync(
+    path.join(root, 'daily-briefs/2026-08-22-v1.5.md'),
+    'utf8'
+  );
+  const crCorrected = crFireBody.replace(
+    'exports rose 61.5 percent',
+    'exports rose 56.0 percent'
+  );
+  const crSilentCorrected = checkCompositionReconciliation(
+    crCorrected,
+    '2026-08-22'
+  );
+  const okCrSilentCorrected =
+    crCorrected !== crFireBody && crSilentCorrected.length === 0;
+  console.log(
+    `  [IMP-208] SILENT on the CORRECTED 56.0 form (same bytes, one number changed -> implied 9.4 vs the printed 10, 0.6pp): ${okCrSilentCorrected ? '✓' : '✗'}${crSilentCorrected.length ? ` (got ${crSilentCorrected.length})` : ''}`
+  );
+  // SILENT — the PUBLISHED 08-22, where the fix was to strike the total rather than renumber the
+  // residual. Three of four terms is not an equation and must not be scored as one.
+  const crPub = crOn('content/daily-updates/2026-08-22.md', '2026-08-22');
+  const okCrSilentPublished = crPub.length === 0;
+  console.log(
+    `  [IMP-208] SILENT on the PUBLISHED 2026-08-22 (headline total struck; 3 of 4 terms is not an equation): ${okCrSilentPublished ? '✓' : '✗'}${crPub.length ? ` (got ${crPub.length})` : ''}`
+  );
+  // SILENT — M&M-2 ON THE SAME PAGE. Six magnitudes in one bullet ($102.20, ~$170, +28%, +47%,
+  // $4.10/$3.83, $5.45/$5.05) that are NOT a composite-and-residual set. A gate that fires on any
+  // bullet with four numbers is a gate the Writer learns to route around, so this is asserted at
+  // the BULLET level, not merely at the page level — a page-level silence could hide a fire here
+  // behind a fire elsewhere.
+  const crMm2 = (() => {
+    for (const p of [
+      'content/daily-updates/2026-08-22.md',
+      'daily-briefs/2026-08-22-v1.5.md',
+    ]) {
+      const f = path.join(root, p);
+      if (!fs.existsSync(f)) continue;
+      const bullet = bulletRegions(
+        stripComments(fs.readFileSync(f, 'utf8'))
+      ).find(b => /shortage stopped being about crude/i.test(b.text));
+      if (!bullet) return null;
+      if (compositionUnits(bullet.text).length) return false;
+    }
+    return true;
+  })();
+  const okCrSilentMm2 = crMm2 === true;
+  console.log(
+    `  [IMP-208] SILENT on the SAME PAGE's M&M-2 diesel bullet — six magnitudes, no composite-and-residual set — in BOTH the v1.5 and published copies: ${okCrSilentMm2 ? '✓' : '✗'}`
+  );
+  // FALSE-POSITIVE FLOOR — every published brief in the archive, July and August, judged as if the
+  // rule had always bound. The floor is the gate's licence to FAIL at the Morning Truth Gate.
+  const crFloorHits: string[] = [];
+  let crFloorFiles = 0;
+  for (const f of fs
+    .readdirSync(path.join(root, 'content/daily-updates'))
+    .filter(x => /^2026-\d\d-\d\d(?:-light)?\.md$/.test(x))
+    .sort()) {
+    crFloorFiles++;
+    if (f.slice(0, 10) === '2026-08-22') continue; // tonight is the receipt, not the floor
+    const hits = checkCompositionReconciliation(
+      fs.readFileSync(path.join(root, 'content/daily-updates', f), 'utf8'),
+      '2026-08-22' // date shield OFF: judge the whole archive by tonight's rule
+    );
+    if (hits.length) crFloorHits.push(`${f}:${hits.length}`);
+  }
+  const okCrFloor = crFloorHits.length === 0;
+  console.log(
+    `  [IMP-208] FALSE-POSITIVE FLOOR = 0 across ${crFloorFiles} published files with the date shield OFF: ${okCrFloor ? '✓' : '✗'}${crFloorHits.length ? ` (got ${crFloorHits.join(', ')})` : ''}`
+  );
+  // NO RETRO (IMP-125) — the boundary is a real switch, proven on the SAME BYTES read both ways.
+  const okCrNoRetro =
+    checkCompositionReconciliation(crFireBody, '2026-08-21').length === 0 &&
+    checkCompositionReconciliation(crFireBody, '2026-08-22').length === 1;
+  console.log(
+    `  [IMP-208] NO RETRO: the same v1.5 bytes are EXEMPT judged as 08-21 and FIRE judged as 08-22: ${okCrNoRetro ? '✓' : '✗'}`
+  );
+  // The severity contract: advisory in the evening, blocking at the Morning Truth Gate.
+  const okCrSeverity =
+    checkCompositionReconciliation(crFireBody, '2026-08-22', false)[0]
+      ?.severity === 'FLAG' &&
+    checkCompositionReconciliation(crFireBody, '2026-08-22', true)[0]
+      ?.severity === 'FAIL';
+  console.log(
+    `  [IMP-208] SEVERITY: FLAG in the evening (the brief ships), FAIL under --require-resolved (nothing publishes carrying its own refutation): ${okCrSeverity ? '✓' : '✗'}`
+  );
+
   const ok =
+    okCrMath &&
+    okCrFire &&
+    okCrSilentCorrected &&
+    okCrSilentPublished &&
+    okCrSilentMm2 &&
+    okCrFloor &&
+    okCrNoRetro &&
+    okCrSeverity &&
     okStarveFire &&
     okStarveSilent &&
     okStarveNoRetro &&
@@ -7216,6 +7598,15 @@ function main() {
   // one of the last 3 published Dashboards, under a verb describing today's move. The archive
   // rails above ask whether a price is PLAUSIBLE; this asks whether it is TODAY'S.
   findings.push(...dashboardLevelStalenessFindings(body, briefPath, briefDate));
+
+  // 4k. Composition reconciliation (IMP-208, 08-22 Critic mandate #1): a bullet stating a
+  // composite growth rate, a component's share, that component's growth AND an explicit residual
+  // has published an equation — recompute it. Every other leg checks numbers against the outside
+  // world or the archive; this is the only one that checks them against EACH OTHER. FAIL under
+  // --require-resolved, because this defect needs no source to resolve.
+  findings.push(
+    ...checkCompositionReconciliation(body, briefDate, requireResolved)
+  );
 
   // 5. Truth cross-check (if truth present)
   if (truth) findings.push(...crossCheck(claims, truth));

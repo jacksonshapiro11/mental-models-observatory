@@ -695,6 +695,370 @@ export function checkWatchBinding(brief: string): string[] {
   ];
 }
 
+// ─── IMP-210 — PAYOFF MECHANISM EARNED (2026-08-22 Critic mandate #3, RC5) ───────────────────
+//
+// THE FAILURE, from the QG's own log (daily-briefs/2026-08-22-quality-gate-log.md):
+//   :169  PAYOFF CLASS (as shipped in v1): THEME     descriptor='a claim on an asset is not the asset'
+//   :195  PAYOFF CLASS (v1.5):             MECHANISM cause='the adjustment is landing on the layer
+//                                                           that carries the asset, not the asset'
+// Same proposition; the second one has a verb. The `cause=` field names NO AGENT — it says WHERE the
+// repricing landed, not WHAT caused it. The real cause was in the file the whole time: the intro's own
+// watch line reads "the metals were paid for on the announcement", and the published v2 says it
+// outright — "the Treasury's announced buyback of longer-dated debt repriced term premium". That cause
+// was ineligible at the QG only because Treasury buybacks had LED M&M on 08-20 and 08-21 and were
+// demoted under entity cooldown; the intro is not a bullet and consumes no slot, which is now stated as
+// the PAYOFF MECHANISM EXEMPTION in system/Novelty_Audit.md (PASS 1g).
+//
+// ⭐ WHY THIS IS NOT AN UNCONDITIONAL "does the cause name an agent" TEST — MEASURED, NOT ASSUMED.
+// Proxy discipline (Ceiling Doctrine v0.5 §9 / Ledger rule 6) forbids a string-shaped fix for a
+// judgment-shaped defect. So the agent rule was measured against every August `cause=` field on disk
+// BEFORE it was wired. Result: **ZERO of the twelve MECHANISM causes published 2026-08-01..22 names a
+// proper noun**, and seven of them (08-07, 08-08, 08-09, 08-10, 08-14, 08-21, 08-22) are passive,
+// copular or unaccusative — "assurance that cannot be verified gets replaced at the holder's own
+// expense", "an announced date is already a price". That is not sloppiness: PASS 1g defines a MECHANISM
+// as a claim about how the world works, and `payoffConclusion` above encodes the same thing ("Instance
+// sentences name Stripe and Mastercard; the conclusion does not"). An unconditional agent requirement
+// would therefore FLAG 7 of 12 healthy nights — the IMP-200/201 nightly-false-alarm class the mandate
+// names as the failure mode to avoid, and a silent policy change to what a MECHANISM *is*. The agent
+// rule is stated as POLICY in Novelty_Audit.md; it is enforced HERE only where the corpus proves it
+// discriminates: THE RELABEL. When the same night's QG emits a THEME/INVENTORY class and then
+// re-emits a MECHANISM/TENSION with a `cause=`, the second label is a claim to have found a cause the
+// first lacked — and a cause with no actor anywhere in its subject clause has not found one. Measured:
+// exactly ONE night in 2026-08-01..22 re-emits (08-22). Silent by construction on every ordinary night,
+// exactly like the IMP-204 interlock directly above.
+//
+// LEG B — and the same discipline. "Reject a payoff whose descriptor appears in a section's own closing
+// sentence" measured UNCONDITIONALLY fires on 08-02, 08-18, 08-19 and 08-22 — and 08-19 is the mandate's
+// required SILENT case (trend file: `payoff: pass`, `a_top: 4`). Quoting a body sentence inside a sweep
+// is normal, healthy candidate accounting. The defect is narrower and the corpus states it precisely:
+// the sentence evidences the **SELECTED** frame. On 08-19 the body-quoted sentence sits inside candidate
+// A, which that QG REJECTED — in these words: *"unusable: M&M-3's own closing already **is** this loop."*
+// 08-19 is this rule applied by hand. 08-22 is the same rule inverted: *"Two sections reached for this
+// frame independently, in their own words — the strongest available evidence that it is a real
+// mechanism."* Two sections closing on the frame is evidence the frame is REAL and evidence the INTRO
+// has nothing left to add. Scoped to the selected candidate, the leg fires on 1 night in 21.
+//
+// FLAG only, never FAIL, with a cheap declared escape per leg — same posture as everything else here.
+const PAYOFF_MECHANISM_EFFECTIVE_FROM = '2026-08-22'; // IMP-125: no retroactive condemnation.
+
+// The escape hatches. One line each, in the QG log or the brief, and the leg goes silent — the trade
+// this system always makes: a proxy's false positive converted into one sentence of reasoning on disk.
+const CAUSE_AGENT_ATTESTATION = /PAYOFF-CAUSE-AGENT:\s*\S/i;
+const FRAME_INDEPENDENCE_ATTESTATION = /PAYOFF-FRAME-INDEPENDENCE:\s*\S/i;
+
+export interface PayoffEmission {
+  line: number;
+  cls: 'MECHANISM' | 'TENSION' | 'THEME' | 'INVENTORY';
+  field: 'cause' | 'descriptor' | null;
+  value: string | null;
+}
+
+// The emission GRAMMAR, not the phrase. `qgOwnPayoffClass` above takes the first own line and stops,
+// which is right for a single-class question; this leg iterates, so it must also reject the QG's own
+// PROSE ABOUT the rule — "the payoff rewrite moved `PAYOFF CLASS` off a THEME" (08-19:382), "read the
+// last 3 `PAYOFF CLASS` lines" (08-11:153, 08-18:435, 08-20:256). Measured: requiring the `sections=`
+// field of the PASS 1g grammar removes all nine such lines across August and keeps all real emissions.
+const EMISSION_FIELD_RE =
+  /(cause|descriptor)\s*=\s*'([\s\S]*?)'\s*(?=sections\s*=|\||$)/i;
+
+export function qgPayoffEmissions(qg: string): PayoffEmission[] {
+  const out: PayoffEmission[] = [];
+  const lines = qg.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    const idx = line.search(/PAYOFF CLASS/i);
+    if (idx === -1) continue;
+    // Same history-line discrimination as `qgOwnPayoffClass` — 08-12's only PAYOFF CLASS lines are a
+    // quoted 08-11/10/09 block and reading one as tonight's class condemns a clean brief (IMP-176).
+    const prefix = line.slice(0, idx).replace(/[`*_>\s-]+$/g, '').trimEnd();
+    if (PAYOFF_HISTORY_PREFIX_RE.test(prefix + ':')) continue;
+    if (/^\s*(?:\d{2}-\d{2}|\d{4}-\d{2}-\d{2})\s*:/.test(line.replace(/^[\s`*_>-]+/, ''))) continue;
+    // An emission wraps (08-05, 08-09, 08-16 all do). Join continuations, stop at the next labelled line.
+    const buf = [line];
+    for (let j = i + 1; j < lines.length && buf.length < 4; j++) {
+      if (!lines[j]!.trim()) break;
+      if (/PAYOFF\s+(?:CLASS|EXECUTION|ROTATION)/i.test(lines[j]!)) break;
+      buf.push(lines[j]!);
+    }
+    const joined = buf.join(' ');
+    const after = joined.slice(joined.search(/PAYOFF CLASS/i));
+    if (!/sections\s*=/i.test(after)) continue; // prose about the rule, not an emission
+    const head = after.split(/sections\s*=/i)[0]!;
+    const cls = classOf(head);
+    if (!cls) continue;
+    const fm = EMISSION_FIELD_RE.exec(after);
+    out.push({
+      line: i + 1,
+      cls: cls as PayoffEmission['cls'],
+      field: fm ? (fm[1]!.toLowerCase() as 'cause' | 'descriptor') : null,
+      value: fm ? fm[2]!.replace(/\s+/g, ' ').trim() : null,
+    });
+  }
+  return out;
+}
+
+// Named actors the repo already knows about, from system/entity-bindings.json — the registry every
+// other entity-shaped check reads (fact-gate.ts). It carries what capitalisation cannot see: the
+// lowercase-keyed continuously-traded instruments ("bitcoin", "ether"). Never throws: an unreadable
+// registry degrades this leg to capitalisation, and fact-gate owns the PREMISE REGISTRY BLIND alarm.
+let REGISTRY_ACTORS: RegExp[] | null = null;
+function registryActors(): RegExp[] {
+  if (REGISTRY_ACTORS) return REGISTRY_ACTORS;
+  const res: RegExp[] = [];
+  try {
+    const j = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), 'system', 'entity-bindings.json'), 'utf8')
+    );
+    for (const b of j?.bindings ?? []) if (b?.correctRe) res.push(new RegExp(b.correctRe, 'i'));
+    for (const c of j?.continuouslyTraded ?? []) if (c?.key) res.push(new RegExp(c.key, 'i'));
+  } catch {
+    /* registry unreadable → capitalisation only */
+  }
+  REGISTRY_ACTORS = res;
+  return res;
+}
+
+// The SUBJECT CLAUSE of the cause: everything before the first clause boundary. Boundaries are drawn
+// from the closed grammatical class of subordinators/coordinators plus punctuation — a finite function
+// word list, not a content-word blacklist, which is the difference between a parse approximation and
+// the word-list trap. "the Treasury's buyback announcement repriced term premium" has no boundary and
+// stays whole; "the adjustment is landing on the layer THAT carries the asset, not the asset" cuts at
+// `that`, leaving "the adjustment is landing on the layer" — which is the clause whose subject the
+// Critic said names no agent. Degenerate cuts fall back to the whole field (the silent direction).
+const CLAUSE_BOUNDARY_RE =
+  /(?:[,;:])|\b(?:that|which|who|whom|whose|when|while|because|since|after|before|until|unless|if|so|and|but|rather|where|though|although)\b/i;
+
+export function causeSubjectClause(cause: string): string {
+  const m = CLAUSE_BOUNDARY_RE.exec(cause);
+  if (!m || m.index === 0) return cause;
+  const head = cause.slice(0, m.index).trim();
+  return head.split(/\s+/).filter(Boolean).length >= 3 ? head : cause;
+}
+
+/**
+ * Named actors in a `cause=` field's subject clause. A cause field is a FRAGMENT, not a sentence, and
+ * the house writes it lowercase-initial — measured: ALL EIGHTEEN `cause=`/`descriptor=` fields emitted
+ * 2026-08-01..22 start lowercase. So unlike `entitiesOf`, which must exempt sentence-initial capitals
+ * because a capital there carries no information, a capital at position 0 HERE is a proper noun and is
+ * counted. Same stoplists, same acronym/possessive handling, plus the registry.
+ */
+export function causeActors(cause: string): string[] {
+  const subject = causeSubjectClause(cause);
+  const out = new Set<string>();
+  for (const tok of subject.split(/\s+/)) {
+    const w = tok.replace(/^[^A-Za-z0-9$]+|[^A-Za-z0-9.]+$/g, '');
+    const bare = w.replace(/[.'’]s$/, '').replace(/\.$/, '');
+    if (bare.length < 2) continue;
+    if (SCOPE_STOP.has(bare.toLowerCase()) || TERM_STOP.has(bare.toLowerCase())) continue;
+    const isCap = /^[A-Z]/.test(bare) && /[a-z]/.test(bare);
+    const isAcronym = /^[A-Z][A-Z0-9.]{1,}$/.test(bare);
+    if (isCap || isAcronym) out.add(bare);
+  }
+  for (const re of registryActors()) {
+    const m = re.exec(subject);
+    if (m) out.add(m[0]);
+  }
+  return [...out];
+}
+
+/** The QG's payoff region: the sweep + its emissions, ending before PAYOFF EXECUTION (which quotes the
+ *  INTRO's own sentences and would otherwise look like a section collision). */
+function payoffSweepBlock(qg: string): string {
+  const lines = qg.split('\n');
+  const marks: number[] = [];
+  for (const e of qgPayoffEmissions(qg)) marks.push(e.line - 1);
+  lines.forEach((l, i) => {
+    if (/FRESH-FRAME SCAN/i.test(l)) marks.push(i);
+  });
+  if (!marks.length) return '';
+  const start = Math.min(...marks);
+  const out: string[] = [];
+  for (let j = start; j < Math.min(lines.length, start + 120); j++) {
+    if (j > start && /^#{1,6}\s/.test(lines[j]!)) break;
+    if (/PAYOFF\s+EXECUTION:/i.test(lines[j]!)) break;
+    out.push(lines[j]!);
+  }
+  return out.join('\n');
+}
+
+/** Candidate chunks = list items / bolded paragraphs. A bolded CONTINUATION line ("  **Signal-1** (…")
+ *  is NOT a new candidate — requiring a bullet marker or column-0 bold is what keeps candidate D whole,
+ *  and an over-split block hides the very quotes this leg reads. */
+function candidateChunks(block: string): string[] {
+  const out: string[] = [];
+  let cur: string[] = [];
+  for (const l of block.split('\n')) {
+    if (/^\s{0,3}(?:[-*•]|\d+\.)\s+\*\*/.test(l) || /^\*\*/.test(l)) {
+      if (cur.length) out.push(cur.join('\n'));
+      cur = [l];
+    } else if (!l.trim()) {
+      if (cur.length) out.push(cur.join('\n'));
+      cur = [];
+    } else if (cur.length) cur.push(l);
+  }
+  if (cur.length) out.push(cur.join('\n'));
+  return out;
+}
+
+const SELECTION_RE = /\bSELECTED\b|✅\s*SELECT|→\s*SELECT|\bPROMOTED?\b/i;
+
+/** The candidate that BECAME the payoff. Explicit marker first; else the chunk whose content terms best
+ *  match the emitted class field (≥2 shared terms — a real link between sweep and emission, not a
+ *  guess). If neither resolves, return null and stay SILENT: an advisory gate that cannot say WHICH
+ *  candidate was selected has no business saying it was selected wrongly. */
+function selectedCandidate(block: string, ems: PayoffEmission[]): string | null {
+  const chunks = candidateChunks(block);
+  if (!chunks.length) return null;
+  const marked = chunks.filter(c => SELECTION_RE.test(c));
+  if (marked.length === 1) return marked[0]!;
+  const emitted = [...ems].reverse().find(e => e.value);
+  if (!emitted) return null;
+  const target = contentTerms(emitted.value!);
+  let best: { c: string; n: number } | null = null;
+  for (const c of chunks) {
+    const n = [...contentTerms(c)].filter(t => target.has(t)).length;
+    if (!best || n > best.n) best = { c, n };
+  }
+  return best && best.n >= 2 ? best.c : null;
+}
+
+interface SectionSentence {
+  section: string;
+  sentence: string;
+  closesParagraph: boolean;
+}
+
+/** Every sentence of every body paragraph/bullet, tagged with its section and whether it closes its
+ *  paragraph. The intro is excluded by construction (`bodyAfterIntro`). */
+function sectionSentences(brief: string): SectionSentence[] {
+  const out: SectionSentence[] = [];
+  let section = 'body';
+  let para: string[] = [];
+  const flush = () => {
+    const text = para.join(' ').trim();
+    para = [];
+    if (!text) return;
+    const sents = sentencesOf(text.replace(/[*_`]/g, ''));
+    sents.forEach((s, i) =>
+      out.push({ section, sentence: s, closesParagraph: i === sents.length - 1 })
+    );
+  };
+  for (const line of bodyAfterIntro(brief).split('\n')) {
+    const h = /^#{1,6}\s*(?:▸\s*)?(.+)$/.exec(line);
+    if (h) {
+      flush();
+      section = h[1]!.replace(/[*_`#]/g, '').trim();
+      continue;
+    }
+    if (/^\s*(?:---|___|\*\*\*)\s*$/.test(line)) {
+      flush();
+      continue;
+    }
+    if (!line.trim()) {
+      flush();
+      continue;
+    }
+    if (/^\s*[-*]\s+\*\*/.test(line)) flush(); // a new bullet is a new paragraph
+    para.push(line);
+  }
+  flush();
+  return out;
+}
+
+const normQuote = (s: string) =>
+  s
+    .replace(/[*_`]/g, '')
+    .replace(/[’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[.…]+$/, '')
+    .toLowerCase();
+
+const QUOTED_SPAN_RE = /["“]([^"“”]{20,300})["”]/g;
+
+export function checkPayoffMechanismEarned(
+  brief: string,
+  qg: string,
+  briefDate: string | null
+): string[] {
+  if (briefDate && briefDate < PAYOFF_MECHANISM_EFFECTIVE_FROM) return [];
+  if (!qg.trim()) return [];
+  const ems = qgPayoffEmissions(qg);
+  if (!ems.length) return []; // no own emission (08-12) — validate-brief owns presence
+  const out: string[] = [];
+
+  // ── LEG A — THE RELABEL. A same-night THEME/INVENTORY followed by a re-emitted MECHANISM/TENSION
+  //    whose `cause=` names no actor anywhere in its subject clause.
+  const labelIdx = ems.findIndex(e => e.cls === 'THEME' || e.cls === 'INVENTORY');
+  const upIdx = ems.findIndex(
+    e => (e.cls === 'MECHANISM' || e.cls === 'TENSION') && e.field === 'cause' && !!e.value
+  );
+  if (labelIdx !== -1 && upIdx > labelIdx && !CAUSE_AGENT_ATTESTATION.test(qg + brief)) {
+    const label = ems[labelIdx]!;
+    const up = ems[upIdx]!;
+    if (!causeActors(up.value!).length) {
+      out.push(
+        `PAYOFF MECHANISM UNEARNED — RELABEL, NOT A CAUSE. The QG emitted PAYOFF CLASS: ${label.cls} ` +
+          `${label.field ?? 'descriptor'}='${label.value ?? ''}' at line ${label.line} and then re-emitted ` +
+          `PAYOFF CLASS: ${up.cls} cause='${up.value}' at line ${up.line} — same night, same proposition, ` +
+          `and the second one has a verb. Its subject clause ("${causeSubjectClause(up.value!)}") names NO ` +
+          `ACTOR: no entity performs the causal verb, so the field says WHERE the move landed, not WHAT ` +
+          `caused it. PASS 1g's own test is "BECAUSE <single cause>, we see A, B, C"; a clause with no ` +
+          `agent cannot fill that blank, and a THEME with a participle bolted on is still a THEME. ` +
+          `DOWNGRADE to THEME and RE-SWEEP for a cause with a named actor. 2026-08-22 receipt: the ` +
+          `agent-bearing cause was already in the brief — the intro's own watch line said "the metals were ` +
+          `paid for on the announcement" and the published v2 says "the Treasury's announced buyback of ` +
+          `longer-dated debt repriced term premium". It was ineligible only because Treasury buybacks had ` +
+          `led M&M on 08-20 and 08-21 and were demoted under entity cooldown — and per the PAYOFF ` +
+          `MECHANISM EXEMPTION (system/Novelty_Audit.md, PASS 1g) a subject burned by entity cooldown ` +
+          `remains eligible as the payoff's named cause: the intro is not a bullet and consumes no slot. ` +
+          `RESOLVE: name the actor, or write one line — "PAYOFF-CAUSE-AGENT: <actor> — <what it did>".`
+      );
+    }
+  }
+
+  // ── LEG B — THE SELECTED FRAME IS A SECTION'S OWN SENTENCE.
+  if (!FRAME_INDEPENDENCE_ATTESTATION.test(qg + brief)) {
+    const block = payoffSweepBlock(qg);
+    const sel = block ? selectedCandidate(block, ems) : null;
+    if (sel) {
+      const sents = sectionSentences(brief);
+      const hits: SectionSentence[] = [];
+      for (const m of sel.matchAll(QUOTED_SPAN_RE)) {
+        const q = normQuote(m[1]!);
+        if (q.split(' ').length < 6) continue; // a phrase is not a sentence
+        const hit = sents.find(s => normQuote(s.sentence).includes(q));
+        if (hit && !hits.some(h => h.sentence === hit.sentence)) hits.push(hit);
+      }
+      if (hits.length) {
+        out.push(
+          `PAYOFF FRAME IS THE SECTION'S OWN SENTENCE — the SELECTED payoff candidate is evidenced by ` +
+            `${hits.length} verbatim body sentence${hits.length > 1 ? 's' : ''}: ` +
+            hits
+              .map(
+                h =>
+                  `"${h.sentence.slice(0, 90)}${h.sentence.length > 90 ? '…' : ''}" (${h.section}${h.closesParagraph ? ', its paragraph\'s closing sentence' : ''})`
+              )
+              .join(' · ') +
+            `. The payoff is the conclusion the reader arrives at ABOVE the sections; a frame that is ` +
+            `already a section's own sentence spends the most-read slot in the brief on a claim the body ` +
+            `has already made, and the reader meets the same sentence twice. DOWNGRADE to THEME and ` +
+            `RE-SWEEP. 2026-08-22 receipt: the QG selected "the repricing is landing on the carrier, not ` +
+            `the cargo" and cited Signal-1 ("The thing that gives is the growth case, not the credit") and ` +
+            `the Take ("They re-rated the clearinghouse, not the metal") as "the strongest available ` +
+            `evidence that it is a real mechanism". Two sections closing on the frame is evidence the ` +
+            `frame is REAL and evidence the INTRO has nothing left to add. The 08-19 QG met the same ` +
+            `construction and got it right, rejecting its own candidate A as "unusable: M&M-3's own ` +
+            `closing already IS this loop". RESOLVE: re-sweep, or write one line — ` +
+            `"PAYOFF-FRAME-INDEPENDENCE: <what the intro concludes that no section does>".`
+        );
+      }
+    }
+  }
+  return out;
+}
+
 // FIRE fixture = the real 2026-07-10 QG FRESH-FRAME SCAN (verbatim — the under-swept scan the
 // Critic's mandate #3 named); SILENT fixture = a scan that sweeps the Signals + Take.
 const FIRE_FF = `**FRESH-FRAME SCAN (≥3 candidate MECHANISMS across distinct clusters, required before NONE):** (1) **concentration/saturation** — SK Hynix (memory demand), DTCC (settlement), Hyperliquid (perp share): all **C&C cluster only** → below cross-cluster bar. (2) **withdrawal** — options hedges removed (M&M-1) + gold non-response (M&M-3): 2 sections, below threshold. (3) **commoditization/margin-migration** — AI-3 (model→app) + C&C-3 (CEX→DEX): 2 sections AND restates 07-07's "Deployment Premium" frame (3d stale) → reject. None is a clean ≥3-section shared MECHANISM. → **CONVERGENCE = NONE for assembly**.`;
@@ -719,6 +1083,17 @@ const TRAILING = [
   'daily-briefs/2026-08-11-v2.md',
   'daily-briefs/2026-08-10-v2.md',
 ].map(f => path.join(process.cwd(), f));
+
+// IMP-210 acceptance runs entirely against real bytes: the two QG logs the mandate names, the
+// published brief, and every quality-gate log from 2026-08-01 onward.
+const QG_22 = path.join(process.cwd(), 'daily-briefs/2026-08-22-quality-gate-log.md');
+const PUB_22 = path.join(process.cwd(), 'content/daily-updates/2026-08-22.md');
+const QG_19 = path.join(process.cwd(), 'daily-briefs/2026-08-19-quality-gate-log.md');
+const PUB_19 = path.join(process.cwd(), 'content/daily-updates/2026-08-19.md');
+const SHIPPED_CAUSE_22 =
+  'the adjustment is landing on the layer that carries the asset, not the asset';
+// The mandate's compliant control, verbatim from the mandate.
+const COMPLIANT_CAUSE = "the Treasury's buyback announcement repriced term premium";
 
 // The real 2026-08-20 header, verbatim from `content/daily-updates/2026-08-20.md` — the published
 // bytes, not a reconstruction. IMP-204's acceptance runs against this.
@@ -1016,6 +1391,177 @@ function selftest(): number {
           : true;
       },
     ],
+    // --- IMP-210 (08-22 mandate #3, RC5): PAYOFF MECHANISM EARNED. Three mandated cases, both
+    //     directions, plus the measured false-positive floor. Every assertion reads bytes on disk. ---
+    [
+      '[IMP-210] EMISSION GRAMMAR: the real 08-22 log yields exactly TWO own emissions (v1 THEME descriptor, v1.5 MECHANISM cause) and the real 08-12 log — whose only PAYOFF CLASS lines are a quoted history block — yields ZERO. The iterating parser must not read prose ABOUT the rule as an emission',
+      true,
+      () => {
+        if (!fs.existsSync(QG_22)) return true;
+        const a = qgPayoffEmissions(fs.readFileSync(QG_22, 'utf8'));
+        const q12 = path.join(process.cwd(), 'daily-briefs/2026-08-12-quality-gate-log.md');
+        const b = fs.existsSync(q12) ? qgPayoffEmissions(fs.readFileSync(q12, 'utf8')) : [];
+        return (
+          a.length === 2 &&
+          a[0]!.cls === 'THEME' &&
+          a[0]!.field === 'descriptor' &&
+          a[1]!.cls === 'MECHANISM' &&
+          a[1]!.field === 'cause' &&
+          a[1]!.value === SHIPPED_CAUSE_22 &&
+          b.length === 0
+        );
+      },
+    ],
+    [
+      "[IMP-210] LEG A FIRES on the REAL 08-22 QG log — v1 THEME descriptor='a claim on an asset is not the asset' re-emitted as v1.5 MECHANISM cause='the adjustment is landing on the layer that carries the asset, not the asset', whose subject clause names no actor. Same proposition, second one has a verb",
+      true,
+      () =>
+        !fs.existsSync(QG_22) ||
+        !fs.existsSync(PUB_22) ||
+        checkPayoffMechanismEarned(
+          fs.readFileSync(PUB_22, 'utf8'),
+          fs.readFileSync(QG_22, 'utf8'),
+          '2026-08-22'
+        ).some(m => /RELABEL, NOT A CAUSE/.test(m)),
+    ],
+    [
+      "[IMP-210] AGENT DISCRIMINATION, unit level: the mandate's compliant cause (\"the Treasury's buyback announcement repriced term premium\") resolves an actor — Treasury — and the shipped one resolves none. Structural, not lexical: the subject clause is cut at the closed-class boundary `that`, leaving \"the adjustment is landing on the layer\"",
+      true,
+      () =>
+        causeActors(COMPLIANT_CAUSE).some(a => /Treasury/i.test(a)) &&
+        causeActors(SHIPPED_CAUSE_22).length === 0 &&
+        causeSubjectClause(SHIPPED_CAUSE_22) === 'the adjustment is landing on the layer',
+    ],
+    [
+      "[IMP-210] LEG A SILENT on a compliant agent-bearing cause — the REAL published v2's own sentence (\"the Treasury's announced buyback of longer-dated debt repriced term premium\") spliced into the REAL 08-22 log in place of the shipped one. The gate must condemn the relabel, not the reclassification",
+      false,
+      () => {
+        if (!fs.existsSync(QG_22) || !fs.existsSync(PUB_22)) return false;
+        const pub = fs.readFileSync(PUB_22, 'utf8');
+        const compliant =
+          /the Treasury['’]s announced buyback of longer-dated debt repriced term premium/i.exec(
+            pub
+          );
+        if (!compliant) return true; // the receipt sentence is gone from the published bytes — fail loudly
+        return checkPayoffMechanismEarned(
+          pub,
+          fs.readFileSync(QG_22, 'utf8').split(SHIPPED_CAUSE_22).join(compliant[0]),
+          '2026-08-22'
+        ).some(m => /RELABEL, NOT A CAUSE/.test(m));
+      },
+    ],
+    [
+      '[IMP-210] LEG B FIRES on the REAL 08-22 log + REAL published brief — the SELECTED candidate D is evidenced by two verbatim section sentences ("They re-rated the clearinghouse, not the metal" — the Take, its paragraph\'s closer; "The thing that gives is the growth case, not the credit" — the Signal)',
+      true,
+      () =>
+        !fs.existsSync(QG_22) ||
+        !fs.existsSync(PUB_22) ||
+        checkPayoffMechanismEarned(
+          fs.readFileSync(PUB_22, 'utf8'),
+          fs.readFileSync(QG_22, 'utf8'),
+          '2026-08-22'
+        ).some(
+          m =>
+            /PAYOFF FRAME IS THE SECTION'S OWN SENTENCE/.test(m) &&
+            /clearinghouse/.test(m) &&
+            /growth case/.test(m)
+        ),
+    ],
+    [
+      '[IMP-210] SILENT on the REAL 08-19 — the trend file records payoff: pass, a_top: 4, and a gate that condemns a known-good intro is the IMP-200/201 false-alarm class. NON-VACUOUS, and the date guard is turned OFF so the silence is earned: 08-19 HAS an own emission and its sweep DOES quote a body sentence verbatim. It is silent because that sentence evidences candidate A, which that QG REJECTED — "unusable: M&M-3\'s own closing already IS this loop" — i.e. 08-19 is this very rule applied by hand',
+      false,
+      () => {
+        if (!fs.existsSync(QG_19) || !fs.existsSync(PUB_19)) return false;
+        const qg = fs.readFileSync(QG_19, 'utf8');
+        const brief = fs.readFileSync(PUB_19, 'utf8');
+        if (!qgPayoffEmissions(qg).length) return true; // vacuous negative → fail loudly
+        const sents = sectionSentences(brief);
+        const sweepQuotesBody = [...payoffSweepBlock(qg).matchAll(QUOTED_SPAN_RE)].some(m => {
+          const q = normQuote(m[1]!);
+          return q.split(' ').length >= 6 && sents.some(s => normQuote(s.sentence).includes(q));
+        });
+        if (!sweepQuotesBody) return true; // vacuous negative → fail loudly
+        return checkPayoffMechanismEarned(brief, qg, null).length > 0;
+      },
+    ],
+    [
+      '[IMP-210] NO RETRO (IMP-125) — the same 08-22 bytes take no finding at a brief date before 2026-08-22',
+      false,
+      () =>
+        fs.existsSync(QG_22) &&
+        fs.existsSync(PUB_22) &&
+        checkPayoffMechanismEarned(
+          fs.readFileSync(PUB_22, 'utf8'),
+          fs.readFileSync(QG_22, 'utf8'),
+          '2026-08-21'
+        ).length > 0,
+    ],
+    [
+      '[IMP-210] ESCAPE HATCHES silence the check: PAYOFF-CAUSE-AGENT + PAYOFF-FRAME-INDEPENDENCE on the real 08-22 bytes take it to zero findings — a hatch that does not silence is decoration',
+      false,
+      () => {
+        if (!fs.existsSync(QG_22) || !fs.existsSync(PUB_22)) return false;
+        const qg =
+          fs.readFileSync(QG_22, 'utf8') +
+          '\n`PAYOFF-CAUSE-AGENT: the Treasury — its announced buyback of longer-dated debt repriced term premium.`\n' +
+          '`PAYOFF-FRAME-INDEPENDENCE: the intro names the one cause under all three cross-asset prints; no section names it.`\n';
+        return checkPayoffMechanismEarned(fs.readFileSync(PUB_22, 'utf8'), qg, '2026-08-22').length > 0;
+      },
+    ],
+    [
+      '[IMP-210] THE HATCHES ARE PER-LEG — attesting the cause agent leaves the section-collision finding standing, and vice versa. One line may not buy silence on a defect it does not address',
+      true,
+      () => {
+        if (!fs.existsSync(QG_22) || !fs.existsSync(PUB_22)) return true;
+        const brief = fs.readFileSync(PUB_22, 'utf8');
+        const qg = fs.readFileSync(QG_22, 'utf8');
+        const a = checkPayoffMechanismEarned(
+          brief,
+          qg + '\n`PAYOFF-CAUSE-AGENT: the Treasury — the buyback repriced term premium.`\n',
+          '2026-08-22'
+        );
+        const b = checkPayoffMechanismEarned(
+          brief,
+          qg + '\n`PAYOFF-FRAME-INDEPENDENCE: the intro concludes above the sections.`\n',
+          '2026-08-22'
+        );
+        return (
+          a.length === 1 &&
+          /SECTION'S OWN SENTENCE/.test(a[0]!) &&
+          b.length === 1 &&
+          /RELABEL, NOT A CAUSE/.test(b[0]!)
+        );
+      },
+    ],
+    [
+      '[IMP-210] FALSE-POSITIVE FLOOR — swept across EVERY quality-gate log from 2026-08-01 onward with the date guard OFF (the only way the floor means anything): exactly ONE night flags, and it is 2026-08-22. An unconditional agent rule would have flagged 7 of the 12 MECHANISM nights; an unscoped section-collision rule would have flagged 08-02, 08-18 and 08-19',
+      false,
+      () => {
+        const dir = path.join(process.cwd(), 'daily-briefs');
+        if (!fs.existsSync(dir)) return true;
+        const dates = fs
+          .readdirSync(dir)
+          .filter(f => /^\d{4}-\d{2}-\d{2}-quality-gate-log\.md$/.test(f))
+          .map(f => f.slice(0, 10))
+          .filter(d => d >= '2026-08-01')
+          .sort();
+        if (dates.length < 20) return true; // a sweep this thin proves nothing → fail loudly
+        const flagged = dates.filter(d => {
+          const pub = path.join(process.cwd(), `content/daily-updates/${d}.md`);
+          const v2 = path.join(dir, `${d}-v2.md`);
+          const bp = fs.existsSync(pub) ? pub : fs.existsSync(v2) ? v2 : null;
+          if (!bp) return false;
+          return (
+            checkPayoffMechanismEarned(
+              fs.readFileSync(bp, 'utf8'),
+              fs.readFileSync(path.join(dir, `${d}-quality-gate-log.md`), 'utf8'),
+              null
+            ).length > 0
+          );
+        });
+        return !(flagged.length === 1 && flagged[0] === '2026-08-22');
+      },
+    ],
   ];
   let fails = 0;
   for (const [name, shouldFire, fn] of cases) {
@@ -1104,6 +1650,10 @@ function main() {
       if (sweep) findings.push({ severity: 'FLAG', message: sweep });
       // IMP-176 — 08-15 mandate #2: the brief may not assert a class the QG did not emit.
       for (const msg of checkPayoffClassConsistency(brief, qg))
+        findings.push({ severity: 'FLAG', message: msg });
+      // IMP-210 — 08-22 mandate #3: the MECHANISM label must be EARNED. Two legs: a same-night relabel
+      // whose cause names no actor, and a selected frame that is already a section's own sentence.
+      for (const msg of checkPayoffMechanismEarned(brief, qg, dateM[1]!))
         findings.push({ severity: 'FLAG', message: msg });
     }
     // IMP-176 rotation leg — reads the QG chain, not the brief's self-report.

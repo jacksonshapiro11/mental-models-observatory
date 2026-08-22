@@ -124,6 +124,30 @@ export const OBSERVATION_BOARDS = 20;
  */
 export const EFFECTIVE_FROM = '2026-08-01';
 
+/**
+ * CORPUS FREEZE — the selftest's evidence set ends here (added 2026-08-22 — IMP-211, RC7).
+ *
+ * A SELFTEST TESTS THE CODE. A GATE TESTS THE WORLD. This file's selftest was doing both, and the
+ * second job broke the first the moment the gate did its job. The `[no-storm]` leg swept EVERY
+ * board from EFFECTIVE_FROM to today and asserted that none fires outside a pinned set — so on
+ * 2026-08-22, when the roll call correctly caught `intel-sweep-5` never firing on the 08-21
+ * evening and wrote its alert file, the selftest went 59/62 and `verify-improvements` reported
+ * IMP-207 as "gate FAILED". **THE GATE HAD JUST SUCCEEDED.** The two `[unterminated]` legs broke
+ * the same way for the same reason: their reliability base rates are derived from the whole live
+ * archive, so every new board moves the numbers the assertions pin.
+ *
+ * A CHECK WHOSE PASS/FAIL DEPENDS ON WHETHER A PRODUCTION INCIDENT IS CURRENTLY OUTSTANDING WILL
+ * RED ON ITS OWN GOOD DAYS, and the ledger has now documented that class five times (IMP-195,
+ * IMP-200, IMP-201, CARRY/TREE 2026-08-13, and this). The cost is never the false alarm; it is
+ * that the next real red gets skimmed.
+ *
+ * Nothing is narrowed at RUNTIME: `rollCall` still reads every board including today's, and the
+ * live catch is pinned below as its own assertion precisely so freezing the corpus can never
+ * quietly blind the detector. Only the SELFTEST's expectation set is frozen. Advance this date
+ * deliberately, and when you do, re-derive KNOWN_NOISY from the boards you just admitted.
+ */
+export const CORPUS_FROZEN_AT = '2026-08-21';
+
 const DB = (root: string) => path.join(root, 'daily-briefs');
 const boardPath = (root: string, date: string) =>
   path.join(DB(root), `${date}-pipeline-status.md`);
@@ -718,11 +742,12 @@ export const RECENT_BOARDS = 7;
  * the FIRST terminal line after it closes that episode. Receipt: cross-day pairs 51 -> 0, and
  * intel-sweep-5's median fell from 1,444.7 min to 9.0.
  */
-export function deriveWindows(root: string): Map<string, TaskWindow> {
+export function deriveWindows(root: string, upTo?: string): Map<string, TaskWindow> {
   const dir = DB(root);
-  const boards = fs.existsSync(dir)
+  const boards = (fs.existsSync(dir)
     ? fs.readdirSync(dir).filter(f => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(f)).sort()
-    : [];
+    : []
+  ).filter(f => !upTo || f.slice(0, 10) <= upTo);
   const canary = new Map<string, number[]>();
   const lat = new Map<string, number[]>();
   const open = new Map<string, string[]>();
@@ -955,7 +980,11 @@ function selftest(): number {
     '[roster] contains NO daytime or morning task — the roll call is EVENING slots only (Controller L52-54)'
   );
 
-  const WIN = deriveWindows(root);
+  // IMP-211: windows are derived from the FROZEN corpus inside the selftest. The reliability
+  // base rates below (refClosed/refTotal, recentClosed/recentTotal) are archive statistics, so
+  // every new board moves them and any assertion pinning them decays by the calendar. Runtime is
+  // untouched — main() still calls deriveWindows(root) with no ceiling.
+  const WIN = deriveWindows(root, CORPUS_FROZEN_AT);
   const observed = observedTasks(root);
   const drop = names.filter(n => !observed.has(n));
   assert(
@@ -1115,7 +1144,12 @@ function selftest(): number {
           .map(f => f.slice(0, 10))
           .sort()
       : [];
-    const inWindow = boards.filter(d => d >= EFFECTIVE_FROM);
+    // IMP-211: the expectation set ends at CORPUS_FROZEN_AT. Boards written after it are the
+    // WORLD, not the code, and a real incident on one of them must not be reported as this
+    // detector being broken — that is what happened on 2026-08-22 (see CORPUS_FROZEN_AT).
+    const inWindow = boards.filter(
+      d => d >= EFFECTIVE_FROM && d <= CORPUS_FROZEN_AT
+    );
     const noisy = inWindow
       .map(d => ({ d, n: rollCall({ docRoot: root, date: d }).absent.length }))
       .filter(x => x.n > 0);
@@ -1157,6 +1191,22 @@ function selftest(): number {
         rollCall({ docRoot: root, date: '2026-08-21' }).exempt === false,
       '[no-storm] the boundary is a real switch: 2026-05-17 EXEMPT, 2026-08-21 IN FORCE'
     );
+    // 🔴 THE OTHER DIRECTION OF THE CORPUS FREEZE, AND THE ONLY REASON THE FREEZE IS SAFE
+    // (IMP-211). Freezing the EXPECTATION set would be laundering if it also narrowed the
+    // DETECTOR. It does not: this asserts a live catch on a board written AFTER the freeze —
+    // 2026-08-22, where intel-sweep-5 has no line of any kind and the roll call named it, wrote
+    // daily-briefs/2026-08-22-pipeline-alert.md and demanded the alarm email. That incident is
+    // exactly what reddened this selftest before the fix. It must still FIRE, and it must fire
+    // from the same code path the frozen sweep uses — if this ever goes quiet, the freeze has
+    // stopped being a scoping decision and started being a blindfold.
+    {
+      const live = rollCall({ docRoot: root, date: '2026-08-22' });
+      assert(
+        live.exempt === false &&
+          live.absent.some(a => a.task === 'intel-sweep-5'),
+        `[no-storm] and the freeze narrows the EXPECTATION, never the DETECTOR — the post-freeze 2026-08-22 board still fires intel-sweep-5 (got: ${live.absent.map(a => a.task).join(', ') || 'NOTHING — the detector went blind'})`
+      );
+    }
   }
 
   // ── 6b. THE SELF-HEAL RULE, SWEPT OVER THE WHOLE ARCHIVE ─────────────────────────────────────

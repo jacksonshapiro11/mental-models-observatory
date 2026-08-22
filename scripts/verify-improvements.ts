@@ -279,6 +279,14 @@ export function latestElapsedCritic(
   return dates.length ? dates[dates.length - 1]! : null;
 }
 
+/**
+ * WORLD-STATE MARKER — a `world:` leg's failure string carries this prefix so main() can route
+ * it to the WARN list instead of the FAIL list. Deliberately a sentinel rather than a second
+ * return channel: `executeCheck` is called from three places and a signature change would have
+ * been a bigger blast radius than the fix. See the `world:` block in runLeg for the full receipt.
+ */
+const WORLD_MARK = ' WORLD ';
+
 /** Run ONE check leg. Returns null on pass, an error string on fail. */
 function runLeg(leg: string, id: string): string | null {
   leg = leg.trim();
@@ -339,7 +347,47 @@ function runLeg(leg: string, id: string): string | null {
     }
     return null;
   }
-  return `${id}: unknown check type: ${leg} (use grep:<file>:<substring> or gitshow:<file>:<substring> or run:<command> or none)`;
+  // ── WORLD-STATE LEG (added 2026-08-22 — IMP-211, RC7) ─────────────────────────────────────
+  // WORLD-STATE IS NOT A CODE FACT. `run:` answers "is this improvement mechanically real?"
+  // A non-zero exit there means the enforcement is broken or gone, and the registry is right to
+  // go RED and block. `world:` answers a DIFFERENT question — "is the record this gate guards
+  // currently in contract?" — whose answer changes with the calendar, with which producer ran,
+  // and with what a human wrote at 09:36 this morning. Both questions are worth asking daily.
+  // Only the first one is evidence about the improvement.
+  //
+  // WORKED FAILURE, 2026-08-22 (the fifth instance of one class and the reason this exists):
+  // this session's baseline read `4 FAIL`. Three of them — IMP-183, IMP-200, IMP-201 — were the
+  // SAME leg, `run:npx tsx scripts/whatchanged-freshness.ts $(date +%F)`, and the gate was
+  // RIGHT: `system-update` ran on 08-21, reported SUCCESS, named Current_Worldview_v5.md in its
+  // status line, updated the file's "Last updated" stamp and wrote its Daily Big Story Review —
+  // and never wrote the `**August 21, 2026:**` WHAT CHANGED TODAY entry. A real, open, unowned
+  // record delinquency. It surfaced as "a logged improvement is not mechanically real", against
+  // three rows whose code was untouched and working, under a banner that says do not log new
+  // improvements on top of broken ones. THE ALARM WAS REAL AND EVERY WORD OF ITS FRAMING WAS
+  // FALSE. The class is documented four times already — IMP-195 (a parser reading one cell
+  // reported three LANDED mandates UNCOVERED), IMP-200 (a `run:` leg pinned to a literal date
+  // reddened precisely when the record went current), IMP-201 (a freshness deadline of midnight
+  // against a producer deadline of 09:36 ET), CARRY/TREE 2026-08-13 (a bare `git status` calling
+  // published-and-live briefs untracked for four consecutive tasks) — and the cost is never the
+  // false alarm itself; it is that the next REAL red gets skimmed.
+  //
+  // NOTHING IS SILENCED. A failing `world:` leg prints EVERY day, names the row, and carries the
+  // gate's own output — it moves from the FAIL list to the WARN list, which is where a condition
+  // no code change can fix belongs. `pipeline-health-check` is warn-only by design, so no
+  // blocking behaviour is lost; what is gained is that a RED once again means exactly one thing.
+  if (leg.startsWith('world:')) {
+    const cmd = leg.slice('world:'.length).trim();
+    const res = spawnSync(cmd, { shell: true, encoding: 'utf8', timeout: 120000 });
+    if (res.status !== 0) {
+      return (
+        `${WORLD_MARK}${id}: WORLD-STATE OUT OF CONTRACT (exit ${res.status}): ${cmd}\n      ` +
+        `${(res.stderr || res.stdout || '').trim().split('\n').slice(-3).join('\n      ')}\n      ` +
+        `(the improvement's own code legs passed — this is the RECORD, not the GATE. Fix the record or escalate its owner.)`
+      );
+    }
+    return null;
+  }
+  return `${id}: unknown check type: ${leg} (use grep:<file>:<substring> or gitshow:<file>:<substring> or run:<command> or world:<command> or none)`;
 }
 
 /**
@@ -413,8 +461,17 @@ function main(): number {
     }
 
     // 3. Execute the check (compound-aware; ALL ` && `-joined legs must pass).
+    //    IMP-211: `world:` legs report the state of a RECORD, not the reality of the CODE. They
+    //    are printed every run, but as warnings — a row whose code legs all pass is a row whose
+    //    improvement IS mechanically real, and calling it otherwise is what teaches the next
+    //    session to skim the registry.
     const checkFails = executeCheck(r.check, r.id);
-    if (checkFails.length) fails.push(...checkFails);
+    const hard = checkFails.filter(f => !f.startsWith(WORLD_MARK));
+    const world = checkFails
+      .filter(f => f.startsWith(WORLD_MARK))
+      .map(f => f.slice(WORLD_MARK.length));
+    warns.push(...world);
+    if (hard.length) fails.push(...hard);
     else verified++;
   }
 
@@ -521,6 +578,16 @@ function selftest(): number {
     [
       `gitshow:${self}:${absent}`,
       'gitshow leg FAILS when needle is absent from HEAD',
+      false,
+    ],
+    // ── IMP-211: WORLD-STATE LEGS ────────────────────────────────────────────────────────────
+    // Both directions of the leg ITSELF live here; the routing (warn, not fail) is asserted
+    // separately below, because a leg that merely "returns a string" would satisfy this pair
+    // while still blocking the registry — which is the entire defect being fixed.
+    ['world:true', 'world leg PASSES on exit 0 (record in contract)', true],
+    [
+      'world:false',
+      'world leg REPORTS on exit 1 — the alarm is not silenced, only reclassified',
       false,
     ],
     [
@@ -810,11 +877,52 @@ function selftest(): number {
     coverageAssertions += 8;
   }
 
+  // ── IMP-211: THE ROUTING, WHICH IS THE ACTUAL SUBJECT OF THIS IMPROVEMENT ──────────────────
+  // The pair above proves a `world:` leg still detects. THIS proves the detection lands in the
+  // WARN channel and not the FAIL channel — the distinction the whole row exists for. Asserted
+  // on the marker contract directly, because main()'s partition is three lines of `startsWith`
+  // and a test that re-implemented them would prove only that I can write the same bug twice.
+  let routingAssertions = 0;
+  {
+    const w = runLeg('world:false', 'ZZ-TEST');
+    const r = runLeg('run:false', 'ZZ-TEST');
+    t2(
+      w !== null && w.startsWith(WORLD_MARK),
+      '[IMP-211] a failing world: leg is MARKED for the warn channel — a record out of contract is not a broken improvement'
+    );
+    t2(
+      r !== null && !r.startsWith(WORLD_MARK),
+      '[IMP-211] …and a failing run: leg is NOT marked, so a genuinely broken enforcement still BLOCKS (the marker cannot be used to launder a dead gate)'
+    );
+    t2(
+      (w ?? '').includes('WORLD-STATE OUT OF CONTRACT'),
+      '[IMP-211] the warning names the condition in words, and carries the gate’s own output — nothing is silenced, only reclassified'
+    );
+    const okW = runLeg('world:true', 'ZZ-TEST');
+    t2(
+      okW === null,
+      '[IMP-211] a world: leg whose record IS in contract passes silently, exactly like run:'
+    );
+    // The compound path: a row with a passing code leg and a failing world leg must yield
+    // exactly one marked string and zero unmarked ones — i.e. that row is still VERIFIED.
+    const compound = executeCheck(
+      `grep:${self}:AGE_FUSE_DAYS && world:false`,
+      'ZZ-TEST'
+    );
+    t2(
+      compound.length === 1 &&
+        compound.every(f => f.startsWith(WORLD_MARK)),
+      '[IMP-211] a compound of (passing code leg + failing world leg) produces NO hard failure — the row stays verified and the record still gets its warning'
+    );
+    routingAssertions += 5;
+  }
+
   const total =
     cases.length +
     forensicAssertions +
     closureCases.length +
-    coverageAssertions;
+    coverageAssertions +
+    routingAssertions;
   console.log(
     `\nverify-improvements selftest — ${total - fails}/${total} assertions passed`
   );

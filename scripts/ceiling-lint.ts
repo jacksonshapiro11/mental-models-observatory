@@ -817,6 +817,12 @@ function lint(brief: string): Flag[] {
   // one night after that gate shipped.
   flags.push(...checkContestedAttribution(brief));
   flags.push(...checkInversionSourcing(brief)); // IMP-206 (08-21 Critic mandate #2)
+  // IMP-209 (08-22 Critic mandate #2). Undated here, exactly as checkCausalNegative is: lint() has
+  // no briefDate, and an undated call is the STRICTEST reading (the EFFECTIVE_FROM shield cannot
+  // silence a live brief). Every real `ceiling-lint <brief>` run is dated on/after 2026-08-22
+  // anyway; the shield exists so the archive sweep and any back-run cannot condemn what shipped
+  // before the rule did, and the selftest exercises the dated path in both directions.
+  flags.push(...checkRateBaseConsistency(brief, null));
   // IMP-168 is truth-file coupled, so main() supplies the keys; lint() runs it with an empty
   // set, which is the strictest reading (no rows = every selection undisclosed).
   return flags;
@@ -1220,6 +1226,274 @@ export function checkInversionSourcing(brief: string): Flag[] {
   }
   return flags;
 }
+
+// ---------------------------------------------------------------------------
+// IMP-209 — RATE/BASE CONSISTENCY (2026-08-22 Critic mandate #2, RC2).
+//
+// RECEIPT, 2026-08-22 Signal-2, verified against four published sources (UHY, payroll.org,
+// Cast & Crew, the Federal Register):
+//
+//   "The penalty is quoted as a percentage, but a percentage of the FUTA taxable wage base,
+//    which is $7,000 and unchanged since 1983. California's 1.2 percent credit reduction for
+//    2025 therefore came to $126 per employee."
+//
+//   $7,000 × 1.2% = $84.  $126 = $7,000 × 1.8% = TOTAL FUTA (0.6% statutory + the 1.2%
+//   reduction). The brief never names which convention it is using — and the derived stat
+//   "roughly 17 percent more" ($126→$147) is 25 PERCENT on the published convention ($84→$105).
+//
+// THE HARDEST VERSION OF THIS ERROR: the section is INTERNALLY CONSISTENT and EXTERNALLY
+// CONTRADICTED. Nothing inside the file disagrees with anything else inside the file, so every
+// cross-reference gate on the page read healthy. The only thing that catches it is arithmetic
+// against the base the brief itself printed two sentences earlier.
+//
+// THE PRINCIPLE (mirrored into system/Signal_Generator.md): a rate and a charge in the same
+// sentence are a claim that one produces the other; if they do not, the sentence is naming two
+// different quantities with one label.
+//
+// ⭐ WHERE THE MANDATE'S LITERAL SPEC DID NOT SURVIVE CONTACT WITH THE BYTES — three places,
+// stated plainly because the resolution is the work:
+//
+//  (1) ADJACENCY. The fix text says the percentage, the charge and the base must sit "within one
+//      sentence or two adjacent sentences", but the mandate's own FIRE case has the base stated
+//      TWO SENTENCES EARLIER. Those cannot both hold. RESOLUTION: the BASE is a STANDING QUANTITY
+//      ("$7,000 and unchanged since 1983") and may be established ANYWHERE IN THE UNIT; the RATE
+//      and the CHARGE are the claim, and they must be adjacent (same sentence, or the immediately
+//      neighbouring sentence when the charge's own sentence carries no rate at all). This is the
+//      only reading under which all four of the mandate's named cases come out right.
+//
+//  (2) THE OFFSET. The spec says to test whether the charge matches `(pct + k)% × base` "for some
+//      OTHER RATE STATED IN THE SAME UNIT". It is not stated: `0.6` appears NOWHERE in the
+//      2026-08-22 brief (grep -c "0.6" → 0), so a leg keyed on a stated k would be SILENT ON ITS
+//      OWN RECEIPT. RESOLUTION: derive k from a RECONCILING PAIR the unit does state — the same
+//      paragraph says "The 1.5 percent scheduled for 2026 takes the effective rate to 2.1 percent",
+//      which establishes a 0.6-point add-on, and $126 = (1.2 + 0.6)% × $7,000 exactly. The unit
+//      supplies the convention it declined to name; the check reads it back to the writer.
+//
+//  (3) "ONE SENTENCE" AS THE FIRE UNIT. The mandate names one defect. On the real bytes the same
+//      convention error runs TWICE in that paragraph — "$413 a head" against a stated 5.3 percent
+//      is (5.3 + 0.6)% × $7,000, the identical mistake with the identical offset. Both fire. The
+//      published repair deleted BOTH dollar figures, so the repo's own remedy agrees.
+//
+// WHY THE BASE IS THE DISCRIMINATOR, measured not asserted. Across all 172 published briefs,
+// 28 sentences carry a per-unit dollar charge AND a percentage — EPS against consensus, takeover
+// premiums, commodity prices, cost growth ("$18,500 per employee, up 6.7 percent", 08-21). Not one
+// states a per-unit BASE, because in every one of them the percentage is a CHANGE or a COMPARISON,
+// not a rate levied on a quantity. Requiring a declared assessment base is what separates "a rate
+// and a charge that claim one produces the other" from "a charge and an unrelated growth rate",
+// and it is why the false-positive floor is 0 rather than 28.
+const RATE_BASE_EFFECTIVE_FROM = '2026-08-22'; // IMP-125: no retroactive condemnation.
+
+// A PER-UNIT CHARGE: a dollar amount levied per ENTITY. Deliberately per-entity and not per-TIME —
+// "$14,000 a year" (07-19) and "capped at $5,000 per year" (07-06) are budget lines, not charges
+// against a base, and admitting them buys FP surface with no defect coverage.
+const PER_UNIT_CHARGE_RE =
+  /\$\s?([\d,]+(?:\.\d+)?)\s*(?:per\s+(?:employee|worker|head|person|capita|household|customer|subscriber|user|member|resident|student|patient|seat|share|unit|barrel|ton|tonne|acre)|a\s+(?:head|person|worker|employee|barrel|ton|share|seat)\b|each\b|apiece\b)/gi;
+
+// A DECLARED ASSESSMENT BASE. Narrow ON PURPOSE. `capped at` / `cap of` were tried and CUT: in this
+// brief's voice they are redemption gates and contribution limits, not assessment bases —
+// "Morgan Stanley ($8B) capped at 5% on 11% requests" (03-13), "Ares capped at 5% after 11.6%
+// requests" (04-29), "Voluntary top-ups capped at $5,000 per year" (07-06). Admitting them would
+// import exactly the false-friend class IMP-206 had to strip out one leg earlier.
+const BASE_MARKER_RE =
+  /\b(?:taxable\s+(?:wage\s+)?base|wage\s+base|tax\s+base|assessment\s+base|assessable\s+base|rate\s+base|fee\s+base|contribution\s+base|per[-\s]employee\s+base|(?:applies|applied)\s+to\s+the\s+first|(?:assessed|levied|charged|imposed|calculated)\s+on\s+the\s+first)\b/i;
+
+// The base is a LEVEL, so magnitude suffixes are excluded — `$5.4 billion` is a deal price and
+// `$8B` is a fund size; neither is a per-unit base, and `$8B` would otherwise parse as 8.
+const BASE_MONEY_RE = /\$\s?([\d,]+(?:\.\d+)?)(?!\s*(?:billion|bn|million|trillion|tn|[BbMmKk]\b))/g;
+const RATE_RE = /(\d+(?:\.\d+)?)\s*(?:percent\b|%)/gi;
+
+// THE ESCAPE, and it is the behaviour this gate is buying: the reader-facing sentence NAMES THE
+// CONVENTION. Not a disclaimer — a label. "brought total FUTA to $126 per employee" is true and
+// checkable; "the 1.2 percent credit reduction came to $126" is not.
+const CONVENTION_NAMED_RE = new RegExp(
+  [
+    String.raw`\b(?:total|combined|all-in|gross|headline|aggregate)\s+(?:FUTA|FICA|tax|taxes|levy|charge|rate|liability|bill|assessment)\b`,
+    String.raw`\bthe\s+incremental\s+(?:reduction|charge|rate|amount|levy)\b`,
+    String.raw`\bon\s+the\s+[\w\s-]{3,30}\s+convention\b`,
+    String.raw`\b(?:including|inclusive\s+of|plus)\s+the\s+(?:statutory|base|standard|underlying)\s+[\w-]+`,
+  ].join('|'),
+  'i'
+);
+
+// Rounding tolerance. $7,000 × 1.2% = $84 exactly and $7,000 × 2.1% = $147 exactly, so this is
+// pure slack for a writer who rounds: 3% relative (or $1, whichever is larger). The two real
+// defects miss by 50% ($126 vs $84) and 11% ($413 vs $371).
+const RATE_BASE_TOL = (expected: number) => Math.max(1, 0.03 * Math.abs(expected));
+
+const parseAmt = (s: string): number => parseFloat(s.replace(/,/g, ''));
+
+/**
+ * Reader-facing UNITS for the rate/base check. `readerBullets` only accumulates AFTER a `- **`
+ * line, so it cannot see the Signal — which is prose, and which is where the defect lives. This
+ * walker emits BOTH: one unit per Six bullet, and one unit per prose block per section, so the
+ * standing base ("$7,000 and unchanged since 1983") is in scope for a charge printed later.
+ */
+function rateBaseUnits(brief: string): { section: string; text: string }[] {
+  const reader = brief.replace(/<!--[\s\S]*?-->/g, ' ');
+  const out: { section: string; text: string }[] = [];
+  let section = '(preamble)';
+  let bullet: string[] = [];
+  let prose: string[] = [];
+  const flushBullet = () => {
+    if (bullet.length) out.push({ section, text: bullet.join(' ').trim() });
+    bullet = [];
+  };
+  const flushProse = () => {
+    if (prose.length) out.push({ section, text: prose.join(' ').trim() });
+    prose = [];
+  };
+  for (const line of reader.split('\n')) {
+    const h = line.match(/^#{1,3}\s*▸?\s*(.+)$/);
+    if (h) { flushBullet(); flushProse(); section = h[1]!.trim(); continue; }
+    if (/^\s*-\s+\*\*/.test(line)) { flushBullet(); bullet = [line.trim()]; continue; }
+    if (bullet.length) {
+      if (line.trim()) bullet.push(line.trim());
+      else flushBullet();
+      continue;
+    }
+    if (line.trim()) prose.push(line.trim());
+  }
+  flushBullet();
+  flushProse();
+  return out;
+}
+
+export function checkRateBaseConsistency(
+  brief: string,
+  briefDate: string | null
+): Flag[] {
+  const flags: Flag[] = [];
+  if (briefDate && briefDate < RATE_BASE_EFFECTIVE_FROM) return flags;
+
+  for (const u of rateBaseUnits(brief)) {
+    // (1) THE BASE — a standing quantity, established anywhere in the unit.
+    const bases: number[] = [];
+    BASE_MONEY_RE.lastIndex = 0;
+    let bm: RegExpExecArray | null;
+    while ((bm = BASE_MONEY_RE.exec(u.text)) !== null) {
+      const tail = u.text.slice(bm.index + bm[0].length, bm.index + bm[0].length + 24);
+      if (/^\s*(?:per\s+\w+|a\s+head|each|apiece)/i.test(tail)) continue; // that is a charge, not a base
+      const win = u.text.slice(Math.max(0, bm.index - 110), bm.index + bm[0].length + 110);
+      if (BASE_MARKER_RE.test(win)) bases.push(parseAmt(bm[1]!));
+    }
+    if (!bases.length) continue; // no declared assessment base: nothing is claiming to produce anything
+
+    // Every rate anywhere in the unit — used only to DIAGNOSE a miss, never to excuse one.
+    const unitRates: number[] = [];
+    RATE_RE.lastIndex = 0;
+    let ur: RegExpExecArray | null;
+    while ((ur = RATE_RE.exec(u.text)) !== null) unitRates.push(parseAmt(ur[1]!));
+
+    const sents = u.text.split(/(?<=[.!?])\s+/);
+    for (let i = 0; i < sents.length; i++) {
+      const s = sents[i]!;
+      PER_UNIT_CHARGE_RE.lastIndex = 0;
+      let cm: RegExpExecArray | null;
+      while ((cm = PER_UNIT_CHARGE_RE.exec(s)) !== null) {
+        const charge = parseAmt(cm[1]!);
+
+        // (2) THE RATE — adjacent to the charge. Same sentence first; only if the charge's own
+        // sentence names no rate at all do we widen to the neighbouring sentences ("…the reduction
+        // is 5.3 percent. The charge is $413 a head."), which is the mandate's two-sentence form.
+        const rates: number[] = [];
+        RATE_RE.lastIndex = 0;
+        let rm: RegExpExecArray | null;
+        while ((rm = RATE_RE.exec(s)) !== null) rates.push(parseAmt(rm[1]!));
+        let scope = 'the same sentence';
+        if (!rates.length) {
+          scope = 'the adjacent sentence';
+          for (const j of [i - 1, i + 1]) {
+            const t = sents[j];
+            if (!t) continue;
+            RATE_RE.lastIndex = 0;
+            let am: RegExpExecArray | null;
+            while ((am = RATE_RE.exec(t)) !== null) rates.push(parseAmt(am[1]!));
+          }
+        }
+        if (!rates.length) continue; // a charge with no rate beside it asserts no derivation
+
+        // (3) THE ASSERTION — charge ≈ pct × base, for SOME stated rate against SOME stated base.
+        // Any match clears: a sentence that prints both the reduction and the effective rate has
+        // NAMED THE CONVENTION arithmetically, which is exactly the behaviour we want. This is why
+        // "takes the effective rate to 2.1 percent, or $147 per employee" is silent while
+        // "1.2 percent credit reduction … came to $126 per employee" is not — same paragraph,
+        // same base, and the difference is entirely in whether the arithmetic closes.
+        let reconciles = false;
+        for (const b of bases)
+          for (const r of rates) {
+            const expected = (b * r) / 100;
+            if (Math.abs(expected - charge) <= RATE_BASE_TOL(expected)) reconciles = true;
+          }
+        if (reconciles) continue;
+        if (CONVENTION_NAMED_RE.test(s)) continue; // the escape: the sentence says which quantity this is
+
+        // DIAGNOSIS. Name the convention the brief actually used, so the fix is one word long.
+        const base = bases[0]!;
+        const stated = rates[0]!;
+        const implied = (charge / base) * 100;
+        let diagnosis = '';
+        const alt = unitRates.find(
+          r => !rates.includes(r) && Math.abs((base * r) / 100 - charge) <= RATE_BASE_TOL((base * r) / 100)
+        );
+        if (alt !== undefined) {
+          diagnosis =
+            `$${charge.toLocaleString()} is ${alt} percent × $${base.toLocaleString()} — a DIFFERENT rate this ` +
+            `same unit states elsewhere. `;
+        } else {
+          // No stated rate produces it, so look for the OFFSET the unit implies: a pair of its own
+          // rates whose gap closes the difference. On 2026-08-22 that pair is "1.5 percent …
+          // takes the effective rate to 2.1 percent" — a 0.6-point add-on the brief never names.
+          const need = implied - stated;
+          let pair: [number, number] | null = null;
+          for (const a of unitRates)
+            for (const b2 of unitRates)
+              if (b2 > a && Math.abs(b2 - a - need) <= 0.05 && !pair) pair = [a, b2];
+          diagnosis =
+            `$${charge.toLocaleString()} is ${implied.toFixed(2)} percent × $${base.toLocaleString()}, not ` +
+            `${stated} percent × $${base.toLocaleString()} (= $${((base * stated) / 100).toLocaleString()})` +
+            (pair
+              ? `. The gap is exactly ${need.toFixed(2)} points, which is the add-on THIS UNIT ITSELF implies ` +
+                `when it says ${pair[0]} percent "takes the effective rate to" ${pair[1]} percent — so the ` +
+                `dollar is the TOTAL and the percentage is the INCREMENT, and neither sentence says so. `
+              : `. `);
+        }
+
+        flags.push({
+          check: 'rate-base-consistency',
+          where: u.section,
+          message:
+            `RATE AND CHARGE DESCRIBE DIFFERENT QUANTITIES — "${s.replace(/\s+/g, ' ').trim().slice(0, 170)}" ` +
+            `prints ${stated} percent and $${charge.toLocaleString()} per unit in ${scope}, against the ` +
+            `$${base.toLocaleString()} base this unit declares. ${diagnosis}` +
+            `A RATE AND A CHARGE IN THE SAME SENTENCE ARE A CLAIM THAT ONE PRODUCES THE OTHER; IF THEY DO NOT, ` +
+            `THE SENTENCE IS NAMING TWO DIFFERENT QUANTITIES WITH ONE LABEL. Fix it one of two ways: re-derive ` +
+            `the dollar from the percentage you printed, or NAME THE CONVENTION in the reader's sentence ` +
+            `("brought total FUTA to $…", "the incremental reduction is $…") — and then re-derive every stat ` +
+            `built on it. RECEIPT (2026-08-22 Signal-2): "California's 1.2 percent credit reduction for 2025 ` +
+            `therefore came to $126 per employee" — $7,000 × 1.2% = $84 on UHY, payroll.org, Cast & Crew and ` +
+            `the Federal Register; $126 is total FUTA at 1.8%. The paragraph was INTERNALLY CONSISTENT AND ` +
+            `EXTERNALLY CONTRADICTED, which is why every gate on the page exited 0 — and it silently turned the ` +
+            `quotable "roughly 17 percent more" into 25 percent. Same paragraph, CORRECT and silent here: ` +
+            `"takes the effective rate to 2.1 percent, or $147 per employee" (2.1% × $7,000 = $147).`,
+        });
+      }
+    }
+  }
+  return flags;
+}
+
+// The selftest's own success line used to hard-code "All 10 lint checks" and had drifted to a
+// SEVEN-check understatement by the time IMP-209 arrived — a green line quoting a stale number is
+// the "green narrative" failure this repo names explicitly. It is now READ OFF THE SOURCE, and the
+// selftest asserts the read succeeded, so it cannot go stale again on the next leg.
+const LINT_CHECK_IDS: string[] = (() => {
+  try {
+    const src = fs.readFileSync(path.join(process.cwd(), 'scripts/ceiling-lint.ts'), 'utf8');
+    return [...new Set([...src.matchAll(/check: '([a-z-]+)'/g)].map(m => m[1]!))].sort();
+  } catch {
+    return [];
+  }
+})();
 
 // ---------- selftest fixtures ----------
 const BAD_FIXTURE = `# MARKETS, MEDITATIONS & MENTAL MODELS
@@ -1887,6 +2161,103 @@ function selftest(): number {
       invNoisy.length === 0,
       `[IMP-206] FALSE-POSITIVE FLOOR — 0 flags across ALL published briefs${invNoisy.length ? ` (got ${invNoisy.join(', ')})` : ''}`
     );
+
+    // --- IMP-209 (08-22 mandate #2): RATE/BASE CONSISTENCY. Four cases, two directions, and the
+    //     DEFECT AND ITS REPAIR ARE THE SAME BULLET — the evening v1.5 derived the dollars from the
+    //     wrong convention; the published brief deleted them and prints only the rate and the base
+    //     ("Published per-employee dollar figures for this charge disagree by convention … so we
+    //     print the rate and the base and no dollar a reader would find contradicted"). Real bytes
+    //     on both sides, no fixtures. ---
+    const v15_0822 = read('daily-briefs/2026-08-22-v1.5.md');
+    const pub_0822 = read('content/daily-updates/2026-08-22.md');
+    const rbFire = v15_0822 ? checkRateBaseConsistency(v15_0822, '2026-08-22') : [];
+    assert(
+      rbFire.length === 2 && rbFire.every(f => /Signal/i.test(f.where)),
+      `[IMP-209] FIRES on the REAL 08-22 v1.5 Signal — "1.2 percent credit reduction … came to $126 per employee" against the $7,000 base stated two sentences earlier, AND the identical convention error at "5.3 percent … $413 a head"${rbFire.length !== 2 ? ` (got ${rbFire.length}: ${rbFire.map(f => f.where).join(', ')})` : ''}`
+    );
+    assert(
+      rbFire.some(f => /\$126/.test(f.message) && /1\.8|1\.80/.test(f.message)),
+      "[IMP-209] the flag NAMES the convention the brief used — $126 is 1.80 percent × $7,000 (total FUTA), not 1.2 percent × $7,000 (= $84)"
+    );
+    // The mandate's honest resolution, proved on the bytes: `0.6` is stated NOWHERE in this brief
+    // (grep -c "0.6" → 0), so the offset is DERIVED from the unit's own reconciling pair —
+    // "The 1.5 percent … takes the effective rate to 2.1 percent". If this assertion ever fails,
+    // the diagnosis has fallen back to a bare miss and the fix stops being one word long.
+    assert(
+      rbFire.some(f => /1\.5 percent "takes the effective rate to" 2\.1 percent/.test(f.message)),
+      '[IMP-209] the DERIVED offset lands — the check reads the 0.6-point add-on back off the unit\'s own 1.5→2.1 pair, because the brief never states 0.6 anywhere'
+    );
+    // ⭐ THE SILENCE THAT MATTERS: the correct sentence is in the SAME PARAGRAPH, against the SAME
+    // base, and differs only in that its arithmetic closes. A check that cannot tell them apart is
+    // a dollar-and-percent ban.
+    // Test the QUOTED SENTENCE, not the whole message: every flag's boilerplate receipt cites the
+    // $147 sentence as the correct twin, so a naive /\$147/ scan of `message` self-triggers. It did,
+    // on the first build — the assertion was reading the gate's own prose as if it were the brief's.
+    const rbQuoted = rbFire.map(
+      f => f.message.match(/DIFFERENT QUANTITIES — "([^"]*)"/)?.[1] ?? ''
+    );
+    assert(
+      rbQuoted.length === 2 && !rbQuoted.some(q => /\$147/.test(q)),
+      `[IMP-209] SILENT on "takes the effective rate to 2.1 percent, or $147 per employee" — same paragraph, same $7,000 base, 2.1% × $7,000 = $147 ✓ (flagged sentences: ${rbQuoted.map(q => q.slice(0, 55)).join(' | ')})`
+    );
+    // The mandate's two structural non-cases, both on this same page: a ratio with no per-unit base,
+    // and a cumulative total with no rate attached.
+    assert(
+      !rbFire.some(f => /Companies & Crypto/i.test(f.where)),
+      '[IMP-209] SILENT on C&C-1 ($5.0bn / $343m = 14.6×) — a ratio with no per-unit base'
+    );
+    assert(
+      !rbFire.some(f => /Geopolitics/i.test(f.where)),
+      '[IMP-209] SILENT on Geo-1 ("over $600 million by 2016") — a cumulative total with no rate attached'
+    );
+    // SILENT on the PUBLISHED REPAIR — the strongest pairing available, same bullet, same night.
+    assert(
+      pub_0822 != null && checkRateBaseConsistency(pub_0822, '2026-08-22').length === 0,
+      `[IMP-209] SILENT on the PUBLISHED 08-22 — the repair deleted the dollar figures and prints the rate and the base only${pub_0822 ? ` (got ${checkRateBaseConsistency(pub_0822, '2026-08-22').length})` : ''}`
+    );
+    // NO RETROACTIVE CONDEMNATION (IMP-125). The SAME firing bytes, dated one day before the rule
+    // ships, are silent. Measured on the file that actually fires, so the boundary is real.
+    assert(
+      v15_0822 != null && checkRateBaseConsistency(v15_0822, '2026-08-21').length === 0,
+      '[IMP-209] NO RETRO — the same firing 08-22 v1.5 bytes dated 2026-08-21 produce 0 flags (RATE_BASE_EFFECTIVE_FROM = 2026-08-22)'
+    );
+    // THE ESCAPE, proved to clear, or the gate is a phrase ban: name the convention in the reader's
+    // sentence and the same arithmetic is fine, because the label now matches the quantity.
+    assert(
+      v15_0822 != null &&
+        checkRateBaseConsistency(
+          v15_0822.replace(
+            "California's 1.2 percent credit reduction for 2025 therefore came to $126 per employee.",
+            "California's 1.2 percent credit reduction for 2025 therefore brought total FUTA to $126 per employee."
+          ),
+          '2026-08-22'
+        ).length === 1,
+      '[IMP-209] SILENT on the $126 sentence once it NAMES THE CONVENTION ("brought total FUTA to $126") — THE ESCAPE, reader-facing (the $413 sentence still fires, which is correct: it was never repaired)'
+    );
+    // FALSE-POSITIVE FLOOR across every published brief, with the EFFECTIVE_FROM shield DELIBERATELY
+    // OFF (null date) so the silence is a real measurement and not the date guard answering for it.
+    // CALIBRATION RECORD: 28 archive sentences carry a per-unit charge AND a percentage — EPS vs
+    // consensus, takeover premiums, "$18,500 per employee, up 6.7 percent". None states an
+    // assessment base, and requiring one is the whole reason this number is 0 and not 28.
+    const rbNoisy: string[] = [];
+    for (const f of fs
+      .readdirSync(path.join(process.cwd(), 'content/daily-updates'))
+      .filter(x => /^2026-\d\d-\d\d\.md$/.test(x))) {
+      const body = read(`content/daily-updates/${f}`);
+      if (!body) continue;
+      const n = checkRateBaseConsistency(body, null).length;
+      if (n) rbNoisy.push(`${f}:${n}`);
+    }
+    assert(
+      rbNoisy.length === 0,
+      `[IMP-209] FALSE-POSITIVE FLOOR — 0 flags across ALL published briefs, EFFECTIVE_FROM shield off${rbNoisy.length ? ` (got ${rbNoisy.join(', ')})` : ''}`
+    );
+    // The success line now counts itself. If this ever reads 0 the source scan broke and the line
+    // would print a lie in the shape of a pass.
+    assert(
+      LINT_CHECK_IDS.length >= 18 && LINT_CHECK_IDS.includes('rate-base-consistency'),
+      `[IMP-209] the selftest success line COUNTS ITSELF — ${LINT_CHECK_IDS.length} distinct check ids read off the source, incl. rate-base-consistency (the old line hard-coded "10" and had drifted seven behind)`
+    );
   }
 
   console.log(
@@ -1899,7 +2270,7 @@ function selftest(): number {
     return 1;
   }
   console.log(
-    '✓ All 10 lint checks verified in both directions (+ --strict-ait / --strict-cc gates).'
+    `✓ All ${LINT_CHECK_IDS.length} lint checks verified in both directions (+ --strict-ait / --strict-cc gates).`
   );
   return 0;
 }
