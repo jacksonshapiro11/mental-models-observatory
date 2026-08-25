@@ -192,7 +192,24 @@ export function anchorForensics(
 // not had its turn yet — a false-positive storm, and the fastest way to make a gate ignored.
 // So this grades the most recent critic dated STRICTLY BEFORE today: one fully elapsed cycle.
 
-/** Mandate numbers under the Critic's MUST BE BETTER TOMORROW heading. */
+/**
+ * Mandate numbers under the Critic's MUST BE BETTER TOMORROW heading.
+ *
+ * IMP-212 (2026-08-25, RC7) -- THE PARSER WENT BLIND WHEN THE CRITIC CHANGED ITS OWN HEADING
+ * STYLE, AND A ZERO-PARSE WAS A PASS. Receipt: `daily-briefs/2026-08-24-critic.md:430` carries
+ * `## MUST BE BETTER TOMORROW` followed by `### 1.` / `### 2.` / `### 3.`; the 08-22 critic used
+ * `**1.` and parsed fine. The old body did TWO things wrong on the heading form, and either one
+ * alone was fatal: (a) `^#{1,3}\s+\w` treated `### 1.` as "the next top-level section" and BROKE
+ * the scan on the first mandate, and (b) `^\*\*(\d+)` cannot match a heading anyway. So the
+ * registry printed `none parsed` and exited 0 while SIX Critical mandates (08-23 #1-3, 08-24
+ * #1-3) went undischarged across two dead sessions. `system/Brief_Critic.md:303` specifies a
+ * THIRD form -- a bare `1.` -- which neither the old nor the drifted form matches.
+ *
+ * So: accept all three surface forms, and treat a NUMBERED heading as a mandate rather than as
+ * the section terminator. The contiguous-run clamp below is the Goodhart brake -- widening the
+ * match widens the false-positive surface, and a PHANTOM mandate is undischargeable by
+ * construction, which would red the registry forever and teach the next session to skim it.
+ */
 export function parseMandates(criticMd: string): number[] {
   const lines = criticMd.split('\n');
   // The 08-07 report carries the heading TWICE; the mandates follow the LAST one.
@@ -203,11 +220,18 @@ export function parseMandates(criticMd: string): number[] {
   if (start === -1) return [];
   const nums = new Set<number>();
   for (const l of lines.slice(start + 1)) {
-    if (/^#{1,3}\s+\w/.test(l) && !/^#{4,6}/.test(l)) break; // next top-level section ends it
-    const m = l.match(/^\*\*(\d+)[.)]/);
+    const heading = l.match(/^(#{1,3})\s+(.*)$/);
+    // A top-level heading ends the block -- UNLESS it is itself a numbered mandate (`### 1.`).
+    if (heading && !/^\**\s*\d+\s*[.)]/.test(heading[2]!)) break;
+    // `### 1.` | `**1.` | `1.` -- anchored at column 0, so INDENTED sub-lists never match.
+    const m = l.match(/^(?:#{1,6}\s+)?(?:\*\*)?(\d+)\s*[.)]/);
     if (m) nums.add(parseInt(m[1]!, 10));
   }
-  return [...nums].sort((a, b) => a - b);
+  // CONTIGUOUS-RUN CLAMP: mandates are #1..#N. Take the run from 1 and stop at the first gap, so
+  // a stray unindented `5.` in a fix description cannot invent a mandate nobody can ever cover.
+  const out: number[] = [];
+  for (let n = 1; nums.has(n); n++) out.push(n);
+  return out;
 }
 
 export interface Coverage {
@@ -277,6 +301,33 @@ export function latestElapsedCritic(
     .filter(d => d < today)
     .sort();
   return dates.length ? dates[dates.length - 1]! : null;
+}
+
+/**
+ * IMP-213 (2026-08-25, RC7) -- EVERY critic of a fully elapsed cycle inside the window, oldest
+ * first. THE ONE-DAY WINDOW WAS A ONE-DAY AMNESTY: `latestElapsedCritic` grades exactly one
+ * report, so a session that dies takes its whole day's mandates out of scope permanently the
+ * moment the calendar turns. Receipt: the 08-23 critic's three mandates were PARSEABLE (`**1.`
+ * form) and were never graded, because the 08-24 session wrote a canary and vanished, and by
+ * 08-25 the window had moved past them. Debt now stays visible for MANDATE_WINDOW_DAYS.
+ */
+export const MANDATE_WINDOW_DAYS = 7;
+
+export function elapsedCriticsInWindow(
+  dbDir: string,
+  today: string,
+  days: number = MANDATE_WINDOW_DAYS
+): string[] {
+  if (!fs.existsSync(dbDir)) return [];
+  const floor = new Date(Date.parse(today + 'T00:00:00Z') - days * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  return fs
+    .readdirSync(dbDir)
+    .filter(f => /^\d{4}-\d{2}-\d{2}-critic\.md$/.test(f)) // never the -light-critic siblings
+    .map(f => f.slice(0, 10))
+    .filter(d => d < today && d >= floor)
+    .sort();
 }
 
 /**
@@ -479,9 +530,11 @@ function main(): number {
   //     the one failure mode every check above is blind to, because they all grade rows.
   const dbDir = path.join(process.cwd(), 'daily-briefs');
   const today = new Date().toISOString().slice(0, 10);
-  const criticDate = latestElapsedCritic(dbDir, today);
-  let coverageLine = '';
-  if (criticDate) {
+  //     IMP-213: graded across a 7-DAY window, not one report. A one-day window is a one-day
+  //     amnesty — a dead session takes its mandates permanently out of scope when the date rolls.
+  const criticDates = elapsedCriticsInWindow(dbDir, today);
+  const covLines: string[] = [];
+  for (const criticDate of criticDates) {
     const criticMd = fs.readFileSync(
       path.join(dbDir, `${criticDate}-critic.md`),
       'utf8'
@@ -489,7 +542,9 @@ function main(): number {
     const mandates = parseMandates(criticMd);
     if (mandates.length) {
       const cov = mandateCoverage(rows, criticDate, mandates);
-      coverageLine = `  mandates (${criticDate} critic, last elapsed cycle): ${cov.applied.length} applied · ${cov.deferred.length} deferred · ${cov.uncovered.length} uncovered`;
+      covLines.push(
+        `    ${criticDate}: ${cov.applied.length} applied · ${cov.deferred.length} deferred · ${cov.uncovered.length} uncovered`
+      );
       for (const n of cov.uncovered) {
         fails.push(
           `MANDATE #${n} of the ${criticDate} Critic is UNCOVERED — no ledger row cites "${criticDate.slice(5)} Critic mandate #${n}" and none is marked deferred. ` +
@@ -498,9 +553,28 @@ function main(): number {
         );
       }
     } else {
-      coverageLine = `  mandates (${criticDate} critic): none parsed — check the MUST BE BETTER TOMORROW heading`;
+      //  IMP-212: A ZERO-PARSE IS AN OUTAGE OF THIS CHECK, NOT AN ABSENCE OF MANDATES, AND IT
+      //  USED TO BE A PASS. On 2026-08-25 the registry printed `none parsed` and exited 0 while
+      //  six Critical mandates sat undischarged. An unreadable mandate block now FAILS: the
+      //  Critic is REQUIRED to emit three (Brief_Critic Phase 6 item 15), so zero is never a
+      //  legitimate reading of a healthy report.
+      const hasHeading = /^#{1,6}\s*MUST BE BETTER TOMORROW\s*$/im.test(criticMd);
+      covLines.push(`    ${criticDate}: 0 parsed — UNREADABLE MANDATE BLOCK`);
+      fails.push(
+        `MANDATE BLOCK UNREADABLE in daily-briefs/${criticDate}-critic.md — ${
+          hasHeading
+            ? 'the MUST BE BETTER TOMORROW heading is present but no mandate could be parsed under it'
+            : 'the mandatory MUST BE BETTER TOMORROW heading is ABSENT'
+        }. This check grades mandates; zero parsed means it graded NOTHING, which is an OUTAGE of the check and not a clean day. ` +
+          `Receipt for why this is now RED: on 2026-08-25 this line read "none parsed" and the run exited 0 while the 08-23 and 08-24 Critics' six Critical mandates went undischarged across two sessions that wrote a canary and vanished. ` +
+          `Fix the Critic's mandate block to one of the three accepted forms (\`### N.\` | \`**N.\` | \`N.\` at column 0, numbered from 1) per system/Brief_Critic.md Phase 6 item 15 — do NOT silence this by narrowing the window.`
+      );
     }
   }
+  const coverageLine = criticDates.length
+    ? `  mandates (${criticDates.length} elapsed critic(s), ${MANDATE_WINDOW_DAYS}d window):\n` +
+      covLines.join('\n')
+    : '';
 
   // 4. The theater report — behavior counts (informational, the accountability view).
   const counts = {
@@ -874,7 +948,86 @@ function selftest(): number {
       elapsed === '2026-08-07',
       `[IMP-142] the graded cycle is the last ELAPSED one, not today's (got ${elapsed})`
     );
-    coverageAssertions += 8;
+    
+    // ── IMP-212: THE HEADING-FORM REGRESSION, ON REAL BYTES, IN BOTH DIRECTIONS ──────────────
+    // FIRES: the 08-24 and 08-25 critics use `### N.` — the form that returned [] and let six
+    // Critical mandates through with the registry green. These two legs are the whole point.
+    const m0824 = realParse('2026-08-24');
+    const m0825 = realParse('2026-08-25');
+    t2(
+      JSON.stringify(m0824) === '[1,2,3]',
+      `[IMP-212] parses 3 mandates from the REAL 2026-08-24 critic, which uses the '### N.' HEADING form that used to yield [] (got ${JSON.stringify(m0824)})`
+    );
+    t2(
+      JSON.stringify(m0825) === '[1,2,3]',
+      `[IMP-212] …and from the REAL 2026-08-25 critic, same heading form (got ${JSON.stringify(m0825)})`
+    );
+    // SILENT: the forms that already worked must keep working. A widened parser that breaks the
+    // old shape trades one blind spot for another.
+    const m0823 = realParse('2026-08-23');
+    t2(
+      JSON.stringify(m0823) === '[1,2,3]',
+      `[IMP-212] the '**N.' bold form still parses — the 08-23 critic, unchanged (got ${JSON.stringify(m0823)})`
+    );
+    // The THIRD form, which system/Brief_Critic.md:303 actually specifies and neither the old nor
+    // the drifted form matched: a bare numbered list.
+    t2(
+      JSON.stringify(
+        parseMandates('## MUST BE BETTER TOMORROW\n1. a — RC2 — fix\n2. b — RC3 — fix\n3. c — RC5 — fix\n')
+      ) === '[1,2,3]',
+      "[IMP-212] the BARE `N.` form specified by Brief_Critic.md Phase 6 item 15 parses too"
+    );
+    // NEGATIVE 1 — the section terminator still terminates. Widening the mandate match must not
+    // swallow the rest of the report: an UNNUMBERED heading after the block still ends it.
+    t2(
+      JSON.stringify(
+        parseMandates(
+          '## MUST BE BETTER TOMORROW\n### 1. a\n### 2. b\n## GATE VERDICTS\n### 3. not a mandate\n'
+        )
+      ) === '[1,2]',
+      '[IMP-212] an unnumbered top-level heading still ENDS the block — `### 3.` under GATE VERDICTS is not a mandate'
+    );
+    // NEGATIVE 2 — the Goodhart brake. A phantom mandate is UNDISCHARGEABLE by construction, so
+    // a stray unindented number in a fix description must not invent one and red the registry
+    // forever. Contiguous run from 1, stop at the first gap.
+    t2(
+      JSON.stringify(
+        parseMandates('## MUST BE BETTER TOMORROW\n### 1. a\n### 2. b\n### 3. c\n\n9. see rule 9 above\n')
+      ) === '[1,2,3]',
+      '[IMP-212] a stray `9.` in prose does NOT become mandate #9 (contiguous-run clamp)'
+    );
+    // NEGATIVE 3 — indented sub-lists are body text, not mandates.
+    t2(
+      JSON.stringify(
+        parseMandates('## MUST BE BETTER TOMORROW\n### 1. a\n   1. sub-step\n   2. sub-step\n')
+      ) === '[1]',
+      '[IMP-212] an INDENTED numbered sub-list inside a mandate body is not a mandate (column-0 anchor)'
+    );
+    // NEGATIVE 4 — no heading at all still yields nothing to parse (main() turns this into a
+    // FAIL; parseMandates itself stays a pure reader).
+    t2(
+      parseMandates('## SOMETHING ELSE\n### 1. a\n').length === 0,
+      '[IMP-212] no MUST BE BETTER TOMORROW heading ⇒ no mandates parsed'
+    );
+
+    // ── IMP-213: THE WINDOW, WHICH IS WHY 08-23 GOT A PERMANENT AMNESTY ─────────────────────
+    // The one-day window graded exactly one report; the 08-23 mandates were PARSEABLE all along
+    // and were never graded, because the 08-24 session died and by 08-25 the window had moved.
+    const win = elapsedCriticsInWindow(dbDir, '2026-08-25', 7);
+    t2(
+      win.includes('2026-08-23') && win.includes('2026-08-24'),
+      `[IMP-213] a 7d window on 2026-08-25 still sees BOTH skipped days (got ${JSON.stringify(win)})`
+    );
+    t2(
+      !win.includes('2026-08-25'),
+      '[IMP-213] …and never grades TODAY, whose cycle has not had its turn (the false-positive-storm rule)'
+    );
+    t2(
+      elapsedCriticsInWindow(dbDir, '2026-08-25', 1).length <=
+        elapsedCriticsInWindow(dbDir, '2026-08-25', 7).length,
+      '[IMP-213] a narrower window is a subset of a wider one (window arithmetic sane)'
+    );
+    coverageAssertions += 19;
   }
 
   // ── IMP-211: THE ROUTING, WHICH IS THE ACTUAL SUBJECT OF THIS IMPROVEMENT ──────────────────
