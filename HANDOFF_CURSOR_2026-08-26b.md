@@ -78,4 +78,4 @@ Editor snapshot is the pointer, not the 26.9 KB target: `system/task-bodies-snap
 | 6 | light snapshot | untouched. 431 lines, 25,958 B, md5 `5aee058d2ad29d91c753dcb4efeee3b0` |
 | 6 | editor snapshot | pointer, not the 26 KB target. md5 `2cb53b96ef4b46b53d3e950d62b159e2` |
 | 6 | Documents / scheduler | not written, not touched |
-| — | HANDOFF_CURSOR_2026-08-26.md | left as the earlier ESC-020 record |
+| 4–5 | commit | `af7e7bf` Distinguish a live editor from an empty-body firing by STEP-0 canary. Pushed with `ace996c`. |
