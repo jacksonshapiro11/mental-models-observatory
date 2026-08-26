@@ -1,6 +1,6 @@
 {
   "brief": "2026-W27-jun-28-jul-04.md",
-  "generated": "2026-08-10T11:22:10.780Z",
+  "generated": "2026-08-26T11:34:43.073Z",
   "truthFile": null,
   "summary": {
     "claims": 5,
@@ -14,12 +14,15 @@
     "headlineAnchors": 0,
     "bylines": 0,
     "derivedPrices": 0,
+    "seriesExtrema": 0,
     "sourceConclusions": 0,
+    "issuerCausals": 0,
+    "statuteThresholds": 0,
     "pass": 0,
     "fail": 0,
     "unverified": 13,
     "officeHolderFacts": 5,
-    "archiveAssetsKnown": 5,
+    "archiveAssetsKnown": 6,
     "truthBypass": true,
     "unresolvedCritical": 3,
     "registries": [
@@ -42,7 +45,17 @@
     {
       "check": "price-vs-archive",
       "severity": "FLAG",
-      "message": "Brent crude stated near 105 deviates 33% from our last-3 archive median 79 (2026-08-06:79, 2026-08-05:79, 2026-08-03:88). Possible fabrication/stale — verify vs PRIMARY source."
+      "message": "Brent crude stated near 105 deviates 14% from our last-3 archive median 92 (2026-08-25:91.97, 2026-08-21:93.01, 2026-08-19:92). Possible fabrication/stale — verify vs PRIMARY source."
+    },
+    {
+      "check": "price-vs-archive",
+      "severity": "FLAG",
+      "message": "gold stated near 4000 deviates 13% from our last-3 archive median 4590.51 (2026-08-26:4658.79, 2026-08-22:4590.51, 2026-08-20:4480). Possible fabrication/stale — verify vs PRIMARY source."
+    },
+    {
+      "check": "dated-event-weekday",
+      "severity": "FLAG",
+      "message": "DATED-EVENT WEEKDAY — a completed action is pinned to \"Friday\" in The Instruments Came Loose: \"*This was the week the instruments came loose from the things they measure. On Friday the unemployment rate fell to 4.2 percent, and it fell\". A weekday attached to a court ruling, a filing, an announcement or a statement is a fact about the SOURCE'S DATELINE, never about the reading date. MORNING GATE: resolve this row against a dated primary and rewrite the weekday if it is wrong. UNRESOLVED-FACT if no primary confirms it. Receipt: the 08-11 C&C-2 lead read \"Delaware told Verisk on Monday\"; the Chancery ruling issued Friday 2026-08-07 (Reuters, dateline Aug 7, \"The judge said on Friday\") and Monday was Verisk's response statement — the error propagated into the payoff's \"all abundant on Monday\" frame."
     },
     {
       "check": "truth-bypass",

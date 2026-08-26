@@ -1,24 +1,35 @@
 {
-  "brief": "false-light-test.md",
-  "generated": "2026-07-18T01:07:59.725Z",
+  "brief": "cand.md",
+  "generated": "2026-08-26T09:06:39.738Z",
   "truthFile": null,
   "summary": {
     "claims": 4,
-    "superlatives": 3,
+    "superlatives": 4,
     "scheduledEvents": 0,
     "aggregates": 0,
+    "entityCounts": 0,
+    "effectiveDates": 0,
+    "aiProducts": 0,
+    "earnings": 0,
+    "headlineAnchors": 0,
+    "bylines": 0,
+    "derivedPrices": 0,
+    "seriesExtrema": 0,
+    "sourceConclusions": 0,
+    "issuerCausals": 0,
+    "statuteThresholds": 0,
     "pass": 0,
     "fail": 0,
-    "unverified": 7,
+    "unverified": 9,
     "officeHolderFacts": 5,
-    "archiveAssetsKnown": 5,
+    "archiveAssetsKnown": 6,
     "truthBypass": true,
     "unresolvedCritical": 2,
     "registries": [
       {
         "name": "entity-bindings.json",
         "state": "ok",
-        "rows": 13,
+        "rows": 14,
         "badRows": []
       },
       {
@@ -32,39 +43,79 @@
   },
   "findings": [
     {
-      "check": "entity-attribution",
+      "check": "corporate-event-date",
+      "severity": "FLAG",
+      "message": "CORPORATE-EVENT WEEKDAY — a company's scheduled event is pinned to \"Monday\" in Companies & Crypto: \"- **Coinbase put four tokenized US stocks on its own chain on Monday under a token standard whose defining feature is that dividends and spl\". This brief is written the evening before it is read, and a weekday for an earnings date or a conference is checkable in one fetch. MORNING GATE: confirm the ABSOLUTE date against the event's own source and rewrite the weekday if it is wrong. Receipt: the 07-21 \"AMD opens its Advancing AI 2026 conference Tuesday\" was a July 22-23 (Wed-Thu) event, corrected to \"Wednesday\"."
+    },
+    {
+      "check": "corporate-event-date",
+      "severity": "FLAG",
+      "message": "CORPORATE-EVENT WEEKDAY — a company's scheduled event is pinned to \"Tuesday\" in Geopolitics: \"- **Crude fell almost five percent on Tuesday on diplomatic signals out of Tehran rather than on anything in the sanctions package, which re\". This brief is written the evening before it is read, and a weekday for an earnings date or a conference is checkable in one fetch. MORNING GATE: confirm the ABSOLUTE date against the event's own source and rewrite the weekday if it is wrong. Receipt: the 07-21 \"AMD opens its Advancing AI 2026 conference Tuesday\" was a July 22-23 (Wed-Thu) event, corrected to \"Wednesday\"."
+    },
+    {
+      "check": "dated-event-weekday",
+      "severity": "FLAG",
+      "message": "DATED-EVENT WEEKDAY — a completed action is pinned to \"Monday\" in AI & Tech: \"- **Taiwanese prosecutors indicted nine people on Monday, including one employee of Nvidia's Taiwan unit and two of Super Micro's, over a sc\". A weekday attached to a court ruling, a filing, an announcement or a statement is a fact about the SOURCE'S DATELINE, never about the reading date. MORNING GATE: resolve this row against a dated primary and rewrite the weekday if it is wrong. UNRESOLVED-FACT if no primary confirms it. Receipt: the 08-11 C&C-2 lead read \"Delaware told Verisk on Monday\"; the Chancery ruling issued Friday 2026-08-07 (Reuters, dateline Aug 7, \"The judge said on Friday\") and Monday was Verisk's response statement — the error propagated into the payoff's \"all abundant on Monday\" frame."
+    },
+    {
+      "check": "dated-event-weekday",
+      "severity": "FLAG",
+      "message": "DATED-EVENT WEEKDAY — a completed action is pinned to \"Tuesday\" in Geopolitics: \"- **Canada answered a fifty percent tariff imposed under a statute never once used to raise a tariff with a conventional, proportionate, dol\". A weekday attached to a court ruling, a filing, an announcement or a statement is a fact about the SOURCE'S DATELINE, never about the reading date. MORNING GATE: resolve this row against a dated primary and rewrite the weekday if it is wrong. UNRESOLVED-FACT if no primary confirms it. Receipt: the 08-11 C&C-2 lead read \"Delaware told Verisk on Monday\"; the Chancery ruling issued Friday 2026-08-07 (Reuters, dateline Aug 7, \"The judge said on Friday\") and Monday was Verisk's response statement — the error propagated into the payoff's \"all abundant on Monday\" frame."
+    },
+    {
+      "check": "dated-event-weekday",
+      "severity": "FLAG",
+      "message": "DATED-EVENT WEEKDAY — a completed action is pinned to \"Monday\" in Geopolitics: \"- **Iran has been hiring criminals rather than sending its own officers to attack exiles abroad, and the researcher who tracks its proxies s\". A weekday attached to a court ruling, a filing, an announcement or a statement is a fact about the SOURCE'S DATELINE, never about the reading date. MORNING GATE: resolve this row against a dated primary and rewrite the weekday if it is wrong. UNRESOLVED-FACT if no primary confirms it. Receipt: the 08-11 C&C-2 lead read \"Delaware told Verisk on Monday\"; the Chancery ruling issued Friday 2026-08-07 (Reuters, dateline Aug 7, \"The judge said on Friday\") and Monday was Verisk's response statement — the error propagated into the payoff's \"all abundant on Monday\" frame."
+    },
+    {
+      "check": "unverified-critical",
       "severity": "FAIL",
-      "message": "ENTITY MISATTRIBUTION — \"Best Quarter in Chip\" belongs to Nvidia (~$81.6B in a single quarter, roughly double TSMC's $40.2B record), but this sentence attributes it to \"TSMC\" and never names Nvidia (~$81.6B in a single quarter, roughly double TSMC's $40.2B record). Section: THE UPDATE. If load-bearing (the section thesis/lede), REWRITE the section on a verified premise; patch or strike only if incidental. 2026-07-17 receipt: the intro, M&M-1 and the light intro all called TSMC's Q2 ($40.2B at 67.7% margin) 'the strongest quarter in semiconductor HISTORY'. Every number was right; the SCOPE was wrong. It is TSMC's own record — Nvidia has posted $81.6B. Same shape as the 07-10 JGB transposition: a true company record inflated to an industry record by one word, which no number-only re-check can see. A company's best quarter is not the industry's best quarter unless it is the industry's largest company by revenue. WIDENED 2026-07-17 21:15 ET (COR-005/006 — the class SURVIVED this very binding on the same day it was written, in the same brief): the morning gate corrected 3 sites and the light brief's THE UPDATE kept the falsehood in two fresh phrasings — 'the Best Quarter in CHIP History' (headline) and 'the strongest quarter THE INDUSTRY HAS EVER PRINTED' (body). Neither matched the old key, which only knew the literal 'semiconductor history' string it was born from. This is the EXACT repeat of the JGB note's lesson one binding above: a key pinned to the phrasing you caught is not a guard, it is a souvenir. Key now covers best/biggest/strongest/largest/greatest/finest/record × chip|semiconductor|silicon|industry|sector × history|'has ever printed/posted/reported/seen'. Both directions tested at widen time: FIRES on all 6 known false phrasings (old key missed 3, incl. both live ones), SILENT on all 9 correctly-scoped forms in the same published brief ('best quarter in ITS history', 'the best quarter TSMC has ever posted', 'when a sector sells its own best quarter'). SECOND, DEEPER RESIDUAL — the gate never read the light file at all: fact-gate.ts:402 and validate-brief.ts:1015/1194 filter out '-light', and Morning_Updater.md:51 runs the gate on {DATE}.md only. A perfect key would still have missed this. Escalated to Jackson (IMP-062) — the light's THE UPDATE headline is the EMAIL SUBJECT LINE, the most-read string the system produces, and it sits behind zero truth enforcement. Sentence: \"**TSMC Posted the Best Quarter in Chip History and the Market Called It a Top**\" — verify against a primary source and correct the ENTITY; the number being right does not make the claim true."
+      "message": "CRITICAL claim not verified against ground truth — S&P 500 \"unknown\" 0.32% (Equities). No truth entry. \"No number from memory\": verify it and record {date}-truth.json, or pass --allow-unverified for a dry run."
+    },
+    {
+      "check": "unverified-critical",
+      "severity": "FAIL",
+      "message": "CRITICAL claim not verified against ground truth — year-over-year comparison \"unknown\" 7.8% (Companies & Crypto). No truth entry. \"No number from memory\": verify it and record {date}-truth.json, or pass --allow-unverified for a dry run."
     },
     {
       "check": "truth-bypass",
-      "severity": "FLAG",
-      "message": "TRUTH BYPASS — no truth file loaded; 4 market claim(s) + 3 superlative(s) ride entirely unverified. The gate has verified NOTHING about this brief. Before publish, the Morning Updater must write {BRIEF_DATE}-truth.json from refreshed market data and re-run with --require-resolved. Verify the ASSET as well as the number — the 07-10 failure was a transposition (the 10Y JGB's record attributed to the 30Y), which a number-only re-check cannot catch."
+      "severity": "FAIL",
+      "message": "TRUTH BYPASS — no truth file loaded; 4 market claim(s) + 4 superlative(s) ride entirely unverified. The gate has verified NOTHING about this brief. Before publish, the Morning Updater must write {BRIEF_DATE}-truth.json from refreshed market data and re-run with --require-resolved. Verify the ASSET as well as the number — the 07-10 failure was a transposition (the 10Y JGB's record attributed to the 30Y), which a number-only re-check cannot catch."
+    },
+    {
+      "check": "unresolved-before-publish",
+      "severity": "FAIL",
+      "message": "MORNING TRUTH GATE — critical claim still unverified at publish time: S&P 500 \"unknown\" 0.32% (Equities). Verify against the refreshed tape and record it in {BRIEF_DATE}-truth.json, correct the sentence, or strip the number. Do not publish a critical number nobody checked."
+    },
+    {
+      "check": "unresolved-before-publish",
+      "severity": "FAIL",
+      "message": "MORNING TRUTH GATE — critical claim still unverified at publish time: year-over-year comparison \"unknown\" 7.8% (Companies & Crypto). Verify against the refreshed tape and record it in {BRIEF_DATE}-truth.json, correct the sentence, or strip the number. Do not publish a critical number nobody checked."
     }
   ],
   "claims": [
     {
-      "key": "nasdaq",
-      "asset": "Nasdaq",
+      "key": "sp500",
+      "asset": "S&P 500",
       "tier": "critical",
       "claimType": "market",
       "direction": "unknown",
-      "magnitudePct": 1.5,
-      "level": null,
-      "section": "MARKETS MINUTE",
-      "sentence": "5% to 7,534 and the Nasdaq shedding 1.",
+      "magnitudePct": 0.32,
+      "level": "7,677.28",
+      "section": "Equities",
+      "sentence": "*Breadth was real and thin at the same time on Tuesday: the S&P 500 added 0.",
       "status": "UNVERIFIED"
     },
     {
-      "key": "ust10",
-      "asset": "10-year yield",
-      "tier": "critical",
+      "key": "dow",
+      "asset": "Dow",
+      "tier": "standard",
       "claimType": "market",
-      "direction": "unknown",
-      "magnitudePct": 4.57,
-      "level": "4.57",
-      "section": "MARKETS MINUTE",
-      "sentence": "Rates barely moved, the 10-year easing to 4.",
+      "direction": "up",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Equities",
+      "sentence": "40 gave the Dow a third straight session.",
       "status": "UNVERIFIED"
     },
     {
@@ -72,66 +123,92 @@
       "asset": "WTI",
       "tier": "standard",
       "claimType": "market",
-      "direction": "up",
-      "magnitudePct": null,
-      "level": null,
-      "section": "THE UPDATE",
-      "sentence": "Watch the oil bid against the next round of strikes; the day crude stops shrugging is the day the market has repriced the war.",
+      "direction": "down",
+      "magnitudePct": 4.59,
+      "level": "87.01",
+      "section": "Commodities & Rates",
+      "sentence": "*Crude marked 81.",
       "status": "UNVERIFIED"
     },
     {
-      "key": "gold",
-      "asset": "gold",
+      "key": "btc",
+      "asset": "Bitcoin",
       "tier": "standard",
       "claimType": "market",
-      "direction": "up",
+      "direction": "down",
       "magnitudePct": null,
-      "level": null,
-      "section": "Flawless and Falling",
-      "sentence": "The question of durability sits under the rest of the day too: the US bombing Iranian bridges rather than threatening them, 25% tariffs on Brazil under a trade-law finding aimed at its tech regulation, central banks buying gold into record highs.",
+      "level": "80,190",
+      "section": "Crypto",
+      "sentence": "*Bitcoin traded at 80,190 on the same vendor's morning ribbon and finished the day at 78,142, down 0.",
       "status": "UNVERIFIED"
     },
     {
-      "key": "superlative:gold",
-      "asset": "gold",
+      "key": "superlative:year-high",
+      "asset": "(unattributed)",
       "tier": "standard",
       "claimType": "superlative",
       "direction": "unknown",
       "magnitudePct": null,
       "level": null,
-      "section": "Flawless and Falling",
-      "sentence": "The question of durability sits under the rest of the day too: the US bombing Iranian bridges rather than threatening them, 25% tariffs on Brazil under a trade-law finding aimed at its tech regulation, central banks buying gold into record highs.",
+      "section": "Markets & Macro",
+      "sentence": "The German ten-year has been printing above the level called a fifteen-year high in March, and the Japanese ten-year touched 2.",
       "status": "UNVERIFIED",
-      "superlative": "record highs",
+      "superlative": "year high",
       "superlativeKind": "high"
     },
     {
-      "key": "superlative:gold",
-      "asset": "gold",
+      "key": "superlative:highest",
+      "asset": "(unattributed)",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": "1996",
+      "section": "Markets & Macro",
+      "sentence": "93 percent on 17 August, which Bloomberg dated as the highest since 1996.",
+      "status": "UNVERIFIED",
+      "superlative": "highest",
+      "superlativeKind": "high"
+    },
+    {
+      "key": "superlative:never-been",
+      "asset": "(unattributed)",
       "tier": "standard",
       "claimType": "superlative",
       "direction": "unknown",
       "magnitudePct": null,
       "level": null,
-      "section": "THE UPDATE",
-      "sentence": "**Central Banks Are Buying Gold Into Record Highs, Which Should Be Impossible**",
+      "section": "The Wild Card",
+      "sentence": "Such streams were expected everywhere and had never been seen anywhere else.",
       "status": "UNVERIFIED",
-      "superlative": "Record Highs",
-      "superlativeKind": "high"
-    },
-    {
-      "key": "superlative:gold",
-      "asset": "gold",
-      "tier": "standard",
-      "claimType": "superlative",
-      "direction": "unknown",
-      "magnitudePct": null,
-      "level": "2025",
-      "section": "MARKETS MINUTE",
-      "sentence": "Gold broke below $4,000 to roughly $3,984 as the dollar firmed, its weakest since November 2025, while crude held near $80 between Iran supply risk and the softening demand implied by the chip decline.",
-      "status": "UNVERIFIED",
-      "superlative": "weakest since",
+      "superlative": "never been",
       "superlativeKind": "other"
+    },
+    {
+      "key": "superlative:smallest-since",
+      "asset": "(unattributed)",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": "1951",
+      "section": "The Signal",
+      "sentence": "So demand a cargo from anywhere used to satisfy is now aimed at a North American byproduct, and the American herd is the smallest since 1951, 86.",
+      "status": "UNVERIFIED",
+      "superlative": "smallest since",
+      "superlativeKind": "other"
+    },
+    {
+      "key": "yoy:zoom-s-enterprise-revenue-grew-7-8-percent-last-",
+      "asset": "year-over-year comparison",
+      "tier": "critical",
+      "claimType": "yoy",
+      "direction": "unknown",
+      "magnitudePct": 7.8,
+      "level": null,
+      "section": "Companies & Crypto",
+      "sentence": "- **Zoom's enterprise revenue grew 7.8 percent last quarter while enterprise net dollar expansion printed 99, and both are true at once only if none of the growth came from the installed base.** Expan",
+      "status": "UNVERIFIED"
     }
   ]
 }

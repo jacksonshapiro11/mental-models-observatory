@@ -1,0 +1,23 @@
+import { citationLocatorRail, attributionLocators } from './fact-gate.ts';
+import fs from 'fs';
+const strip = s => s.replace(/<!--[\s\S]*?-->/g, '');
+// NO-STORM: run with the date shield OFF (null) on every pre-effective brief.
+let total = 0;
+for (const d of ['09','10','11','12','13','14','15']) {
+  const f = `daily-briefs/2026-08-${d}-v2.md`;
+  if (!fs.existsSync(f)) continue;
+  const n = citationLocatorRail(strip(fs.readFileSync(f,'utf8')), null, null, false).length;
+  if (n) console.log(`  ${f}: ${n}`, attributionLocators(strip(fs.readFileSync(f,'utf8'))).map(x=>x.line.slice(0,80)));
+  total += n;
+}
+console.log('NO-STORM total (date shield OFF, 08-09..08-15):', total);
+
+// MISMATCH must escalate to FAIL
+const body = strip(fs.readFileSync('daily-briefs/2026-08-16-v2.md','utf8'));
+const truth = { claims: { 'quote-locator:stanislavski-actor-prepares-relaxation': {
+  value: 6, resolved: true, source: 'Hapgood translation published contents, 16 chapters' } } };
+const r = citationLocatorRail(body, truth, '2026-08-16', false);
+console.log('WITH ROW value=6 →', r.map(x=>[x.check,x.severity]));
+const truthOk = { claims: { 'quote-locator:stanislavski-actor-prepares-relaxation': {
+  value: 10, resolved: true, source: 'x' } } };
+console.log('WITH ROW value=10 (agreeing) →', citationLocatorRail(body, truthOk, '2026-08-16', false).length, 'findings (expect 0)');

@@ -489,6 +489,18 @@ const SPECIALIZED_CONCEPTS = [
   'lucas critique',
   'coase',
   'baumol',
+  // Added 2026-08-20 (take-draft, 2026-08-21 draft). Factor-substitution economics was a genuine
+  // gap in this list: the CES/elasticity-of-substitution machinery (Karabarbounis & Neiman on the
+  // falling labour share; Acemoglu on directed technical change) is graduate-level and decides
+  // whether an input advantage erodes or compounds — not intro-course material. Check G fired a
+  // FALSE POSITIVE on a Take whose entire argument turns on whether sigma exceeds one, which is
+  // exactly the "specialist component the term list missed" case the header contemplates. Fixing
+  // the list rather than logging a one-off Editor waiver, so the next Take on the same machinery
+  // does not re-trip it.
+  'elasticity of substitution',
+  'gross substitut',
+  'directed technical change',
+  'karabarbounis',
   'cost disease',
   'veblen',
   'convexity',
@@ -536,6 +548,32 @@ const SPECIALIZED_CONCEPTS = [
   'stochastic dominance',
   'friedman-savage',
   'friedman savage',
+  // --- added 2026-08-25 by take-draft (for the 2026-08-26 Take), a LIST GAP not a rule change ---
+  // Check G fired on a Take whose entire payload is (a) the intensive/extensive margin taxonomy from
+  // labour economics, (b) the downward-nominal-rigidity literature (Bewley 1999; Genesove & Mayer,
+  // QJE 2001, on nominal loss aversion and the sale hazard), and (c) the observation that a
+  // transaction-conditioned price series is a SAMPLE-SELECTION problem with a standard correction
+  // (Heckman 1979) that cannot be applied when the non-participants' reservation prices are
+  // unobservable. All three families are graduate-level and none was on the list — the same class of
+  // false positive as the 2026-08-13 Dubins-Savage gap and the 2026-08-20 Karabarbounis gap, and
+  // fixed the same way: terms added so the next Take on this machinery does not re-litigate it.
+  // 'prospect theory' and 'endogeneity' were already present and are adjacent, but neither is the
+  // concept this Take actually runs on, and matching on an adjacent term would have hidden the gap.
+  'heckman',
+  'sample selection',
+  'selection bias',
+  'selection correction',
+  'reservation price',
+  'extensive margin',
+  'intensive margin',
+  'nominal rigidity',
+  'downward nominal',
+  'loss aversion',
+  'genesove',
+  'bewley',
+  'hazard rate',
+  'repeat-sales',
+  'repeat sales',
 ];
 function checkTake(section: string): string | null {
   const body = section.trim();

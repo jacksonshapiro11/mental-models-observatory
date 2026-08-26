@@ -1,0 +1,1 @@
+POINTER, NOT A BODY. The canonical brief-editor body lives at system/task-bodies/brief-editor/SKILL.md ("brief-editor comes home", commit d8c1854). Paste THAT into the scheduled task. This file exists only so a root-level search finds the pointer. See HANDOFF_CURSOR_2026-08-26.md Stage 2.

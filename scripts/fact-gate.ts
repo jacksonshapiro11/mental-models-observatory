@@ -1615,6 +1615,294 @@ export function issuerCausalClaims(
   return claims;
 }
 
+// ---------------------------------------------------------------------------
+// IMP-215 — THE REGULATORY-VACUUM LEG (2026-08-24 Critic mandate #1, RC2, NEW CLASS).
+//
+// WORKED FAILURE, on the night's own bytes. AI&T-2 shipped:
+//     "…the enabling condition sits a level above the algorithm: AIRLINES ARE EXEMPT FROM FEDERAL
+//      TRADE COMMISSION oversight of pricing practices. THAT EXEMPTION IS WHY the experiment runs
+//      here rather than in ridesharing, where Consumer Reports found Uber and Lyft quoting fares
+//      42 percent apart for the same trip at the same moment. … The exemption is the rule, and the
+//      rule is the layer that decides who captures a technology's gains."
+//
+//   FACT        ✓ TRUE  — air carriers ARE carved out of FTC jurisdiction.
+//   INFERENCE   ✗ FALSE — 49 U.S.C. § 41712 gives the Department of Transportation EXCLUSIVE
+//                 authority to prohibit unfair or deceptive practices of air carriers, and DOT has
+//                 published interpretive rules under it (14 CFR Part 399). THE AUTHORITY MOVED; IT
+//                 DID NOT VANISH. A carve-out from regulator R is a REASSIGNMENT, and the whole
+//                 mechanism was built on reading it as a vacuum.
+//   SELF-REFUTATION — ridesharing is NOT FTC-exempt, and the bullet's own cited evidence is that
+//                 the NON-EXEMPT industry is ALREADY quoting 42% spreads for the same trip at the
+//                 same moment. The control case disproves the treatment inside the same paragraph.
+//
+// WHY NOTHING IN THE STACK SAW IT, and this is the reason it is a new class rather than a new
+// pattern: every number in the bullet was true, every attribution was real, and the false step was
+// an INFERENCE FROM A TRUE FACT — "exempt from R" silently read as "unregulated". `statute:` rows
+// check a THRESHOLD inside a named statute. `source-conclusion:` and `issuer-causal:` check whether
+// a claim is the SOURCE'S claim. `ai-product:` checks whether a product exists. Not one of them
+// asks the only question that would have caught this: WHO HOLDS THE AUTHORITY INSTEAD?
+//
+// THE FIX IS A REQUIREMENT, NOT A PARSER (IMP-143's lesson, restated by the 08-08 Critic: THE POWER
+// IS THE REQUIREMENT, NOT THE PARSING). The gate cannot know that DOT holds § 41712. It does not
+// need to. It needs to make a Writer who builds a MECHANISM on a carve-out write down who holds the
+// authority instead — or state on the page that nobody does. A Writer required to name the
+// successor cannot conclude "unregulated" by accident, because the row is where the accident shows.
+//
+// NON-FIRE DISCIPLINE IS THE HALF THAT DECIDES WHETHER THIS SHIPS. The mandate names three real
+// sentences from the SAME BRIEF that must stay silent, and the reason is stated in its own words:
+// "a gate that fires on Geo-1, the brief's best bullet, is a gate the Writer routes around."
+//   · Signal-2  "Equipment already installed may keep running, but only while it stays where it is"
+//               — GRANDFATHERING. Regulation (EU) 2024/573 still applies to the equipment; it is the
+//               same regulator, holding, with a transitional clause. No successor question arises.
+//   · Geo-1     "the plant was too small to be legally required to tell anyone"
+//               — a REPORTING THRESHOLD inside a statute that plainly still applies. Being under a
+//               floor is not being outside a jurisdiction.
+//   · C&C-3     "blessed by the Justice Department in a 2010 consent decree"
+//               — names the regulator as PRESENT. There is no absence to succeed to.
+// All three are silent because none of them carries an EXEMPTION PREDICATE bound to a NAMED
+// AUTHORITY, and each is proved below to be a JUDGEMENT rather than a skip: the same sentence
+// rewritten into the exemption shape FIRES.
+//
+// THE PREDICATE BINDS ADJACENTLY, AND THAT IS THE WHOLE FALSE-POSITIVE BUDGET. "exempt from" must
+// be followed IMMEDIATELY (one determiner allowed, nothing else) by a named authority or statute.
+// The archive is full of the loose forms and every one of them is innocent: "selectively EXEMPTING
+// Chinese-flagged vessels FROM their Bab al-Mandeb blockade" (07-25) is a militia and a shipping
+// lane, "the drone determination was later narrowed to EXEMPT toy drones" (08-07) names no
+// authority at all, and "California's SB 53 does NOT EXEMPT ANYONE FROM coverage on revenue"
+// (08-17) is the negation of an exemption. A matcher that scanned ahead for a capitalised word
+// would have condemned all three.
+// ---------------------------------------------------------------------------
+const REGULATORY_VACUUM_EFFECTIVE_FROM = '2026-08-24'; // IMP-125: no retroactive condemnation.
+
+/** The four shapes the mandate names, plus the morphology each one actually appears in. */
+const REG_EXEMPT_PREDICATE_RE = new RegExp(
+  [
+    String.raw`\bexempt(?:ed)?\s+from\b`,
+    String.raw`\bexemptions?\s+from\b`,
+    String.raw`\bnot\s+subject\s+to\b`,
+    String.raw`\bcarved\s+out\s+of\b`,
+    String.raw`\bcarve(?:[-\s])?outs?\s+(?:of|from)\b`,
+    String.raw`\boutside\s+the\s+jurisdiction\s+of\b`,
+  ].join('|'),
+  'gi'
+);
+
+/** Regulator ACRONYMS. A closed list on purpose: an acronym is the one authority form that carries
+ *  no common noun to recognise it by, so it has to be enumerated or it cannot be seen at all. */
+const REG_ACRONYM_RE =
+  /^(?:FTC|SEC|DOT|DOJ|FAA|FDA|EPA|FCC|CFTC|CFPB|OSHA|FERC|NERC|OCC|FDIC|IRS|HHS|USDA|NHTSA|PCAOB|FINRA|NLRB|NRC|ITC|USTR|OFAC|GAO|CMS|FHFA|NTSB|TSA|CBP|SAMR|CSRC|PBOC|MAS|ASIC|ACCC|SEBI|RBI|SARB|CARB|CPUC|NYDFS|ESMA|EBA|EIOPA|FCA|PRA|ECB|CMA|BaFin|AMF|Ofgem|Ofcom|ICAO|IMO|WTO|EU)\b/;
+
+/** A COMMON NOUN that makes a proper phrase an AUTHORITY rather than merely a proper noun.
+ *  "exempt from Delta" is not a regulatory claim; "exempt from the Federal Trade Commission" is. */
+const REG_AUTHORITY_NOUN_RE =
+  /\b(?:Commissions?|Commissioners?|Comptrollers?|Agency|Agencies|Departments?|Bureaus?|Authorit(?:y|ies)|Boards?|Administration|Ministr(?:y|ies)|Regulators?|Councils?|Committees?|Tribunals?|Courts?|Congress|Parliament|Reserve|Directorate|Inspectorate|Ombudsman|Office|Secretariat|Panel|Cent(?:re|er)s?|Institutes?|Services?)\b/;
+
+/** A NAMED STATUTE or rule instrument — the other half of the mandate's "[named regulator or
+ *  statute]". Anchored, because these are read off the head of the clause, never scanned for. */
+const REG_STATUTE_HEAD_RE = new RegExp(
+  [
+    String.raw`^\d{1,2}\s+U\.?\s?S\.?\s?C\.?(?:\s*§+\s*[\d.]+(?:\([a-z0-9]+\))*)?`,
+    String.raw`^\d{1,2}\s?CFR(?:\s+Part)?(?:\s?§?\s?[\d.]+)?`,
+    String.raw`^(?:Section|Sections|Article|Title|Chapter|Part)\s+\d{1,4}[A-Za-z]?\b`,
+    String.raw`^Regulation\s+\(EU\)\s+\d{4}\/\d{2,4}`,
+    String.raw`^Directive\s+\d{4}\/\d{1,4}(?:\/[A-Z]{2,3})?`,
+    String.raw`^(?:SB|AB|HB|HR)\s?\.?\s?\d{1,4}\b`,
+    String.raw`^(?:GDPR|DMA|DSA|Dodd-Frank|Sarbanes-Oxley|MiFID(?:\s?II)?|Basel\s+I{1,3}|USMCA|MiCA)\b`,
+    String.raw`^[A-Z][A-Za-z.&'’-]+(?:\s+[A-Z][A-Za-z.&'’-]+){0,4}\s+(?:Act|Code|Treaty|Convention|Directive|Regulation|Rule)\b`,
+  ].join('|')
+);
+
+/** A run of capitalised tokens — the shape a named body has when it is spelled out. */
+const REG_PROPER_HEAD_RE =
+  /^[A-Z][A-Za-z.&'’-]+(?:\s+(?:of|the|and|for)\s+[A-Z][A-Za-z.&'’-]+|\s+[A-Z][A-Za-z.&'’-]+){0,4}/;
+
+/** THE CONSEQUENCE VERBS. The mandate's six, plus the morphology of the two that inflect.
+ *  `because` is here as a MEASURED extension, not a guess: it is the connective the SAME NIGHT's
+ *  super brief used for the identical defect ("…from 3 percent to 20 percent, BECAUSE airlines are
+ *  exempt from Federal Trade Commission pricing oversight"), and the archive sweep below prices it
+ *  — it adds exactly that one reader-facing page and nothing else across 08-01→08-24. */
+const REG_CONSEQUENCE_RE = new RegExp(
+  [
+    String.raw`\bis\s+why\b`,
+    String.raw`\bis\s+what\s+permits\b`,
+    String.raw`\bis\s+what\s+lets\b`,
+    String.raw`\bis\s+the\s+reason\b`,
+    // enable/enables/enabled only. "ENABLING" is deliberately absent: on the 08-24 receipt itself
+    // it appears as an ADJECTIVE ("the enabling condition sits a level above the algorithm"), and a
+    // finding whose message quoted that as the mechanism's verb would be citing a noun phrase.
+    String.raw`\benable[sd]?\b`,
+    String.raw`\ballow(?:s|ed|ing)?\b`,
+    String.raw`\bbecause\b`,
+  ].join('|'),
+  'i'
+);
+
+/** How far the consequence verb may sit from the exemption clause and still be bound to it. */
+const REG_BIND_CHARS = 200;
+
+/** The NAMED AUTHORITY, if the words IMMEDIATELY after the exemption predicate are one. Returns
+ *  the authority's own name, which becomes the truth-row slug. One leading determiner is allowed
+ *  and nothing else — see the non-fire discipline above; the adjacency IS the budget. */
+function namedAuthorityHead(after: string): string | null {
+  const head = after
+    .replace(/^[\s,]*/, '')
+    .replace(/^(?:the|its|their|any|all|a|an)\s+/i, '');
+  const statute = REG_STATUTE_HEAD_RE.exec(head);
+  if (statute) return statute[0].trim();
+  const acro = REG_ACRONYM_RE.exec(head);
+  if (acro) return acro[0].trim();
+  const proper = REG_PROPER_HEAD_RE.exec(head);
+  if (!proper) return null;
+  const name = proper[0].replace(/(?:['’]s)$/, '').trim();
+  // A proper noun is not an authority until a common noun says so. "exempt from Delta" is silent.
+  if (!REG_AUTHORITY_NOUN_RE.test(name)) return null;
+  return name;
+}
+
+/** Does the row NAME a successor authority, or ASSERT IN WORDS that none exists? Both discharge
+ *  the requirement; a bare `resolved:true` discharges neither, because the row's whole content is
+ *  the sentence the Writer could not otherwise be made to write. */
+const REG_NO_SUCCESSOR_RE =
+  /\b(?:no\s+(?:successor|other|remaining|replacement|second)?\s*(?:authority|regulator|agency|body|oversight|jurisdiction|supervisor)|nobody\s+(?:holds|has|regulates|oversees|enforces)|no\s+one\s+(?:holds|has|regulates|oversees|enforces)|none\s+exists|there\s+is\s+no\s+successor|genuinely\s+unregulated|wholly\s+unregulated|regulated\s+by\s+no\s+one)\b/i;
+
+/**
+ * THE LEG. Reader-facing prose, comments and table rows stripped. One finding per named authority
+ * per brief. Advisory in the evening (the brief ships); FAIL under --require-resolved, so the
+ * Morning Truth Gate — the stage that has a browser and can look up who took the authority — is
+ * the stage that has to settle it. Same severity contract as IMP-205/IMP-213.
+ */
+export function regulatoryVacuumLeg(
+  body: string,
+  truth: any,
+  briefDate: string | null,
+  requireResolved: boolean
+): { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] {
+  const out: { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] =
+    [];
+  if (briefDate && briefDate < REGULATORY_VACUUM_EFFECTIVE_FROM) return out;
+  const prose = stripComments(body)
+    .split('\n')
+    .filter(l => !/^\s*\|/.test(l))
+    .join('\n');
+  const rows = Object.entries<any>(truth?.claims ?? {}).filter(([k]) =>
+    k.startsWith('regulator-successor:')
+  );
+  const seen = new Set<string>();
+
+  const g = new RegExp(REG_EXEMPT_PREDICATE_RE.source, 'gi');
+  let m: RegExpExecArray | null;
+  while ((m = g.exec(prose)) !== null) {
+    const pStart = m.index;
+    const pEnd = m.index + m[0].length;
+    const authority = namedAuthorityHead(prose.slice(pEnd, pEnd + 120));
+    if (!authority) continue;
+    // The consequence verb must be BOUND to the clause, not merely present on the page.
+    const window = prose.slice(
+      Math.max(0, pStart - REG_BIND_CHARS),
+      pEnd + authority.length + REG_BIND_CHARS
+    );
+    // EVERY bound connective is named, not just the first. On the 08-24 receipt the clause is bound
+    // BOTH ways — "…the story is unchanged, BECAUSE the enabling condition sits a level above the
+    // algorithm: airlines are exempt from Federal Trade Commission oversight… That exemption IS WHY
+    // the experiment runs here" — and a message quoting only the nearer one would hand the Writer a
+    // receipt that does not contain the sentence the Critic actually indicted.
+    const verbs = [
+      ...new Set(
+        [
+          ...window.matchAll(new RegExp(REG_CONSEQUENCE_RE.source, 'gi')),
+        ].map(v => v[0].trim().toLowerCase())
+      ),
+    ];
+    if (!verbs.length) continue; // an exemption stated as a fact, with no mechanism on it, is not this class
+
+    const slug = srcSlug(authority);
+    const key = `regulator-successor:${slug}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    // A row may be keyed on any slug that shares a distinctive token with the authority named in
+    // the prose — the same free-form match citationLocatorRail uses, for the same reason.
+    const tokens = (authority.match(/[A-Za-z]{4,}/g) ?? []).map(w =>
+      w.toLowerCase()
+    );
+    const row =
+      rows.find(([k]) => k === key) ??
+      rows.find(([k]) => {
+        const rs = k.slice('regulator-successor:'.length).toLowerCase();
+        return tokens.some(t => rs.includes(t));
+      });
+
+    const sentence = sentenceAround(prose, pStart)
+      .replace(/\s+/g, ' ')
+      .replace(/^[\s"“”'’*_-]+/, '') // the previous sentence's closing quote is not this one's start
+      .trim();
+    const cited = sentence.slice(0, 200);
+    const receipt =
+      `RECEIPT (2026-08-24, AI&T-2): "airlines are exempt from Federal Trade Commission oversight of ` +
+      `pricing practices. That exemption is why the experiment runs here rather than in ridesharing…" ` +
+      `The fact was TRUE and the inference was FALSE: 49 U.S.C. § 41712 gives DOT EXCLUSIVE authority ` +
+      `over unfair or deceptive practices of air carriers, with interpretive rules at 14 CFR Part 399. ` +
+      `The authority moved; it did not vanish. The bullet's own control case — ridesharing, which is ` +
+      `NOT exempt and was ALREADY quoting fares 42 percent apart — refuted it in the same paragraph.`;
+
+    if (!row) {
+      out.push({
+        check: 'regulator-successor-unresolved',
+        severity: requireResolved ? 'FAIL' : 'FLAG',
+        message:
+          `A MECHANISM BUILT ON A CARVE-OUT, WITH NOBODY NAMED AS THE SUCCESSOR — the brief says the ` +
+          `subject is ${m[0].trim().toLowerCase()} ${authority}, and binds that to ${verbs.map(v => `"${v}"`).join(' + ')} ` +
+          `within ${REG_BIND_CHARS} characters, so the exemption is doing CAUSAL work. No \`${key}\` row ` +
+          `exists in {BRIEF_DATE}-truth.json. AN EXEMPTION FROM ONE REGULATOR IS NOT AN ABSENCE OF ` +
+          `REGULATION: a carve-out is usually a REASSIGNMENT, and the mechanism is only true if the ` +
+          `authority actually went nowhere. MORNING GATE: add ${key} with resolved:true and either ` +
+          `\`successor\` naming the body that holds it instead (plus the statute or rule that moves it) ` +
+          `or a sentence stating IN WORDS that no authority does — then correct the bullet to say which. ` +
+          `Naming the successor on the page is always legal and costs the mechanism nothing it honestly ` +
+          `had. ${receipt} Sentence: "${cited}"`,
+      });
+      continue;
+    }
+
+    const [rKey, r] = row;
+    const resolved = r?.resolved === true || r?.status === 'verified';
+    const wording = String(
+      r?.successor ?? r?.authority ?? r?.value ?? r?.claim ?? r?.match ?? ''
+    ).trim();
+    const source = String(r?.source ?? '').trim();
+    const namesSuccessor =
+      !!wording &&
+      (REG_NO_SUCCESSOR_RE.test(wording) ||
+        REG_AUTHORITY_NOUN_RE.test(wording) ||
+        new RegExp(REG_ACRONYM_RE.source.replace(/^\^/, '\\b')).test(wording) ||
+        /\b[A-Z][A-Za-z.&'’-]+(?:\s+[A-Z][A-Za-z.&'’-]+)+\b/.test(wording));
+    const reasons: string[] = [];
+    if (!resolved) reasons.push('the row is not resolved');
+    if (!wording)
+      reasons.push(
+        'the row names no successor (successor/authority/value/claim/match all empty)'
+      );
+    else if (!namesSuccessor)
+      reasons.push(
+        `the row neither names an authority nor states in words that none exists ("${wording.slice(0, 80)}")`
+      );
+    if (!source) reasons.push('the row names no source consulted');
+    if (!reasons.length) continue; // THE FIX IS NEVER PUNISHED.
+
+    out.push({
+      check: 'regulator-successor-unresolved',
+      severity: requireResolved ? 'FAIL' : 'FLAG',
+      message:
+        `UNRESOLVED REGULATORY SUCCESSOR — "${rKey}": ${reasons.join('; ')}. The brief builds a ` +
+        `mechanism on being ${m[0].trim().toLowerCase()} ${authority}, so the row must carry the ` +
+        `answer to the only question that makes the mechanism true: WHO HOLDS THE AUTHORITY INSTEAD? ` +
+        `Name the body and the statute that moves it, or say in words that nobody does. ${receipt} ` +
+        `Sentence: "${cited}"`,
+    });
+  }
+  return out;
+}
+
 /** Words too common to carry a conclusion's content. */
 const SRC_STOPWORD = new Set([
   'about',
@@ -2186,6 +2474,254 @@ const STATED_OBSERVATION_TIME_RE =
 // A money level or an index handle — the thing whose age is in question.
 const LEVEL_RE = /[$€£¥]\s?\d[\d,]*(?:\.\d+)?|\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/;
 
+// ---------------------------------------------------------------------------
+// IMP-213 — THE SESSION-CALENDAR LEG (2026-08-23 Critic mandate #1, RC2).
+//
+// 2026-08-23 Dashboard, Commodities & Rates: "Gold futures CLOSED SATURDAY'S SESSION at $4,680.60,
+// up 2.39 percent". BRIEF_DATE 2026-08-23 is a Sunday; the sentence describes 2026-08-22, a
+// SATURDAY, and COMEX gold holds no Saturday session. The last session before publication was
+// Friday 2026-08-21 and it closed $4,661.60 / +1.97% — so the brief printed a level $19.00 high and
+// a move 42bp fat, attributed to a session that does not exist. On the SAME PAGE the Crypto entry
+// was correct ("was trading $78,352 by late afternoon in New York, up 3.9 percent over the trailing
+// 24 hours"): a level, an instant and a trailing window, with no session verb. The Dashboard knows
+// how to do this. It did it one sub-section away.
+//
+// WHY IMP-205 WAS SILENT, and it is the mirror image of what IMP-205 was built for: that leg fires
+// when a 24/7 INSTRUMENT IS GIVEN A SESSION VERB. This is a SESSION-TRADED INSTRUMENT GIVEN A
+// SESSION ITS VENUE DOES NOT HOLD. Gold legitimately closes, so every verb-vs-instrument leg passes
+// it by construction; nothing anywhere asked whether the NAMED DAY was a trading day. Two halves of
+// one question, and only one half had a gate — which is E-DASHBOARD-INFERENCE-01 re-opening in its
+// mirror image four nights after it was closed.
+//
+// THE VENUE MODEL IS DELIBERATELY WEEKENDS-ONLY, AND THAT IS A SCOPE DECISION, NOT AN OVERSIGHT.
+// The mandate names "plus the CME holiday list". THERE IS NO HOLIDAY CALENDAR ANYWHERE IN THIS
+// REPO — measured this session: the only `holiday` token in scripts/ or lib/ is a comment string in
+// dashboard-math-gate.ts. A holiday list typed from memory is a guess, and a guessed holiday reds a
+// correct sentence, which trains the next session to skim the gate's output — the same failure as
+// the bare-year price-vs-archive defect (08-11) and IMP-165's "never" false positive. Saturdays and
+// Sundays are not a guess: no equity, futures or FX-fixing venue in this brief's universe holds a
+// weekend session, in any year, under any calendar. That single rule catches the incident and
+// cannot be wrong. When a verified holiday list lands in the repo as data, this leg extends by one
+// lookup and the comment changes with it.
+const SESSION_CALENDAR_EFFECTIVE_FROM = '2026-08-23'; // IMP-125: no retroactive condemnation.
+
+// Instruments whose venue HOLDS A SESSION — so a named day is a checkable claim about that venue.
+// SMALL ON PURPOSE: instruments only, never companies and never the bare word "markets". "The plant
+// closed Saturday" and "Microsoft closed the deal Saturday" are ordinary English about a firm, not a
+// falsifiable claim about a trading venue, and a list that reached them would buy nothing this leg
+// needs. Bare "oil" is excluded for the same reason ("the oil the strait carries"); the futures
+// contracts are named instead.
+const SESSION_TRADED_RE = new RegExp(
+  [
+    // Metals and energy futures — COMEX / NYMEX / ICE
+    String.raw`\bgold\b`,
+    String.raw`\bsilver\b`,
+    String.raw`\b(?:platinum|palladium)\b`,
+    String.raw`\bcopper\b`,
+    String.raw`\b(?:crude|WTI|Brent)\b`,
+    String.raw`\bnatural gas\b`,
+    String.raw`\b(?:gasoline|heating oil)\b`,
+    // Equity indices — NYSE / Nasdaq / the overseas cash sessions this brief quotes
+    String.raw`\bS&P\s*500\b`,
+    String.raw`\bNasdaq\b`,
+    String.raw`\bDow(?:\s+Jones)?\b`,
+    String.raw`\bRussell\s*2000\b`,
+    String.raw`\bVIX\b`,
+    String.raw`\b(?:Nikkei|Topix|Hang\s+Seng|Shanghai\s+Composite|KOSPI|FTSE|DAX|CAC|Stoxx)\b`,
+    // Rates — CME futures and cash Treasuries
+    String.raw`\bTreasur(?:y|ies)\b`,
+    String.raw`\b(?:two|five|ten|thirty)-year\b`,
+    String.raw`\b(?:2|5|10|30)-year\b`,
+    String.raw`\bfed\s+funds\s+futures\b`,
+    String.raw`\bSOFR\b`,
+  ].join('|'),
+  'i'
+);
+// PAST-TENSE ONLY. "if gold CLOSES above $4,700" is a chart convention about a future bar, not an
+// asserted observation — the same correction IMP-205's archive sweep forced on its own verb list.
+const SESSION_CALENDAR_VERB_RE =
+  /\b(?:closed|settled|opened|reopened|finished|ended)\b/i;
+// A DIRECT OBJECT that makes the verb ordinary English about a firm or a place rather than a claim
+// about a venue: "closed the deal", "closed the investigation", "closed the gap", "closed the
+// plant", "closed the Strait of Hormuz". Deliberately does NOT list week/month/quarter/year/session
+// — "the S&P closed the WEEK down 1.4 percent" is market usage and must still be judged.
+const NON_MARKET_OBJECT_RE =
+  /^[\s,]*(?:the|its|their|his|her|a|an|that|this)?\s*(?:deal|acquisition|transaction|merger|takeover|purchase|sale|round|financing|investigation|inquiry|probe|lawsuit|case|gap|discount|plant|factory|mine|refinery|smelter|terminal|pipeline|port|strait|border|crossing|school|store|branch|office|loophole|chapter|door|file|set|inventory|account|position\b(?!s? (?:in|at)\b))\b/i;
+// A DAY NAMED NEXT TO THE VERB. The binding window is what keeps this leg off the four non-market
+// uses of "closed" on the very page that carried the defect, and off one live near-miss: M&M-2's
+// "…has Brent below $76 a barrel by year-end, from above $91 now, a fall of roughly 17 percent with
+// the Strait of Hormuz still effectively CLOSED" names a session-traded instrument AND a date ("18
+// August") in one sentence, and BOTH sit far outside the windows — the instrument ~130 chars before
+// the verb, the date ~120. A leg that scored sentence-level co-occurrence would have condemned it.
+const DAY_BIND_BEFORE = 45; // "…on Friday to 7,674.37 and still closed…" — 31 chars, inside.
+const DAY_BIND_AFTER = 45; // "closed Saturday's session…" — 7 chars, inside.
+/** How far back an EXPLICIT calendar date may sit and still be the session this brief reports. */
+const SESSION_CAL_LOOKBACK_DAYS = 10;
+const SESSION_CAL_MONTHS = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december',
+];
+const SESSION_DAY_TOKEN_RE = new RegExp(
+  [
+    String.raw`\b(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b(?:['’]s)?`,
+    String.raw`\b\d{1,2}\s+(?:${SESSION_CAL_MONTHS.join('|')})\b`,
+    String.raw`\b(?:${SESSION_CAL_MONTHS.join('|')})\s+\d{1,2}\b`,
+    String.raw`\b\d{4}-\d{2}-\d{2}\b`,
+  ].join('|'),
+  'gi'
+);
+// A magnitude — the thing a fabricated session actually costs the reader. IMP-205 requires the same
+// (LEVEL_RE); a percent move is added because "gold closed Saturday up 2.4 percent" is the identical
+// defect wearing no dollar sign.
+const SESSION_CAL_MAGNITUDE_RE = new RegExp(
+  `${LEVEL_RE.source}|\\d+(?:\\.\\d+)?\\s*(?:percent|%)`,
+  'i'
+);
+
+/** The weekday index (0=Sunday … 6=Saturday) of a day token, plus how it was read.
+ *  A WEEKDAY NAME RESOLVES TO ITSELF — "Saturday" is a Saturday in every week of every year, so no
+ *  date arithmetic is done and none can go wrong. Only an EXPLICIT calendar date needs a year, and
+ *  the only honest source of one is the brief's own date; that is the whole reason this leg reads
+ *  `briefDate`. A date that would land far in the brief's future is read as the prior year. */
+function sessionDayWeekday(
+  token: string,
+  briefDate: string | null
+): { wd: number; resolved: string } | null {
+  const t = token.trim().toLowerCase().replace(/['’]s$/, '');
+  const wdIdx = WEEKDAYS.indexOf(t);
+  if (wdIdx >= 0) return { wd: wdIdx, resolved: WEEKDAYS[wdIdx]! };
+  const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) {
+    const d = new Date(`${t}T12:00:00Z`);
+    if (isNaN(d.getTime())) return null;
+    return { wd: d.getUTCDay(), resolved: t };
+  }
+  let day: number | null = null;
+  let mon: number | null = null;
+  const dm = t.match(new RegExp(`^(\\d{1,2})\\s+(${SESSION_CAL_MONTHS.join('|')})$`));
+  const md = t.match(new RegExp(`^(${SESSION_CAL_MONTHS.join('|')})\\s+(\\d{1,2})$`));
+  if (dm) {
+    day = Number(dm[1]);
+    mon = SESSION_CAL_MONTHS.indexOf(dm[2]!);
+  } else if (md) {
+    mon = SESSION_CAL_MONTHS.indexOf(md[1]!);
+    day = Number(md[2]);
+  }
+  if (day == null || mon == null || mon < 0) return null;
+  if (!briefDate) return null; // no year, no honest resolution — stay silent
+  let year = Number(briefDate.slice(0, 4));
+  const mk = (y: number) =>
+    `${y}-${String(mon! + 1).padStart(2, '0')}-${String(day!).padStart(2, '0')}`;
+  if (mk(year) > briefDate) {
+    // A date the brief could not have observed yet is last year's, not next week's.
+    const daysAhead =
+      (new Date(`${mk(year)}T12:00:00Z`).getTime() -
+        new Date(`${briefDate}T12:00:00Z`).getTime()) /
+      86400000;
+    if (daysAhead > 5) year -= 1;
+  }
+  const d = new Date(`${mk(year)}T12:00:00Z`);
+  if (isNaN(d.getTime())) return null;
+  return { wd: d.getUTCDay(), resolved: mk(year) };
+}
+
+/** THE LEG. Reader-facing prose, comments and table rows stripped. Returns one finding per
+ *  offending sentence. 24/7 instruments are handed back to IMP-205 untouched — the same registry
+ *  read, not a second list to drift. */
+function sessionCalendarLeg(
+  brief: string,
+  briefDate: string | null,
+  requireResolved: boolean
+): { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] {
+  const out: { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] = [];
+  if (briefDate && briefDate < SESSION_CALENDAR_EFFECTIVE_FROM) return out;
+  const continuous = continuouslyTradedMatchers();
+  const prose = stripComments(brief)
+    .split('\n')
+    .filter(l => !/^\s*\|/.test(l))
+    .join('\n');
+  const seen = new Set<string>();
+  // LINES FIRST, THEN SENTENCES. Markdown separators ("*", "###", "---") are not sentence
+  // terminators, so splitting on punctuation alone welds a Dashboard sub-heading onto the tail of
+  // the paragraph above it — which both muddies the quoted receipt and lets an instrument on one
+  // line bind to a verb on the next.
+  for (const s of prose
+    .split(/\n+/)
+    .flatMap(l => l.split(/(?<=[.!?])\s+/))) {
+    if (!SESSION_TRADED_RE.test(s)) continue;
+    if (!SESSION_CAL_MAGNITUDE_RE.test(s)) continue;
+    const g = new RegExp(SESSION_CALENDAR_VERB_RE.source, 'gi');
+    let vm: RegExpExecArray | null;
+    while ((vm = g.exec(s)) !== null) {
+      const vStart = vm.index;
+      const vEnd = vm.index + vm[0].length;
+      const before = s.slice(Math.max(0, vStart - PROXIMITY_CHARS), vStart);
+      // The instrument must be the verb's SUBJECT, within the mandate's 60 characters.
+      if (!SESSION_TRADED_RE.test(before)) continue;
+      // 24/7 bound to the same verb is IMP-205's finding, not this one. One defect, one row.
+      if (continuous.some(c => c.re.test(before))) continue;
+      // "Gold Fields closed the acquisition on Saturday" is a company closing a deal, not COMEX
+      // holding a session. The direct object is what tells them apart.
+      if (NON_MARKET_OBJECT_RE.test(s.slice(vEnd, vEnd + 40))) continue;
+      // The named day must be bound to the verb too, or it is some other sentence's date.
+      //
+      // 🔴 SCANNED OVER THE WHOLE SENTENCE, NEVER OVER A SLICE. The first build windowed the
+      // string first and matched inside it, and the cut end of the slice manufactured a word
+      // boundary that does not exist in the text: 2026-03-13's "Brent CLOSED above $100 for the
+      // first time SINCE AUGUST 2022" fell exactly 45 characters out, so the window ended mid-year
+      // and "August 2022" was read as "August 2" — a Sunday, a FAIL, on a true sentence. One false
+      // positive in 300 published files is still a false positive on the TRUE leg, and that is the
+      // failure that teaches the next session to skim the gate. Positions are absolute now and the
+      // token must match in full against the real neighbouring characters.
+      const dg = new RegExp(SESSION_DAY_TOKEN_RE.source, 'gi');
+      let best: { token: string; dist: number } | null = null;
+      let dm: RegExpExecArray | null;
+      while ((dm = dg.exec(s)) !== null) {
+        const start = dm.index;
+        if (start < vStart - DAY_BIND_BEFORE) continue;
+        if (start > vEnd + DAY_BIND_AFTER) break;
+        const dist =
+          start >= vEnd ? start - vEnd : Math.max(0, vStart - (start + dm[0].length));
+        if (!best || dist < best.dist) best = { token: dm[0], dist };
+      }
+      if (!best) continue; // no named day is no claim about a calendar
+      const day = sessionDayWeekday(best.token, briefDate);
+      if (!day) continue;
+      if (day.wd !== 0 && day.wd !== 6) continue; // weekday: the venue was open, stay silent
+      // AN EXPLICIT DATE MUST BE A DAY THE BRIEF COULD BE REPORTING. A daily brief's session verbs
+      // describe the last few days; "the first time since August 22" is a historical reference and
+      // a gate that condemned it would be doing arithmetic on a fact the sentence never asserted.
+      // Weekday NAMES are exempt from this test — they carry no year to be wrong about.
+      if (/^\d/.test(day.resolved) && briefDate) {
+        const back =
+          (new Date(`${briefDate}T12:00:00Z`).getTime() -
+            new Date(`${day.resolved}T12:00:00Z`).getTime()) /
+          86400000;
+        if (back < 0 || back > SESSION_CAL_LOOKBACK_DAYS) continue;
+      }
+      const sentence = s.replace(/\s+/g, ' ').trim();
+      const key = sentence.slice(0, 120);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const dayName = WEEKDAYS[day.wd]!.replace(/^./, c => c.toUpperCase());
+      out.push({
+        check: 'session-calendar',
+        severity: requireResolved ? 'FAIL' : 'FLAG',
+        message:
+          `A SESSION THAT DOES NOT EXIST — "${vm[0]}" is bound to a session-traded instrument and to ` +
+          `"${best.token.trim()}", which is a ${dayName}${day.resolved !== WEEKDAYS[day.wd] ? ` (${day.resolved})` : ''}. ` +
+          `NO EQUITY, FUTURES OR FX-FIXING VENUE HOLDS A WEEKEND SESSION, so there is no close, settle or ` +
+          `open on that day to report and the level attached to it was not observed anywhere. Re-anchor to ` +
+          `the LAST SESSION and say so ("Friday's close"), or rewrite as a level plus its instant. ` +
+          `RECEIPT (2026-08-23): "Gold futures closed Saturday's session at $4,680.60, up 2.39 percent" — ` +
+          `Friday 2026-08-21 settled $4,661.60, +1.97%, so the fabricated session cost the reader $19.00 on ` +
+          `the level and 42bp on the move. On the SAME PAGE the Crypto entry was correct. Sentence: "${sentence.slice(0, 180)}"`,
+      });
+    }
+  }
+  return out;
+}
+
 export function checkObservationKind(
   brief: string,
   truth: any,
@@ -2193,6 +2729,10 @@ export function checkObservationKind(
   requireResolved: boolean
 ): { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] {
   const out: { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] = [];
+  // IMP-213 runs FIRST and on its own date shield: it is the inverse question (a session-traded
+  // instrument given a day its venue does not hold) and must not be gated behind IMP-205's
+  // Dashboard scoping or its 08-21 effective date.
+  out.push(...sessionCalendarLeg(brief, briefDate, requireResolved));
   if (briefDate && briefDate < OBSERVATION_KIND_EFFECTIVE_FROM) return out;
   const matchers = continuouslyTradedMatchers();
   if (!matchers.length) return out;
@@ -6908,6 +7448,350 @@ function selftest(): number {
     `  [IMP-205] the continuously-traded roster is READ FROM system/entity-bindings.json, not hardcoded: ${okObsRegistry ? '✓' : '✗'}`
   );
 
+  // ── IMP-213 (08-23 Critic mandate #1, RC2): SESSION CALENDAR ─────────────────────────────────
+  // Both directions, exactly the cases the mandate specified. The SILENT cases are INLINE FIXTURES
+  // rather than directory sweeps (Ledger rule 9: a selftest assertion is world-state-independent),
+  // and each of the two Dashboard silences is proved to be a JUDGEMENT rather than a skip — the
+  // same bytes with one weekday changed must FIRE. A gate that is quiet because it never looked is
+  // indistinguishable from a gate that is quiet because the sentence was right, and only the second
+  // one is worth shipping.
+  //
+  // FALSE-POSITIVE MEASUREMENT (run once, 2026-08-23, NOT pinned as an assertion because the
+  // directories grow nightly): 300 published files and 360 drafts judged with the date shield off →
+  // exactly ONE hit, tonight's real defect. The single false positive that measurement DID surface
+  // is recorded in the leg's own comment (2026-03-13's "since August 2022", read as "August 2" by a
+  // truncated window) and is pinned below as a permanent regression test.
+  const scOn = (text: string, d = '2026-08-23', rr = true) =>
+    checkObservationKind(text, null, d, rr).filter(
+      f => f.check === 'session-calendar'
+    );
+  // FIRE — the mandate's receipt, on the night's REAL bytes, whole file.
+  const scCalRealPath = path.join(root, 'daily-briefs/2026-08-23-v1.5.md');
+  const scCalReal = fs.existsSync(scCalRealPath)
+    ? scOn(fs.readFileSync(scCalRealPath, 'utf8'))
+    : [];
+  const okScRealFire =
+    scCalReal.length === 1 &&
+    scCalReal[0]!.severity === 'FAIL' &&
+    /Saturday/.test(scCalReal[0]!.message) &&
+    /Gold futures closed Saturday/.test(scCalReal[0]!.message);
+  console.log(
+    `  [IMP-213] FIRES on the REAL 2026-08-23 v1.5 Dashboard/Commodities — "Gold futures closed Saturday's session at $4,680.60" on a Sunday brief, and ONCE on the whole file: ${okScRealFire ? '✓' : '✗'}${scCalReal.length !== 1 ? ` (got ${scCalReal.length})` : ''}`
+  );
+  // The same sentence as an inline fixture, so this receipt outlives the draft file.
+  const SC_GOLD =
+    "*Gold futures closed Saturday's session at $4,680.60, up 2.39 percent.*";
+  const scGold = scOn(SC_GOLD);
+  const okScGold =
+    scGold.length === 1 &&
+    /"closed" is bound to a session-traded instrument/.test(scGold[0]!.message) &&
+    /which is a Saturday/.test(scGold[0]!.message);
+  console.log(
+    `  [IMP-213] …and on the sentence alone as a frozen fixture, naming both the verb binding and the day: ${okScGold ? '✓' : '✗'}`
+  );
+  // SILENT — the same page's Equities. Friday is a session; the venue was open.
+  const SC_SPX =
+    '*The S&P 500 gained 0.4 percent on Friday to 7,674.37 and still closed the week down 1.4 percent, with the VIX finishing at 15.13 after a 5.5 percent drop.*';
+  // SILENT — the same page's rates clause. "ended Friday" IS a session verb here and IS judged.
+  const SC_FFR =
+    '*Fed funds futures ended Friday putting the odds of a September rate hike above 40 percent.*';
+  const okScSilentSamePage =
+    scOn(SC_SPX).length === 0 && scOn(SC_FFR).length === 0;
+  console.log(
+    `  [IMP-213] SILENT on the same page's two CORRECT session verbs — "gained 0.4 percent on Friday … closed the week" and "fed funds futures ended Friday": ${okScSilentSamePage ? '✓' : '✗'}`
+  );
+  // …AND THE SILENCE IS A JUDGEMENT, NOT A SKIP. One weekday changed, nothing else.
+  const SC_SPX_SUN = SC_SPX.replace('on Friday', 'on Sunday');
+  const SC_FFR_SUN = SC_FFR.replace('ended Friday', 'ended Sunday');
+  const okScSwap =
+    SC_SPX_SUN !== SC_SPX &&
+    SC_FFR_SUN !== SC_FFR &&
+    scOn(SC_SPX_SUN).length === 1 &&
+    scOn(SC_FFR_SUN).length === 1;
+  console.log(
+    `  [IMP-213] …and that silence is a JUDGEMENT, not a skip: the same two sentences with Friday->Sunday and nothing else changed both FIRE: ${okScSwap ? '✓' : '✗'}`
+  );
+  // SILENT — the Crypto entry, which names no session at all, and the harder case: a 24/7
+  // instrument GIVEN a Saturday session is IMP-205's row, not this one. The mirror sentence with a
+  // session-traded metal in the same slot must fire, or the exclusion is just a dead branch.
+  const SC_CRYPTO =
+    '*Bitcoin ran to roughly $79,500 before dawn on Saturday, gave back about $3,000 in six minutes, and was trading $78,352 by late afternoon in New York, up 3.9 percent over the trailing 24 hours.*';
+  const SC_BTC_SESSION =
+    "*With gold at $4,661.60, bitcoin closed Saturday's session at $78,352, up 3.9 percent.*";
+  const SC_SILVER_SESSION = SC_BTC_SESSION.replace('bitcoin', 'silver');
+  const okScCrypto =
+    scOn(SC_CRYPTO).length === 0 &&
+    scOn(SC_BTC_SESSION).length === 0 &&
+    scOn(SC_SILVER_SESSION).length === 1;
+  console.log(
+    `  [IMP-213] SILENT on the Dashboard Crypto entry AND on a 24/7 asset handed a Saturday session (IMP-205's row, read from the same registry) — while the identical sentence with silver FIRES: ${okScCrypto ? '✓' : '✗'}`
+  );
+  // SILENT — the four non-market uses of "closed" on the very page that carried the defect, plus
+  // the Inner Game application line. Verbatim bytes from 2026-08-23-v1.5.md.
+  const SC_NON_MARKET = [
+    'The median Bloomberg analyst forecast as of 18 August has Brent below $76 a barrel by year-end, from above $91 now, a fall of roughly 17 percent with the Strait of Hormuz still effectively closed.',
+    'Neither country closed the Strait of Hormuz.',
+    'The second person is doing what the anthropologist Claude Lévi-Strauss called bricolage: building from a closed and heterogeneous set of things that happen to be at hand, rather than from an open set specified by the project.',
+    'It is the closed set staying closed after the world has opened it.',
+    '*Application: before you solve anything, ask whether your inventory is closed by the world or closed by you.*',
+  ];
+  const scNonMarketHits = SC_NON_MARKET.filter(t => scOn(t).length > 0);
+  const okScNonMarket = scNonMarketHits.length === 0;
+  console.log(
+    `  [IMP-213] SILENT on all ${SC_NON_MARKET.length} non-market uses of "closed" on the same page (M&M-2's Hormuz clause names Brent AND "18 August" in one sentence — both outside their binding windows): ${okScNonMarket ? '✓' : '✗'}${scNonMarketHits.length ? ` (got ${scNonMarketHits.length})` : ''}`
+  );
+  // SILENT — ordinary corporate/physical English, where a session-traded token IS bound to the verb
+  // and only the direct object separates a venue from a firm.
+  const SC_OBJECTS = [
+    'Gold Fields closed the acquisition on Saturday for $4.68 billion.',
+    'The plant closed Saturday after a $40 million write-down.',
+    "Gold's discount to spot closed the gap on Saturday, worth $19.00 an ounce.",
+    'Gold Fields closed the investigation on Saturday, six months and $4 million later.',
+  ];
+  const okScObjects = SC_OBJECTS.every(t => scOn(t).length === 0);
+  console.log(
+    `  [IMP-213] SILENT on "closed the deal / the plant closed / closed the gap / closed the investigation" — the direct object is what separates a firm from a venue: ${okScObjects ? '✓' : '✗'}`
+  );
+  // EXPLICIT DATES resolve against the brief's own date — the only place this leg does arithmetic.
+  const okScExplicit =
+    scOn('*Gold futures settled at $4,680.60 on 22 August, up 2.39 percent.*')
+      .length === 1 &&
+    scOn('*Gold futures settled at $4,661.60 on 21 August, up 1.97 percent.*')
+      .length === 0;
+  console.log(
+    `  [IMP-213] EXPLICIT DATES resolve against BRIEF_DATE: "on 22 August" (a Saturday) FIRES and "on 21 August" (the Friday that actually settled $4,661.60) is SILENT: ${okScExplicit ? '✓' : '✗'}`
+  );
+  // REGRESSION PIN — the one false positive the 660-file calibration produced, kept forever.
+  const okScHistorical =
+    scOn(
+      "- **Brent closed above $100 for the first time since August 2022 — and the IEA's historic 400M barrel reserve release did nothing.**"
+    ).length === 0 &&
+    scOn('*If gold closes above $4,700 on Saturday it confirms the breakout at $4,680.60.*')
+      .length === 0;
+  console.log(
+    `  [IMP-213] REGRESSION PIN: SILENT on 2026-03-13's "for the first time since August 2022" (the build that windowed the string before matching read it as "August 2", a Sunday) and on forward chart talk ("if gold closes above"): ${okScHistorical ? '✓' : '✗'}`
+  );
+  // NO RETRO (IMP-125) — the boundary is a real switch, proven on the SAME BYTES read both ways.
+  const okScCalNoRetro =
+    scOn(SC_GOLD, '2026-08-22').length === 0 &&
+    scOn(SC_GOLD, '2026-08-23').length === 1;
+  console.log(
+    `  [IMP-213] NO RETRO: the same bytes are EXEMPT judged as 08-22 and FIRE judged as 08-23: ${okScCalNoRetro ? '✓' : '✗'}`
+  );
+  // The severity contract, matching IMP-205: advisory in the evening, blocking at the Truth Gate.
+  const okScSeverity =
+    scOn(SC_GOLD, '2026-08-23', false)[0]?.severity === 'FLAG' &&
+    scOn(SC_GOLD, '2026-08-23', true)[0]?.severity === 'FAIL';
+  console.log(
+    `  [IMP-213] SEVERITY: FLAG in the evening (the brief ships), FAIL under --require-resolved (a session that does not exist never reaches a reader): ${okScSeverity ? '✓' : '✗'}`
+  );
+
+  // ── IMP-215 (08-24 Critic mandate #1, RC2): THE REGULATORY-VACUUM LEG ────────────────────────
+  // Both directions, on the night's REAL bytes wherever a real example exists — the FIRE case is
+  // the published file and the draft, not a fixture, and the three SILENT cases are verbatim
+  // sentences lifted from the SAME brief. The mandate is explicit about why the silences carry as
+  // much weight as the fire: "a gate that fires on Geo-1, the brief's best bullet, is a gate the
+  // Writer routes around." Each silence is therefore proved to be a JUDGEMENT — the same sentence
+  // rewritten into the exemption shape must FIRE — and the repair case proves THE FIX IS NEVER
+  // PUNISHED, which is the property that decides whether a Writer fixes the bullet or deletes it.
+  const rvOn = (
+    text: string,
+    truth: any = null,
+    d: string | null = '2026-08-24',
+    rr = true
+  ) => regulatoryVacuumLeg(text, truth, d, rr);
+
+  // 1. FIRE on the real AI&T-2 bytes — exemption clause bound to a consequence verb, no row.
+  const rvPubPath = path.join(root, 'content/daily-updates/2026-08-24.md');
+  const rvDraftPath = path.join(root, 'daily-briefs/2026-08-24-v1.5.md');
+  const rvPub = fs.existsSync(rvPubPath) ? fs.readFileSync(rvPubPath, 'utf8') : '';
+  const rvDraft = fs.existsSync(rvDraftPath)
+    ? fs.readFileSync(rvDraftPath, 'utf8')
+    : '';
+  const rvPubHits = rvOn(rvPub);
+  const rvDraftHits = rvOn(rvDraft);
+  const okRvRealFire =
+    rvPubHits.length === 1 &&
+    rvDraftHits.length === 1 &&
+    rvPubHits[0]!.severity === 'FAIL' &&
+    /regulator-successor:federal-trade-commission/.test(rvPubHits[0]!.message) &&
+    /"because" \+ "is why"/.test(rvPubHits[0]!.message) &&
+    /airlines are exempt from Federal Trade Commission/.test(
+      rvPubHits[0]!.message
+    );
+  console.log(
+    `  [IMP-215] FIRES on the REAL 2026-08-24 AI&T-2 — "airlines are exempt from Federal Trade Commission oversight … That exemption is why" — in BOTH the published file and v1.5, ONCE each, naming the missing regulator-successor:federal-trade-commission row: ${okRvRealFire ? '✓' : '✗'}${rvPubHits.length !== 1 || rvDraftHits.length !== 1 ? ` (published ${rvPubHits.length}, v1.5 ${rvDraftHits.length})` : ''}`
+  );
+
+  // 2. THE FIX IS NEVER PUNISHED. Same bytes, one truth row added naming the successor.
+  const RV_TRUTH_DOT = {
+    claims: {
+      'regulator-successor:federal-trade-commission': {
+        resolved: true,
+        successor:
+          'US Department of Transportation — 49 U.S.C. § 41712 grants DOT EXCLUSIVE authority to prohibit unfair or deceptive practices of air carriers; interpretive rules at 14 CFR Part 399.',
+        source: '49 U.S.C. § 41712 + 14 CFR Part 399, read 2026-08-24',
+      },
+    },
+  };
+  const RV_TRUTH_NONE = {
+    claims: {
+      'regulator-successor:federal-trade-commission': {
+        resolved: true,
+        successor:
+          'No successor authority exists at the federal level; the practice is regulated by no one.',
+        source: 'checked 2026-08-24',
+      },
+    },
+  };
+  // …and a BARE `resolved:true` is a promise, not a receipt: it must still fire. So must a row
+  // that answers with a word rather than an authority — "unclear" is not a successor.
+  const RV_TRUTH_BARE = {
+    claims: {
+      'regulator-successor:federal-trade-commission': { resolved: true },
+    },
+  };
+  const RV_TRUTH_EMPTY_WORD = {
+    claims: {
+      'regulator-successor:federal-trade-commission': {
+        resolved: true,
+        successor: 'unclear',
+        source: 'checked 2026-08-24',
+      },
+    },
+  };
+  const rvBareHits = rvOn(rvPub, RV_TRUTH_BARE);
+  const rvWordHits = rvOn(rvPub, RV_TRUTH_EMPTY_WORD);
+  const okRvFixNotPunished =
+    rvOn(rvPub, RV_TRUTH_DOT).length === 0 &&
+    rvOn(rvDraft, RV_TRUTH_DOT).length === 0 &&
+    rvOn(rvPub, RV_TRUTH_NONE).length === 0 &&
+    rvBareHits.length === 1 &&
+    /the row names no successor/.test(rvBareHits[0]!.message) &&
+    /the row names no source consulted/.test(rvBareHits[0]!.message) &&
+    rvWordHits.length === 1 &&
+    /neither names an authority nor states in words that none exists/.test(
+      rvWordHits[0]!.message
+    );
+  console.log(
+    `  [IMP-215] SILENT on the SAME BYTES once a regulator-successor: row NAMES DOT (and equally when it states IN WORDS that none exists) — THE FIX IS NEVER PUNISHED — while a bare resolved:true, and a row answering "unclear", both still FIRE: ${okRvFixNotPunished ? '✓' : '✗'}`
+  );
+
+  // 3–5. THE THREE SILENCES, verbatim from the same brief. None carries an exemption predicate
+  // bound to a named authority, and each is a different reason why not.
+  const RV_SIGNAL2 =
+    'Regulation (EU) 2024/573, in force since 11 March 2024, bars F-gases in new switchgear at 24 kV and below from 2026 and works up the voltage classes until it reaches the high-voltage fleet in 2032. Equipment already installed may keep running, but only while it stays where it is and stays the size it is. Move it or expand it and it counts as new.';
+  const RV_GEO1 =
+    '- **A British power station was reportedly shut down for four days by hackers linked to Iran, and the government’s own defence is the most revealing sentence in the story: the plant was too small to be legally required to tell anyone.** What is not in doubt is the official explanation, from an unnamed government source: "We have thresholds for important generators to legally notify us of cyber activity, and this site is nowhere near." The reporting threshold is the attack surface. An adversary optimising for maximum signal and minimum escalation aims at exactly the rung your statute declined to count, which is why escalation ladders built from legal categories keep missing the step that gets taken.';
+  const RV_CC3 =
+    'That is the Live Nation and Ticketmaster structure, blessed by the Justice Department in a 2010 consent decree and sued by that same department in May 2024 to break it apart. Mari is building the identical shape from the other end while the precedent sits in front of a judge.';
+  const okRvSilentGrandfather = rvOn(RV_SIGNAL2).length === 0;
+  console.log(
+    `  [IMP-215] SILENT on Signal-2's "Equipment already installed may keep running, but only while it stays where it is" — GRANDFATHERING under Regulation (EU) 2024/573, the same regulator still holding, so no successor question arises: ${okRvSilentGrandfather ? '✓' : '✗'}`
+  );
+  const okRvSilentGeo = rvOn(RV_GEO1).length === 0;
+  console.log(
+    `  [IMP-215] SILENT on Geo-1's "the plant was too small to be legally required to tell anyone" — a REPORTING THRESHOLD inside a statute that plainly still applies; a gate that fired on the brief's best bullet is a gate the Writer routes around: ${okRvSilentGeo ? '✓' : '✗'}`
+  );
+  const okRvSilentPresent = rvOn(RV_CC3).length === 0;
+  console.log(
+    `  [IMP-215] SILENT on C&C-3's "blessed by the Justice Department in a 2010 consent decree" — names the regulator as PRESENT, so there is no absence to succeed to: ${okRvSilentPresent ? '✓' : '✗'}`
+  );
+
+  // …AND ALL THREE SILENCES ARE JUDGEMENTS, NOT SKIPS. Rewritten into the exemption shape — one
+  // clause changed in each, everything else identical — every one of them FIRES.
+  const RV_SIGNAL2_SWAP = RV_SIGNAL2.replace(
+    'Equipment already installed may keep running',
+    'Equipment already installed is exempt from the European Chemicals Agency, which is why it may keep running'
+  );
+  const RV_GEO1_SWAP = RV_GEO1.replace(
+    'too small to be legally required to tell anyone',
+    'outside the jurisdiction of the National Cyber Security Centre, which is the reason it was not legally required to tell anyone'
+  );
+  const RV_CC3_SWAP = RV_CC3.replace(
+    'blessed by the Justice Department in a 2010 consent decree',
+    'not subject to the Justice Department, which is why the 2010 consent decree bound nobody'
+  );
+  const okRvSwap =
+    RV_SIGNAL2_SWAP !== RV_SIGNAL2 &&
+    RV_GEO1_SWAP !== RV_GEO1 &&
+    RV_CC3_SWAP !== RV_CC3 &&
+    rvOn(RV_SIGNAL2_SWAP).length === 1 &&
+    rvOn(RV_GEO1_SWAP).length === 1 &&
+    rvOn(RV_CC3_SWAP).length === 1;
+  console.log(
+    `  [IMP-215] …and those three silences are JUDGEMENTS, not skips: each sentence rewritten into the «exempt from / outside the jurisdiction of / not subject to [named authority]» shape, one clause changed, FIRES: ${okRvSwap ? '✓' : '✗'}`
+  );
+
+  // THE ADJACENCY BUDGET. Every loose form in the real archive is innocent, and the leg's entire
+  // false-positive control is that the predicate must bind IMMEDIATELY to a named authority.
+  const RV_LOOSE = [
+    // 07-25: a militia and a shipping lane, not a regulator.
+    'The Houthis are selectively exempting Chinese-flagged vessels from their blockade of Bab al-Mandeb, which is why non-exempt ships pay roughly $1 million to reroute around the Cape.',
+    // 08-07: names no authority at all.
+    'Chan’s own record supports him: the drone determination was later narrowed to exempt toy drones.',
+    // 08-17: the NEGATION of an exemption, and it carries a consequence verb.
+    'California’s SB 53 does not exempt anyone from coverage on revenue, which is why coverage turns on the model.',
+    // 07-18: an exemption named as a noun, with no predicate and no mechanism.
+    'The increase applies outside the USMCA exemption, which still covers more than 85% of bilateral trade.',
+    // 07-28: an exemption that was CLOSED — the opposite claim.
+    'The entire model was a fiscal arbitrage: ultra-cheap parcels shipped duty-free from China under the US de minimis exemption. Once Washington closed that exemption in 2025, the moat converted into a tariff bill the company now absorbs.',
+    // 08-17: a request to be exempted, with no authority named after it.
+    'A generator owner whose plant was in service before the effective date may ask to be exempted, but only for a documented hardware limitation.',
+    // A proper noun is not an authority: a vendor cannot hold jurisdiction.
+    'Delta is exempt from Fetcherr, which is why it can price each seat.',
+  ];
+  const rvLooseHits = RV_LOOSE.filter(t => rvOn(t).length > 0);
+  const okRvLoose = rvLooseHits.length === 0;
+  console.log(
+    `  [IMP-215] SILENT on all ${RV_LOOSE.length} LOOSE forms from the real archive ("exempting X from their blockade", "narrowed to exempt toy drones", "does NOT exempt anyone from coverage", "outside the USMCA exemption", "closed that exemption", "may ask to be exempted", "exempt from Fetcherr") — the predicate must bind IMMEDIATELY to a NAMED AUTHORITY: ${okRvLoose ? '✓' : '✗'}${rvLooseHits.length ? ` (got ${rvLooseHits.length})` : ''}`
+  );
+
+  // 6. REGRESSION PIN — every published brief from 2026-08-01 onward, date shield OFF, no truth
+  // rows anywhere, which is the maximum-fire configuration. The count is REPORTED, and the ceiling
+  // is asserted rather than the exact number, because the directory grows nightly (IMP-213's
+  // lesson: a selftest assertion must not be a hostage to tomorrow's publish).
+  const rvSweepDir = path.join(root, 'content/daily-updates');
+  const rvSweepFires: string[] = [];
+  let rvSweepFiles = 0;
+  let rvSweepDaily = 0;
+  for (const f of fs
+    .readdirSync(rvSweepDir)
+    .filter(x => /^2026-\d\d-\d\d(?:-light)?\.md$/.test(x))
+    .sort()) {
+    if (f.slice(0, 10) < '2026-08-01') continue;
+    rvSweepFiles++;
+    if (!/-light\.md$/.test(f)) rvSweepDaily++;
+    const hits = regulatoryVacuumLeg(
+      fs.readFileSync(path.join(rvSweepDir, f), 'utf8'),
+      null,
+      '2026-08-24', // date shield OFF: judge the whole window by tonight's rule
+      true
+    );
+    if (hits.length) rvSweepFires.push(`${f}:${hits.length}`);
+  }
+  // EVERY FIRE INSPECTED AND NAMED. Both are the 08-24 defect: the daily's AI&T-2 and the super
+  // brief's restatement of the same sentence ("…from 3 percent to 20 percent, BECAUSE airlines are
+  // exempt from Federal Trade Commission pricing oversight"). Two reader-facing pages, one defect,
+  // and the second one is the reason `because` is in the consequence set.
+  const okRvSweep =
+    rvSweepFires.length <= 2 &&
+    rvSweepFires.every(x => x.startsWith('2026-08-24'));
+  console.log(
+    `  [IMP-215] REGRESSION SWEEP: ${rvSweepFires.length} fire(s) across ${rvSweepFiles} published files from 2026-08-01 (${rvSweepDaily} dailies + ${rvSweepFiles - rvSweepDaily} super briefs) with the date shield OFF — [${rvSweepFires.join(', ') || 'none'}] — and BOTH are tonight's own defect (2026-08-24.md AI&T-2; 2026-08-24-light.md restating it): ${okRvSweep ? '✓' : '✗'}`
+  );
+
+  // NO RETRO (IMP-125) + the severity contract, on the SAME BYTES read both ways.
+  const okRvNoRetro =
+    rvOn(rvPub, null, '2026-08-23').length === 0 &&
+    rvOn(rvPub, null, '2026-08-24').length === 1;
+  const okRvSeverity =
+    rvOn(rvPub, null, '2026-08-24', false)[0]?.severity === 'FLAG' &&
+    rvOn(rvPub, null, '2026-08-24', true)[0]?.severity === 'FAIL';
+  console.log(
+    `  [IMP-215] NO RETRO: the same bytes are EXEMPT judged as 08-23 and FIRE judged as 08-24 · SEVERITY: FLAG in the evening (the brief ships), FAIL under --require-resolved (the Morning Truth Gate has a browser and must settle it): ${okRvNoRetro && okRvSeverity ? '✓' : '✗'}`
+  );
+
   // ── ESC-018: the settle-observation rail must announce its own starvation ─────────────────────
   // Both directions, and the FIRE case is a REAL truth file, not a fixture: 2026-08-21's own truth
   // file carries zero `price:` rows, which is the whole reason this escalation exists.
@@ -7093,6 +7977,27 @@ function selftest(): number {
     okObsNoStorm &&
     okObsNoRetro &&
     okObsRegistry &&
+    okScRealFire &&
+    okScGold &&
+    okScSilentSamePage &&
+    okScSwap &&
+    okScCrypto &&
+    okScNonMarket &&
+    okScObjects &&
+    okScExplicit &&
+    okScHistorical &&
+    okScCalNoRetro &&
+    okScSeverity &&
+    okRvRealFire &&
+    okRvFixNotPunished &&
+    okRvSilentGrandfather &&
+    okRvSilentGeo &&
+    okRvSilentPresent &&
+    okRvSwap &&
+    okRvLoose &&
+    okRvSweep &&
+    okRvNoRetro &&
+    okRvSeverity &&
     okDaFire &&
     okDaSilentSettledAt &&
     okDaSilentMagnitude &&
@@ -7474,6 +8379,24 @@ function main() {
   // causal sentence verbatim, under the same --require-resolved rail.
   const issuerCausals = issuerCausalClaims(body, briefDate);
   for (const e of issuerCausals) if (truth?.claims?.[e.key]) e.status = 'PASS';
+
+  // 3d-quinquies. THE REGULATORY-VACUUM LEG (IMP-215 — 08-24 Critic mandate #1, RC2, NEW CLASS).
+  // Wired at the issuer-causal site because it is the same question one level up: the issuer leg
+  // asks whether a CAUSAL claim about a company's own number is the company's claim; this asks
+  // whether a CAUSAL claim built on a regulatory carve-out is true at all. 08-24 AI&T-2 built a
+  // mechanism on "airlines are exempt from Federal Trade Commission oversight" when 49 U.S.C.
+  // § 41712 had merely moved that authority to DOT — a FALSE INFERENCE FROM A TRUE FACT, which is
+  // the one shape every number-checking rail in this file is blind to by construction. Emits a
+  // FINDING rather than a Claim (the row it demands is a requirement on the WRITER, not a value to
+  // reconcile), so it rides the same severity contract as IMP-205/IMP-213: FLAG in the evening,
+  // FAIL under --require-resolved.
+  findings.push(
+    ...regulatoryVacuumLeg(body, truth, briefDate, requireResolved).map(f => ({
+      check: f.check,
+      severity: f.severity as any,
+      message: f.message,
+    }))
+  );
 
   // 3e. AI&T definite-product / deployment claims (IMP-074, the 07-19 Critic's mandate #1). "Microsoft
   // announced Project Perception" (reportedly-developing) and "the deployment of Atlas robots" (none

@@ -1,6 +1,6 @@
 {
   "brief": "2026-W28-jul-05-11.md",
-  "generated": "2026-08-10T11:22:18.118Z",
+  "generated": "2026-08-26T11:34:55.649Z",
   "truthFile": "2026-W28-truth.json",
   "summary": {
     "claims": 7,
@@ -14,12 +14,15 @@
     "headlineAnchors": 0,
     "bylines": 0,
     "derivedPrices": 0,
+    "seriesExtrema": 0,
     "sourceConclusions": 0,
+    "issuerCausals": 0,
+    "statuteThresholds": 0,
     "pass": 6,
     "fail": 1,
     "unverified": 6,
     "officeHolderFacts": 5,
-    "archiveAssetsKnown": 5,
+    "archiveAssetsKnown": 6,
     "truthBypass": false,
     "unresolvedCritical": 0,
     "registries": [
@@ -40,6 +43,21 @@
   },
   "findings": [
     {
+      "check": "price-vs-archive",
+      "severity": "FLAG",
+      "message": "Brent crude stated near 78.19 deviates 15% from our last-3 archive median 92 (2026-08-25:91.97, 2026-08-21:93.01, 2026-08-19:92). Possible fabrication/stale — verify vs PRIMARY source."
+    },
+    {
+      "check": "price-vs-archive",
+      "severity": "FLAG",
+      "message": "gold stated near 4050 deviates 12% from our last-3 archive median 4590.51 (2026-08-26:4658.79, 2026-08-22:4590.51, 2026-08-20:4480). Possible fabrication/stale — verify vs PRIMARY source."
+    },
+    {
+      "check": "price-vs-archive",
+      "severity": "FLAG",
+      "message": "Bitcoin stated near 62800 deviates 22% from our last-3 archive median 80190 (2026-08-26:80190, 2026-08-25:80523.52, 2026-08-22:78300). Possible fabrication/stale — verify vs PRIMARY source."
+    },
+    {
       "check": "corporate-event-date",
       "severity": "FLAG",
       "message": "CORPORATE-EVENT WEEKDAY — a company's scheduled event is pinned to \"Tuesday\" in AI & Tech: \"- **The Frontier Stopped Being Scarce, Which Is the Only Thing Its Pricing Power Rested On.** Tuesday Fable's subsidy ended and its API went\". This brief is written the evening before it is read, and a weekday for an earnings date or a conference is checkable in one fetch. MORNING GATE: confirm the ABSOLUTE date against the event's own source and rewrite the weekday if it is wrong. Receipt: the 07-21 \"AMD opens its Advancing AI 2026 conference Tuesday\" was a July 22-23 (Wed-Thu) event, corrected to \"Wednesday\"."
@@ -53,6 +71,11 @@
       "check": "truth-magnitude",
       "severity": "FLAG",
       "message": "WTI: brief says 6%, ground truth 4.4% (>1.5pp off). Section: Equities."
+    },
+    {
+      "check": "settle-observation",
+      "severity": "FLAG",
+      "message": "GATE STARVED — the truth file carries ZERO `price:` rows, so the settle-observation rail (IMP-173) inspected NOTHING this run. A gate with no input is not passing, it is ABSENT, and a green line here would mean only that there was nothing to read. The `price:` prefix is a writer convention that nothing enforces, and its coverage has decayed since the rail shipped (08-14: 12 rows · 08-15: 10 · 08-17: 5 · 08-18: 8 · 08-19: 0 · 08-20: 3 · 08-21: 0). Key every Dashboard level as `price:<asset>-<settle|close|at>-<YYYY-MM-DD>` with an `observedAt`, or this rail and IMP-205's observation-kind cross-check are both reading an empty table. ESC-018."
     }
   ],
   "claims": [

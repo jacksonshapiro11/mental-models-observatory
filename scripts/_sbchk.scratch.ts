@@ -1,0 +1,10 @@
+import { getLatestBriefLight, getAllBriefLightDates } from '../lib/brief-light-parser';
+import { currentWeeklyLightSlug } from '../lib/weekly-window';
+import { todayET } from '../lib/publish-date';
+console.log('todayET =', todayET());
+console.log('weeklyLightSlug =', currentWeeklyLightSlug());
+console.log('latest light dates =', getAllBriefLightDates().slice(0,4));
+const b = getLatestBriefLight();
+console.log('getLatestBriefLight().date =', b?.date);
+console.log('headline =', (b as any)?.headline ?? (b as any)?.title ?? '(none)');
+console.log('keys =', b ? Object.keys(b).join(',') : 'null');

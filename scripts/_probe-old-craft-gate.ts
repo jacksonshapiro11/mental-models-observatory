@@ -25,8 +25,6 @@
  * Exit: 0 pass (may warn) · 1 violation (blocks ship) · 2 usage error
  */
 import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
 import {
   checkRepetition,
   formatRepetitionFindings,
@@ -86,66 +84,6 @@ function sectionBody(lines: string[], headerRe: RegExp): string {
     }
   }
   return lines.slice(start + 1, end).join('\n');
-}
-
-// ── NO-NEW-ATOMS extraction, EXPORTED (2026-08-23, IMP-215) ────────────────
-// This is check 8's logic, lifted verbatim out of main() so the weekly sync
-// gate can REUSE it instead of growing a second, drifting copy of the same
-// extractor. Behaviour is byte-identical to the pre-lift inline block; the
-// only change is that the numbers now come back as a value instead of going
-// straight into a warning string. scripts/weekly-light-sync-gate.ts imports
-// findOrphanAtoms and makes it BLOCKING on the weekly path (here it stays a
-// warning, because the daily light legitimately runs before its full brief is
-// final and this gate has never blocked on it).
-
-/** Comma/$-stripped, "percent"→"%", lowercased — the haystack form. */
-export function normalizeForAtoms(s: string): string {
-  return s
-    .replace(/[,$]/g, '')
-    .replace(/\bpercent\b/gi, '%')
-    .toLowerCase();
-}
-
-/**
- * Load-bearing numbers in a light, as {raw, core} pairs.
- * Skips years (1900-2099) and 1-2 digit counts/ordinals, which are prose, not atoms.
- */
-export function extractAtomCores(md: string): Array<{
-  raw: string;
-  core: string;
-}> {
-  const body = md.replace(/\[[^\]]*\]\([^)]+\)/g, ' '); // drop links (slugs/urls)
-  const nums =
-    body.match(
-      /\$?\d[\d,]*(?:\.\d+)?\s?(?:percent|%|million|billion|trillion|gigawatt|gw)?/gi
-    ) || [];
-  const out: Array<{ raw: string; core: string }> = [];
-  for (const raw of nums) {
-    const core = raw
-      .replace(/[,$]/g, '')
-      .replace(/\s?(?:percent|%|million|billion|trillion|gigawatt|gw)/i, '')
-      .trim();
-    const n = parseFloat(core);
-    if (isNaN(n)) continue;
-    if (Number.isInteger(n) && n >= 1900 && n <= 2099) continue; // years
-    if (Number.isInteger(n) && core.replace('.', '').length <= 2) continue; // small counts / ordinals
-    out.push({ raw: raw.trim(), core });
-  }
-  return out;
-}
-
-/**
- * Numbers the light carries that do NOT trace to the full product.
- * Deduped, in first-appearance order. Form-insensitive: "$1,500" traces to
- * "1,500" and "45 percent" traces to "45%", because both sides normalize.
- */
-export function findOrphanAtoms(lightMd: string, fullMd: string): string[] {
-  const fullN = normalizeForAtoms(fullMd);
-  const orphans: string[] = [];
-  for (const { raw, core } of extractAtomCores(lightMd)) {
-    if (!fullN.includes(core.toLowerCase())) orphans.push(raw);
-  }
-  return [...new Set(orphans)];
 }
 
 function main(): number {
@@ -268,10 +206,32 @@ function main(): number {
 
   // 8. NO NEW ATOMS — number provenance vs the full brief.
   if (fullFile && fs.existsSync(fullFile)) {
-    const orphans = findOrphanAtoms(md, fs.readFileSync(fullFile, 'utf-8'));
+    const norm = (s: string) =>
+      s
+        .replace(/[,$]/g, '')
+        .replace(/\bpercent\b/gi, '%')
+        .toLowerCase();
+    const fullN = norm(fs.readFileSync(fullFile, 'utf-8'));
+    const body = md.replace(/\[[^\]]*\]\([^)]+\)/g, ' '); // drop links (slugs/urls)
+    const nums =
+      body.match(
+        /\$?\d[\d,]*(?:\.\d+)?\s?(?:percent|%|million|billion|trillion|gigawatt|gw)?/gi
+      ) || [];
+    const orphans: string[] = [];
+    for (const raw of nums) {
+      const core = raw
+        .replace(/[,$]/g, '')
+        .replace(/\s?(?:percent|%|million|billion|trillion|gigawatt|gw)/i, '')
+        .trim();
+      const n = parseFloat(core);
+      if (isNaN(n)) continue;
+      if (Number.isInteger(n) && n >= 1900 && n <= 2099) continue; // years
+      if (Number.isInteger(n) && core.replace('.', '').length <= 2) continue; // small counts / ordinals
+      if (!fullN.includes(core.toLowerCase())) orphans.push(raw.trim());
+    }
     if (orphans.length)
       warns.push(
-        `Numbers not found in the full brief (verify NO NEW ATOMS): ${orphans.slice(0, 12).join(' · ')}`
+        `Numbers not found in the full brief (verify NO NEW ATOMS): ${[...new Set(orphans)].slice(0, 12).join(' · ')}`
       );
   } else {
     warns.push(
@@ -430,84 +390,4 @@ function main(): number {
   console.log('');
   return 0;
 }
-
-/**
- * Selftest (added 2026-08-23, IMP-215). Scope is deliberately the SURFACE THIS
- * SESSION TOUCHED — the atom extractor that check 8 used to inline and that
- * scripts/weekly-light-sync-gate.ts now imports. It exists so the lift can
- * never drift from the behaviour the weekly gate was built against. Every
- * fixture is inline; nothing reads the repo, nothing reads the clock.
- */
-function selftest(): number {
-  let fails = 0;
-  const t = (ok: boolean, label: string) => {
-    console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`);
-    if (!ok) fails++;
-  };
-
-  // VERBATIM from the 2026-08-22 weekly light that shipped out of sync (the
-  // MARKETS MINUTE sentence). "3.1 billion dollars of shorts" appears NOWHERE
-  // in 2026-W34-v2.md — the atom the craft gate would have caught if the
-  // weekly path had ever handed it the critic-corrected full weekly.
-  const W34_LIGHT_ATOM =
-    'while bitcoin ran 22 percent from near 62,800 on Sunday to above 79,000 on Friday, clearing more than 3.1 billion dollars of shorts on the way,';
-  const W34_FULL_NO_SHORTS =
-    'Bitcoin ran 22 percent off a 62,800 base on Sunday to print above 79,000 into Friday.';
-  t(
-    findOrphanAtoms(W34_LIGHT_ATOM, W34_FULL_NO_SHORTS).some(a =>
-      /^3\.1/.test(a)
-    ),
-    '[IMP-215] FIRES on the real W34 orphan atom "3.1 billion" (absent from v2)'
-  );
-  t(
-    !findOrphanAtoms(W34_LIGHT_ATOM, W34_FULL_NO_SHORTS).some(a =>
-      /62,?800|79,?000/.test(a)
-    ),
-    '[IMP-215] SILENT on the atoms in the same sentence that DO trace to the full product'
-  );
-
-  // Form-insensitivity, verified rather than assumed: the extractor strips
-  // "," and "$" and maps "percent"→"%" on the haystack side, so the same
-  // number in a different form is the same atom.
-  t(
-    findOrphanAtoms('The bid was $1,500 per unit.', 'A 1500 unit bid cleared.')
-      .length === 0,
-    '[IMP-215] SILENT on $1,500 vs 1500 — comma/$ form difference, same number'
-  );
-  t(
-    findOrphanAtoms('Cloud revenue rose 45 percent.', 'Cloud rose 45%.')
-      .length === 0,
-    '[IMP-215] SILENT on "45 percent" vs "45%" — spelled unit, same number'
-  );
-
-  // The two skips that keep the extractor from measuring prose instead of atoms.
-  t(
-    findOrphanAtoms('The 2026 order landed.', 'No number here.').length === 0,
-    '[IMP-215] SILENT on a year (1900-2099 is prose, not an atom)'
-  );
-  t(
-    findOrphanAtoms('It ran five days instead of 11.', 'No number here.')
-      .length === 0,
-    '[IMP-215] SILENT on a 1-2 digit count (ordinals/counts are prose, not atoms)'
-  );
-  t(
-    findOrphanAtoms('Down 6,831 megawatts.', 'No number here.').length === 1,
-    '[IMP-215] FIRES on a 4-digit orphan level'
-  );
-  t(
-    extractAtomCores('A 6,831 megawatt shortfall.')[0]?.core === '6831',
-    '[IMP-215] extractAtomCores returns the normalized core, not the raw match'
-  );
-
-  console.log(
-    `\nbrief-light-craft-gate selftest — ${fails ? 'FAILED' : 'PASS'} (NO-NEW-ATOMS extractor, both directions)`
-  );
-  return fails ? 1 : 0;
-}
-
-// Entry-point guard (2026-08-23, IMP-215): without it, importing the exported
-// extractor would run main() and exit the importer. Same pattern as
-// scripts/provenance-gate.ts and scripts/persistence-gate.ts.
-if (path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
-  process.exit(process.argv.includes('--selftest') ? selftest() : main());
-}
+process.exit(main());

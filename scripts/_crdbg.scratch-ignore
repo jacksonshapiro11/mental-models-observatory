@@ -1,0 +1,11 @@
+import fs from 'fs';
+import { stripComments, removedSentences, classify, suppressEnumerated, assertsNoLoss } from './compression-receipt-gate.ts';
+const raw15=fs.readFileSync('daily-briefs/2026-08-16-v1.5.md','utf8');
+const raw2=fs.readFileSync('daily-briefs/2026-08-16-v2.md','utf8');
+const A=stripComments(raw15), B=stripComments(raw2);
+const oring=removedSentences(A,B).find(s=>/O-Ring/.test(s))!;
+const c=classify([oring],B);
+console.log('classify O-Ring alone:', JSON.stringify(c,null,1).slice(0,500));
+const all=classify(removedSentences(A,B),B);
+console.log('ALL classes:', all.map(f=>f.klass));
+console.log('after suppress:', suppressEnumerated(all, assertsNoLoss(raw2)!).map(f=>f.klass));

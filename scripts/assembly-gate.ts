@@ -751,6 +751,9 @@ export interface PayoffEmission {
   cls: 'MECHANISM' | 'TENSION' | 'THEME' | 'INVENTORY';
   field: 'cause' | 'descriptor' | null;
   value: string | null;
+  /** The emission's declared span, normalised to body-unit ids (IMP-212). Additive: every
+   *  pre-existing reader of this interface reads cls/field/value/line and is unaffected. */
+  sections: string[];
 }
 
 // The emission GRAMMAR, not the phrase. `qgOwnPayoffClass` above takes the first own line and stops,
@@ -760,6 +763,36 @@ export interface PayoffEmission {
 // field of the PASS 1g grammar removes all nine such lines across August and keeps all real emissions.
 const EMISSION_FIELD_RE =
   /(cause|descriptor)\s*=\s*'([\s\S]*?)'\s*(?=sections\s*=|\||$)/i;
+
+/**
+ * IMP-212. A body-unit id, canonicalised so the QG's spelling and `bodyUnits()`'s spelling meet.
+ * The house writes the AI section three ways across August — `AI&T-1`, `AI-1`, `AI&T 1` — and a
+ * span check that cannot see through that silently loses a declared section, which in this gate
+ * means a FALSE FIRE. Everything else is uppercase + punctuation removal.
+ */
+export function normUnitId(s: string): string {
+  return s
+    .replace(/[()[\]`*_'"“”]/g, ' ')
+    .trim()
+    .toUpperCase()
+    .replace(/\s*&\s*/g, '&')
+    .replace(/\s*[-–—]\s*/g, '-')
+    .replace(/^AI&T(?=-|$)/, 'AI')
+    .replace(/^AI&TECH(?=-|$)/, 'AI')
+    .replace(/^AI(?:\s|-)?TECH(?=-|$)/, 'AI')
+    .replace(/\s+/g, '');
+}
+
+/** The `sections=[...]` span of one emission, as canonical unit ids. Junk entries ("Intro",
+ *  "Dashboard/Commodities", "(Take, unnamed)") survive as junk and simply never match a body unit. */
+export function emissionSections(after: string): string[] {
+  const m = /sections\s*=\s*\[?([^\]\n|]*)/i.exec(after);
+  if (!m) return [];
+  return m[1]!
+    .split(',')
+    .map(s => normUnitId(s))
+    .filter(Boolean);
+}
 
 export function qgPayoffEmissions(qg: string): PayoffEmission[] {
   const out: PayoffEmission[] = [];
@@ -792,6 +825,7 @@ export function qgPayoffEmissions(qg: string): PayoffEmission[] {
       cls: cls as PayoffEmission['cls'],
       field: fm ? (fm[1]!.toLowerCase() as 'cause' | 'descriptor') : null,
       value: fm ? fm[2]!.replace(/\s+/g, ' ').trim() : null,
+      sections: emissionSections(after),
     });
   }
   return out;
@@ -1059,6 +1093,202 @@ export function checkPayoffMechanismEarned(
   return out;
 }
 
+// ─── IMP-212 — WATCH / CAUSE BINDING (2026-08-23 Critic mandate #2, RC5) ─────────────────────
+//
+// THE FAILURE, fifth-day recurrence, from the shipped 08-23 intro:
+//   cause  (MECHANISM):  "Iran's closure of the Strait of Hormuz"     sections=[M&M-2, M&M-3, Geo-2,
+//                                                                                Dashboard/Commodities]
+//   watch:               "Watch what the dollar does into 8 September, when Canada's matching
+//                         tariffs take effect."   -> resolves Geo-1. Names no oil, no strait, no reserve.
+// The brief WROTE the correct watch itself, in M&M-3: "The week the weekly count stops falling is the
+// week this administration decided a capped pump price is worth less than the barrels it would take…"
+// `assembly-gate` EXIT 0. Identical verdict, identical exit, on 08-18 ("a position is worth whatever it
+// costs to leave it" against "Watch Home Depot before the open this morning" → M&M-1).
+//
+// ⭐ WHY THIS IS NOT `checkWatchBinding` (IMP-190) WITH A WIDER NET. IMP-190 asks whether the watch's
+// RESOLVED BODY UNIT shares a content term with the intro's own CONCLUSION CLAUSE, and it exited 0 on
+// both nights — correctly, on its own terms. IMP-210 then made the `cause=` field carry a named agent.
+// Nobody asked whether the WATCH carries the same object. So a payoff can pass with a well-formed cause
+// and a watch pointing at an unrelated story, which is exactly the shape that shipped on 08-18 and
+// 08-23. This check binds the watch to the QG's DECLARED CAUSE — the actor, the instrument, the
+// mechanism's noun, and the span the cause claims — rather than to the intro's prose.
+//
+// ⭐ WHY THE SPAN LEG EXISTS, and why term overlap alone would have punished the repair. The Critic
+// named the repair explicitly: swap the watch to the brief's own DOE-count sentence. That sentence
+// shares ZERO literal terms with "Iran's closure of the Strait of Hormuz" — it talks about a weekly
+// count, an administration and a pump price. A pure term-overlap check therefore FIRES on the
+// mandated-silent repair. It is silent here because the DOE count resolves M&M-3, which is one of the
+// cause's OWN DECLARED SECTIONS. That is the Critic's phrase "matched on the cause's own terms"
+// operationalised: a cause states where it lives, and an observable inside that span tests it whatever
+// vocabulary it uses. Two legs, either one silences.
+//
+// ⭐ AND WHY IT MUST FIND A FOREIGN UNIT BEFORE IT FIRES. The failure the Critic described is not "the
+// watch is vague", it is "the watch resolves A DIFFERENT STORY". So the check must be able to NAME that
+// story. A watch that resolves nothing (08-21: "so watch whether the thirty-year holds below its 5.33
+// percent high") produces no accusation — silence is the only honest verdict, and 08-21 is the window's
+// one awarded Must-Read (ceiling-trend: must_read_computed true, a_top 4). Condemning it would be the
+// IMP-200/201 false-alarm class and would teach the next session to skim the flag.
+//
+// SCOPE: MECHANISM only. A TENSION names two forces and a parallel-tracks day names none, so neither
+// has a single `cause=` to bind to — silent by construction, per the mandate.
+//
+// FLAG only, never FAIL, with the Critic's verbatim escape hatch — WHICH IS LOGGED, NEVER SILENT.
+const WATCH_CAUSE_EFFECTIVE_FROM = '2026-08-23'; // IMP-125: no retroactive condemnation in production.
+
+/** The Critic's verbatim grammar. A bare label may not buy silence: `resolves` and `because` are
+ *  required, because the whole value of a declared exception is the sentence of reasoning it puts on
+ *  disk. A malformed line does NOT suppress — it is reported as malformed. */
+const WATCH_BINDING_DECL_RE =
+  /PAYOFF-WATCH-BINDING:\s*(.+?)\s+resolves\s+(.+?)\s+because\s+(\S[^\n]*)/i;
+const WATCH_BINDING_LABEL_RE = /PAYOFF-WATCH-BINDING:/i;
+
+/**
+ * The payoff's watch. `watchSentence` (IMP-190) requires a sentence-initial "Watch", which is the
+ * house form; but 08-21 and 08-22 write it as a trailing clause ("…, so watch whether the thirty-year
+ * holds…"). Reading only the sentence-initial form would make this check silent on the exact nights it
+ * most needs to be honest about, so the clause form is read too — from `watch` to the sentence end.
+ */
+export function payoffWatchClause(intro: string): string | null {
+  const direct = watchSentence(intro);
+  if (direct) return direct;
+  const sents = sentencesOf(intro.replace(/[*_]/g, ''));
+  for (let i = sents.length - 1; i >= 0; i--) {
+    const m = /\bwatch\b/i.exec(sents[i]!);
+    if (m) return sents[i]!.slice(m.index).trim();
+  }
+  return null;
+}
+
+/**
+ * The causal objects of a `cause=` field: its content terms plus the named actors IMP-210 already
+ * knows how to extract (capitalised tokens + the entity registry). For "Iran's closure of the Strait
+ * of Hormuz" that is {iran, closure, strait, hormuz} ∪ {Iran, Strait, Hormuz} — the actor, the
+ * instrument and the mechanism's noun, which is the Critic's own list.
+ */
+export function causalObjects(cause: string): Set<string> {
+  const out = new Set<string>(contentTerms(cause));
+  for (const a of causeActors(cause)) out.add(a.toLowerCase());
+  return out;
+}
+
+interface ResolvedUnit {
+  id: string;
+  ents: number;
+  terms: number;
+}
+
+/**
+ * Which body units the watch resolves to. Entity match is the strong signal (IMP-190's basis); a
+ * ≥2-content-term match is the weak one, and it exists so a watch that names no proper noun (08-21)
+ * can still be RESOLVED rather than accused. Both are symmetric across every unit, so neither can
+ * favour the accusation.
+ */
+export function watchResolvedUnits(
+  watch: string,
+  units: Array<{ id: string; text: string }>
+): ResolvedUnit[] {
+  const ents = entitiesOf(watch);
+  const wTerms = contentTerms(watch);
+  const out: ResolvedUnit[] = [];
+  for (const u of units) {
+    const e = ents.filter(x => u.text.includes(x)).length;
+    const uTerms = contentTerms(u.text);
+    const t = [...wTerms].filter(x => uTerms.has(x)).length;
+    if (e >= 1 || t >= 2) out.push({ id: u.id, ents: e, terms: t });
+  }
+  return out.sort((a, b) => b.ents * 4 + b.terms - (a.ents * 4 + a.terms));
+}
+
+export function checkWatchCauseBinding(
+  brief: string,
+  qg: string,
+  briefDate: string | null
+): string[] {
+  if (briefDate && briefDate < WATCH_CAUSE_EFFECTIVE_FROM) return [];
+  if (!qg.trim()) return [];
+
+  // ── 1. THE DECLARED CAUSE. Preferred: the last MECHANISM emission carrying a `cause=`. Fallback,
+  //    for the 08-18 shape — a THEME emission REWRITTEN to MECHANISM, where the executed class is
+  //    MECHANISM but the mechanism proposition lives in `PAYOFF ROTATION: today = '…'`.
+  const ems = qgPayoffEmissions(qg);
+  const mech = [...ems]
+    .reverse()
+    .find(e => e.cls === 'MECHANISM' && e.field === 'cause' && !!e.value);
+  let cause: string | null = mech?.value ?? null;
+  let causeSrc = mech ? `QG PAYOFF CLASS line ${mech.line}` : '';
+  if (!cause) {
+    if (!/PAYOFF\s+EXECUTION:[^\n]*class\s*=\s*MECHANISM\b/i.test(qg)) return []; // TENSION / THEME /
+    // parallel-tracks: no single cause to bind to (the mandate's silent classes)
+    const rot = /PAYOFF\s+ROTATION:[^\n]*today\s*=\s*'([^']+)'/i.exec(qg);
+    if (!rot) return [];
+    cause = rot[1]!.replace(/\s+/g, ' ').trim();
+    causeSrc = 'QG PAYOFF ROTATION (executed class=MECHANISM, no emitted cause= field)';
+  }
+  // THE SPAN IS THE QG'S LAST DECLARED `sections=`, whichever class carried it — never the union of
+  // every emission. MEASURED, both ways: on 08-23 the union sweeps in Geo-1 from the superseded THEME
+  // line and silences the mandated FIRE; taking only a MECHANISM-emission span leaves the 08-18 shape
+  // (THEME emitted, MECHANISM executed) span-less, and 08-20 — recorded `payoff: pass` — then fires on
+  // an ADI watch that does test the delivered watt in different vocabulary. The LAST declared span is
+  // the QG's final statement of where the payoff lives, and it is the field the primary path already
+  // reads. Floor across 2026-08-01..23: 3 of 23 nights, and they are exactly the three
+  // `ceiling-trend.json` records as `payoff: fail` (08-18, 08-22, 08-23).
+  const span: string[] = [...ems].reverse().find(e => e.sections.length)?.sections ?? [];
+
+  // ── 2. THE WATCH.
+  const stripped = brief.replace(/<!--[\s\S]*?-->/g, ' ');
+  const intro = introBlock(stripped);
+  if (!intro.trim()) return [];
+  const watch = payoffWatchClause(intro);
+  if (!watch) return []; // Phase 15 / ceiling-lint own watch ABSENCE, not this check
+
+  // ── 3. LEG A — CAUSAL OBJECT. Does the watch speak any of the cause's own objects?
+  const objects = causalObjects(cause);
+  const shared = [...contentTerms(watch)].filter(t => objects.has(t));
+  for (const e of entitiesOf(watch)) if (objects.has(e.toLowerCase())) shared.push(e);
+  if (shared.length) return [];
+
+  // ── 4. LEG B — DECLARED SPAN. Does the watch resolve inside the sections the cause claims?
+  const units = bodyUnits(brief);
+  if (!units.length) return [];
+  const resolved = watchResolvedUnits(watch, units);
+  if (!resolved.length) return []; // resolves nothing → no different story to name → silent (08-21)
+  const spanSet = new Set(span);
+  if (resolved.some(r => spanSet.has(normUnitId(r.id)))) return [];
+  const foreign = resolved[0]!;
+
+  // ── 5. THE DECLARED EXCEPTION. Suppresses the finding, and is LOGGED — never silent.
+  const decl = WATCH_BINDING_DECL_RE.exec(brief + '\n' + qg);
+  if (decl) {
+    return [
+      `WATCH-BINDING EXCEPTION DECLARED (advisory note, not a defect) — the watch shares no causal ` +
+        `object with cause='${cause}' and resolves ${foreign.id}, which is outside the declared span ` +
+        `[${span.join(', ') || 'none declared'}]. Suppressed by an explicit declaration: ` +
+        `"${decl[1]!.trim()} resolves ${decl[2]!.trim()} because ${decl[3]!.trim()}". Recorded so a ` +
+        `declared exception is visible to the Editor and the Critic rather than invisible.`,
+    ];
+  }
+  const malformed = WATCH_BINDING_LABEL_RE.test(brief + qg);
+
+  return [
+    `WATCH RESOLVES A DIFFERENT STORY THAN THE MECHANISM — the payoff declares ` +
+      `PAYOFF CLASS: MECHANISM cause='${cause}' (${causeSrc})` +
+      `${span.length ? ` sections=[${span.join(', ')}]` : ''}, and its watch — ` +
+      `"${watch.slice(0, 140)}${watch.length > 140 ? '…' : ''}" — shares ZERO causal objects with that ` +
+      `cause (the cause's objects: ${[...objects].slice(0, 8).join(', ')}) and resolves ${foreign.id}, ` +
+      `which the cause does not claim. The watch is not a dated sentence; it is THE THING THAT WOULD ` +
+      `PROVE THE CONCLUSION WRONG. A dated observable that settles a different story leaves the ` +
+      `conclusion unfalsifiable, which is the one thing the payoff exists to prevent. ` +
+      `2026-08-23 receipt: cause='Iran's closure of the Strait of Hormuz' against "Watch what the ` +
+      `dollar does into 8 September, when Canada's matching tariffs take effect" — Geo-1, no oil, no ` +
+      `strait, no reserve — while the brief's own M&M-3 had already written the correct watch ("the ` +
+      `week the weekly count stops falling…, and that decision will show up in the DOE series"). ` +
+      `Identical verdict on 08-18 and assembly-gate exited 0 both times. RESOLVE: re-point the watch ` +
+      `at an observable inside the cause's own span, or write one line — ` +
+      `"PAYOFF-WATCH-BINDING: <observable> resolves <cause> because <one sentence>"` +
+      `${malformed ? '. NOTE: a PAYOFF-WATCH-BINDING: line is present but does not parse — the grammar requires BOTH "resolves" and "because"; a bare label may not buy silence' : ''}.`,
+  ];
+}
+
 // FIRE fixture = the real 2026-07-10 QG FRESH-FRAME SCAN (verbatim — the under-swept scan the
 // Critic's mandate #3 named); SILENT fixture = a scan that sweeps the Signals + Take.
 const FIRE_FF = `**FRESH-FRAME SCAN (≥3 candidate MECHANISMS across distinct clusters, required before NONE):** (1) **concentration/saturation** — SK Hynix (memory demand), DTCC (settlement), Hyperliquid (perp share): all **C&C cluster only** → below cross-cluster bar. (2) **withdrawal** — options hedges removed (M&M-1) + gold non-response (M&M-3): 2 sections, below threshold. (3) **commoditization/margin-migration** — AI-3 (model→app) + C&C-3 (CEX→DEX): 2 sections AND restates 07-07's "Deployment Premium" frame (3d stale) → reject. None is a clean ≥3-section shared MECHANISM. → **CONVERGENCE = NONE for assembly**.`;
@@ -1076,6 +1306,91 @@ const SILENT_MARKER = `Some intro text with no marker.
 # ▸ THE SIX
 
 Body text.`;
+
+// ─── IMP-212 FIXTURES — FROZEN BYTES, copied out of the real files (Ledger rule 9) ───────────
+// Every string below is verbatim from `daily-briefs/2026-08-23-v1.5.md`,
+// `daily-briefs/2026-08-23-quality-gate-log.md`, `content/daily-updates/2026-08-18.md` and
+// `daily-briefs/2026-08-18-quality-gate-log.md`. The check was MEASURED against those files first
+// (23 nights, 2026-08-01..23, date guard OFF: FIRES on exactly 08-18, 08-22 and 08-23 — which is
+// exactly the set `system/ceiling-trend.json` records as `payoff: fail`, and it is SILENT on 08-19,
+// 08-20 and 08-21, every one of them `payoff: pass`). The bytes are frozen HERE so the assertion is
+// world-state-independent: `-v1.5.md` is a draft, drafts get edited and swept, and an assertion that
+// depends on tonight's working tree is an assertion that will lie to a future session.
+// M&M-1 and M&M-2 are pinned as their real bold lead sentences (verbatim prefixes) — they exist only
+// so the DOE bullet is M&M-**3** and the ordinals are the real ones.
+const AUG23_QG = `\`PAYOFF CLASS (as shipped in v1): THEME descriptor='economic coercion is not free, and the bill does not always arrive at the address of the party being coerced' sections=[Intro, Geo-1, Geo-2, M&M-3] | watch=present | action=REWROTE intro conclusion to MECHANISM.\`
+
+\`PAYOFF CLASS (v1.5): MECHANISM cause='Iran's closure of the Strait of Hormuz' sections=[M&M-2, M&M-3, Geo-2, Dashboard/Commodities] | watch=present (8 September, dated) | action=REWROTE intro conclusion.\`
+
+\`PAYOFF EXECUTION: class=MECHANISM, action=REWROTE, watch=present (8 September, dated), intro final sentences='…'\``;
+
+const AUG23_WATCH_SHIPPED = `Watch what the dollar does into 8 September, when Canada's matching tariffs take effect.`;
+// The Critic's named repair — the brief's OWN M&M-3 sentence, put in the watch slot. "The repair must
+// never be punished."
+const AUG23_WATCH_DOE = `Watch the DOE weekly count: the week it stops falling is the week this administration decided a capped pump price is worth less than the barrels it would take, and that decision will show up in the DOE series before it shows up in anything anyone says.`;
+
+const aug23Brief = (watch: string) => `# MARKETS, MEDITATIONS & MENTAL MODELS
+
+## Sunday, August 23, 2026
+
+### Canada Talks Died, Fifty Percent Landed
+
+*Washington let 50 percent tariffs land on roughly $20 billion of Canadian goods at midnight on 22 August, after Ottawa declined an American request to align its external tariffs and police transshipment. Underneath that, most of the rest of this weekend traces to one thing, and it is not tariffs. Iran's closure of the Strait of Hormuz is now being paid for out of everyone's reserves except Iran's: Washington is down to 293.4 million barrels of strategic petroleum, its lowest since December 1982; Qatar, which did not close the strait, is cutting roughly 85 percent of its overseas aid and shrinking 8.6 percent this year; and the entire consensus that inflation cools from here rests on Brent falling 17 percent while the strait stays shut. A blockade that costs its author nothing has to be paid by someone, and the bill is arriving as an inventory drawdown, a sovereign budget cut and a forecast nobody has priced. ${watch}*
+
+---
+
+# ▸ THE SIX
+
+## Markets & Macro
+
+- **Two named strategists published the falsification test for the dollar-debasement argument this week, and all three of its conditions currently point away from crisis.**
+
+- **US business activity expanded at its fastest pace since 2022, and the disinflation almost everyone is forecasting into year-end is an oil forecast wearing a policy costume.**
+
+- **The Strategic Petroleum Reserve holds 293.4 million barrels, 41 percent of its authorized capacity and the lowest level since December 1982.** The Energy Department's latest weekly count has it down another 5.3 million barrels, part of a commitment to release 172 million while the Strait of Hormuz constrains Middle Eastern supply. The reserve is also the cheapest instrument any administration has for capping a fuel price without legislating one. Put the two Energy Department numbers together and the stock becomes a clock: 293.4 million barrels against the latest week's 5.3 million is roughly 55 weeks. The week the weekly count stops falling is the week this administration decided a capped pump price is worth less than the barrels it would take, and that decision will show up in the DOE series before it shows up in anything anyone says.
+
+## Geopolitics
+
+- **US tariffs of 50 percent landed on roughly $20 billion of Canadian goods at midnight on 22 August, and Canada will match them dollar for dollar from 8 September.** The covered goods run from wine and dairy to cement, clothing and hockey equipment. Mark Carney said Canada takes the step reluctantly, and that it will raise costs for Canadians. Bill Bishop's reading is the one that reframes it: Washington was asking Ottawa to join a tariff perimeter aimed at China, and Ottawa declined. A tariff rate used this way is not a revenue measure. It is a membership test.
+`;
+
+// 08-18 — the shape the Critic cites: a THEME emitted, then REWRITTEN to MECHANISM, so the mechanism
+// proposition lives in PAYOFF ROTATION rather than in a `cause=` field.
+const AUG18_QG = `\`PAYOFF CLASS: THEME descriptor='a commitment is dated and publishable while the thing it bought is measured by a blind instrument' sections=[Intro, AI&T-1, Geo-1, C&C-1] | watch=present | action=REWROTE intro conclusion to MECHANISM.\`
+
+\`PAYOFF ROTATION: today = 'a position is worth whatever it costs to leave it'. Last 3, read from the quality-gate logs: 08-17 TENSION 'two bids pricing different worlds; one is early'; 08-16 MECHANISM 'the number that settles the outcome is held by a party outside the transaction'; 08-15 TENSION 'the alarming numbers shrank under re-measurement; one did not'. Result: DISTINCT.\`
+
+\`PAYOFF EXECUTION: class=MECHANISM, action=REWROTE, watch=present (Home Depot before the open this morning; "resolves"), intro final sentence='Home Depot reports before the open this morning, and the retail block behind it resolves whether July's consumption miss was a consumer or a calendar.'\``;
+
+const AUG18_BRIEF = `# MARKETS, MEDITATIONS & MENTAL MODELS
+
+## Tuesday, August 18, 2026
+
+### Stripe Buys the Off-Ramp
+
+*Stripe agreed to pay more than seven billion dollars for a company whose whole product is making AI models interchangeable, and that price is the clearest read tonight on what a position is worth. The answer running through this brief is that a position is worth whatever it costs to leave it. Where leaving is cheap, the money migrates to whoever owns the door: Stripe buys the switching layer instead of a model, Mastercard buys the conversion rails instead of the card brand, and a model you can download onto a laptop leaves hosted providers selling nothing at that tier but speed. Where leaving is impossible, the money stays with whoever already holds the position: a carmaker cannot requalify a memory chip inside two years, a radiology department cannot reformulate the iodine atom out of a CT scan, and a homebuilder's rate buydown sits inside a contract the national price index cannot read. Tonight's Take runs the arithmetic backwards, on the Chinese firms that could move without Beijing's permission. Watch Home Depot before the open this morning, with Walmart on Thursday behind it.*
+
+---
+
+# ▸ THE SIX
+
+## Markets & Macro
+
+- **American factories printed nearly double what forecasters expected in August while American consumers printed their weakest month in over a year, and only one of those numbers came with a warning label attached at the source.** The New York Fed's Empire State index came in at 20.6 against a median forecast of 11.0, an 87 percent overshoot, with new orders and shipments both positive, so it is not one component carrying a weak survey. July retail sales, released Friday by the Census Bureau, fell 0.6 percent against an expected 0.1 percent rise, the sharpest monthly drop since May 2025. The mechanism nobody put in the headline is a marketing calendar: Amazon moved Prime Day from July to June this year, pulling nonstore spending into the prior month. Home Depot reports before the open this morning and Walmart on Thursday, and that block settles whether the miss was a consumer or a calendar.
+`;
+
+// Same 08-23 bytes, class swapped. TENSION names two forces and parallel-tracks names none, so
+// neither has a single cause to bind to — the mandate's two structural SILENT classes.
+const AUG23_QG_TENSION = `\`PAYOFF CLASS: TENSION 'a blockade that costs its author nothing vs a bill that arrives at someone else's address' sections=[M&M-2, M&M-3, Geo-2] | watch=present | action=REWROTE intro conclusion.\`
+
+\`PAYOFF EXECUTION: class=TENSION, action=REWROTE, watch=present, intro final sentences='…'\``;
+const AUG23_QG_PARALLEL = `\`PAYOFF CLASS: THEME descriptor='economic coercion is not free' sections=[Intro, Geo-1, Geo-2, M&M-3] | watch=present | action=REWROTE to parallel-tracks lead.\`
+
+**CONVERGENCE: pattern = NONE (parallel tracks).** No single clean 3+-section mechanism that is not forced.
+
+\`PAYOFF EXECUTION: class=PARALLEL-TRACKS, action=REWROTE, watch=present, intro final sentences='…'\``;
+
+const WATCH_BINDING_DECLARED = `\nPAYOFF-WATCH-BINDING: the dollar into 8 September resolves Iran's closure of the Strait of Hormuz because the reserve drawdown is financed in dollars and a matching-tariff shock is the cleanest test of whether the bill is being paid by the coercer or the coerced.\n`;
 
 const REAL13 = path.join(process.cwd(), 'daily-briefs/2026-08-13-v2.md');
 const TRAILING = [
@@ -1562,6 +1877,146 @@ function selftest(): number {
         return !(flagged.length === 1 && flagged[0] === '2026-08-22');
       },
     ],
+    // ── IMP-212 (08-23 Critic mandate #2, RC5): WATCH / CAUSE BINDING. Every fixture is frozen
+    //    bytes copied out of the real files (Ledger rule 9) — no directory sweep, no assertion that
+    //    any production incident is currently outstanding.
+    [
+      "[IMP-212] FIRES on the REAL 2026-08-23 pair — cause='Iran's closure of the Strait of Hormuz' (sections M&M-2/M&M-3/Geo-2/Dashboard) against \"Watch what the dollar does into 8 September, when Canada's matching tariffs take effect\": zero shared causal objects AND it resolves Geo-1, which the cause does not claim. assembly-gate exited 0 on this on the night; the Critic graded the payoff FAIL for the fifth-day recurrence of this defect",
+      true,
+      () => {
+        const out = checkWatchCauseBinding(
+          aug23Brief(AUG23_WATCH_SHIPPED),
+          AUG23_QG,
+          '2026-08-23'
+        );
+        return (
+          out.length === 1 &&
+          /WATCH RESOLVES A DIFFERENT STORY THAN THE MECHANISM/.test(out[0]!) &&
+          /resolves Geo-1/.test(out[0]!) &&
+          /Strait of Hormuz/.test(out[0]!)
+        );
+      },
+    ],
+    [
+      '[IMP-212] FIRES on the 08-18 pair the Critic cites and `ceiling-trend.json` records as `payoff: fail` — the mechanism is "a position is worth whatever it costs to leave it" and the watch is "Watch Home Depot before the open this morning, with Walmart on Thursday behind it", which resolves M&M-1 (a consumer-vs-calendar question that touches switching cost nowhere). NON-VACUOUS: this night emits a THEME and EXECUTES a MECHANISM, so the cause is read from PAYOFF ROTATION — the shape a cause=-only parser cannot see',
+      true,
+      () => {
+        const out = checkWatchCauseBinding(AUG18_BRIEF, AUG18_QG, '2026-08-23');
+        return (
+          out.length === 1 &&
+          /WATCH RESOLVES A DIFFERENT STORY THAN THE MECHANISM/.test(out[0]!) &&
+          /resolves M&M-1/.test(out[0]!) &&
+          /a position is worth whatever it costs to leave it/.test(out[0]!)
+        );
+      },
+    ],
+    [
+      '[IMP-212] SILENT on THE REPAIR — the identical 08-23 bytes with the watch swapped to the brief\'s own DOE-count sentence, the fix the Critic named. It shares no literal term with "Iran\'s closure of the Strait of Hormuz" either, so a term-overlap-only check would punish it; it is silent because it resolves M&M-3, one of the cause\'s OWN declared sections. THE REPAIR MUST NEVER BE PUNISHED — a gate that flags the fix teaches the Writer to route around it',
+      false,
+      () =>
+        checkWatchCauseBinding(aug23Brief(AUG23_WATCH_DOE), AUG23_QG, '2026-08-23')
+          .length > 0,
+    ],
+    [
+      "[IMP-212] SILENT on the REAL 2026-08-21 payoff — `ceiling-trend.json` records must_read_computed: true, a_top: 4, the window's ONE awarded Must-Read. Its watch (\"so watch whether the thirty-year holds below its 5.33 percent high of 18 August until then\") resolves M&M-1, inside the cause's declared span [Intro, M&M-1, Geo-1, Geo-2]. A gate that condemns the week's best brief is the IMP-200/201 false-alarm class",
+      false,
+      () => {
+        const b = path.join(process.cwd(), 'content/daily-updates/2026-08-21.md');
+        const q = path.join(
+          process.cwd(),
+          'daily-briefs/2026-08-21-quality-gate-log.md'
+        );
+        if (!fs.existsSync(b) || !fs.existsSync(q)) return false;
+        return (
+          checkWatchCauseBinding(
+            fs.readFileSync(b, 'utf8'),
+            fs.readFileSync(q, 'utf8'),
+            '2026-08-23'
+          ).length > 0
+        );
+      },
+    ],
+    [
+      '[IMP-212] SILENT on a TENSION payoff — the SAME 08-23 brief bytes and the SAME orphaned watch, with the class swapped to TENSION. A tension names two forces and has no single cause= to bind to. This is the discrimination proof: only the CLASS differs between this assertion and the mandated FIRE above',
+      false,
+      () =>
+        checkWatchCauseBinding(
+          aug23Brief(AUG23_WATCH_SHIPPED),
+          AUG23_QG_TENSION,
+          '2026-08-23'
+        ).length > 0,
+    ],
+    [
+      '[IMP-212] SILENT on a parallel-tracks payoff — same bytes, same orphaned watch, `class=PARALLEL-TRACKS` with CONVERGENCE = NONE. A parallel-tracks day declares no mechanism at all, so there is nothing for the watch to be bound to',
+      false,
+      () =>
+        checkWatchCauseBinding(
+          aug23Brief(AUG23_WATCH_SHIPPED),
+          AUG23_QG_PARALLEL,
+          '2026-08-23'
+        ).length > 0,
+    ],
+    [
+      '[IMP-212] THE DECLARED EXCEPTION SUPPRESSES THE DEFECT — one `PAYOFF-WATCH-BINDING: <observable> resolves <cause> because <sentence>` line on the 08-23 bytes takes the finding to zero. A hatch that does not silence is decoration',
+      false,
+      () =>
+        checkWatchCauseBinding(
+          aug23Brief(AUG23_WATCH_SHIPPED) + WATCH_BINDING_DECLARED,
+          AUG23_QG,
+          '2026-08-23'
+        ).some(m => /WATCH RESOLVES A DIFFERENT STORY/.test(m)),
+    ],
+    [
+      "[IMP-212] …AND IT IS LOGGED, NEVER SILENT — the same declared exception still emits a WATCH-BINDING EXCEPTION DECLARED note carrying the declaration's own words. An escape hatch the Editor and the Critic cannot see is an undocumented policy change",
+      true,
+      () => {
+        const out = checkWatchCauseBinding(
+          aug23Brief(AUG23_WATCH_SHIPPED) + WATCH_BINDING_DECLARED,
+          AUG23_QG,
+          '2026-08-23'
+        );
+        return (
+          out.length === 1 &&
+          /WATCH-BINDING EXCEPTION DECLARED/.test(out[0]!) &&
+          /because the reserve drawdown is financed in dollars/.test(out[0]!)
+        );
+      },
+    ],
+    [
+      '[IMP-212] A MALFORMED HATCH DOES NOT BUY SILENCE — a bare `PAYOFF-WATCH-BINDING: the dollar` with no "resolves"/"because" leaves the finding standing and is called out as malformed. The whole value of a declared exception is the sentence of reasoning it puts on disk',
+      true,
+      () => {
+        const out = checkWatchCauseBinding(
+          aug23Brief(AUG23_WATCH_SHIPPED) + '\nPAYOFF-WATCH-BINDING: the dollar\n',
+          AUG23_QG,
+          '2026-08-23'
+        );
+        return (
+          out.length === 1 &&
+          /WATCH RESOLVES A DIFFERENT STORY/.test(out[0]!) &&
+          /does not parse/.test(out[0]!)
+        );
+      },
+    ],
+    [
+      '[IMP-212] NO RETRO (IMP-125) — the same 08-23 bytes take no finding at a brief date before 2026-08-23. A gate may not condemn nights that shipped before it existed',
+      false,
+      () =>
+        checkWatchCauseBinding(
+          aug23Brief(AUG23_WATCH_SHIPPED),
+          AUG23_QG,
+          '2026-08-22'
+        ).length > 0,
+    ],
+    [
+      '[IMP-212] section-id canonicalisation — the QG writes the AI section as `AI&T-1` (08-18) and as `AI-1` (08-22), and `bodyUnits` emits `Geo-2`/`M&M-3` inside brackets. A span check that cannot see through that silently loses a declared section, which in THIS gate means a FALSE FIRE',
+      true,
+      () =>
+        normUnitId(' AI&T-1 ') === 'AI-1' &&
+        normUnitId('AI-1') === 'AI-1' &&
+        normUnitId('[M&M-3') === 'M&M-3' &&
+        normUnitId('Geo-2 ') === 'GEO-2',
+    ],
   ];
   let fails = 0;
   for (const [name, shouldFire, fn] of cases) {
@@ -1654,6 +2109,11 @@ function main() {
       // IMP-210 — 08-22 mandate #3: the MECHANISM label must be EARNED. Two legs: a same-night relabel
       // whose cause names no actor, and a selected frame that is already a section's own sentence.
       for (const msg of checkPayoffMechanismEarned(brief, qg, dateM[1]!))
+        findings.push({ severity: 'FLAG', message: msg });
+      // IMP-212 — 08-23 mandate #2: on a MECHANISM payoff the watch must share a causal object with
+      // the declared cause, or resolve inside the span that cause claims. A declared
+      // `PAYOFF-WATCH-BINDING:` line suppresses the defect and is LOGGED here, never silent.
+      for (const msg of checkWatchCauseBinding(brief, qg, dateM[1]!))
         findings.push({ severity: 'FLAG', message: msg });
     }
     // IMP-176 rotation leg — reads the QG chain, not the brief's self-report.

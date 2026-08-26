@@ -1,0 +1,11 @@
+import * as fs from 'fs';
+import { parseWorldFirstRows, worldFirstAttestation } from './novelty-gate.ts';
+let tot=0;
+for (const f of fs.readdirSync('daily-briefs').filter(x=>/^2026-0[78]-\d\d-v2\.md$/.test(x)).sort()) {
+  const d=f.slice(0,10);
+  const rows=parseWorldFirstRows(fs.readFileSync('daily-briefs/'+f,'utf8'));
+  const fl=worldFirstAttestation(rows,d);
+  tot+=fl.length;
+  if(rows.length) console.log(d,'rows',rows.length,'fail',fl.length, fl.length?('=> '+fl[0].slice(30,95)):'');
+}
+console.log('TOTAL FLAGS', tot);

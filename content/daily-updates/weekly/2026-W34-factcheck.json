@@ -1,0 +1,165 @@
+{
+  "brief": "2026-W34-light.md",
+  "generated": "2026-08-23T09:18:07.019Z",
+  "truthFile": "2026-W34-truth.json",
+  "summary": {
+    "claims": 6,
+    "superlatives": 2,
+    "scheduledEvents": 0,
+    "aggregates": 0,
+    "entityCounts": 0,
+    "effectiveDates": 0,
+    "aiProducts": 0,
+    "earnings": 0,
+    "headlineAnchors": 0,
+    "bylines": 0,
+    "derivedPrices": 0,
+    "seriesExtrema": 0,
+    "sourceConclusions": 0,
+    "issuerCausals": 0,
+    "statuteThresholds": 0,
+    "pass": 4,
+    "fail": 0,
+    "unverified": 4,
+    "officeHolderFacts": 5,
+    "archiveAssetsKnown": 5,
+    "truthBypass": false,
+    "unresolvedCritical": 0,
+    "registries": [
+      {
+        "name": "entity-bindings.json",
+        "state": "ok",
+        "rows": 14,
+        "badRows": []
+      },
+      {
+        "name": "current-facts.json",
+        "state": "ok",
+        "rows": 5,
+        "badRows": []
+      }
+    ],
+    "registryBlind": false
+  },
+  "findings": [
+    {
+      "check": "dated-event-weekday",
+      "severity": "FLAG",
+      "message": "DATED-EVENT WEEKDAY — a completed action is pinned to \"Sunday\" in THE UPDATE: \"Monday the sixty-day window opened by the 17 June US-Iran memorandum closed with no negotiations, and the crude general licence expired unre\". A weekday attached to a court ruling, a filing, an announcement or a statement is a fact about the SOURCE'S DATELINE, never about the reading date. MORNING GATE: resolve this row against a dated primary and rewrite the weekday if it is wrong. UNRESOLVED-FACT if no primary confirms it. Receipt: the 08-11 C&C-2 lead read \"Delaware told Verisk on Monday\"; the Chancery ruling issued Friday 2026-08-07 (Reuters, dateline Aug 7, \"The judge said on Friday\") and Monday was Verisk's response statement — the error propagated into the payoff's \"all abundant on Monday\" frame."
+    }
+  ],
+  "claims": [
+    {
+      "key": "dow",
+      "asset": "Dow",
+      "tier": "standard",
+      "claimType": "market",
+      "direction": "up",
+      "magnitudePct": 1.43,
+      "level": "53,277.01",
+      "section": "MARKETS MINUTE",
+      "sentence": "Equities fell three sessions of five and were rescued on Friday, the Dow up 517.",
+      "status": "PASS",
+      "truthDirection": "up",
+      "truthValue": 53277.01,
+      "truthSource": "https://www.cnbc.com/2026/08/20/stock-market-today-live-updates.html https://finance.yahoo.com/markets/live/stock-market-today-friday-august-21-dow-sp-500-nasdaq-bitcoin-080533702.html"
+    },
+    {
+      "key": "brent",
+      "asset": "Brent crude",
+      "tier": "standard",
+      "claimType": "market",
+      "direction": "up",
+      "magnitudePct": null,
+      "level": null,
+      "section": "THE UPDATE",
+      "sentence": "Energy is about seven percent of the consumer price basket and almost none of it prices off the barrel directly, so a widening crack is slower and more certain transmission than a spike in Brent.",
+      "status": "PASS",
+      "truthDirection": "up",
+      "truthValue": 94.39,
+      "truthSource": "https://tradingeconomics.com/commodity/brent-crude-oil https://www.investing.com/commodities/brent-oil-historical-data"
+    },
+    {
+      "key": "wti",
+      "asset": "WTI",
+      "tier": "standard",
+      "claimType": "market",
+      "direction": "up",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Everyone Announced, Nobody Filed",
+      "sentence": "The Treasury Secretary promised the toughest Iran sanctions in history with zero designations, and crude rose instead of falling.",
+      "status": "UNVERIFIED"
+    },
+    {
+      "key": "silver",
+      "asset": "silver",
+      "tier": "standard",
+      "claimType": "market",
+      "direction": "up",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Everyone Announced, Nobody Filed",
+      "sentence": "Gold, silver and bitcoin all rose, the dollar fell, and equities took their first weekly loss after three higher weeks.",
+      "status": "PASS",
+      "truthDirection": "up",
+      "truthValue": 69,
+      "truthSource": "daily-briefs archive 2026-08-22 ('Silver ran about ten percent in three days')"
+    },
+    {
+      "key": "gold",
+      "asset": "gold",
+      "tier": "standard",
+      "claimType": "market",
+      "direction": "up",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Everyone Announced, Nobody Filed",
+      "sentence": "Gold, silver and bitcoin all rose, the dollar fell, and equities took their first weekly loss after three higher weeks.",
+      "status": "PASS",
+      "truthDirection": "up",
+      "truthValue": 4600,
+      "truthSource": "https://finance.yahoo.com/personal-finance/investing/article/gold-prices-today-friday-august-21-2026-gold-remains-strong-amid-us-debt-concerns-161052751.html https://www.cnbc.com/select/the-price-of-gold-today-august-21-2026/"
+    },
+    {
+      "key": "btc",
+      "asset": "Bitcoin",
+      "tier": "standard",
+      "claimType": "market",
+      "direction": "up",
+      "magnitudePct": null,
+      "level": null,
+      "section": "Everyone Announced, Nobody Filed",
+      "sentence": "Gold, silver and bitcoin all rose, the dollar fell, and equities took their first weekly loss after three higher weeks.",
+      "status": "UNVERIFIED"
+    },
+    {
+      "key": "superlative:year-high",
+      "asset": "(unattributed)",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": null,
+      "section": "MARKETS MINUTE",
+      "sentence": "33 on Tuesday for a nineteen-year high before closing at 5.",
+      "status": "UNVERIFIED",
+      "superlative": "year high",
+      "superlativeKind": "high"
+    },
+    {
+      "key": "superlative:gold",
+      "asset": "gold",
+      "tier": "standard",
+      "claimType": "superlative",
+      "direction": "unknown",
+      "magnitudePct": null,
+      "level": "4600",
+      "section": "MARKETS MINUTE",
+      "sentence": "Metals took the other side, gold closing Friday above 4,600 for its highest since mid-May and a third straight weekly gain, silver past 69 dollars after running about ten percent in the week's last three days against gold's six, platinum above 1,850, and the dollar index down 0.",
+      "status": "UNVERIFIED",
+      "superlative": "highest",
+      "superlativeKind": "high"
+    }
+  ]
+}
