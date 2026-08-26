@@ -49,6 +49,11 @@
  *   --scheduler-state-dir <DIR>       override the opportunistic scheduler-state read.
  *   --now <ISO>                       REPLAY ONLY — pin the clock so a receipt is reproducible.
  *                                     Banner-ed on every use. Never act on a simulated verdict.
+ *   --unedited-promotion <DATE> [--strict]
+ *                            ESC-020 tripwire. FIRES when v1.5 and v2 are the same brief
+ *                            (file md5 OR reader-body) AND the editor log is absent or does not
+ *                            contain the honest stamp token SELFHEAL. exit 1 under --strict
+ *                            (daily canary); exit 0 warn-only otherwise (morning path).
  *   --audit <DATE>           post-hoc: self-heal/promotion over a live Editor, or an unreconciled
  *                            PROVISIONAL Critic report. exit 1 = violation.
  *   --audit-nonproduction <DATE> --scheduler-lastrun <ISO|NEVER>
@@ -63,6 +68,7 @@
  *
  * Exit: 0 clean · 1 violation · 2 usage.
  */
+import * as crypto from 'node:crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -1122,6 +1128,74 @@ export function droppedProtectedBlocks(v15Text: string, v2Text: string): string[
  * gate shipped and teach the next session to skim it.
  */
 export const EDITORIAL_WORK_EFFECTIVE_FROM = '2026-08-26';
+
+/** Honest unedited-promotion stamp (ESC-020 Stage 2). Must NOT match `self-heal-critic` or `SELF-HEAL`. */
+export const SELFHEAL_STAMP_RE = /\bSELFHEAL\b/;
+
+export function hasHonestSelfhealStamp(logText: string): boolean {
+  return SELFHEAL_STAMP_RE.test(logText);
+}
+
+export function fileMd5(p: string): string | null {
+  try {
+    return crypto.createHash('md5').update(fs.readFileSync(p)).digest('hex');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ESC-020 Stage 3 — UNEDITED-PROMOTION as a dated canary, not a ledger `run:` leg.
+ * IMP-222's same-named check inside `--audit-promotion` binds FORWARD from 2026-08-26, so it is
+ * silent on the rubber-stamp night the health report named. This mode takes an explicit DATE and
+ * answers only: did this night ship v1.5's brief under a v2 label without the honest SELFHEAL stamp?
+ *
+ * Identity is file-md5 OR reader-body. File-md5 is the handoff's stated condition (08-26 is
+ * 70,983 B both, digest 2473b3d3). Reader-body catches the 08-25-claimed *shape* (comment-stripped
+ * twin) without treating a trailing newline as editorial work. 2026-08-25 on disk is NEITHER —
+ * v1.5 80,591 B vs v2 41,340 B, and the reader bodies diverge (Dashboard 4.7 vs 4.70). The stamp
+ * said "byte-identical"; md5 disproved the stamp. The night that matches the stated condition is
+ * 2026-08-26. Forcing a fire on 08-25 would make the detector a log-narrative check, which this
+ * file has refused four times.
+ */
+export function uneditedPromotion(root: string, date: string): Violation[] {
+  const v15 = path.join(DB(root), `${date}-v1.5.md`);
+  const v2 = path.join(DB(root), `${date}-v2.md`);
+  const logPath = path.join(DB(root), `${date}-editor-log.md`);
+  if (!fs.existsSync(v15) || !fs.existsSync(v2)) return [];
+
+  const md5a = fileMd5(v15);
+  const md5b = fileMd5(v2);
+  const md5Equal = md5a !== null && md5b !== null && md5a === md5b;
+  const bodyA = readerBodyOf(v15);
+  const bodyB = readerBodyOf(v2);
+  const bodyEqual = bodyA !== null && bodyB !== null && bodyA === bodyB;
+  if (!md5Equal && !bodyEqual) return [];
+
+  let logText = '';
+  let logPresent = false;
+  try {
+    logText = fs.readFileSync(logPath, 'utf8');
+    logPresent = true;
+  } catch {
+    logPresent = false;
+  }
+  if (logPresent && hasHonestSelfhealStamp(logText)) return [];
+
+  const how = md5Equal ? 'byte-identical (md5)' : 'reader-body-identical';
+  const logState = logPresent
+    ? 'editor log does not contain SELFHEAL (the honest unedited-promotion stamp)'
+    : 'editor log is ABSENT';
+  return [
+    {
+      check: 'UNEDITED-PROMOTION',
+      message:
+        `RED: UNEDITED-PROMOTION — ${date}: ${date}-v2.md is ${how} to ${date}-v1.5.md and ${logState}. ` +
+        `Same brief, edited label. ESC-020 ruling: selfheal may ship v1.5's bytes but must stamp them ` +
+        `v2-SELFHEAL (unedited promotion). Inherited gate exits are fabricated provenance.`,
+    },
+  ];
+}
 
 export function auditPromotion(root: string, date: string): Violation[] {
   const v2 = path.join(DB(root), `${date}-v2.md`);
@@ -2558,6 +2632,85 @@ function selftest(): number {
     ]
   );
 
+  // ── ESC-020 · --unedited-promotion (2026-08-26 handoff Stage 3) ─────────────────────────────
+  // Held-out: 08-26 is the night that matches the stated condition (file md5 equal, no editor log).
+  // 08-25 on disk does NOT (stamp claimed identity; sizes 80,591 vs 41,340; bodies diverge) — a
+  // detector that fired on 08-25 would be reading the log, not the bytes. 08-19 is the healthy
+  // pre-08-20 night with a real editor log. Synthetics cover the 08-25-*claimed* shape and the
+  // honest-stamp silence.
+  const upTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-up-'));
+  const upBriefs = path.join(upTmp, 'daily-briefs');
+  fs.mkdirSync(upBriefs, { recursive: true });
+  const UP_BODY = '# Tuesday, January 6, 2026\n\nThe same brief.\n<!-- ==== WRITER DECLARATIONS ==== -->\nkept\n';
+  fs.writeFileSync(path.join(upBriefs, '2026-01-06-v1.5.md'), UP_BODY);
+  fs.writeFileSync(path.join(upBriefs, '2026-01-06-v2.md'), UP_BODY);
+  const fireNoLog = uneditedPromotion(upTmp, '2026-01-06');
+  fs.writeFileSync(
+    path.join(upBriefs, '2026-01-06-editor-log.md'),
+    'EDITOR VERSION: self-heal-critic-2026-01-06\nzero modifications, all mechanical gates inherit EXIT 0\n'
+  );
+  const fireRubberStamp = uneditedPromotion(upTmp, '2026-01-06');
+  fs.writeFileSync(
+    path.join(upBriefs, '2026-01-06-editor-log.md'),
+    'artifact line: v2-SELFHEAL (unedited promotion)\nstatus: RED\n'
+  );
+  const silentHonest = uneditedPromotion(upTmp, '2026-01-06');
+  fs.writeFileSync(path.join(upBriefs, '2026-01-07-v1.5.md'), UP_BODY);
+  fs.writeFileSync(path.join(upBriefs, '2026-01-07-v2.md'), UP_BODY.replace('same brief', 'edited brief'));
+  const silentEdited = uneditedPromotion(upTmp, '2026-01-07');
+  fs.rmSync(upTmp, { recursive: true, force: true });
+
+  const hcSnap = path.join(root, 'system', 'task-bodies-snapshot', 'pipeline-health-check', 'SKILL.md');
+  const hcSnapTxt = fs.existsSync(hcSnap) ? fs.readFileSync(hcSnap, 'utf8') : '';
+
+  rows.push(
+    [
+      'ESC-020 --unedited-promotion FIRES on the REAL 2026-08-26 v2 — md5-identical to v1.5, no editor log',
+      uneditedPromotion(root, '2026-08-26').some(v => v.check === 'UNEDITED-PROMOTION'),
+    ],
+    [
+      'ESC-020 SILENT on 2026-08-19 — pre-08-20 night, real editor log, bodies differ (held-out healthy)',
+      uneditedPromotion(root, '2026-08-19').length === 0,
+    ],
+    [
+      'ESC-020 SILENT on 2026-08-20 — real Editor pass, bodies differ',
+      uneditedPromotion(root, '2026-08-20').length === 0,
+    ],
+    [
+      'ESC-020 2026-08-25 on disk is NOT the identity case (stamp lied; md5/body both DIFF) — SILENT here is a judgement, not a miss',
+      uneditedPromotion(root, '2026-08-25').length === 0 &&
+        (real('2026-08-25', 'v1.5') ?? '').length !== (real('2026-08-25', 'v2') ?? '').length,
+    ],
+    [
+      'ESC-020 FIRES on a byte-identical pair with no editor log (the 08-25-claimed shape)',
+      fireNoLog.some(v => v.check === 'UNEDITED-PROMOTION'),
+    ],
+    [
+      'ESC-020 FIRES on a byte-identical pair whose log is self-heal-critic without the SELFHEAL stamp (rubber stamp)',
+      fireRubberStamp.some(v => v.check === 'UNEDITED-PROMOTION'),
+    ],
+    [
+      'ESC-020 SILENT once the log carries v2-SELFHEAL — honest unedited promotion is legal',
+      silentHonest.length === 0,
+    ],
+    [
+      'ESC-020 SILENT on a genuinely edited v2 (one reader-facing word changed)',
+      silentEdited.length === 0,
+    ],
+    [
+      'ESC-020 self-heal-critic / SELF-HEAL is NOT the honest stamp — hasHonestSelfhealStamp rejects both',
+      !hasHonestSelfhealStamp('EDITOR VERSION: self-heal-critic-2026-08-25') &&
+        !hasHonestSelfhealStamp('# Editor Log — 2026-08-21 (SELF-HEAL, Critic-invoked)') &&
+        hasHonestSelfhealStamp('v2-SELFHEAL (unedited promotion)'),
+    ],
+    [
+      'ESC-020 health-check snapshot uses current names (v1-pre-quality-gate / v1.5), not the stale -v1.md existence check',
+      /v1-pre-quality-gate/.test(hcSnapTxt) &&
+        !/daily-briefs\/YYYY-MM-DD-v1\.md/.test(hcSnapTxt) &&
+        hcSnapTxt.includes('--unedited-promotion'),
+    ]
+  );
+
   // ── IMP-224 · THE DOWNSTREAM CONTRACT (08-25 mandate #3c, re-issued as 08-26 mandate #2c) ─────
   // The FIRE leg runs with the effective date wound back to the real night, because the rule binds
   // from 2026-08-27 forward and the receipt is 2026-08-26. Detection is proved on the real board;
@@ -2802,6 +2955,32 @@ function main() {
     if (!hits.length) console.log('   ✅ every promoted v2 in the window carries its editor log, its worklist blocks, and real editorial work.');
     process.exit(hits.length ? 1 : 0);
   }
+
+  const upI = argv.indexOf('--unedited-promotion');
+  if (upI >= 0) {
+    const date = argv[upI + 1];
+    if (!date || date.startsWith('--')) {
+      console.error('usage: editor-handoff-gate.ts --unedited-promotion <DATE> [--strict]');
+      process.exit(2);
+    }
+    const strict = argv.includes('--strict');
+    const v = uneditedPromotion(root, date);
+    console.log(
+      `editor-handoff-gate --unedited-promotion ${date}${strict ? ' --strict' : ' (warn-only)'}`
+    );
+    if (!v.length) {
+      console.log(`   ✅ ${date} — v2 is edited, or honestly stamped v2-SELFHEAL.`);
+      process.exit(0);
+    }
+    for (const x of v) console.log(`   ✗ ${x.message}`);
+    if (strict) {
+      console.log('\n❌ UNEDITED-PROMOTION (strict) — exit 1. The daily canary treats this as RED.');
+      process.exit(1);
+    }
+    console.log('\n⚠️  UNEDITED-PROMOTION (warn-only) — exit 0. Morning path never blocks the brief.');
+    process.exit(0);
+  }
+
   const modes = [
     '--can-self-heal',
     '--can-promote',

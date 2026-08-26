@@ -45,9 +45,9 @@ Add an **UNEDITED-PROMOTION check** to `scripts/editor-handoff-gate.ts` (new sub
 
 | stage | check | output |
 |---|---|---|
-| 1 | selftests ×3 re-run | |
-| 1 | HEAD == origin/main, CI | |
-| 2 | brief-editor body pasted (owner) | |
-| 2 | selfheal stamp rule pasted (owner) | |
-| 3 | unedited-promotion: 08-25 fires / healthy night silent | |
-| 3 | stale filename checks fixed | |
+| 1 | selftests ×3 re-run | assembly-gate ✓ · brief-light-craft-gate PASS · fact-gate ✅ PASS (2026-08-26 this session) |
+| 1 | HEAD == origin/main, CI | pending rebase+push — local was 6 ahead / 9 behind at session start (`280fa5a` vs `6812f19`) |
+| 2 | brief-editor body pasted (owner) | owner-only — not done from this session |
+| 2 | selfheal stamp rule pasted (owner) | owner-only — not done from this session |
+| 3 | unedited-promotion: 08-25 fires / healthy night silent | **08-26 FIRES** (md5-identical, no log; `--strict` exit 1). **08-25 SILENT on disk** — stamp claimed identity; files 80,591 vs 41,340 B and reader bodies diverge (4.7 vs 4.70). The 08-25-*claimed* shape fires on a synthetic identical pair. **08-19 SILENT** (held-out healthy, real editor log). Selftest PASS. |
+| 3 | stale filename checks fixed | `system/task-bodies-snapshot/pipeline-health-check/SKILL.md` items 1–2 now gathering-date intelligence + `-v1-pre-quality-gate.md`/`-v1.5.md`; leg 22 adds `--unedited-promotion --strict`. WORKORDER B1 canary updated with `--strict` + `tree-status.ts`. Live scheduler body is still owner paste (Stage 2 / weekend workorder). |

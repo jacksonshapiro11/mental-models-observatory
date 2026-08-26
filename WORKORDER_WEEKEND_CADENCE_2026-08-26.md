@@ -20,7 +20,7 @@
 ## B. BODY-GATED SHAPES (paste the step-0 block; schedule stays daily)
 
 **B1 — pipeline-health-check → daily canary + Saturday deep. Replace its body's opening with:**
-> **STEP 0 — DAILY CANARY (every day, ≤5 minutes, then STOP unless Saturday).** Check, with current naming conventions (`-v1-pre-quality-gate.md`, `-v1.5.md`; intelligence filed by gathering date): (1) last night's expected artifacts exist; (2) run `node --experimental-strip-types scripts/editor-handoff-gate.ts --unedited-promotion <last-night>` — RED if it fires; (3) count selfheal firings in last night's status file — any firing is RED and leads the summary; (4) `git status --porcelain` under a TREE header — non-empty prints `RED: UNCOMMITTED WORK`. Email ONLY on red; a green canary writes one status line and stops.
+> **STEP 0 — DAILY CANARY (every day, ≤5 minutes, then STOP unless Saturday).** Check, with current naming conventions (`-v1-pre-quality-gate.md`, `-v1.5.md`; intelligence filed by gathering date): (1) last night's expected artifacts exist; (2) run `node --experimental-strip-types scripts/editor-handoff-gate.ts --unedited-promotion <last-night> --strict` — RED if it fires (exit 1); (3) count selfheal firings in last night's status file — any firing is RED and leads the summary; (4) `npx tsx scripts/tree-status.ts` under a TREE header — RED verdicts print `RED: UNCOMMITTED WORK` (do not use bare `git status --porcelain`; it cannot tell PUBLISHED-LIVE from UNCOMMITTED-CODE). Email ONLY on red; a green canary writes one status line and stops.
 > **STEP 1 — SATURDAY ONLY:** produce the full deep health report (the current body below).
 
 **B2 — daily-portfolio-monitor, paste as step 0:**
