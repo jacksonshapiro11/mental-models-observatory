@@ -618,6 +618,10 @@ export interface FiredSilent {
   tPlusMin: number;
   line: string;
 }
+export interface EmptyBody {
+  task: string;
+  line: string;
+}
 export interface RollCall {
   date: string;
   eveningDate: string;
@@ -636,8 +640,11 @@ export interface RollCall {
   windowless: string[];
   /** IMP-218: slot -> the sibling-board line proving it ran inside this board's window. */
   crossBoard: Map<string, string>;
-  /** IMP-221: slots the SCHEDULER reports as fired this cycle that wrote no line of their own. */
+  /** IMP-221: slots the SCHEDULER reports as fired this cycle that wrote no STEP-0 CANARY of their own. */
   firedAndSilent: FiredSilent[];
+  /** 2026-08-26b: rostered + due + no own STEP-0 CANARY. Covers every slot, not just brief-editor.
+   *  Self-heal SUCCESS is not a canary — that is how 08-21/08-22 hid inside FULL ATTENDANCE. */
+  emptyBody: EmptyBody[];
 }
 
 /**
@@ -732,6 +739,7 @@ export function rollCall(opts: {
   const bp = boardPath(boardRoot, opts.date);
   const att = boardAttendance(bp, opts.replay ? now : undefined);
   const present = att.attended;
+  const ownCanaries = boardOwnCanaries(bp, opts.replay ? now : undefined);
   // IMP-218: the same cycle, written to a sibling board. Computed once, consulted only for slots
   // this board does not already account for.
   const sibling = siblingWindowAttendance(boardRoot, opts.date, dayStart, opts.replay ? now : undefined);
@@ -802,7 +810,7 @@ export function rollCall(opts: {
   if (!exempt && opts.schedulerLastRun) {
     for (const [task, firedAt] of opts.schedulerLastRun) {
       if (+firedAt < +dayStart || +firedAt > +now) continue; // fired in some other cycle
-      if (present.has(task)) continue;                        // it spoke on its own board
+      if (ownCanaries.has(task)) continue;                    // STEP-0 canary — it spoke
       if (sibling.get(task)) continue;                        // it spoke on a sibling (IMP-218)
       const tPlusMin = (+now - +firedAt) / 60000;
       if (tPlusMin < FIRED_GRACE_MIN) continue;               // still inside the grace to canary
@@ -812,9 +820,30 @@ export function rollCall(opts: {
         tPlusMin,
         line:
           `FIRED-AND-SILENT: ${task} (T+${tPlusMin.toFixed(0)} min) — the scheduler started it at ` +
-          `${fmtET(firedAt)} and it has written NO line of its own on this board or a sibling. ` +
+          `${fmtET(firedAt)} and it has written NO STEP-0 CANARY on this board or a sibling. ` +
           `A started task that cannot write one CANARY line is not late, it is failing silently ` +
           `(2026-08-26: brief-editor, T+11, and this roll call said FULL ATTENDANCE).`,
+      });
+    }
+  }
+
+  // ── 🔴 EMPTY-BODY — FIRED IN WINDOW, NO STEP-0 CANARY (2026-08-26b) ─────────────────────────
+  // Marker lives on brief-editor only. This detector covers every rostered slot: scoping it to
+  // the one task that already broke is how the next one surprises us. Self-heal SUCCESS is
+  // attendance for MISSING-SLOT and is NOT a canary — 08-21 and 08-22 hid that way.
+  // Critic-invoked `| brief-editor | CANARY | WRITE-OK (SELF-HEAL, …)` is not STEP 0 (08-23).
+  const emptyBody: EmptyBody[] = [];
+  if (!exempt) {
+    for (const s of rostered) {
+      if (notYetDue.includes(s.task)) continue;
+      if (ownCanaries.has(s.task)) continue;
+      if (sibling.get(s.task)) continue;
+      emptyBody.push({
+        task: s.task,
+        line:
+          `EMPTY-BODY: ${s.task} — fired in window, no STEP-0 CANARY on this board. ` +
+          `A session that cannot write one canary is running empty or dead ` +
+          `(2026-08-20 pointer wrapped in ---; 08-21→08-26 brief-editor).`,
       });
     }
   }
@@ -842,7 +871,7 @@ export function rollCall(opts: {
       });
     }
   }
-  return { date: opts.date, eveningDate, now, rostered, dropped, notYetDue, attended, absent, exempt, selfHealed: att.selfHealed, testimony, unterminated, windowless, crossBoard, firedAndSilent };
+  return { date: opts.date, eveningDate, now, rostered, dropped, notYetDue, attended, absent, exempt, selfHealed: att.selfHealed, testimony, unterminated, windowless, crossBoard, firedAndSilent, emptyBody };
 }
 
 // ---------- THE DERIVED ROSTER: windows measured, never guessed ----------
@@ -913,6 +942,42 @@ export const TERMINAL_RE =
   /^(SUCCESS|FAIL|SKIPPED|COMPLETE|HALTED|NO-?OP|PARTIAL|DEGRADED-KNOWN|NO-REPLY|ALERT)\b/i;
 export const isCanaryLine = (raw: string) => /^CANARY/i.test((raw.split('|')[2] || '').trim());
 export const isTerminalLine = (raw: string) => TERMINAL_RE.test((raw.split('|')[3] || '').trim());
+
+/** STEP-0 canary written by the slot itself — not a Critic-invoked / SELF-HEAL decoy, not a retraction.
+ *  Field 2 is CANARY; SELF-HEAL in the payload (08-23 Critic canary) does not count. */
+export function isOwnStep0Canary(raw: string): boolean {
+  if (RETRACTION_RE.test(raw)) return false;
+  if (!isCanaryLine(raw)) return false;
+  if (selfHealedTask(raw)) return false;
+  const fields = raw.split('|').map(f => f.trim());
+  const payload = fields.slice(3).join(' ');
+  if (/\bSELF-HEAL\b|Critic-invoked/i.test(payload)) return false;
+  return true;
+}
+
+export function boardOwnCanaries(file: string, asOf?: Date): Set<string> {
+  const out = new Set<string>();
+  if (!fs.existsSync(file)) return out;
+  for (const raw of fs.readFileSync(file, 'utf8').split('\n')) {
+    if (asOf) {
+      const ts = parseTs(raw);
+      if (ts && ts.getTime() > asOf.getTime()) continue;
+    }
+    if (!isOwnStep0Canary(raw)) continue;
+    const t = boardLineTask(raw);
+    if (t) out.add(t);
+  }
+  return out;
+}
+
+/** The scheduler strips the trailing newline when it saves a body. Diff live vs snapshot
+ *  only after this, or every task flags as changed every night. */
+export function normalizeTaskBody(s: string): string {
+  return s.replace(/[ \t]+$/gm, '').replace(/\n+$/, '');
+}
+export function bodiesMatchNormalized(a: string, b: string): boolean {
+  return normalizeTaskBody(a) === normalizeTaskBody(b);
+}
 
 /**
  * MIN_N = 10. Below it the archive demonstrably contains bimodal slots — `selection-judge` has n=6
@@ -1624,6 +1689,40 @@ function selftest(): number {
       ),
       '[fired] 08-20/21/22 read UNCHANGED — a new leg that needs a flag cannot re-grade the archive'
     );
+
+    // ── 2026-08-26b · EMPTY-BODY (no STEP-0 CANARY) ──────────────────────────────────────────
+    // Marker is on brief-editor only. Detector covers every rostered slot. Pin is the editor
+    // outage: FIRE 08-21 through 08-26, SILENT 08-19. Critic-invoked canary on 08-23 is not STEP 0.
+    const editorEmpty = (d: string) =>
+      rollCall({ docRoot: root, date: d }).emptyBody.some(e => e.task === 'brief-editor');
+    assert(
+      ['2026-08-21', '2026-08-22', '2026-08-23', '2026-08-24', '2026-08-25', '2026-08-26'].every(
+        editorEmpty
+      ),
+      `[empty-body] FIRE on brief-editor 08-21 through 08-26 (got silent: ${['2026-08-21', '2026-08-22', '2026-08-23', '2026-08-24', '2026-08-25', '2026-08-26'].filter(d => !editorEmpty(d)).join(', ') || 'none'})`
+    );
+    assert(
+      !editorEmpty('2026-08-19'),
+      '[empty-body] SILENT on brief-editor 08-19 — last clean STEP-0 CANARY (2026-08-18T19:09:37-0400)'
+    );
+    assert(
+      bodiesMatchNormalized('pointer text\n', 'pointer text') &&
+        bodiesMatchNormalized('foo  \nbar', 'foo\nbar') &&
+        !bodiesMatchNormalized('pointer text', 'pointer text changed'),
+      '[empty-body] trailing whitespace is stripped before a live-vs-snapshot diff — the scheduler drops the trailing newline'
+    );
+    const editorSkill = path.join(root, 'system', 'task-bodies', 'brief-editor', 'SKILL.md');
+    assert(
+      fs.existsSync(editorSkill) &&
+        fs.readFileSync(editorSkill, 'utf8').includes('BODY_VERSION=brief-editor@2026-08-26b'),
+      '[empty-body] executed brief-editor body carries BODY_VERSION=brief-editor@2026-08-26b (echoed on the STEP-0 canary)'
+    );
+    const editorSnap = path.join(root, 'system', 'task-bodies-snapshot', 'brief-editor', 'SKILL.md');
+    assert(
+      !fs.existsSync(editorSnap) ||
+        !fs.readFileSync(editorSnap, 'utf8').includes('BODY_VERSION=brief-editor@2026-08-26b'),
+      '[empty-body] the snapshot is the POINTER, not the 26 KB target — BODY_VERSION must not live there'
+    );
     // 🔴 THE OTHER DIRECTION OF THE CORPUS FREEZE, AND THE ONLY REASON THE FREEZE IS SAFE
     // (IMP-211). Freezing the EXPECTATION set would be laundering if it also narrowed the
     // DETECTOR. It does not: this asserts a live catch on a board written AFTER the freeze —
@@ -2042,6 +2141,7 @@ function main(): void {
             firedAt: f.firedAt.toISOString(),
             tPlusMin: Math.round(f.tPlusMin),
           })),
+          emptyBody: rc.emptyBody.map(e => ({ task: e.task, line: e.line })),
           missing: rc.absent.map(a => ({
             task: a.task,
             scheduled: a.clock,
@@ -2053,7 +2153,7 @@ function main(): void {
         2
       )
     );
-    process.exit(rc.firedAndSilent.length ? 1 : 0);
+    process.exit(rc.firedAndSilent.length || rc.emptyBody.length ? 1 : 0);
   }
 
   console.log(`pipeline-slot-attendance ${date} (evening of ${rc.eveningDate}, now ${fmtET(rc.now)})`);
@@ -2064,19 +2164,28 @@ function main(): void {
         : '')
   );
   console.log(
-    `   attended ${rc.attended.length} · not-yet-due ${rc.notYetDue.length} · MISSING ${rc.absent.length} · UNTERMINATED ${rc.unterminated.length}` +
+    `   attended ${rc.attended.length} · not-yet-due ${rc.notYetDue.length} · MISSING ${rc.absent.length} · EMPTY-BODY ${rc.emptyBody.length} · UNTERMINATED ${rc.unterminated.length}` +
       (rc.windowless.length ? ` · ${rc.windowless.length} slot(s) NOT ROSTERED, window not computable: ${rc.windowless.join(', ')}` : '')
   );
   // IMP-221. Printed BEFORE the attendance verdict, and it overrides it: on 2026-08-26 the verdict
   // line said FULL ATTENDANCE eleven minutes into a brief-editor that never wrote anything.
   const printFiredSilent = () => {
     if (!rc.firedAndSilent.length) return;
-    console.log(`\n🔴 FIRED-AND-SILENT — the scheduler started these slots this cycle and they wrote nothing:`);
+    console.log(`\n🔴 FIRED-AND-SILENT — the scheduler started these slots this cycle and they wrote no STEP-0 CANARY:`);
     for (const f of rc.firedAndSilent) console.log('   ' + f.line);
     console.log(
       `   This OUTRANKS the attendance verdict below: a derived p95 window answers "when does this slot\n` +
         `   usually speak", never "was it started". Where the two disagree, the scheduler is the one holding\n` +
-        `   evidence. Next: editor-handoff-gate --liveness ${date} to tell a dead stage from a slow one.`
+        `   evidence. Next: editor-handoff-gate --can-self-heal ${date} (branch on the status line).`
+    );
+  };
+  const printEmptyBody = () => {
+    if (!rc.emptyBody.length) return;
+    console.log(`\n🔴 EMPTY-BODY — fired in window, no STEP-0 CANARY:`);
+    for (const e of rc.emptyBody) console.log('   ' + e.line);
+    console.log(
+      `   Attendance (any line) is not the discriminator. A self-heal SUCCESS hid 08-21/08-22.\n` +
+        `   A live session writes a CANARY as STEP 0; its absence is empty-body or dead.`
     );
   };
   const printUnterminated = () => {
@@ -2101,16 +2210,18 @@ function main(): void {
   }
   if (!rc.absent.length) {
     printFiredSilent();
+    printEmptyBody();
     console.log(
-      rc.firedAndSilent.length
-        ? '\n⛔ NOT FULL ATTENDANCE — every ROSTERED slot left a line, but the scheduler names a slot that did not.'
+      rc.firedAndSilent.length || rc.emptyBody.length
+        ? '\n⛔ NOT FULL ATTENDANCE — a rostered slot is silent on STEP-0 CANARY (scheduler-fired and/or empty-body).'
         : '\n✅ FULL ATTENDANCE — every due slot for this brief date, morning and evening, left a line of its own.'
     );
     printUnterminated();
-    if (rc.firedAndSilent.length) process.exit(1); // IMP-221: this leg blocks on its own
+    if (rc.firedAndSilent.length || rc.emptyBody.length) process.exit(1);
     process.exit(process.argv.includes('--red') && rc.unterminated.length ? 1 : 0);
   }
   printFiredSilent();
+  printEmptyBody();
   printUnterminated();
   console.log('');
   for (const a of rc.absent) {
@@ -2148,7 +2259,7 @@ function main(): void {
   // Exit code: 0 by default, because Pipeline_Controller L591 and Brief_Critic leg (iv) both ship
   // this check as warn-level and must never block a brief. `--red` is for a caller that wants the
   // non-zero exit. The DETECTION above does not depend on either — it already happened.
-  process.exit(process.argv.includes('--red') || rc.firedAndSilent.length ? 1 : 0);
+  process.exit(process.argv.includes('--red') || rc.firedAndSilent.length || rc.emptyBody.length ? 1 : 0);
 }
 
 if (process.argv[1] && process.argv[1].includes('pipeline-slot-attendance')) main();

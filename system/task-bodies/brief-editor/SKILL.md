@@ -22,8 +22,10 @@ brief use **today**. State the value you used.
 Append one line to `daily-briefs/{BRIEF_DATE}-pipeline-status.md`:
 
 ```
-{ISO_TIMESTAMP} | brief-editor | CANARY | WRITE-OK
+{ISO_TIMESTAMP} | brief-editor | CANARY | WRITE-OK | BODY_VERSION=brief-editor@2026-08-26b
 ```
+
+`BODY_VERSION` is the marker that proves this executed body ran. Echo it on the canary line, field 5, exactly as written. An empty or pointer-only session never reaches this step and never echoes the marker.
 
 If that append fails, or you cannot read the workspace: email cosmictrex11@gmail.com with subject
 `PIPELINE ALARM — session cannot access workspace — brief-editor {ISO_TIMESTAMP}` and STOP. Do not do

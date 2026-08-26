@@ -126,20 +126,20 @@ export const MIN_PLAUSIBLE_BRIEF_BYTES = 4000;
 //   REFUSE TO ANSWER (UNKNOWN), never guess. UNKNOWN is not a soft ALLOWED; it is a distinct verdict
 //   with a distinct exit code, because every caller of the old gate read "no violations" as "go".
 //
-// THE BAND. A FIRED-AND-SILENT Editor inside this window is IN FLIGHT, not dead. 16–38 min is the
-// band the 08-23 Critic recorded on the board ("T+38 min — the TOP of its observed 16-38 min runtime
-// band"). It is deliberately a FIRED-AND-SILENT window and NOT a runtime ceiling: real Editor passes
-// have run 65, 73, 94 min (see the frozen distribution in the selftest). That is safe because of
-//   ⭐ MONOTONICITY, the property that makes this leg impossible to weaponise: the scheduler leg only
-//   ever ADDS a violation and never removes one. Past the band it ABSTAINS — the pre-existing guards
-//   (canary age, working-file mtime, editor log) keep deciding exactly as they did before. So
-//   "past the band ⇒ DEAD ⇒ self-heal permitted" can never permit anything the old gate forbade;
-//   it only stops the new refusal. A 65-minute Editor always has a CANARY or a working file, and
-//   both are still owned by liveness()/canSelfHeal() above.
+// THE BAND. schedulerLiveness() still classifies FIRED-AND-SILENT vs FIRED-PAST-BAND at 16–38 min
+// (the 08-23 Critic's recorded silence window). That classification feeds --audit-nonproduction.
+// It does NOT authorise or forbid self-heal. 2026-08-26b: a blanket refuse past 38 min meant a
+// genuinely dead editor could never be self-healed — six of the last seven nights. Discriminator:
+//   canary present, no terminal, lastRunAt this cycle → still working → REFUSE (live-canary)
+//   no canary at all, lastRunAt this cycle           → fired and did nothing → ALLOW (empty-body)
+//   terminal line present, or NEVER                  → ALLOW (terminated / never)
+// A live Editor writes a CANARY at STEP 0. Its absence is the empty-body state, not "in flight".
+// The 2c-still-running case (canary written, no terminal, lastRunAt 40+ min) has never occurred
+// in production because 2c has never run; it is held out synthetically.
 /** Lower edge of the observed fired-and-silent band. Below this the Editor cannot even have
- *  finished; reported for the message, not for the verdict. */
+ *  finished; reported for the message, not for --can-self-heal. */
 export const EDITOR_FIRE_BAND_MIN_MIN = 16;
-/** Top of the band. Fired, silent, and inside this ⇒ ALIVE ⇒ SELF-HEAL FORBIDDEN. */
+/** Top of the band for schedulerLiveness / --audit-nonproduction. NOT a self-heal cutoff. */
 export const EDITOR_FIRE_BAND_MAX_MIN = 38;
 /** The third verdict. NOT 0 (ALLOWED) and NOT 1 (FORBIDDEN) — a caller that branches on either of
  *  those must fall through to a code it does not recognise rather than silently proceed. */
@@ -576,7 +576,7 @@ export function schedulerLiveness(
       state: 'FIRED-AND-SILENT',
       elapsedMin,
       reading,
-      reason: `brief-editor FIRED at ${last.toISOString()} and is T+${elapsedMin.toFixed(0)} min with NOTHING on the board or the disk — inside the observed ${EDITOR_FIRE_BAND_MIN_MIN}–${EDITOR_FIRE_BAND_MAX_MIN} min fired-and-silent band${elapsedMin < EDITOR_FIRE_BAND_MIN_MIN ? `, and below its ${EDITOR_FIRE_BAND_MIN_MIN}-min floor it cannot even have finished` : ''}. FIRED-AND-SILENT IS IN FLIGHT, NOT DEAD.`,
+      reason: `brief-editor FIRED at ${last.toISOString()} and is T+${elapsedMin.toFixed(0)} min with NOTHING on the board or the disk — inside the observed ${EDITOR_FIRE_BAND_MIN_MIN}–${EDITOR_FIRE_BAND_MAX_MIN} min fired-and-silent band${elapsedMin < EDITOR_FIRE_BAND_MIN_MIN ? `, and below its ${EDITOR_FIRE_BAND_MIN_MIN}-min floor it cannot even have finished` : ''}. NO STEP-0 CANARY: this is empty-body, not in-flight. A live Editor writes a CANARY as its first action.`,
     };
   return {
     state: 'FIRED-PAST-BAND',
@@ -586,29 +586,33 @@ export function schedulerLiveness(
   };
 }
 
+/** A STEP-0 canary written by the live Editor, not a Critic-invoked / SELF-HEAL decoy.
+ *  08-23: `| brief-editor | CANARY | WRITE-OK (SELF-HEAL, Critic-invoked: …)` is not STEP 0. */
+export function isOwnStep0CanaryLine(raw: string): boolean {
+  const fields = raw.split('|').map(f => f.trim());
+  if (fields.length < 3) return false;
+  if (!/^CANARY$/i.test(fields[2]!)) return false;
+  const payload = fields.slice(3).join(' ');
+  if (/\bSELF-HEAL\b|Critic-invoked/i.test(payload)) return false;
+  return true;
+}
+
 /** May the Critic rebuild v2 from a v1.5 copy? Strictly narrower than promotion.
- *  IMP-216: `sched` is OPTIONAL and MONOTONE — supplying it can only ADD a violation. Every existing
- *  caller that omits it gets byte-identical behaviour, which is why this change cannot regress the
- *  07-13/07-14/08-08 legs below. */
+ *  2026-08-26b: the discriminator is the STEP-0 CANARY, not the 16–38 min silence band.
+ *  `sched` is optional. Omitting it still forbids a live canary / live artifact; it cannot
+ *  authorise empty-body (that needs a this-cycle lastRunAt, else UNKNOWN). */
 export function canSelfHeal(
   root: string,
   date: string,
   now = new Date(),
-  sched?: SchedulerLiveness
+  _sched?: SchedulerLiveness
 ): Violation[] {
   const v: Violation[] = [];
   const lines = editorLines(root, date);
   const terminal = lines.find(l => l.kind === 'SUCCESS' || l.kind === 'FAIL');
-  const canary = lines.find(l => l.kind === 'CANARY');
+  const ownCanary = lines.find(l => isOwnStep0CanaryLine(l.raw));
   const l = liveness(root, date, now);
   const elog = path.join(DB(root), `${date}-editor-log.md`);
-
-  if (sched && sched.state === 'FIRED-AND-SILENT') {
-    v.push({
-      check: 'self-heal-over-fired-scheduler-slot',
-      message: `SELF-HEAL FORBIDDEN — ${sched.reason} A second Editor would race two writers onto one output path (the 07-13/07-14 double-write class). 2026-08-22 receipt: this gate returned EXIT 0 "SELF-HEAL ALLOWED — no live Editor, no Editor artifact on disk" at three polls while the scheduler showed brief-editor fired at 23:20:14Z and unterminated. WAIT and re-poll with a fresh --scheduler-lastrun.`,
-    });
-  }
 
   if (l.state !== 'ABSENT') {
     const hold = readHold(root, date);
@@ -623,16 +627,17 @@ export function canSelfHeal(
       } A copy of v1.5 has not been through the Editor's checks; substituting one throws away the pass that already ran.`,
     });
   }
-  if (canary && !terminal) {
+  // No age cap. A live Editor past 38 min — and past NO_ARTIFACT_WAIT_MIN — still has its
+  // STEP-0 canary. The 60-min cutoff would have PERMITTED the 2c-still-running case the
+  // 08-26b ruling exists to refuse. Held out synthetically: canary, no terminal, T+40 → REFUSE.
+  if (ownCanary && !terminal) {
     const ageMin = l.canaryAgeMin ?? Infinity;
-    if (ageMin < NO_ARTIFACT_WAIT_MIN) {
-      v.push({
-        check: 'self-heal-over-live-editor',
-        message: `SELF-HEAL FORBIDDEN — a brief-editor CANARY line exists with no SUCCESS/FAIL and is ${ageMin.toFixed(0)} min old (wait ${NO_ARTIFACT_WAIT_MIN} min; observed Editor runtimes reach ~65). CANARY means the Editor is ALIVE, not absent — absence of the artifact is not evidence of failure while the step is still running. WAIT and re-check.`,
-      });
-    }
+    v.push({
+      check: 'self-heal-over-live-editor',
+      message: `SELF-HEAL FORBIDDEN — a brief-editor STEP-0 CANARY exists with no SUCCESS/FAIL (${ageMin === Infinity ? 'age unknown' : ageMin.toFixed(0) + ' min old'}). CANARY means the Editor is ALIVE. The empty-body failure writes no canary at all; a live pass past 19:30 still has this line. WAIT and re-check.`,
+    });
   }
-  if (!canary && !terminal && fs.existsSync(elog)) {
+  if (!ownCanary && !terminal && fs.existsSync(elog)) {
     v.push({
       check: 'self-heal-over-editor-artifact',
       message: `SELF-HEAL FORBIDDEN — ${date}-editor-log.md exists: the Editor ran. Read its log (and any EDITOR-HOLD) before declaring it missing.`,
@@ -644,17 +649,43 @@ export function canSelfHeal(
 /** IMP-216 — THE THREE-VALUED VERDICT. The old CLI inferred the answer from a violation COUNT, so
  *  "I have no evidence" and "I have evidence of absence" produced the identical EXIT 0 and the
  *  identical green sentence. They are opposite facts. Resolution order, and the order is the rule:
- *    1. FORBIDDEN outranks everything — positive evidence of a live Editor needs no scheduler.
- *    2. Otherwise, no scheduler reading ⇒ UNKNOWN. **This is the load-bearing clause.** The 08-22
- *       false permit is exactly the state that now returns UNKNOWN instead of ALLOWED.
- *    3. Only a reading that positively rules out a live process yields ALLOWED. */
+ *    1. FORBIDDEN outranks everything — positive evidence of a live Editor needs no scheduler
+ *       (STEP-0 canary, or a live/quiet artifact).
+ *    2. Otherwise, no scheduler reading ⇒ UNKNOWN.
+ *    3. Only a reading that positively rules out a live process yields ALLOWED.
+ *  2026-08-26b: ALLOWED now includes the empty-body case (lastRunAt this cycle, no STEP-0 canary).
+ *  That used to be FORBIDDEN inside the 16–38 band, which is how a dead editor could never be
+ *  healed. The branch field on the decision names which arm fired so this is never re-diagnosed
+ *  by inference. */
 export type SelfHealVerdict = 'ALLOWED' | 'FORBIDDEN' | 'UNKNOWN';
+export type SelfHealBranch =
+  | 'live-canary'
+  | 'live-artifact'
+  | 'empty-body'
+  | 'terminated'
+  | 'never'
+  | 'unknown';
 export interface SelfHealDecision {
   verdict: SelfHealVerdict;
+  branch: SelfHealBranch;
   token: string;
   exitCode: number;
   violations: Violation[];
   sched: SchedulerLiveness;
+}
+export function selfHealBranchOf(
+  root: string,
+  date: string,
+  sched: SchedulerLiveness,
+  violations: Violation[]
+): SelfHealBranch {
+  if (violations.some(x => x.check === 'self-heal-over-live-editor')) return 'live-canary';
+  if (violations.some(x => x.check === 'self-heal-over-editor-artifact')) return 'live-artifact';
+  if (sched.state === 'UNKNOWN') return 'unknown';
+  if (sched.state === 'NEVER-FIRED') return 'never';
+  const lines = editorLines(root, date);
+  if (lines.some(l => l.kind === 'SUCCESS' || l.kind === 'FAIL')) return 'terminated';
+  return 'empty-body';
 }
 export function selfHealDecision(
   root: string,
@@ -664,9 +695,11 @@ export function selfHealDecision(
   const now = opts.now ?? new Date();
   const sched = schedulerLiveness(root, date, opts.reading ?? null, now);
   const violations = canSelfHeal(root, date, now, sched);
+  const branch = selfHealBranchOf(root, date, sched, violations);
   if (violations.length)
     return {
       verdict: 'FORBIDDEN',
+      branch,
       token: VERDICT_TOKEN.FORBIDDEN,
       exitCode: 1,
       violations,
@@ -675,6 +708,7 @@ export function selfHealDecision(
   if (sched.state === 'UNKNOWN')
     return {
       verdict: 'UNKNOWN',
+      branch: 'unknown',
       token: VERDICT_TOKEN.UNKNOWN,
       exitCode: SELF_HEAL_UNKNOWN_EXIT,
       violations,
@@ -682,6 +716,7 @@ export function selfHealDecision(
     };
   return {
     verdict: 'ALLOWED',
+    branch,
     token: VERDICT_TOKEN.ALLOWED,
     exitCode: 0,
     violations,
@@ -1816,23 +1851,33 @@ function selftest(): number {
     reading: READ0823,
     now: NOW0823,
   });
-  const okForbidden0823 =
-    d0823.verdict === 'FORBIDDEN' &&
-    d0823.exitCode === 1 &&
-    d0823.token === VERDICT_TOKEN.FORBIDDEN &&
+  //     2026-08-26b: 08-23 with NO STEP-0 canary and lastRunAt T+32 is EMPTY-BODY — ALLOW.
+  //     The old gate forbade this as FIRED-AND-SILENT "in flight". That is how a dead editor
+  //     could never be healed. 08-22 on the real board was the same shape and self-heal was
+  //     correct that night.
+  const okAllowed0823 =
+    d0823.verdict === 'ALLOWED' &&
+    d0823.exitCode === 0 &&
+    d0823.token === VERDICT_TOKEN.ALLOWED &&
+    d0823.branch === 'empty-body' &&
     d0823.sched.state === 'FIRED-AND-SILENT' &&
-    d0823.violations.some(x => x.check === 'self-heal-over-fired-scheduler-slot');
-  //     …and the SELFPOISON receipt, in code: put the Critic's canary back and the OLD leg fires on
-  //     it — right verdict, fabricated evidence. Two different reasons for one exit code is exactly
-  //     why the 08-23 Critic wrote "tonight's right answer was luck."
+    d0823.violations.length === 0;
+  //     …and the SELFPOISON receipt, inverted: the Critic's canary is NOT a STEP-0 canary, so
+  //     restoring it must not flip the verdict to live-canary. Empty-body still ALLOWED.
   const R0823poison = frozenBoard(
     '2026-08-23',
     FROZEN_0823_QG + FROZEN_0823_CRITIC_CANARY
   );
+  const poisonD = selfHealDecision(R0823poison, '2026-08-23', {
+    reading: READ0823,
+    now: NOW0823,
+  });
   const poisonV = canSelfHeal(R0823poison, '2026-08-23', NOW0823);
-  const okPoisonReproduced =
-    poisonV.some(x => x.check === 'self-heal-over-live-editor') &&
-    !poisonV.some(x => x.check === 'self-heal-over-fired-scheduler-slot');
+  const okPoisonIgnored =
+    poisonD.verdict === 'ALLOWED' &&
+    poisonD.branch === 'empty-body' &&
+    !poisonV.some(x => x.check === 'self-heal-over-live-editor') &&
+    !isOwnStep0CanaryLine(FROZEN_0823_CRITIC_CANARY);
   //     …and the doc rule from part (b) is mechanically honoured HERE: a self-heal canary named
   //     `brief-editor-selfheal` is invisible to this gate's selector, so obeying Brief_Editor L31
   //     can no longer manufacture the evidence Brief_Critic L32 reads. Both directions.
@@ -1886,10 +1931,51 @@ function selftest(): number {
     now: NOW0821,
   });
   const okAllowed0821Prior =
-    d0821prior.verdict === 'ALLOWED' && d0821prior.sched.state === 'NEVER-FIRED';
+    d0821prior.verdict === 'ALLOWED' &&
+    d0821prior.sched.state === 'NEVER-FIRED' &&
+    d0821prior.branch === 'never';
 
-  // (d) ⭐ MONOTONICITY — the property that makes a 38-minute band safe next to 94-minute Editor
-  //     passes. The scheduler leg may only ADD a refusal. On a fixture with a LIVE Editor, a
+  // (c2) 2026-08-22 — THE HELD-OUT CASE THE OLD GATE GOT WRONG. No canary, no terminal,
+  //      lastRunAt this cycle (23:20:14Z). Empty-body. Self-heal was correct that night.
+  const FROZEN_0822_QG_EARLY =
+    '2026-08-21T22:41:38Z | brief-quality-gate | CANARY | WRITE-OK\n' +
+    '2026-08-21T23:07:07Z | brief-quality-gate | daily-briefs/2026-08-22-v1.5.md | SUCCESS | [reason truncated in fixture]\n';
+  const R0822 = frozenBoard('2026-08-22', FROZEN_0822_QG_EARLY);
+  const NOW0822 = new Date('2026-08-21T23:52:00Z'); // T+32 from 23:20:14Z
+  const d0822 = selfHealDecision(R0822, '2026-08-22', {
+    reading: parseSchedulerLastRun('2026-08-21T23:20:14Z'),
+    now: NOW0822,
+  });
+  const okAllowed0822 =
+    d0822.verdict === 'ALLOWED' &&
+    d0822.branch === 'empty-body' &&
+    d0822.sched.state === 'FIRED-AND-SILENT' &&
+    d0822.violations.length === 0;
+
+  // (c3) SYNTHETIC live-canary past 38 min — the state 2c would produce if it ever ran.
+  //      Canary written, no terminal, lastRunAt 40+ minutes ago → REFUSE. Also T+65, past
+  //      the old NO_ARTIFACT_WAIT_MIN cap that would have permitted it.
+  const RliveCanary = frozenBoard(
+    '2026-08-23',
+    FROZEN_0823_QG + '2026-08-22T23:20:30Z | brief-editor | CANARY | WRITE-OK\n'
+  );
+  const LAST0823 = new Date('2026-08-22T23:20:17.192Z');
+  const dLive40 = selfHealDecision(RliveCanary, '2026-08-23', {
+    reading: READ0823,
+    now: new Date(LAST0823.getTime() + 40 * 60000),
+  });
+  const dLive65 = selfHealDecision(RliveCanary, '2026-08-23', {
+    reading: READ0823,
+    now: new Date(LAST0823.getTime() + 65 * 60000),
+  });
+  const okLiveCanaryRefuse =
+    dLive40.verdict === 'FORBIDDEN' &&
+    dLive40.branch === 'live-canary' &&
+    dLive40.violations.some(x => x.check === 'self-heal-over-live-editor') &&
+    dLive65.verdict === 'FORBIDDEN' &&
+    dLive65.branch === 'live-canary';
+
+  // (d) A live Editor's FORBIDDEN is scheduler-independent. On a fixture with a LIVE Editor, a
   //     past-the-band scheduler reading must NOT downgrade the verdict, and neither must UNKNOWN.
   const aliveSched = schedulerLiveness(
     alive,
@@ -2209,7 +2295,7 @@ function selftest(): number {
   for (const d of [NP20, NP21, NP22, NP24, staged])
     fs.rmSync(d, { recursive: true, force: true });
 
-  for (const d of [R0823, R0823poison, R0823selfheal, R0821, bandRoot])
+  for (const d of [R0823, R0823poison, R0823selfheal, R0821, R0822, RliveCanary, bandRoot])
     fs.rmSync(d, { recursive: true, force: true });
 
   for (const d of [alive, dead, early, held, ceiling, husk, full, huskEarly, twin])
@@ -2221,12 +2307,12 @@ function selftest(): number {
       okOldGateWouldPermit,
     ],
     [
-      'IMP-216 FORBIDDEN on the real 2026-08-23 scheduler state (fired 23:20:17.192Z, T+32, in band) with the canary removed — exit 1, no fabricated evidence',
-      okForbidden0823,
+      'IMP-216 ALLOWED empty-body on the real 2026-08-23 scheduler state (fired 23:20:17.192Z, T+32, no STEP-0 canary) — a dead editor must be healable (2026-08-26b)',
+      okAllowed0823,
     ],
     [
-      'IMP-216 the SELFPOISON is reproduced: restore the Critic\'s own canary and the OLD leg fires on it — right verdict, wrong reason',
-      okPoisonReproduced,
+      'IMP-216 a Critic-invoked canary is NOT STEP 0 — restoring it leaves empty-body ALLOWED, it cannot launder a live-canary refuse',
+      okPoisonIgnored,
     ],
     [
       'IMP-216 a `brief-editor-selfheal` canary is INVISIBLE to this gate (Brief_Editor L31 can no longer poison Brief_Critic L32) — and a real `brief-editor` canary is still selected',
@@ -2249,7 +2335,15 @@ function selftest(): number {
       okAllowed0821Prior,
     ],
     [
-      'IMP-216 MONOTONE: supplying a scheduler reading never downgrades a live-Editor FORBIDDEN (the leg only ever ADDS)',
+      'IMP-216 ALLOWED empty-body on the real 2026-08-22 state (fired 23:20:14Z, T+32, no canary, no terminal) — self-heal was correct that night',
+      okAllowed0822,
+    ],
+    [
+      'IMP-216 REFUSE live-canary at T+40 and T+65 (synthetic 2c-still-running) — no age cap; a canary with no terminal is still working',
+      okLiveCanaryRefuse,
+    ],
+    [
+      'IMP-216 a live Editor stays FORBIDDEN under a past-the-band scheduler reading and under UNKNOWN',
       okMonotonePastBand,
     ],
     [
@@ -3165,9 +3259,9 @@ function main() {
     // only one that may now refuse to answer.
     if (s.state === 'FIRED-AND-SILENT') {
       console.log(
-        '\n⏳ SCHEDULER SAYS ALIVE — WAIT. No artifact yet, but the process FIRED and is in flight. Do not self-heal: a second Editor races two writers onto one output path.'
+        '\n✅ EMPTY-BODY — scheduler fired this cycle, no STEP-0 CANARY, no artifact. Not in-flight: a live Editor writes a canary at STEP 0. Check --can-self-heal.'
       );
-      process.exit(1);
+      process.exit(0);
     }
     if (s.state === 'UNKNOWN') {
       console.log(
@@ -3183,17 +3277,24 @@ function main() {
     const d = selfHealDecision(root, date, { reading, now: NOW() });
     console.log(`editor-handoff-gate ${mode} ${date}`);
     console.log(`   scheduler: ${d.sched.state} — ${d.sched.reason}`);
+    console.log(`   branch: ${d.branch}`);
     for (const x of d.violations) console.log(`   ✗ [${x.check}] ${x.message}`);
-    if (d.verdict === 'ALLOWED')
-      console.log(
-        `✅ ${VERDICT_TOKEN.ALLOWED} — no live Editor, no Editor artifact on disk, and the scheduler positively rules out a live process.`
-      );
-    else if (d.verdict === 'UNKNOWN')
+    if (d.verdict === 'ALLOWED') {
+      const why =
+        d.branch === 'empty-body'
+          ? 'EMPTY-BODY: lastRunAt this cycle, no STEP-0 CANARY, no terminal. The scheduler fired and the session did nothing (2026-08-20 --- wrapped pointer). Self-heal ALLOWED.'
+          : d.branch === 'never'
+            ? 'NEVER-FIRED: the slot did not start this cycle. Self-heal ALLOWED.'
+            : d.branch === 'terminated'
+              ? 'TERMINATED: a SUCCESS/FAIL line is already on the board. Self-heal ALLOWED (the pass already ended).'
+              : 'no live Editor, no Editor artifact on disk, and the scheduler positively rules out a live process.';
+      console.log(`✅ ${VERDICT_TOKEN.ALLOWED} — ${why}`);
+    } else if (d.verdict === 'UNKNOWN')
       console.log(
         `❓ ${VERDICT_TOKEN.UNKNOWN} — THE GATE REFUSES TO ANSWER. Nothing on the board or the disk distinguishes "never fired" from "fired and produced nothing", and no scheduler reading was supplied. 2026-08-22: this exact state returned EXIT 0 "SELF-HEAL ALLOWED" over a live Editor. Re-run with --scheduler-lastrun <ISO|NEVER>. **UNKNOWN IS NOT ALLOWED.**`
       );
     else console.log(`\n❌ ${d.violations.length} violation(s).`);
-    console.log(`\nVERDICT: ${d.token} (exit ${d.exitCode})`);
+    console.log(`\nVERDICT: ${d.token} (exit ${d.exitCode}) branch=${d.branch}`);
     process.exit(d.exitCode);
   }
 
