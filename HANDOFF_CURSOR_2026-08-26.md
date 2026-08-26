@@ -46,7 +46,7 @@ Add an **UNEDITED-PROMOTION check** to `scripts/editor-handoff-gate.ts` (new sub
 | stage | check | output |
 |---|---|---|
 | 1 | selftests ×3 re-run | assembly-gate ✓ · brief-light-craft-gate PASS · fact-gate ✅ PASS (2026-08-26 this session) |
-| 1 | HEAD == origin/main, CI | pending rebase+push — local was 6 ahead / 9 behind at session start (`280fa5a` vs `6812f19`) |
+| 1 | HEAD == origin/main, CI | HEAD == origin/main `bc975a3`. Porcelain empty. CI **not green**: type-check now passes (root `probe-*.ts` that imported `fact-gate.ts` removed); `format:check` fails on 26 files — same prettier class as origin/main *before* this push (`brief: 2026-08-26` run 32952204794, 20 files). https://github.com/jacksonshapiro11/mental-models-observatory/actions/runs/32969797128 |
 | 2 | brief-editor body pasted (owner) | owner-only — not done from this session |
 | 2 | selfheal stamp rule pasted (owner) | owner-only — not done from this session |
 | 3 | unedited-promotion: 08-25 fires / healthy night silent | **08-26 FIRES** (md5-identical, no log; `--strict` exit 1). **08-25 SILENT on disk** — stamp claimed identity; files 80,591 vs 41,340 B and reader bodies diverge (4.7 vs 4.70). The 08-25-*claimed* shape fires on a synthetic identical pair. **08-19 SILENT** (held-out healthy, real editor log). Selftest PASS. |
