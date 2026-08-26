@@ -29,6 +29,11 @@ If that append fails, or you cannot read the workspace: email cosmictrex11@gmail
 `PIPELINE ALARM — session cannot access workspace — brief-editor {ISO_TIMESTAMP}` and STOP. Do not do
 work whose output cannot persist. Email does not depend on the workspace mount; that is the point.
 
+<!-- DISABLED 2026-08-26. The probe already ran, 08-14 through 08-20, six times.
+     Result: LEAKED — both CLAUDE.md files present in the subagent context in full.
+     Its self-delete instruction cannot fire under the pointer body (there is no live
+     copy of this step to delete), so it re-ran nightly. Answer is on file; clean-room
+     runner is the open fix. Kept for provenance, not executed.
 ---
 
 ## 🔴 STEP 0.5 — ONE-TIME BLINDNESS PROBE. RUN IT ONCE, THEN THIS STEP GETS DELETED.
@@ -61,6 +66,7 @@ abbreviated in your status line.
 **Then delete this step** from the live task body so it does not run again.
 
 ---
+-->
 
 You are the Brief Editor in the Mental Models Observatory evening pipeline.
 
@@ -79,7 +85,7 @@ editorial QA pass with root-cause tagging, architecture compliance and predictio
   read-back** — including provenance and truth fixes. Graded bytes must equal shipped bytes.
 
 Pipeline context: upstream Brief Draft (18:01) produced v1 and
-`daily-briefs/{BRIEF_DATE}-claims.json`. Downstream Brief Critic (19:06) reads your v2.
+`daily-briefs/{BRIEF_DATE}-claims.json`. Downstream Brief Critic (19:30) reads your v2.
 
 ## 2. Run the mechanical validator and fix everything it flags
 
@@ -144,7 +150,11 @@ rewritten. It measures whether the meaning landed, which no gate can do.
 **🔴 HARD FALLBACK, FIRST: any error, any timeout, any subagent that fails to return, any ambiguity
 you cannot resolve in two minutes → SKIP THE REST OF THIS STEP, hand off the v2 you have, and write
 `readback=ERROR` in the status line with the reason. THE BRIEF ALWAYS SHIPS.** One retry maximum.
-**The Critic starts at 19:06 — never make it wait.** If you are past 19:00, skip 2c and say so.
+**The Critic starts at 19:30 — never make it wait.** If you are past 19:25, skip 2c and say so.
+(Schedule as of 2026-08-26: quality gate 18:35 · editor 19:05 · critic 19:30. The old 19:00
+cutoff predated a schedule change and fired before the session could open, which is why 2c
+logged SKIPPED every night 08-08 through 08-19 and never once ran. If you move these tasks,
+move this number with them.)
 
 ### 2c.0 — Use the script if it is there
 
@@ -265,7 +275,7 @@ improved v2.
 ```
 {ISO} | brief-editor | daily-briefs/{BRIEF_DATE}-v2.md | SUCCESS|FAIL|SKIPPED | evening-truth: {N flags|clean} — {reason}
 {ISO} | readback-full | transmitted {n}/{m} | unanimous-fail {u} | cycles {k} | residual {r} | sowhat {ok}/{m} | via={script|body} | {OK|ERROR: reason}
-{ISO} | blindness-probe | {NONE | LEAKED: <what>} | <verbatim answer, abbreviated>      ← one time only
+<!-- {ISO} | blindness-probe | {NONE | LEAKED: <what>} | <verbatim answer, abbreviated>      DISABLED 2026-08-26, do not emit -->
 ```
 
 🔴 **House reporting rule (2026-08-08): any claim you derive by inference rather than measurement
