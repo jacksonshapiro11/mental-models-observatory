@@ -150,11 +150,15 @@ rewritten. It measures whether the meaning landed, which no gate can do.
 **🔴 HARD FALLBACK, FIRST: any error, any timeout, any subagent that fails to return, any ambiguity
 you cannot resolve in two minutes → SKIP THE REST OF THIS STEP, hand off the v2 you have, and write
 `readback=ERROR` in the status line with the reason. THE BRIEF ALWAYS SHIPS.** One retry maximum.
-**The Critic starts at 19:30 — never make it wait.** If you are past 19:25, skip 2c and say so.
-(Schedule as of 2026-08-26: quality gate 18:35 · editor 19:05 · critic 19:30. The old 19:00
-cutoff predated a schedule change and fired before the session could open, which is why 2c
-logged SKIPPED every night 08-08 through 08-19 and never once ran. If you move these tasks,
-move this number with them.)
+🔴 **THERE IS NO CLOCK ON THIS STEP (owner ruling 2026-08-26). Do not reintroduce one.**
+A hardcoded 19:00 cutoff used to sit here. It contradicted the 2026-08-09 ruling four lines above
+and it won every single night: the editor's session opens ~19:09, so the cutoff was already blown
+before the session existed. 2c logged SKIPPED 08-08 through 08-19 and **has never once run in
+production.** Twelve nights of a plausible-looking SKIP line hid a step that could not execute.
+**Time pressure cuts compression depth, never the read-back.** The only exits from 2c are the hard
+fallback above (error, timeout, a subagent that fails to return) and the two-cycle cap. If you are
+genuinely short, read back FEWER SECTIONS and say which — a partial run with an honest denominator
+is data; a skip is not.
 
 ### 2c.0 — Use the script if it is there
 
