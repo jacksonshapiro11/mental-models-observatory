@@ -35,7 +35,36 @@ interface Row {
   recur: string;
 }
 
-const AGE_FUSE_DAYS = 30; // check=none on Critical/High: WARN until this age, FAIL after.
+const AGE_FUSE_DAYS = 30; // check=none on High: WARN until this age, FAIL after.
+
+/**
+ * 🔴 STARVATION — A CRITICAL ROW MAY NOT BE DEFERRED FOR BUDGET TWICE (IMP-223, 2026-08-26 Critic
+ * mandate #2b, RC7).
+ *
+ * The 30-day fuse is the right budget for a HIGH row and it is an amnesty for a CRITICAL one. On
+ * the morning of 2026-08-26 the registry printed SEVEN Critical rows carrying `NO mechanical check`
+ * — IMP-215 through IMP-220 (six Critic mandates from 08-23 and 08-24, every one deferred for
+ * budget on the day it was logged) and ESC-020 (the Editor's sixth consecutive night of producing
+ * nothing) — and exited **0 on all of them**, because none had yet aged 30 days. The defect ESC-020
+ * describes shipped to readers that same morning: an unedited v1.5 stamped v2.
+ *
+ * A severity label that changes nothing about how long a row may sit is decoration. Critical now
+ * means what the word means: TWO DAYS to a code gate, an Editor REJECT gate, or an explicit
+ * WONT-FIX-VIA-PROSE closure. Past that the row is named STARVED, individually, and the registry
+ * exits non-zero — the same treatment a broken gate gets, because an unfixed Critical and a broken
+ * fix are the same thing to the reader. High and Medium keep the budget rule; they are what the
+ * budget rule is FOR.
+ */
+export const CRITICAL_STARVE_DAYS = 2;
+export type NoCheckVerdict = 'exempt' | 'warn' | 'STARVED' | 'FUSE-BLOWN';
+
+/** The acceptance gate's verdict for a row carrying no mechanical check. Pure, so it is testable. */
+export function noCheckVerdict(sev: string, closed: boolean, age: number): NoCheckVerdict {
+  if (closed) return 'exempt';
+  if (/^Critical$/i.test(sev.trim())) return age >= CRITICAL_STARVE_DAYS ? 'STARVED' : 'warn';
+  if (/^High$/i.test(sev.trim())) return age >= AGE_FUSE_DAYS ? 'FUSE-BLOWN' : 'warn';
+  return 'exempt';
+}
 
 function parseLedger(md: string): Row[] {
   const rows: Row[] = [];
@@ -501,10 +530,16 @@ function main(): number {
 
     // 2. The acceptance gate: Critical/High without a mechanical check.
     if (r.check === 'none' || r.check === '') {
-      if (/^(Critical|High)$/i.test(r.sev) && !closed) {
-        const age = ageDays(r.date);
+      const age = ageDays(r.date);
+      const verdict = noCheckVerdict(r.sev, closed, age);
+      if (verdict !== 'exempt') {
         const msg = `${r.id} [${r.sev}] has NO mechanical check (age ${age}d): "${r.summary.slice(0, 80)}" — convert to a code gate or close WONT-FIX-VIA-PROSE`;
-        if (age >= AGE_FUSE_DAYS)
+        if (verdict === 'STARVED')
+          fails.push(
+            `STARVED — ${msg} — a CRITICAL row may not be deferred for budget past ` +
+              `${CRITICAL_STARVE_DAYS} days (IMP-223). Ship its gate, downgrade it with a reason, or close it.`
+          );
+        else if (verdict === 'FUSE-BLOWN')
           fails.push(msg + ` — ${AGE_FUSE_DAYS}d fuse blown, this now BLOCKS`);
         else warns.push(msg);
       }
@@ -1028,6 +1063,64 @@ function selftest(): number {
       '[IMP-213] a narrower window is a subset of a wider one (window arithmetic sane)'
     );
     coverageAssertions += 19;
+  }
+
+  // ── IMP-223: STARVATION — the Critical fuse is 2 days, not 30 (08-26 Critic mandate #2b) ────
+  let starveAssertions = 0;
+  {
+    t2(
+      noCheckVerdict('Critical', false, CRITICAL_STARVE_DAYS) === 'STARVED',
+      `[IMP-223] a Critical row with no mechanical check is STARVED at ${CRITICAL_STARVE_DAYS} days`
+    );
+    t2(
+      noCheckVerdict('Critical', false, CRITICAL_STARVE_DAYS - 1) === 'warn',
+      '[IMP-223] …and SILENT (warn-only) the day it is logged — the mandate must be allowed its own session'
+    );
+    t2(
+      noCheckVerdict('High', false, CRITICAL_STARVE_DAYS + 5) === 'warn' &&
+        noCheckVerdict('Medium', false, 400) === 'exempt',
+      '[IMP-223] High and Medium keep the budget rule — they are what the budget rule is FOR; only Critical loses the amnesty'
+    );
+    t2(
+      noCheckVerdict('High', false, AGE_FUSE_DAYS) === 'FUSE-BLOWN',
+      `[IMP-223] …and High still blows its ${AGE_FUSE_DAYS}-day fuse — the old rule is narrowed, not deleted`
+    );
+    t2(
+      noCheckVerdict('Critical', true, 400) === 'exempt',
+      '[IMP-223] a CLOSED Critical is exempt at any age — WONT-FIX-VIA-PROSE is a legitimate discharge, and a gate that punishes closure teaches sessions not to close'
+    );
+    // THE REAL LEDGER, BOTH DIRECTIONS. The mandate's own acceptance: these seven rows must be
+    // silent on the day they were logged and STARVED the next morning.
+    const ledger = path.join(process.cwd(), 'system', 'Improvement_Ledger.md');
+    if (fs.existsSync(ledger)) {
+      const rows = parseLedger(fs.readFileSync(ledger, 'utf8'));
+      const named = ['IMP-215', 'IMP-216', 'IMP-217', 'IMP-218', 'IMP-219', 'IMP-220', 'ESC-020'];
+      const dayAge = (rowDate: string, asOf: string) =>
+        Math.floor(
+          (new Date(asOf + 'T00:00:00Z').getTime() - new Date(rowDate + 'T00:00:00Z').getTime()) / 86400000
+        );
+      const verdictsOn = (asOf: string) =>
+        rows
+          .filter(r => named.includes(r.id) && (r.check === 'none' || r.check === ''))
+          .map(r => noCheckVerdict(r.sev, isClosed(r.behavior), dayAge(r.date, asOf)));
+      const on26 = verdictsOn('2026-08-26');
+      const on27 = verdictsOn('2026-08-27');
+      t2(
+        on26.length > 0 && on26.every(v => v !== 'STARVED'),
+        `[IMP-223] the seven 2026-08-25 Critical rows are NOT starved on 08-26, the day after they were logged (${on26.length} matched)`
+      );
+      t2(
+        on27.length === on26.length && on27.length > 0 && on27.every(v => v === 'STARVED'),
+        `[IMP-223] …and ALL of them are STARVED on 08-27 — the mandate's own acceptance, on the real ledger (${on27.filter(v => v === 'STARVED').length}/${on27.length})`
+      );
+      t2(
+        rows.filter(r => (r.check === 'none' || r.check === '') && /^Critical$/i.test(r.sev) && !isClosed(r.behavior))
+          .every(r => noCheckVerdict(r.sev, false, ageDays(r.date)) !== 'STARVED'),
+        '[IMP-223] TODAY the registry is honest without being red: no Critical row is starved as of now, which is what let this leg ship the day it was written'
+      );
+      starveAssertions += 3;
+    }
+    starveAssertions += 5;
   }
 
   // ── IMP-211: THE ROUTING, WHICH IS THE ACTUAL SUBJECT OF THIS IMPROVEMENT ──────────────────

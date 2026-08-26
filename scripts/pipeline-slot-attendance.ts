@@ -343,7 +343,26 @@ export function absenceSubject(raw: string): string | null {
 }
 
 /** Field 2 of a line whose payload declares a self-heal OF THAT SLOT — a slot covered for. */
+/**
+ * IMP-214 — THE RETRACTION LEG THE 08-23 MANDATE REQUIRED AND WHICH NEVER SHIPPED.
+ *
+ * RECEIPT (2026-08-24 Critic, mandate #3 PARTIAL): `grep -n "CANARY-RETRACTION"
+ * scripts/pipeline-slot-attendance.ts` returned NOTHING. The 08-23 board carries this real line:
+ *
+ *   2026-08-22T23:33:50Z | brief-critic | CANARY-RETRACTION | N/A | 🔴 I WROTE A FALSE
+ *   brief-editor CANARY AND I AM RETRACTING IT
+ *
+ * Unhandled, it was read as SELF-HEAL COVERAGE FOR brief-critic — a task that plainly ran and was
+ * not covering for anybody. A retraction is the opposite of both attendance and coverage: it is a
+ * task saying *the line I wrote was false*. It must therefore (a) never count as coverage, and
+ * (b) UNDO the canary it names, so a retracted canary cannot launder an absent slot into an
+ * attended one. Measured: this takes archive-wide coverage from 5 lines to 4, and every one of
+ * the 4 survivors is a genuine brief-editor self-heal (06-22, 06-24, 08-21, 08-23).
+ */
+export const RETRACTION_RE = /\bCANARY[- ]?RETRACTION\b/i;
+
 export function selfHealedTask(raw: string): string | null {
+  if (RETRACTION_RE.test(raw)) return null;  // a retraction is not coverage — IMP-214
   if (!SELFHEAL_RE.test(raw)) return null;
   const t = boardLineTask(raw);
   if (!t) return null;
@@ -434,12 +453,82 @@ export function boardTasks(file: string, asOf?: Date): Set<string> {
 }
 
 /** Attendance and self-heal coverage, read in one pass so they can never disagree. */
+/**
+ * IMP-218 — THE SIXTH INSTANCE OF THE FALSE-ALARM CLASS, AND THE FIRST TIME ITS CAUSE IS NAMED.
+ *
+ * For six sessions the roll call has demanded an ALARM EMAIL for `intel-sweep-5`, a task that ran
+ * fine every one of those nights. Three previous fixes aimed at the EXPECTATION (narrow the
+ * roster, freeze the corpus, scope to evening-only); the 08-23 attempt blinded the detector on the
+ * 08-22 board and still fired in production on 08-24. None of them asked why.
+ *
+ * THE CAUSE, MEASURED ON THE REAL BOARDS TODAY — sibling tasks disagree about which board they
+ * write to, and the roll call reads exactly one file:
+ *
+ *   board 2026-08-24 carries intel-sweep-4 and intel-sweep-6   (they use BRIEF_DATE = today + 1)
+ *   board 2026-08-23 carries intel-sweep-5, and says so on the line itself:
+ *     "2026-08-23T20:11:48Z | intel-sweep-5 | CANARY | WRITE-OK | BRIEF_DATE=2026-08-23 per
+ *      Pipeline_Controller L54 (DAYTIME task = today, NOT today+1)"
+ *
+ * So `intel-sweep-5` is STRUCTURALLY absent from every board its siblings attend, forever, no
+ * matter how well it runs. A roll call that reads one file is asking "did you write where I
+ * looked?" when the question it means is **"did you run inside the window this board covers?"**
+ *
+ * THE FIX ASKS THE QUESTION IT MEANS. A board's window is [dayStart, dayStart + 24h) where
+ * dayStart is 14:00 ET on BRIEF_DATE−1. That window is decisive here and not a fudge: 2026-08-23
+ * 16:11 ET falls INSIDE board 08-24's window (08-23 14:00 → 08-24 14:00) and OUTSIDE board 08-23's
+ * (08-22 14:00 → 08-23 14:00). The timestamp, not the filename, settles which cycle a run belongs
+ * to. So a rostered slot with no line on its own board is rescued only by a line on an ADJACENT
+ * board whose instant lands inside THIS board's window.
+ *
+ * WHY THIS CANNOT GO BLIND — the property that makes it safe. A slot that genuinely never ran has
+ * no line in that window on ANY board, so it still fires. Self-heal coverage is excluded, so a
+ * line written in the slot's name by somebody else still cannot buy attendance. The rescue can
+ * only convert "wrote to the sibling board" into "attended"; it can never convert silence.
+ * Asserted both directions in the selftest.
+ *
+ * NOT a convention ruling. Which board a daytime task SHOULD write to is an owner decision about
+ * task bodies; this makes the instrument correct under either answer instead of guessing one.
+ */
+export const BOARD_WINDOW_MIN = 1440;
+
+export function shiftDate(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  return new Date(Date.UTC(y, m - 1, d) + days * 86400000).toISOString().slice(0, 10);
+}
+
+export function siblingWindowAttendance(
+  boardRoot: string,
+  date: string,
+  dayStart: Date,
+  asOf?: Date
+): Map<string, string> {
+  const out = new Map<string, string>();
+  const lo = dayStart.getTime();
+  const hi = lo + BOARD_WINDOW_MIN * 60000;
+  for (const sib of [shiftDate(date, -1), shiftDate(date, 1)]) {
+    const f = boardPath(boardRoot, sib);
+    if (!fs.existsSync(f)) continue;
+    for (const raw of fs.readFileSync(f, 'utf8').split('\n')) {
+      const t = boardLineTask(raw);
+      if (!t) continue;
+      const ts = parseTs(raw);
+      if (!ts) continue;                                   // no instant, no rescue
+      if (ts.getTime() < lo || ts.getTime() >= hi) continue; // outside THIS board's cycle
+      if (asOf && ts.getTime() > asOf.getTime()) continue;
+      if (RETRACTION_RE.test(raw) || selfHealedTask(raw)) continue; // coverage is not attendance
+      if (!out.has(t)) out.set(t, `${sib} board @ ${raw.trim().slice(0, 130)}`);
+    }
+  }
+  return out;
+}
+
 export function boardAttendance(
   file: string,
   asOf?: Date
 ): { attended: Set<string>; selfHealed: Map<string, string> } {
   const attended = new Set<string>();
   const selfHealed = new Map<string, string>();
+  const retracted = new Set<string>();  // IMP-214
   if (!fs.existsSync(file)) return { attended, selfHealed };
   for (const raw of fs.readFileSync(file, 'utf8').split('\n')) {
     const t = boardLineTask(raw);
@@ -447,6 +536,13 @@ export function boardAttendance(
     if (asOf) {
       const ts = parseTs(raw);
       if (ts && ts.getTime() > asOf.getTime()) continue;
+    }
+    // IMP-214: a CANARY-RETRACTION is neither attendance nor coverage. It withdraws the canary it
+    // names, and the withdrawal is applied AFTER the sweep so line order cannot decide the verdict.
+    if (RETRACTION_RE.test(raw)) {
+      const subj = absenceSubject(raw);
+      if (subj) retracted.add(subj);
+      continue;
     }
     const healed = selfHealedTask(raw);
     if (healed) {
@@ -459,6 +555,18 @@ export function boardAttendance(
   // A slot with BOTH a self-heal line and a genuine line of its own really did run: the self-heal
   // is then a second opinion, not a cover. Attendance wins; the coverage note is dropped.
   for (const k of [...selfHealed.keys()]) if (attended.has(k)) selfHealed.delete(k);
+  // IMP-214: a retracted canary is withdrawn. Only a slot whose ONLY evidence was the retracted
+  // line loses attendance — a slot that also wrote a genuine line of its own really did run.
+  for (const r of retracted) {
+    const own = fs.existsSync(file)
+      ? fs.readFileSync(file, 'utf8').split('\n').some(l => {
+          if (RETRACTION_RE.test(l) || boardLineTask(l) !== r) return false;
+          if (asOf) { const ts = parseTs(l); if (ts && ts.getTime() > asOf.getTime()) return false; }
+          return !selfHealedTask(l);
+        })
+      : false;
+    if (!own) attended.delete(r);
+  }
   return { attended, selfHealed };
 }
 
@@ -499,6 +607,17 @@ export interface Unterminated {
   refClosed: number; refTotal: number;
   line: string;
 }
+/**
+ * IMP-221 (2026-08-26 Critic mandate #2a): the scheduler says it FIRED and the board says nothing.
+ * This is the one absence state a derived window cannot see, because the window answers "when does
+ * this slot usually speak" and the scheduler answers "this slot was started, at this instant".
+ */
+export interface FiredSilent {
+  task: string;
+  firedAt: Date;
+  tPlusMin: number;
+  line: string;
+}
 export interface RollCall {
   date: string;
   eveningDate: string;
@@ -515,7 +634,24 @@ export interface RollCall {
   unterminated: Unterminated[];
   /** Rostered slots whose window could not be derived — NAMED, never defaulted. */
   windowless: string[];
+  /** IMP-218: slot -> the sibling-board line proving it ran inside this board's window. */
+  crossBoard: Map<string, string>;
+  /** IMP-221: slots the SCHEDULER reports as fired this cycle that wrote no line of their own. */
+  firedAndSilent: FiredSilent[];
 }
+
+/**
+ * How long after the scheduler starts a task before its silence is a finding (IMP-221).
+ *
+ * This one is CHOSEN, not derived, and the file's own doctrine requires me to say so: the archive
+ * cannot measure fire→canary latency, because no board records a `lastRunAt`. What the archive DOES
+ * settle is the shape of the obligation — every task spec in this pipeline makes the CANARY its
+ * STEP 0, the first action before reading a file. Ten minutes is roughly two orders of magnitude
+ * more than writing one line needs, and it is under the discriminating case: on 2026-08-26 the roll
+ * call printed FULL ATTENDANCE at 19:31 ET for a `brief-editor` the scheduler had started at 19:20,
+ * eleven minutes earlier, that never wrote anything and never would.
+ */
+export const FIRED_GRACE_MIN = 10;
 
 export function rollCall(opts: {
   docRoot: string;          // repo root holding system/Pipeline_Controller.md + the archive
@@ -526,6 +662,8 @@ export function rollCall(opts: {
   replay?: boolean;
   /** Injected derived windows (selftests + repeated calls); derived from docRoot when absent. */
   windows?: Map<string, TaskWindow>;
+  /** IMP-221: task -> scheduler `lastRunAt`. Supplied by --scheduler-lastrun; never inferred. */
+  schedulerLastRun?: Map<string, Date>;
 }): RollCall {
   const docRoot = opts.docRoot;
   const boardRoot = opts.boardRoot ?? docRoot;
@@ -543,9 +681,44 @@ export function rollCall(opts: {
   const observed = observedTasks(docRoot);
   const haveArchive = observed.size > 0;
   const dayStart = etWallClock(eveningDate, 14, 0);
+  // ── 🔴 ROSTER BIRTH DATE — A DERIVED ROSTER MUST NOT BACK-DATE ITS NEW MEMBERS (IMP-221) ─────
+  // The membership of this roster is DERIVED (a task is rostered because the archive shows it
+  // canarying), and derivation happens at CALL TIME against the LIVE archive. So a slot that only
+  // just crossed MIN_N joins the roster on EVERY board ever written, including the ones from before
+  // the slot existed — and the roll call then accuses a board of missing a task that had not been
+  // created yet.
+  //
+  // WORKED FAILURE, 2026-08-26. `selection-judge` was n=6 and correctly NAMED WINDOWLESS when the
+  // corpus was frozen on 08-21 (that pin is still asserted below). By this morning it was n=10, the
+  // p95 became computable, and it entered the roster retroactively: fourteen boards — 08-02 through
+  // 08-15 — each grew exactly one MISSING-SLOT accusation, the `[no-storm]` leg reported a storm,
+  // and IMP-207 and IMP-211 both went RED for a defect in NEITHER of them. A false-alarm storm is
+  // not a loud version of a working alarm; it is the thing that teaches the next session to skim
+  // (CARRY/TREE, 2026-08-13). This is IMP-125's rule — THE RULE BINDS FORWARD, NEVER BACKWARD —
+  // arriving in the one place it had not yet been wired: not the RULE's start date, the SLOT's.
+  //
+  // 🔴 WHY THE GRACE IS ONE CYCLE AND NOT ZERO, WHICH IS WHERE THIS FIX WAS NEARLY WRONG.
+  // A slot's first canary is an UPPER BOUND on its birth date, never the birth date — because a
+  // slot that exists and does not fire leaves nothing behind, so its FIRST NON-FIRE NECESSARILY
+  // PRECEDES ITS FIRST CANARY. Zero grace therefore deletes exactly the catches this file exists
+  // for, and it did: at grace 0 the 2026-08-01 `intel-sweep-4` non-fire went silent, and that one
+  // is REAL. Receipt, from the stamps and not from the filenames — in the 08-01 cycle sweeps 5 and
+  // 6 canaried at 16:05 and 17:18 ET on 07-31 and sweeps 1, 2 and 3 canaried on the 08-01 morning,
+  // so the protocol was demonstrably in force across that whole cycle, and sweep 4's own 14:09 ET
+  // slot wrote nothing anywhere. (The tempting story — "07-31 predates EFFECTIVE_FROM, so it is a
+  // convention artifact" — is refuted by sweeps 5 and 6 on that same afternoon. It was checked
+  // before this constant was chosen.)
+  //
+  // So ONE cycle: the single cycle immediately before a slot's first canary is genuinely ambiguous
+  // between "did not exist yet" and "existed and missed its first run", and the roll call resolves
+  // an ambiguity toward the accusation — the same treatment 08-01 intel-sweep-4 and 08-15
+  // selection-judge both get, which is why both sit in KNOWN_NOISY under one rule rather than as
+  // two special cases. Anything beyond one cycle is not ambiguous: it is a board from before the
+  // slot existed. 14 false accusations become 1, and no demonstrable true catch is lost.
   const rostered: Slot[] = haveArchive
     ? [...windows.values()]
         .filter(w => w.canaryComputable)
+        .filter(w => !w.firstCycle || opts.date >= eveningDateOf(w.firstCycle))
         .sort((a, b) => a.canaryP95 - b.canaryP95)
         .map(w => {
           const abs = (PIPELINE_DAY_START_MIN + w.canaryP95) % 1440;
@@ -559,6 +732,9 @@ export function rollCall(opts: {
   const bp = boardPath(boardRoot, opts.date);
   const att = boardAttendance(bp, opts.replay ? now : undefined);
   const present = att.attended;
+  // IMP-218: the same cycle, written to a sibling board. Computed once, consulted only for slots
+  // this board does not already account for.
+  const sibling = siblingWindowAttendance(boardRoot, opts.date, dayStart, opts.replay ? now : undefined);
   // The second, independent absence path — a line written ABOUT the slot by anybody. It can only
   // ADD absences (its contradiction guard already spares any slot with a clean line of its own),
   // so a convention change on one path cannot make the roll call quieter than it should be.
@@ -567,6 +743,8 @@ export function rollCall(opts: {
   const notYetDue: string[] = [];
   const attended: string[] = [];
   const absent: Absentee[] = [];
+  /** IMP-218: slot -> the sibling-board line that proves it ran in this cycle. Reported, never silent. */
+  const crossBoard = new Map<string, string>();
   // The pre-canary archive is exempt, not innocent and not guilty — it was never asked. See
   // EFFECTIVE_FROM. Attendance is still computed and reported; only the ALARM is suppressed.
   const exempt = opts.date < EFFECTIVE_FROM;
@@ -585,6 +763,14 @@ export function rollCall(opts: {
       notYetDue.push(s.task); // blindness (2): not due is not absent
       continue;
     }
+    // IMP-218: last question before an accusation — did it run inside THIS board's window and
+    // write the line to a sibling board? That is attendance, not absence.
+    const rescued = sibling.get(s.task);
+    if (rescued) {
+      attended.push(s.task);
+      crossBoard.set(s.task, rescued);
+      continue;
+    }
     if (exempt) continue;
     absent.push({
       task: s.task,
@@ -599,6 +785,40 @@ export function rollCall(opts: {
           : 'NO LINE OF ANY KIND on the board for this slot',
     });
   }
+  // ── 🔴 FIRED-AND-SILENT — THE SCHEDULER'S TESTIMONY OUTRANKS THE p95 (IMP-221) ───────────────
+  // 2026-08-26: `brief-editor` fired at 19:20 ET, wrote nothing, and produced no v2, no working
+  // file and no editor log — SIXTH consecutive night. This roll call ran at 19:31 and printed
+  // "✅ FULL ATTENDANCE", because the slot's derived p95 window had not closed yet, so it was
+  // classed NOT-YET-DUE. The detector built to catch exactly this absence certified the night as
+  // healthy while the absence was happening.
+  //
+  // A derived window answers "when does this slot usually speak". It cannot answer "was this slot
+  // started", and on a night when the answer to the second is YES the first is no longer relevant:
+  // a task that has been running for longer than it takes to write one line and has written none
+  // is silent, whatever the percentile says. So a `lastRunAt` inside this cycle makes the slot DUE
+  // NOW. The scheduler's testimony is evidence the board does not contain, which is why it must be
+  // PASSED IN and is never inferred: no flag, no leg, and every historical board reads unchanged.
+  const firedAndSilent: FiredSilent[] = [];
+  if (!exempt && opts.schedulerLastRun) {
+    for (const [task, firedAt] of opts.schedulerLastRun) {
+      if (+firedAt < +dayStart || +firedAt > +now) continue; // fired in some other cycle
+      if (present.has(task)) continue;                        // it spoke on its own board
+      if (sibling.get(task)) continue;                        // it spoke on a sibling (IMP-218)
+      const tPlusMin = (+now - +firedAt) / 60000;
+      if (tPlusMin < FIRED_GRACE_MIN) continue;               // still inside the grace to canary
+      firedAndSilent.push({
+        task,
+        firedAt,
+        tPlusMin,
+        line:
+          `FIRED-AND-SILENT: ${task} (T+${tPlusMin.toFixed(0)} min) — the scheduler started it at ` +
+          `${fmtET(firedAt)} and it has written NO line of its own on this board or a sibling. ` +
+          `A started task that cannot write one CANARY line is not late, it is failing silently ` +
+          `(2026-08-26: brief-editor, T+11, and this roll call said FULL ATTENDANCE).`,
+      });
+    }
+  }
+
   // ── UNTERMINATED — warn-level, never alarms (owner: "the ESC-015 class, warn-level first") ──
   // SCOPE, stated as plainly as the ABSENT leg's: THIS ANSWERS "DID IT REPORT", NOT "IS IT DEAD".
   // The archive settles the distinction rather than leaving it to intuition — `daily-improvement`
@@ -622,7 +842,7 @@ export function rollCall(opts: {
       });
     }
   }
-  return { date: opts.date, eveningDate, now, rostered, dropped, notYetDue, attended, absent, exempt, selfHealed: att.selfHealed, testimony, unterminated, windowless };
+  return { date: opts.date, eveningDate, now, rostered, dropped, notYetDue, attended, absent, exempt, selfHealed: att.selfHealed, testimony, unterminated, windowless, crossBoard, firedAndSilent };
 }
 
 // ---------- THE DERIVED ROSTER: windows measured, never guessed ----------
@@ -660,6 +880,20 @@ export function fmtClock(absMin: number): string {
 }
 
 export const PIPELINE_DAY_START_MIN = 14 * 60; // 14:00 ET on BRIEF_DATE-1 — where a board begins
+
+/** Which BRIEF_DATE cycle an instant belongs to. 14:00 ET rolls the day, per PIPELINE_DAY_START_MIN. */
+export function cycleDateOf(d: Date): string {
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(d);
+  const g = (t: string) => p.find(x => x.type === t)!.value;
+  const day = `${g('year')}-${g('month')}-${g('day')}`;
+  const min = (+g('hour') % 24) * 60 + +g('minute');
+  if (min < PIPELINE_DAY_START_MIN) return day;
+  const [y, m, dd] = day.split('-').map(Number) as [number, number, number];
+  return new Date(Date.UTC(y, m - 1, dd) + 86400000).toISOString().slice(0, 10);
+}
 
 /** ET wall-clock minutes since 05:00 ET, wrapping post-midnight lines onto the same pipeline day. */
 export function pipelineDayMin(d: Date): number {
@@ -705,6 +939,18 @@ export interface TaskWindow {
   latP95: number;
   canaryComputable: boolean;
   latComputable: boolean;
+  /**
+   * 🔴 THE SLOT'S BIRTH DATE — the earliest CYCLE in which this task canaried at all (IMP-221).
+   * A DERIVED roster has no membership table, so it also has no founding date, and without one it
+   * back-dates every new slot to the beginning of the archive. See the ROSTER BIRTH DATE note in
+   * rollCall for the worked failure this exists to prevent.
+   *
+   * It is the CYCLE, not the board FILE: `intel-sweep-1`'s first canary is stamped 07:51 ET on
+   * 2026-08-01 and sits in the 2026-08-02 board, so the filename says 08-02 and the truth says
+   * 08-01. Deriving a date from the file a line landed in is the error IMP-218 corrected in the
+   * attendance path; it does not get to reappear one layer up.
+   */
+  firstCycle: string;
   /** boards where a canary opened and no terminal line ever closed it */
   unterminatedBoards: string[];
   /** in-force boards EXCLUDING the trailing RECENT_BOARDS — the uncontaminated reference period */
@@ -751,6 +997,8 @@ export function deriveWindows(root: string, upTo?: string): Map<string, TaskWind
   const canary = new Map<string, number[]>();
   const lat = new Map<string, number[]>();
   const open = new Map<string, string[]>();
+  /** IMP-221: earliest CYCLE carrying a canary for this task — from the stamp, not the filename. */
+  const firstCycle = new Map<string, string>();
   for (const b of boards) {
     const ev = new Map<string, { ts: Date; kind: 'C' | 'T' }[]>();
     for (const raw of fs.readFileSync(path.join(dir, b), 'utf8').split('\n')) {
@@ -765,6 +1013,8 @@ export function deriveWindows(root: string, upTo?: string): Map<string, TaskWind
       if (kind === 'C') {
         if (!canary.has(task)) canary.set(task, []);
         canary.get(task)!.push(pipelineDayMin(ts));
+        const cyc = cycleDateOf(ts);
+        if (!firstCycle.has(task) || cyc < firstCycle.get(task)!) firstCycle.set(task, cyc);
       }
     }
     for (const [task, list] of ev) {
@@ -819,6 +1069,7 @@ export function deriveWindows(root: string, upTo?: string): Map<string, TaskWind
       latP95: l.length >= MIN_N ? pctl(l, WINDOW_PCT) : NaN,
       canaryComputable: c.length >= MIN_N,
       latComputable: l.length >= MIN_N,
+      firstCycle: firstCycle.get(task) ?? '',
       unterminatedBoards: open.get(task) ?? [],
       refClosed: r.t, refTotal: r.c,
       recentClosed: rec.t, recentTotal: rec.c,
@@ -903,7 +1154,10 @@ export function writeAlert(
       `\`${date}-pipeline-status.md\` past its deadline + ${GRACE_MIN}-minute grace. A task that never ` +
       `starts writes no canary, so no liveness gate can see it.\n` +
       `- **Manual recovery:** re-run the ${a.task} slot, or self-heal downstream ` +
-      `(\`editor-handoff-gate --can-self-heal ${date}\`) and say on the board that you did.\n`;
+      `(\`editor-handoff-gate --can-self-heal ${date} --scheduler-lastrun <ISO|NEVER>\`) and say on the board that you did. ` +
+      `**IMP-216: --scheduler-lastrun is REQUIRED and exit 3 = SELF-HEAL UNKNOWN, which is NOT permission** — without a ` +
+      `scheduler reading that gate refuses to answer, because "never fired" and "fired and produced nothing" are the same ` +
+      `string on this board. A Critic-invoked self-heal writes \`brief-editor-selfheal\` lines, never \`brief-editor\`.\n`;
   }
   if (out) {
     if (!existing) out = `# Pipeline Alert — ${date}\n` + out;
@@ -951,6 +1205,71 @@ function fireFixture(root: string): { fixtureRoot: string; removed: number } {
     kept.join('\n')
   );
   return { fixtureRoot, removed };
+}
+
+/**
+ * IMP-218 — the blindness fixture. Copies board `date` and BOTH siblings into a scratch root with
+ * every line for `task` removed, so "genuinely never ran" can be constructed from real bytes
+ * without editing a live board. `keepOnSiblings` puts the stripped lines back on the sibling boards
+ * ONLY — the exact real-world shape of the board-convention split. `shiftHours` moves them out of
+ * the window, proving the rescue is a window judgement rather than a filename shrug.
+ */
+function blindnessFixture(
+  root: string,
+  date: string,
+  task: string,
+  opts: { keepOnSiblings?: boolean; shiftHours?: number } = {}
+): { fixtureRoot: string; removed: number } {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'psa-blind-'));
+  fs.mkdirSync(path.join(fixtureRoot, 'daily-briefs'), { recursive: true });
+  let removed = 0;
+  for (const d of [shiftDate(date, -1), date, shiftDate(date, 1)]) {
+    const src = boardPath(root, d);
+    if (!fs.existsSync(src)) continue;
+    const kept: string[] = [];
+    for (const raw of fs.readFileSync(src, 'utf8').split('\n')) {
+      if (boardLineTask(raw) !== task) { kept.push(raw); continue; }
+      removed++;
+      if (d !== date && opts.keepOnSiblings) {
+        if (opts.shiftHours) {
+          const ts = parseTs(raw);
+          if (ts) {
+            const moved = new Date(ts.getTime() + opts.shiftHours * 3600000).toISOString().replace(/\.\d+Z$/, 'Z');
+            kept.push(raw.replace(/\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})/, moved));
+            continue;
+          }
+        }
+        kept.push(raw);
+      }
+    }
+    fs.writeFileSync(boardPath(fixtureRoot, d), kept.join('\n'));
+  }
+  return { fixtureRoot, removed };
+}
+
+/** IMP-214 — the 08-23 board with the self-heal canary kept and its retraction kept, nothing else. */
+function retractionFixture(root: string): { fixtureRoot: string } {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'psa-retract-'));
+  fs.mkdirSync(path.join(fixtureRoot, 'daily-briefs'), { recursive: true });
+  for (const d of ['2026-08-22', '2026-08-23', '2026-08-24']) {
+    const src = boardPath(root, d);
+    if (fs.existsSync(src)) fs.copyFileSync(src, boardPath(fixtureRoot, d));
+  }
+  return { fixtureRoot };
+}
+
+/** Every line the NARROW rule reads as coverage, with its board date — the identity pin's input. */
+function coverageLines(root: string): { date: string; task: string; line: string }[] {
+  const dir = DB(root);
+  const out: { date: string; task: string; line: string }[] = [];
+  if (!fs.existsSync(dir)) return out;
+  for (const f of fs.readdirSync(dir).filter(x => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(x)).sort()) {
+    for (const raw of fs.readFileSync(path.join(dir, f), 'utf8').split('\n')) {
+      const t = selfHealedTask(raw);
+      if (t) out.push({ date: f.slice(0, 10), task: t, line: raw });
+    }
+  }
+  return out;
 }
 
 function selftest(): number {
@@ -1165,10 +1484,28 @@ function selftest(): number {
     // root cause of E-PIPELINE-FULL-FAILURE-02: "the existing watchdog never caught the missing
     // intel sweep because it was not on the monitored task list."
     const KNOWN_NOISY: Record<string, number> = {
-      '2026-08-01': 2, // intel-sweep-4, intel-sweep-1 — board carries 2,3,5,6 only
-      '2026-08-03': 1, // intel-sweep-5 — board carries 1,2,3,4,6
-      '2026-08-05': 1, // intel-sweep-3 — board carries 1,2,4,5,6
-      '2026-08-12': 1, // intel-sweep-5 — board carries 1,2,3,4,6
+      // 🔴 CORRECTED 2026-08-24 (IMP-218) — FOUR OF THESE FIVE "NON-FIRES" NEVER HAPPENED, and
+      // this table is where the false-alarm class had been laundered into ground truth. Each of
+      // the four sweeps below RAN, on time, and wrote its line to the SIBLING board, inside this
+      // board's own window. Receipts, printed by the corrected instrument:
+      //   08-01 intel-sweep-1  ← 08-02 board @ 2026-08-01T11:51:08Z | intel-sweep-1 | CANARY
+      //   08-03 intel-sweep-5  ← 08-02 board @ 2026-08-02T16:06:24-0400 | intel-sweep-5 | CANARY
+      //   08-05 intel-sweep-3  ← 08-06 board @ 2026-08-05T16:08:03Z | intel-sweep-3 | CANARY
+      //   08-12 intel-sweep-5  ← 08-11 board @ 2026-08-11T20:13:43Z | intel-sweep-5 | CANARY
+      // What SURVIVES is the proof the detector did not go blind: 08-01 intel-sweep-4 has no line
+      // on any board in the window and still fires, and 08-21 brief-editor still fires. A pin that
+      // records an instrument's error as expected behaviour is worse than no pin — it makes the
+      // fix look like the regression.
+      // 🔴 08-01 IS A BIRTH-GRACE CYCLE AND IT STAYS NOISY ON PURPOSE (IMP-221, 2026-08-26). It is
+      // the single ambiguous cycle immediately before intel-sweep-4's first observed canary — the
+      // window documented in rollCall, where "did not exist yet" and "existed and missed its first
+      // run" cannot be told apart and the roll call keeps the accusation. Verified REAL from the
+      // stamps: sweeps 5 and 6 canaried on that same 07-31 afternoon, so the protocol was in force
+      // across the whole cycle and sweep 4's 14:09 ET slot wrote nothing anywhere. If this goes
+      // quiet the grace has grown and the detector is blinder. (selection-judge's own grace cycle
+      // is 08-16 and is NOT noisy — it has a line on that board — which is the cleanest evidence
+      // that the grace is a rule about ROSTERING, not a licence to accuse.)
+      '2026-08-01': 1, // intel-sweep-4 — birth-grace cycle; verified genuinely absent
       '2026-08-21': 1, // brief-editor  — the non-fire this file was built for
     };
     const unexpected = noisy.filter(x => KNOWN_NOISY[x.d] === undefined);
@@ -1191,6 +1528,102 @@ function selftest(): number {
         rollCall({ docRoot: root, date: '2026-08-21' }).exempt === false,
       '[no-storm] the boundary is a real switch: 2026-05-17 EXEMPT, 2026-08-21 IN FORCE'
     );
+
+    // ── IMP-221 · THE ROSTER'S BIRTH DATE, PROVED ON THE SLOT THAT BROKE IT ────────────────────
+    // These legs pin the fix in BOTH directions on real bytes: the archive must still show the
+    // slot as computable (or the leg is vacuous and passes for the wrong reason), it must be
+    // silent on every board that predates the slot's own first canary, and it must go on
+    // rostering the slot from that board forward — a fix that simply removed selection-judge from
+    // the roster would pass the storm leg and blind the detector, which is the trade this file
+    // has refused four times (IMP-141/149/200/211).
+    const LIVE = deriveWindows(root);
+    const sj = LIVE.get('selection-judge');
+    assert(
+      !!sj && sj.canaryComputable && sj.canaryN >= MIN_N,
+      `[birth] selection-judge IS computable in the live archive (n=${sj?.canaryN ?? 'ABSENT'}) — the leg below is exercised, not vacuous`
+    );
+    assert(
+      !!sj && sj.firstCycle === '2026-08-17',
+      `[birth] …and its FIRST canary is in the 2026-08-17 CYCLE (got ${sj?.firstCycle || 'NONE'} — the 08-16 BOARD, stamped past 14:00 ET, which is the next cycle), so 08-02→08-15 are boards from before the slot existed`
+    );
+    assert(
+      ['2026-08-02', '2026-08-08', '2026-08-15'].every(
+        d => !rollCall({ docRoot: root, date: d }).rostered.some(s => s.task === 'selection-judge')
+      ),
+      '[birth] a board more than one cycle before the slot does NOT roster it — the fourteen-board storm of 2026-08-26, at its source'
+    );
+    assert(
+      ['2026-08-17', '2026-08-20'].every(
+        d => rollCall({ docRoot: root, date: d }).rostered.some(s => s.task === 'selection-judge')
+      ),
+      '[birth] …and from its own first cycle FORWARD it is rostered exactly as before — the birth date narrows the EXPECTATION, never the DETECTOR'
+    );
+    // 🔴 THE GRACE, PINNED BOTH WAYS. This is the leg that stops the birth date from being widened
+    // into blindness the next time a storm is inconvenient: a slot's first non-fire always
+    // precedes its first canary, so the one ambiguous cycle stays accusable — for the slot that
+    // proved it (intel-sweep-4, verified real) and for the slot that motivated the fix alike.
+    assert(
+      rollCall({ docRoot: root, date: '2026-08-01' }).absent.some(a => a.task === 'intel-sweep-4'),
+      '[birth] GRACE=1: the REAL 2026-08-01 intel-sweep-4 non-fire SURVIVES — grace 0 deleted it, and sweeps 5 and 6 canarying that same 07-31 afternoon prove the protocol was in force'
+    );
+    assert(
+      (['intel-sweep-4', 'selection-judge'] as const).every(t => {
+        const w = LIVE.get(t);
+        if (!w?.firstCycle) return false;
+        const grace = eveningDateOf(w.firstCycle);
+        const before = eveningDateOf(grace);
+        const on = (d: string) => rollCall({ docRoot: root, date: d }).rostered.some(s => s.task === t);
+        return on(grace) && !on(before);
+      }),
+      '[birth] …and BOTH slots get the identical treatment at their own boundary — rostered on the grace cycle, absent from the one before it. One rule, not a carve-out for the slot that broke the storm leg.'
+    );
+    assert(
+      !!LIVE.get('intel-sweep-1') && LIVE.get('intel-sweep-1')!.firstCycle === '2026-08-01',
+      `[birth] the birth date is read from the STAMP, not the FILENAME: intel-sweep-1's first canary is 07:51 ET 08-01 written to the 08-02 BOARD, and its cycle is 08-01 (got ${LIVE.get('intel-sweep-1')?.firstCycle || 'NONE'}) — IMP-218's lesson does not get to reappear one layer up`
+    );
+
+    // ── IMP-221 · FIRED-AND-SILENT (2026-08-26 Critic mandate #2a) ─────────────────────────────
+    // Every leg on the REAL 2026-08-26 board, at the REAL clock time the roll call ran, with the
+    // REAL lastRunAt the scheduler reported. This is the night the detector said FULL ATTENDANCE.
+    const t1931 = etWallClock('2026-08-25', 19, 31);
+    const fs2026 = (m: Record<string, string>, now = t1931) =>
+      rollCall({
+        docRoot: root,
+        date: '2026-08-26',
+        now,
+        replay: true,
+        schedulerLastRun: new Map(Object.entries(m).map(([k, v]) => [k, parseTs(v)!])),
+      }).firedAndSilent;
+    const EDITOR_FIRED = '2026-08-25T23:20:18.472Z';
+    const fired = fs2026({ 'brief-editor': EDITOR_FIRED });
+    assert(
+      fired.length === 1 && fired[0]!.task === 'brief-editor' && Math.round(fired[0]!.tPlusMin) === 11,
+      `[fired] FIRES on the real 2026-08-26 brief-editor at T+11 — the discriminating test the 19:31 roll call failed with "✅ FULL ATTENDANCE" (got ${fired.map(f => `${f.task}@T+${f.tPlusMin.toFixed(0)}`).join(', ') || 'NOTHING'})`
+    );
+    assert(
+      fs2026({ 'brief-editor': EDITOR_FIRED, 'brief-quality-gate': '2026-08-25T22:41:38Z' })
+        .every(f => f.task !== 'brief-quality-gate'),
+      '[fired] SILENT on brief-quality-gate — fired 22:41:38Z in the same cycle and wrote its own CANARY and SUCCESS lines. A slot that spoke is never accused for having been started.'
+    );
+    assert(
+      fs2026({ 'brief-editor': EDITOR_FIRED }).every(f => f.task !== 'brief-light') &&
+        fs2026({}).length === 0,
+      '[fired] SILENT on genuinely not-yet-due slots with no lastRunAt in cycle (brief-light at 19:31), and SILENT with no scheduler evidence at all — this leg is EVIDENCE-DRIVEN, never inferred'
+    );
+    assert(
+      fs2026({ 'brief-editor': '2026-08-20T23:20:00Z' }).length === 0,
+      '[fired] a lastRunAt from ANOTHER cycle does not fire — the window is this board\'s own pipeline day, not "any time in the archive"'
+    );
+    assert(
+      fs2026({ 'brief-editor': EDITOR_FIRED }, etWallClock('2026-08-25', 19, 25)).length === 0,
+      `[fired] SILENT at T+5, inside the ${FIRED_GRACE_MIN}-min canary grace — the grace is real, so a slot that is merely STARTING is not a finding`
+    );
+    assert(
+      ['2026-08-20', '2026-08-21', '2026-08-22'].every(
+        d => rollCall({ docRoot: root, date: d }).firedAndSilent.length === 0
+      ),
+      '[fired] 08-20/21/22 read UNCHANGED — a new leg that needs a flag cannot re-grade the archive'
+    );
     // 🔴 THE OTHER DIRECTION OF THE CORPUS FREEZE, AND THE ONLY REASON THE FREEZE IS SAFE
     // (IMP-211). Freezing the EXPECTATION set would be laundering if it also narrowed the
     // DETECTOR. It does not: this asserts a live catch on a board written AFTER the freeze —
@@ -1199,12 +1632,44 @@ function selftest(): number {
     // exactly what reddened this selftest before the fix. It must still FIRE, and it must fire
     // from the same code path the frozen sweep uses — if this ever goes quiet, the freeze has
     // stopped being a scoping decision and started being a blindfold.
+    // 🔴 REWRITTEN 2026-08-24 (IMP-218). The old form of this assertion pinned a LIVE, MUTABLE
+    // board: it demanded that `rollCall('2026-08-22')` fire intel-sweep-5. It went red not because
+    // the detector broke but because THE EVIDENCE WAS FIXED — board 08-22 today carries two real
+    // intel-sweep-5 lines (a canary and a terminal), so firing there would now be the false alarm.
+    // That is the IMP-185 class ("a selftest fixture encoded a moving fact as a literal"), and a
+    // pin that reddens when the world gets better teaches the next session to skim its own gate.
+    // The PROPERTY the assertion is about is kept and proved on a fixture nobody else can edit:
+    // strip a slot from the board AND from both siblings, and the detector must still name it.
     {
-      const live = rollCall({ docRoot: root, date: '2026-08-22' });
+      const { fixtureRoot, removed } = blindnessFixture(root, '2026-08-22', 'intel-sweep-5');
+      const gone = rollCall({ docRoot: root, boardRoot: fixtureRoot, date: '2026-08-22' });
       assert(
-        live.exempt === false &&
-          live.absent.some(a => a.task === 'intel-sweep-5'),
-        `[no-storm] and the freeze narrows the EXPECTATION, never the DETECTOR — the post-freeze 2026-08-22 board still fires intel-sweep-5 (got: ${live.absent.map(a => a.task).join(', ') || 'NOTHING — the detector went blind'})`
+        removed >= 2 &&
+          gone.exempt === false &&
+          gone.absent.some(a => a.task === 'intel-sweep-5'),
+        `[no-storm] and the freeze narrows the EXPECTATION, never the DETECTOR — on a POST-FREEZE board with intel-sweep-5's ${removed} real lines stripped from it and both siblings, the roll call still names it (got: ${gone.absent.map(a => a.task).join(', ') || 'NOTHING — the detector went blind'})`
+      );
+      // …AND THE OTHER DIRECTION, which is the whole of IMP-218: put the lines back on the SIBLING
+      // board only — where the real intel-sweep-5 actually writes them — and the alarm must stop.
+      const { fixtureRoot: sibOnly } = blindnessFixture(root, '2026-08-22', 'intel-sweep-5', {
+        keepOnSiblings: true,
+      });
+      const rescued = rollCall({ docRoot: root, boardRoot: sibOnly, date: '2026-08-22' });
+      assert(
+        !rescued.absent.some(a => a.task === 'intel-sweep-5') &&
+          rescued.crossBoard.has('intel-sweep-5'),
+        `[no-storm] …and a slot that ran INSIDE this board's window but wrote to a SIBLING board is ATTENDED, with the proving line carried: ${rescued.crossBoard.get('intel-sweep-5')?.slice(0, 90) ?? 'NO RESCUE — the >=6-instance false alarm is back'}`
+      );
+      // The rescue is a WINDOW judgement, not a filename shrug: the same line dated 48h earlier is
+      // outside board 08-22's cycle and must NOT buy attendance.
+      const { fixtureRoot: stale } = blindnessFixture(root, '2026-08-22', 'intel-sweep-5', {
+        keepOnSiblings: true,
+        shiftHours: -240, // 10 days: far enough that NO sibling line lands back inside the window
+      });
+      const notRescued = rollCall({ docRoot: root, boardRoot: stale, date: '2026-08-22' });
+      assert(
+        notRescued.absent.some(a => a.task === 'intel-sweep-5'),
+        `[no-storm] …and the rescue is a WINDOW judgement — the same sibling lines dated ten days earlier are OUTSIDE this board's cycle and do NOT excuse the slot (got: ${notRescued.absent.map(a => a.task).join(', ') || 'NOTHING — the window check is decorative'})`
       );
     }
   }
@@ -1240,10 +1705,53 @@ function selftest(): number {
     );
 
     const bl = selfHealBlindness(root);
+    // 🔴 DE-LITERALISED 2026-08-24 (IMP-214). This read `bl.coverage === 3` and went red the night
+    // a FOURTH genuine self-heal was written (08-23 brief-editor) — the fifth instance of the
+    // IMP-183/195/200/201 class: a count pinned to a growing record reddens precisely when the
+    // record is up to date. The invariant is not the number. It is (a) the three originally-pinned
+    // lines are STILL read as coverage, (b) coverage stays a small minority of token lines, so the
+    // narrow rule has not silently re-broadened back to condemning the 61 narration lines.
+    const covLines = coverageLines(root);
+    const PINNED = ['2026-06-22', '2026-06-24', '2026-08-21'];
+    const stillPinned = PINNED.filter(d => covLines.some(c => c.date === d && c.task === 'brief-editor'));
     assert(
-      bl.token >= 50 && bl.coverage === 3,
-      `[selfheal] over the FULL archive (${bl.boards} boards): ${bl.token} self-heal-token lines, exactly ${bl.coverage} read as coverage — the broad rule condemned 61`
+      bl.token >= 50 &&
+        stillPinned.length === PINNED.length &&
+        bl.coverage === covLines.length &&
+        bl.coverage <= Math.floor(bl.token * 0.15),
+      `[selfheal] over the FULL archive (${bl.boards} boards): ${bl.token} self-heal-token lines, ${bl.coverage} read as coverage (<= ${Math.floor(bl.token * 0.15)} = 15% ceiling; the broad rule condemned 61) and all ${PINNED.length} originally-pinned lines survive [${stillPinned.join(', ')}]`
     );
+    // IMP-214, both directions on the REAL 08-23 bytes: the retraction is not coverage…
+    // REAL BYTES, read off the 08-23 board — never a paraphrase. The full line matters: it quotes
+    // "(SELF-HEAL, Critic-invoked...)" inside its own narration, so HEALER_MARKER_RE matches and
+    // the broad rule really did bank it as coverage for brief-critic. A truncated copy would have
+    // made this assertion prove nothing.
+    const RETRACTION_LINE =
+      fs
+        .readFileSync(boardPath(root, '2026-08-23'), 'utf8')
+        .split('\n')
+        .find(l => RETRACTION_RE.test(l)) ?? '';
+    assert(
+      selfHealedTask(RETRACTION_LINE) === null &&
+        !covLines.some(c => RETRACTION_RE.test(c.line)),
+      '[selfheal] a CANARY-RETRACTION is NOT coverage — brief-critic plainly ran and was covering for nobody (08-23, real bytes; this is the leg the 08-23 mandate #3 required and never shipped)'
+    );
+    // …and the silence is a JUDGEMENT, not a skip: strip the retraction token from the same bytes
+    // and the line reverts to what the broad rule would have made of it.
+    assert(
+      RETRACTION_LINE.length > 200 &&
+        selfHealedTask(RETRACTION_LINE.replace(/CANARY[- ]?RETRACTION/i, 'SELF-HEAL')) === 'brief-critic',
+      '[selfheal] …and that silence is a JUDGEMENT, not a skip — the SAME real bytes with the retraction token swapped for a self-heal token DO read as coverage for brief-critic, which is exactly what the broad rule was banking'
+    );
+    // A retracted canary cannot launder an absent slot into an attended one.
+    {
+      const { fixtureRoot } = retractionFixture(root);
+      const withRetraction = rollCall({ docRoot: root, boardRoot: fixtureRoot, date: '2026-08-23' });
+      assert(
+        withRetraction.absent.some(a => a.task === 'brief-editor'),
+        `[selfheal] …and a RETRACTED canary does not buy attendance — brief-editor is still named absent on a board whose only brief-editor canary was retracted (got: ${withRetraction.absent.map(a => a.task).join(', ') || 'NOTHING — the retraction laundered an absent slot'})`
+      );
+    }
     // The residual is REPORTED with its denominator, and CROSS-CHECKED rather than wished to zero.
     // `blindSole` counts blind lines that are the task's only line that night — but most pipeline
     // tasks write exactly one line a night, so a sole line is normal, not evidence of a miss. The
@@ -1492,8 +2000,28 @@ function main(): void {
     }
   }
 
+  // IMP-221: --scheduler-lastrun <task>=<ISO>, repeatable. Get the values from
+  // list_scheduled_tasks; `NEVER` and an unparseable stamp are REFUSED rather than dropped, because
+  // a flag that silently ignores its argument is a leg that silently does not run.
+  const schedulerLastRun = new Map<string, Date>();
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] !== '--scheduler-lastrun') continue;
+    const spec = argv[i + 1];
+    const eq = spec ? spec.indexOf('=') : -1;
+    if (!spec || eq <= 0) {
+      console.error('--scheduler-lastrun requires <task>=<ISO timestamp> (repeatable)');
+      process.exit(2);
+    }
+    const ts = parseTs(spec.slice(eq + 1));
+    if (!ts) {
+      console.error(`--scheduler-lastrun: could not parse "${spec.slice(eq + 1)}" as a timestamp`);
+      process.exit(2);
+    }
+    schedulerLastRun.set(spec.slice(0, eq), ts);
+  }
+
   const cwdRoot = process.cwd();
-  const rc = rollCall({ docRoot: cwdRoot, date, now, replay: nowIdx >= 0 });
+  const rc = rollCall({ docRoot: cwdRoot, date, now, replay: nowIdx >= 0, schedulerLastRun });
 
   if (argv.includes('--json')) {
     console.log(
@@ -1509,6 +2037,11 @@ function main(): void {
           droppedNeverObserved: rc.dropped,
           attended: rc.attended,
           notYetDue: rc.notYetDue,
+          firedAndSilent: rc.firedAndSilent.map(f => ({
+            task: f.task,
+            firedAt: f.firedAt.toISOString(),
+            tPlusMin: Math.round(f.tPlusMin),
+          })),
           missing: rc.absent.map(a => ({
             task: a.task,
             scheduled: a.clock,
@@ -1520,7 +2053,7 @@ function main(): void {
         2
       )
     );
-    process.exit(0);
+    process.exit(rc.firedAndSilent.length ? 1 : 0);
   }
 
   console.log(`pipeline-slot-attendance ${date} (evening of ${rc.eveningDate}, now ${fmtET(rc.now)})`);
@@ -1534,6 +2067,18 @@ function main(): void {
     `   attended ${rc.attended.length} · not-yet-due ${rc.notYetDue.length} · MISSING ${rc.absent.length} · UNTERMINATED ${rc.unterminated.length}` +
       (rc.windowless.length ? ` · ${rc.windowless.length} slot(s) NOT ROSTERED, window not computable: ${rc.windowless.join(', ')}` : '')
   );
+  // IMP-221. Printed BEFORE the attendance verdict, and it overrides it: on 2026-08-26 the verdict
+  // line said FULL ATTENDANCE eleven minutes into a brief-editor that never wrote anything.
+  const printFiredSilent = () => {
+    if (!rc.firedAndSilent.length) return;
+    console.log(`\n🔴 FIRED-AND-SILENT — the scheduler started these slots this cycle and they wrote nothing:`);
+    for (const f of rc.firedAndSilent) console.log('   ' + f.line);
+    console.log(
+      `   This OUTRANKS the attendance verdict below: a derived p95 window answers "when does this slot\n` +
+        `   usually speak", never "was it started". Where the two disagree, the scheduler is the one holding\n` +
+        `   evidence. Next: editor-handoff-gate --liveness ${date} to tell a dead stage from a slow one.`
+    );
+  };
   const printUnterminated = () => {
     if (!rc.unterminated.length) return;
     console.log(`\n🟡 UNTERMINATED (WARN-LEVEL — never blocks, never emails):`);
@@ -1555,10 +2100,17 @@ function main(): void {
     process.exit(0);
   }
   if (!rc.absent.length) {
-    console.log('\n✅ FULL ATTENDANCE — every due slot for this brief date, morning and evening, left a line of its own.');
+    printFiredSilent();
+    console.log(
+      rc.firedAndSilent.length
+        ? '\n⛔ NOT FULL ATTENDANCE — every ROSTERED slot left a line, but the scheduler names a slot that did not.'
+        : '\n✅ FULL ATTENDANCE — every due slot for this brief date, morning and evening, left a line of its own.'
+    );
     printUnterminated();
+    if (rc.firedAndSilent.length) process.exit(1); // IMP-221: this leg blocks on its own
     process.exit(process.argv.includes('--red') && rc.unterminated.length ? 1 : 0);
   }
+  printFiredSilent();
   printUnterminated();
   console.log('');
   for (const a of rc.absent) {
@@ -1585,16 +2137,18 @@ function main(): void {
       `   THIS CHECK ANSWERS "did it start", NOT "is it dead". Run mid-evening (an early --now), a slot listed\n` +
       `   here may simply be RUNNING LATE and about to write — 2026-08-21's brief-light was 30 min behind at\n` +
       `   19:35 ET and finished fine. The discriminator is the artifact, not this list:\n` +
-      `     editor-handoff-gate --liveness ${date}      (is the Editor still writing?)\n` +
-      `     editor-handoff-gate --qg-liveness ${date}   (is the QG still writing?)\n` +
+      `     editor-handoff-gate --liveness ${date} --scheduler-lastrun <ISO|NEVER>   (is the Editor still writing?)\n` +
+      `     editor-handoff-gate --qg-liveness ${date}                                (is the QG still writing?)\n` +
       `   Run after the chain should have closed and a slot still listed here NEVER FIRED. Re-run it, or\n` +
-      `   self-heal downstream (editor-handoff-gate --can-self-heal) and say on the board that you did.\n` +
+      `   self-heal downstream (editor-handoff-gate --can-self-heal ${date} --scheduler-lastrun <ISO|NEVER>) and say\n` +
+      `   on the board that you did. IMP-216: exit 3 = SELF-HEAL UNKNOWN is NOT permission — get brief-editor.lastRunAt\n` +
+      `   from list_scheduled_tasks and re-run. A Critic-invoked self-heal canaries as brief-editor-selfheal.\n` +
       `   Receipt: 2026-08-21, brief-editor, zero lines — the Critic ran the whole Editor pass at 23:40:32Z.`
   );
   // Exit code: 0 by default, because Pipeline_Controller L591 and Brief_Critic leg (iv) both ship
   // this check as warn-level and must never block a brief. `--red` is for a caller that wants the
   // non-zero exit. The DETECTION above does not depend on either — it already happened.
-  process.exit(process.argv.includes('--red') ? 1 : 0);
+  process.exit(process.argv.includes('--red') || rc.firedAndSilent.length ? 1 : 0);
 }
 
 if (process.argv[1] && process.argv[1].includes('pipeline-slot-attendance')) main();

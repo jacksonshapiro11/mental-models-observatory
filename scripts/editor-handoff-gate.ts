@@ -38,9 +38,25 @@
  * Modes:
  *   --liveness <DATE>        ALIVE (still being written) / QUIET (stopped) / ABSENT. exit 1 = ALIVE, WAIT.
  *   --can-promote <DATE>     may the Critic promote {date}-v2.working.md → v2.md? exit 1 = FORBIDDEN.
- *   --can-self-heal <DATE>   may the Critic rebuild v2 from v1.5? exit 1 = FORBIDDEN.
+ *   --can-self-heal <DATE>   may the Critic rebuild v2 from v1.5?
+ *                            exit 0 = SELF-HEAL ALLOWED · exit 1 = SELF-HEAL FORBIDDEN
+ *                            exit 3 = SELF-HEAL UNKNOWN — NOT a verdict. Fetch the scheduler
+ *                            reading and re-run. NEVER treat 3 as 0. (IMP-216)
+ *
+ * Inputs (IMP-216 — apply to --can-self-heal and --liveness):
+ *   --scheduler-lastrun <ISO|NEVER>   brief-editor.lastRunAt from `list_scheduled_tasks`. Without it
+ *                                     these modes CANNOT answer and return UNKNOWN by contract.
+ *   --scheduler-state-dir <DIR>       override the opportunistic scheduler-state read.
+ *   --now <ISO>                       REPLAY ONLY — pin the clock so a receipt is reproducible.
+ *                                     Banner-ed on every use. Never act on a simulated verdict.
  *   --audit <DATE>           post-hoc: self-heal/promotion over a live Editor, or an unreconciled
  *                            PROVISIONAL Critic report. exit 1 = violation.
+ *   --audit-nonproduction <DATE> --scheduler-lastrun <ISO|NEVER>
+ *                            THE MORNING ALARM (IMP-216, 2026-08-24). The scheduler says the Editor
+ *                            FIRED, it is past the fired-and-silent band, and there is NO trace of
+ *                            it anywhere — no v2, no working file, no board line. exit 1 = the
+ *                            Editor produced NOTHING and the reader got an unedited brief.
+ *                            exit 3 = UNKNOWN (no scheduler reading) — NOT a clean bill of health.
  *   --finalize <DATE>        IMP-164: retire the working file, assert the editor log, enforce the
  *                            Gate 16 cut order, print the required paste block. Idempotent.
  *   --selftest               both directions, on the REAL 07-10…07-14 artifacts + mtime fixtures.
@@ -80,6 +96,63 @@ export const HARD_CEILING_MIN = 120;
  *  CALIBRATED, NOT CHOSEN: the selftest re-derives the smallest real v2 on disk from the trailing
  *  boards and fails if this floor has crept up toward it, so it can never start eating real briefs. */
 export const MIN_PLAUSIBLE_BRIEF_BYTES = 4000;
+
+// ── IMP-216 (2026-08-23 Critic mandate #3, 🔴, RC3): THE SCHEDULER IS THE ONLY WITNESS ────────
+// E-PIPELINE-EDITOR-NONPRODUCTION-01 day 3 · E-CRITIC-EVIDENCE-SELFPOISON-01 day 1.
+//
+// THE BLINDNESS, in one sentence: `brief-editor` writes NO canary at start and creates NO working
+// file early, so on disk **"never started" and "started and produced nothing" are the same string**,
+// and every function above this line reads only the board and the disk.
+//
+// THE RECEIPTS, two consecutive nights, WRONG IN BOTH DIRECTIONS:
+//   2026-08-22  scheduler lastRunAt 23:20:14Z (fired, unterminated) · board: zero brief-editor lines
+//               → `--can-self-heal` EXIT 0  "SELF-HEAL ALLOWED"      ← A FALSE PERMIT over a live Editor.
+//   2026-08-23  scheduler lastRunAt 23:20:17.192Z (fired, T+32)      · board: one brief-editor CANARY
+//               → `--can-self-heal` EXIT 1  FORBIDDEN                ← the RIGHT verdict read off a
+//               canary THE CRITIC ITSELF had written 90 seconds earlier while obeying Brief_Editor L31.
+//               Its own report: "right answer, fabricated evidence… tonight's right answer was luck."
+//               A CANARY-RETRACTION was appended and no board-reading guard honours it: **a false
+//               canary is unrecallable**, which is why the fix is an INPUT, not a louder board.
+//
+// THE PRIMITIVE, STATED ONCE AND SYMMETRIC TO THE ONE AT THE TOP OF THIS FILE:
+//   A crash is "the artifact stopped changing". **An absence is "the process never fired" — and
+//   nothing on disk can tell you that.** An existence check with no liveness input must therefore
+//   REFUSE TO ANSWER (UNKNOWN), never guess. UNKNOWN is not a soft ALLOWED; it is a distinct verdict
+//   with a distinct exit code, because every caller of the old gate read "no violations" as "go".
+//
+// THE BAND. A FIRED-AND-SILENT Editor inside this window is IN FLIGHT, not dead. 16–38 min is the
+// band the 08-23 Critic recorded on the board ("T+38 min — the TOP of its observed 16-38 min runtime
+// band"). It is deliberately a FIRED-AND-SILENT window and NOT a runtime ceiling: real Editor passes
+// have run 65, 73, 94 min (see the frozen distribution in the selftest). That is safe because of
+//   ⭐ MONOTONICITY, the property that makes this leg impossible to weaponise: the scheduler leg only
+//   ever ADDS a violation and never removes one. Past the band it ABSTAINS — the pre-existing guards
+//   (canary age, working-file mtime, editor log) keep deciding exactly as they did before. So
+//   "past the band ⇒ DEAD ⇒ self-heal permitted" can never permit anything the old gate forbade;
+//   it only stops the new refusal. A 65-minute Editor always has a CANARY or a working file, and
+//   both are still owned by liveness()/canSelfHeal() above.
+/** Lower edge of the observed fired-and-silent band. Below this the Editor cannot even have
+ *  finished; reported for the message, not for the verdict. */
+export const EDITOR_FIRE_BAND_MIN_MIN = 16;
+/** Top of the band. Fired, silent, and inside this ⇒ ALIVE ⇒ SELF-HEAL FORBIDDEN. */
+export const EDITOR_FIRE_BAND_MAX_MIN = 38;
+/** The third verdict. NOT 0 (ALLOWED) and NOT 1 (FORBIDDEN) — a caller that branches on either of
+ *  those must fall through to a code it does not recognise rather than silently proceed. */
+export const SELF_HEAL_UNKNOWN_EXIT: number = 3;
+/** The verdict tokens every caller parses. One line, one token, no inference from violation counts. */
+export const VERDICT_TOKEN = {
+  ALLOWED: 'SELF-HEAL ALLOWED',
+  FORBIDDEN: 'SELF-HEAL FORBIDDEN',
+  UNKNOWN: 'SELF-HEAL UNKNOWN',
+} as const;
+/** Where the scheduler parks its per-task state, when this box exposes it at all. Opportunistic:
+ *  the FLAG is the contract, this is a convenience so the Critic need not paste on every poll. */
+export const SCHEDULER_STATE_DIR_DEFAULT = path.join(
+  os.homedir(),
+  'Documents',
+  'Claude',
+  'Scheduled',
+  'brief-editor'
+);
 
 type Violation = { check: string; message: string };
 const DB = (root: string) => path.join(root, 'daily-briefs');
@@ -246,6 +319,57 @@ export function liveness(
     }
   }
 
+  // IMP-216 (2026-08-24) — THE STAGED COPY THAT WAS NEVER EDITED.
+  // Brief_Editor Gate 0.5 now requires the working file to be created as a BYTE-COPY OF v1.5 as
+  // the Editor's first file action, so that "never started" and "died at check 3" stop being the
+  // same empty string on disk. That fix hands this function a new shape it has never seen, and the
+  // shape is dangerous: a fresh, 60,000-byte, perfectly plausible working file that contains ZERO
+  // editorial work. Left unhandled it reads ALIVE for 20 min, then QUIET, and then `--can-promote`
+  // says "quiet file, no hold, past the 45-min floor ⇒ promote it" — and an UNEDITED v1.5 ships as
+  // v2. That is the precise harm this whole improvement exists to stop, re-entering through the
+  // door the fix opened.
+  //
+  // The primitive at the top of this file already answers it and only needed applying: LIVENESS IS
+  // THE ARTIFACT CHANGING. A byte-copy of v1.5 has not changed. So the staged file proves the
+  // Editor STARTED (which is what `--audit-nonproduction` and the `--liveness` mtime read want);
+  // only a DIVERGED staged file proves the Editor is WORKING.
+  //
+  // ABSENT is both true and safe here, exactly as in the IMP-149 branch above: it makes promotion
+  // IMPOSSIBLE (canPromote's `promote-nothing`), and the self-heal it opens is independently held
+  // shut for NO_ARTIFACT_WAIT_MIN by the CANARY guard in canSelfHeal — so an Editor that has only
+  // just staged its copy is still protected for a full hour, by which time the 5-minute HEARTBEAT
+  // contract (Brief_Editor rule 7) has long since made the file differ. Past that hour, an Editor
+  // with zero edits to show IS dead, and self-heal — which runs the checks — is the right recovery.
+  // IDENTITY, never similarity, for the same reason as IMP-149: a real pass differs from v1.5 by
+  // whatever it has changed so far, and any looser threshold starts calling live Editors dead on a
+  // light-edit night.
+  //
+  // 🔴 BODIES, NOT BYTES (IMP-222, 2026-08-25 Critic mandate #3a). The identity test above was
+  // written against a `cp` and was defeated the first night it ran, by a stage that copied the
+  // reader body WITHOUT the comment blocks: 80,496 B of v1.5 became a 40,546 B working file whose
+  // every reader-facing byte was v1.5's, and byte-identity read DIVERGED — i.e. "the Editor is
+  // working" — on a file containing zero editorial work. Comment-stripping is what a body-only
+  // staging naturally does, so that is the DEFAULT path, not an edge case. `readerBody` compares
+  // what the reader gets; a byte-identical `cp` is still caught, because byte-identical implies
+  // body-identical, and one changed reader-facing word still reads as work (a gate that holds a
+  // genuinely edited brief is worse than the hole it closes — the brief always ships).
+  const v15 = path.join(DB(root), `${date}-v1.5.md`);
+  if (fs.existsSync(v15)) {
+    const bodyV15 = readerBodyOf(v15);
+    const bodyWorking = readerBodyOf(working);
+    if (bodyV15 !== null && bodyV15 === bodyWorking) {
+      const v15Bytes = fs.statSync(v15).size;
+      return {
+        state: 'ABSENT',
+        quietMin,
+        canaryAgeMin,
+        workingPath: working,
+        bytes,
+        reason: `${date}-v2.working.md is READER-BODY-IDENTICAL to ${date}-v1.5.md (${bytes} vs ${v15Bytes} bytes on disk — ${bytes === v15Bytes ? 'a byte copy' : 'the comment blocks differ, the brief does not'}) — this is the Gate 0.5 STAGED COPY with ZERO editorial work applied (last written ${quietMin.toFixed(1)} min ago). The staged file proves the Editor STARTED; only a file whose READER BODY has diverged from v1.5 proves it is WORKING. ABSENT here is what stops --can-promote from shipping an unedited v1.5 as v2 at the 45-minute floor. If this persists past the CANARY budget, the recovery is --can-self-heal (which runs the Editor's checks), never promotion of this file.`,
+      };
+    }
+  }
+
   return {
     state: quietMin < QUIET_MIN ? 'ALIVE' : 'QUIET',
     quietMin,
@@ -319,11 +443,152 @@ export function canPromote(
   return v;
 }
 
-/** May the Critic rebuild v2 from a v1.5 copy? Strictly narrower than promotion. */
+// ── IMP-216: THE SCHEDULER READING ────────────────────────────────────────────────────────────
+/** What the scheduler said, and where we got it. `never` = the scheduler was CONSULTED and reports
+ *  no run for this cycle — that is a reading, and a decisive one. It is not the absence of a reading. */
+export interface SchedulerReading {
+  lastRunAt: Date | null;
+  never: boolean;
+  source: string;
+}
+export type SchedulerState =
+  | 'UNKNOWN' // no reading was supplied. The gate must REFUSE, not guess.
+  | 'NEVER-FIRED' // consulted; the slot did not fire this cycle (the real 2026-08-21).
+  | 'FIRED-AND-SILENT' // fired, inside the band, nothing on the board or disk (the real 2026-08-23).
+  | 'FIRED-PAST-BAND' // fired, past the band, still nothing — dead. This leg ABSTAINS.
+  | 'FIRED-AND-OBSERVED'; // fired AND left a trace; the artifact guards own it. This leg ABSTAINS.
+export interface SchedulerLiveness {
+  state: SchedulerState;
+  elapsedMin: number | null;
+  reading: SchedulerReading | null;
+  reason: string;
+}
+
+/** Parse `--scheduler-lastrun`. Accepts an ISO instant or the explicit NEVER/NONE sentinel.
+ *  Returns null for anything else — the CALLER turns that into a usage error, never into UNKNOWN:
+ *  a typo must not be able to buy the gate's silence. */
+export function parseSchedulerLastRun(
+  raw: string,
+  source = 'flag:--scheduler-lastrun'
+): SchedulerReading | null {
+  const s = raw.trim();
+  if (/^(never|none|no-run|not-fired)$/i.test(s))
+    return { lastRunAt: null, never: true, source };
+  const d = new Date(s);
+  if (!/\d{4}-\d{2}-\d{2}T/.test(s) || Number.isNaN(d.getTime())) return null;
+  return { lastRunAt: d, never: false, source };
+}
+
+/** Opportunistic: read the scheduler's own state directory when this box exposes one. Any JSON in
+ *  it carrying a lastRunAt-shaped field counts. Absent/unreadable ⇒ null ⇒ UNKNOWN, which is the
+ *  whole point: a missing file is not evidence of anything. */
+export function readSchedulerStateDir(
+  dir = SCHEDULER_STATE_DIR_DEFAULT
+): SchedulerReading | null {
+  try {
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) return null;
+    for (const f of fs.readdirSync(dir).sort()) {
+      if (!/\.json$/i.test(f)) continue;
+      const p = path.join(dir, f);
+      let obj: Record<string, unknown>;
+      try {
+        obj = JSON.parse(fs.readFileSync(p, 'utf8'));
+      } catch {
+        continue;
+      }
+      const raw =
+        obj['lastRunAt'] ?? obj['last_run_at'] ?? obj['lastRun'] ?? null;
+      if (typeof raw !== 'string') continue;
+      const r = parseSchedulerLastRun(raw, `file:${p}`);
+      if (r) return r;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/** DID THE PROCESS FIRE, AND HOW LONG AGO — the question the board and the disk cannot answer.
+ *  Deliberately independent of `liveness()`: that one reads the artifact, this one reads the
+ *  process. They are combined by the caller, never merged, so neither can launder the other. */
+export function schedulerLiveness(
+  root: string,
+  date: string,
+  reading: SchedulerReading | null,
+  now = new Date()
+): SchedulerLiveness {
+  if (!reading)
+    return {
+      state: 'UNKNOWN',
+      elapsedMin: null,
+      reading: null,
+      reason: `no scheduler reading supplied. \`brief-editor\` writes no canary at start and no early working file, so "never fired" and "fired and produced nothing" are the SAME STRING on this board and on this disk. There is no evidence here from which to answer the question; pass --scheduler-lastrun <ISO|NEVER> (list_scheduled_tasks → brief-editor.lastRunAt).`,
+    };
+  if (reading.never)
+    return {
+      state: 'NEVER-FIRED',
+      elapsedMin: null,
+      reading,
+      reason: `the scheduler was consulted (${reading.source}) and reports NO run of brief-editor for this cycle. This is the real 2026-08-21 state: the slot never fired, so there is no process to race.`,
+    };
+
+  const last = reading.lastRunAt!;
+  const elapsedMin = (now.getTime() - last.getTime()) / 60000;
+
+  // The QG's terminal line is this cycle's floor: the Editor slot runs AFTER it. A lastRunAt that
+  // predates it belongs to a PREVIOUS night, which is the same fact as "did not fire tonight" —
+  // exactly how the 08-21 Critic stated it ("no lastRunAt after the QG's SUCCESS").
+  const qgTerm = qgLines(root, date)
+    .filter(l => (l.kind === 'SUCCESS' || l.kind === 'FAIL') && l.ts)
+    .map(l => l.ts!.getTime())
+    .sort((a, b) => b - a)[0];
+  if (qgTerm !== undefined && last.getTime() < qgTerm)
+    return {
+      state: 'NEVER-FIRED',
+      elapsedMin,
+      reading,
+      reason: `brief-editor lastRunAt = ${last.toISOString()} PREDATES this cycle's brief-quality-gate terminal line (${new Date(qgTerm).toISOString()}), so that run belongs to a previous night: the slot did NOT fire for ${date}.`,
+    };
+
+  // Did it leave any trace at all? If so the artifact guards above already have real evidence and
+  // this leg must not double-count it (nor override it — see MONOTONICITY).
+  const traced =
+    editorLines(root, date).length > 0 ||
+    fs.existsSync(path.join(DB(root), `${date}-v2.working.md`)) ||
+    fs.existsSync(path.join(DB(root), `${date}-v2.md`)) ||
+    fs.existsSync(path.join(DB(root), `${date}-editor-log.md`));
+  if (traced)
+    return {
+      state: 'FIRED-AND-OBSERVED',
+      elapsedMin,
+      reading,
+      reason: `brief-editor fired ${elapsedMin.toFixed(0)} min ago (${last.toISOString()}) AND left a trace (board line and/or artifact). The artifact guards own this verdict; the scheduler leg abstains.`,
+    };
+
+  if (elapsedMin <= EDITOR_FIRE_BAND_MAX_MIN)
+    return {
+      state: 'FIRED-AND-SILENT',
+      elapsedMin,
+      reading,
+      reason: `brief-editor FIRED at ${last.toISOString()} and is T+${elapsedMin.toFixed(0)} min with NOTHING on the board or the disk — inside the observed ${EDITOR_FIRE_BAND_MIN_MIN}–${EDITOR_FIRE_BAND_MAX_MIN} min fired-and-silent band${elapsedMin < EDITOR_FIRE_BAND_MIN_MIN ? `, and below its ${EDITOR_FIRE_BAND_MIN_MIN}-min floor it cannot even have finished` : ''}. FIRED-AND-SILENT IS IN FLIGHT, NOT DEAD.`,
+    };
+  return {
+    state: 'FIRED-PAST-BAND',
+    elapsedMin,
+    reading,
+    reason: `brief-editor fired at ${last.toISOString()}, T+${elapsedMin.toFixed(0)} min, past the ${EDITOR_FIRE_BAND_MAX_MIN}-min band with nothing on the board or the disk — DEAD. The scheduler leg abstains; the pre-existing guards decide.`,
+  };
+}
+
+/** May the Critic rebuild v2 from a v1.5 copy? Strictly narrower than promotion.
+ *  IMP-216: `sched` is OPTIONAL and MONOTONE — supplying it can only ADD a violation. Every existing
+ *  caller that omits it gets byte-identical behaviour, which is why this change cannot regress the
+ *  07-13/07-14/08-08 legs below. */
 export function canSelfHeal(
   root: string,
   date: string,
-  now = new Date()
+  now = new Date(),
+  sched?: SchedulerLiveness
 ): Violation[] {
   const v: Violation[] = [];
   const lines = editorLines(root, date);
@@ -331,6 +596,13 @@ export function canSelfHeal(
   const canary = lines.find(l => l.kind === 'CANARY');
   const l = liveness(root, date, now);
   const elog = path.join(DB(root), `${date}-editor-log.md`);
+
+  if (sched && sched.state === 'FIRED-AND-SILENT') {
+    v.push({
+      check: 'self-heal-over-fired-scheduler-slot',
+      message: `SELF-HEAL FORBIDDEN — ${sched.reason} A second Editor would race two writers onto one output path (the 07-13/07-14 double-write class). 2026-08-22 receipt: this gate returned EXIT 0 "SELF-HEAL ALLOWED — no live Editor, no Editor artifact on disk" at three polls while the scheduler showed brief-editor fired at 23:20:14Z and unterminated. WAIT and re-poll with a fresh --scheduler-lastrun.`,
+    });
+  }
 
   if (l.state !== 'ABSENT') {
     const hold = readHold(root, date);
@@ -361,6 +633,160 @@ export function canSelfHeal(
     });
   }
   return v;
+}
+
+/** IMP-216 — THE THREE-VALUED VERDICT. The old CLI inferred the answer from a violation COUNT, so
+ *  "I have no evidence" and "I have evidence of absence" produced the identical EXIT 0 and the
+ *  identical green sentence. They are opposite facts. Resolution order, and the order is the rule:
+ *    1. FORBIDDEN outranks everything — positive evidence of a live Editor needs no scheduler.
+ *    2. Otherwise, no scheduler reading ⇒ UNKNOWN. **This is the load-bearing clause.** The 08-22
+ *       false permit is exactly the state that now returns UNKNOWN instead of ALLOWED.
+ *    3. Only a reading that positively rules out a live process yields ALLOWED. */
+export type SelfHealVerdict = 'ALLOWED' | 'FORBIDDEN' | 'UNKNOWN';
+export interface SelfHealDecision {
+  verdict: SelfHealVerdict;
+  token: string;
+  exitCode: number;
+  violations: Violation[];
+  sched: SchedulerLiveness;
+}
+export function selfHealDecision(
+  root: string,
+  date: string,
+  opts: { reading?: SchedulerReading | null; now?: Date } = {}
+): SelfHealDecision {
+  const now = opts.now ?? new Date();
+  const sched = schedulerLiveness(root, date, opts.reading ?? null, now);
+  const violations = canSelfHeal(root, date, now, sched);
+  if (violations.length)
+    return {
+      verdict: 'FORBIDDEN',
+      token: VERDICT_TOKEN.FORBIDDEN,
+      exitCode: 1,
+      violations,
+      sched,
+    };
+  if (sched.state === 'UNKNOWN')
+    return {
+      verdict: 'UNKNOWN',
+      token: VERDICT_TOKEN.UNKNOWN,
+      exitCode: SELF_HEAL_UNKNOWN_EXIT,
+      violations,
+      sched,
+    };
+  return {
+    verdict: 'ALLOWED',
+    token: VERDICT_TOKEN.ALLOWED,
+    exitCode: 0,
+    violations,
+    sched,
+  };
+}
+
+// ── IMP-216 (2026-08-24 Critic mandate #2, 🔴, RC3): --audit-nonproduction ────────────────────
+// E-PIPELINE-EDITOR-NONPRODUCTION-01, DAY 4.
+//
+// THE RECEIPT, four consecutive nights, and the fourth is the one that indicts this file:
+//   08-21  brief-editor NEVER FIRED.        Zero lines. The Critic ran the whole Editor pass 23:40:32Z.
+//   08-22  FIRED 23:20:14Z, produced NOTHING.  Critic graded v1.5 PROVISIONAL.
+//   08-23  FIRED 23:20:17Z, produced NOTHING.  Critic graded v1.5 PROVISIONAL.
+//   08-24  FIRED 23:21:20Z, produced NOTHING at T+27.  PROVISIONAL.
+// Fixes shipped inside that window: the editor-handoff liveness rewrite (08-22), then
+// `--scheduler-lastrun` / UNKNOWN / exit 3 / the `brief-editor-selfheal` naming split (08-23).
+// **ALL OF THEM ARE DETECTION. NONE OF THEM REACHED THE EDITOR.** The detection layer now works
+// perfectly and there is still no v2. Downstream, `brief-light`, `brief-email` and `brief-morning`
+// all consume v2 and all fall back to v1.5 with NO HARD STOP, so the v1.5→v2 TRANSMISSION GATE —
+// the strongest anti-regression check in the system — has not been able to run for three nights and
+// **the reader has received an unedited brief since Thursday**.
+//
+// WHY A NEW MODE AND NOT A LOUDER `--can-self-heal`: every existing mode answers a question asked
+// AT 23:40 BY THE CRITIC, in the middle of the night, about whether it may touch the artifact. None
+// of them is ever asked the next morning, and none of them is asked by anyone whose job is to raise
+// an alarm. So a non-producing Editor was found four nights running by the Critic noticing its own
+// input was missing — a discovery that happens at 23:48 at the earliest and, on 08-21, only
+// incidentally. This mode asks the ONE question nobody owned: **did the Editor produce anything at
+// all last night?** It is designed for `pipeline-health-check` at 11:06, by which time the evening
+// chain has closed and silence is a fact rather than a delay.
+//
+// IT INVENTS NO MACHINERY. The verdict is `schedulerLiveness()`'s state, one branch each, because
+// that function already encodes exactly this question's evidence model:
+//   UNKNOWN            → exit 3. No reading ⇒ refuse to answer. NOT a clean bill of health.
+//   NEVER-FIRED        → exit 0, and say so: a slot that did not fire is `pipeline-slot-attendance`'s
+//                        alarm (IMP-207), not this one. Two alarms for one fact teach the reader to
+//                        skim both. This is the real 2026-08-21.
+//   FIRED-AND-SILENT   → exit 0. INSIDE the 16–38 min band is IN FLIGHT, not dead. A gate that reds
+//                        at minute 20 recreates the false-permit class from the opposite side.
+//   FIRED-AND-OBSERVED → exit 0. It left a trace; the artifact guards (`--liveness`,
+//                        `--audit-promotion`, `--finalize`, `--audit`) own every one of those shapes.
+//   FIRED-PAST-BAND    → exit 1. **FIRED, PAST THE BAND, ZERO TRACE. THIS IS THE ALARM.**
+//
+// NOTE THE ONE DELIBERATE NARROWING: `traced` also counts `{date}-editor-log.md`, so an Editor that
+// wrote a log and no v2 is FIRED-AND-OBSERVED and this mode stays silent. That is production without
+// promotion — a different failure, already owned by `--audit-promotion` and `--finalize`. This mode
+// is the NON-PRODUCTION alarm: nothing, anywhere, at all.
+export interface NonProductionAudit {
+  fired: boolean;
+  exitCode: number;
+  sched: SchedulerLiveness;
+  live: Liveness;
+  violations: Violation[];
+  verdict: 'NON-PRODUCTION' | 'PRODUCED' | 'IN-FLIGHT' | 'NOT-FIRED' | 'UNKNOWN';
+}
+export function auditNonProduction(
+  root: string,
+  date: string,
+  opts: { reading?: SchedulerReading | null; now?: Date } = {}
+): NonProductionAudit {
+  const now = opts.now ?? new Date();
+  const sched = schedulerLiveness(root, date, opts.reading ?? null, now);
+  const live = liveness(root, date, now);
+  const base = { sched, live };
+
+  if (sched.state === 'UNKNOWN')
+    return {
+      ...base,
+      fired: false,
+      verdict: 'UNKNOWN',
+      exitCode: SELF_HEAL_UNKNOWN_EXIT,
+      violations: [],
+    };
+  if (sched.state === 'NEVER-FIRED')
+    return {
+      ...base,
+      fired: false,
+      verdict: 'NOT-FIRED',
+      exitCode: 0,
+      violations: [],
+    };
+  if (sched.state === 'FIRED-AND-SILENT')
+    return {
+      ...base,
+      fired: false,
+      verdict: 'IN-FLIGHT',
+      exitCode: 0,
+      violations: [],
+    };
+  if (sched.state === 'FIRED-AND-OBSERVED')
+    return {
+      ...base,
+      fired: false,
+      verdict: 'PRODUCED',
+      exitCode: 0,
+      violations: [],
+    };
+
+  return {
+    ...base,
+    fired: true,
+    verdict: 'NON-PRODUCTION',
+    exitCode: 1,
+    violations: [
+      {
+        check: 'editor-nonproduction',
+        message: `🔴 THE EDITOR PRODUCED NOTHING. brief-editor FIRED at ${sched.reading!.lastRunAt!.toISOString()} and it is now T+${sched.elapsedMin!.toFixed(0)} min — past the ${EDITOR_FIRE_BAND_MAX_MIN}-min fired-and-silent band — with NO ${date}-v2.md, NO ${date}-v2.working.md, NO ${date}-editor-log.md and NO brief-editor line on ${date}-pipeline-status.md. The process ran and left the pipeline exactly as it found it. CONSEQUENCE, and it is the reader's, not the pipeline's: brief-light, brief-email and brief-morning all consume v2 and all fall back to v1.5 WITHOUT A HARD STOP, so the v1.5→v2 TRANSMISSION GATE cannot run and the brief that shipped was never edited. Receipt: this is the fourth consecutive night of E-PIPELINE-EDITOR-NONPRODUCTION-01 (08-21 never fired · 08-22 fired 23:20:14Z · 08-23 fired 23:20:17Z · 08-24 fired 23:21:20Z), and every fix shipped against it so far has been DETECTION. ACTION: this is 🔴 for the health report — name it and SEND THE ALARM EMAIL. Do NOT block the brief on it (Constitution I: the brief always ships; by 11:06 it already has).`,
+      },
+    ],
+  };
 }
 
 // ── IMP-121 (2026-08-03 Critic mandate #2, 🔴, RC3): QG LIVENESS ─────────────────────────────
@@ -630,6 +1056,73 @@ export function auditHandoff(root: string, date: string): Violation[] {
  * must never touch. A promotion audit that fires during a live Editor run is a regression wearing
  * an improvement's name.
  */
+/**
+ * 🔴 THE READER-FACING BODY — WHAT THE BRIEF ACTUALLY IS (IMP-222, 08-25 Critic mandate #3a, RC5).
+ *
+ * Gate 0.5's invariant is not "the files differ", it is "editorial work has been done", and on
+ * 2026-08-25 those came apart. The Editor staged its working file as v1.5's BODY with the comment
+ * blocks stripped — 80,496 B of v1.5 became a 40,546 B stage — so every reader-facing byte was
+ * v1.5's, ZERO editorial work existed, and the byte-identity test read DIVERGED. Past the 45-minute
+ * floor `--can-promote` would have shipped an unedited v1.5 as v2: the exact harm Gate 0.5 was
+ * written one day earlier to prevent, produced by Gate 0.5's own implementation.
+ *
+ * IMP-155's lesson, one layer up: there is no byte-comparison that beats a content check. Compare
+ * only what the reader gets — everything above the first `<!-- ====` fence, all HTML comments
+ * stripped, whitespace normalised, so a trailing newline is not editorial work either.
+ */
+export function readerBody(text: string): string {
+  const fence = text.indexOf('<!-- ====');
+  const head = fence >= 0 ? text.slice(0, fence) : text;
+  return head.replace(/<!--[\s\S]*?-->/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function readerBodyOf(file: string): string | null {
+  try {
+    return readerBody(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 🔴 THE WORKLIST BLOCKS — the ones a MACHINE reads, not every comment (IMP-222, mandate #3d).
+ *
+ * The mandate asked for "a promoted v2 that carries fewer `<!--` blocks than its v1.5". Measured
+ * across the whole archive first, that rule fires on ~70 nights and is silent on four: the Editor
+ * routinely and legitimately retires blocks it has consumed. A gate that reds on the normal case is
+ * the false-alarm class this file has refused four times, and mis-specifying the invariant from the
+ * night that produced it is the acceptance-on-the-training-set error the same mandate warns about.
+ *
+ * The INVARIANT is narrower and it is the one the mandate's own receipt names: the Editor may edit
+ * the brief; it may not silently discard THE NEXT STAGE'S INSTRUCTIONS. So the protected set is
+ * derived, not chosen — a block is protected exactly when a script downstream parses it, and each
+ * entry carries the consumer that makes it load-bearing. The selftest asserts every consumer still
+ * reads its block, so this list cannot rot into decoration.
+ */
+export const PROTECTED_BLOCKS: { name: string; consumer: string }[] = [
+  { name: 'WRITER DECLARATIONS', consumer: 'scripts/declaration-binding-gate.ts' },
+  { name: 'VALIDATION REPORT', consumer: 'scripts/declaration-binding-gate.ts' },
+  { name: 'STALENESS LEDGER', consumer: 'scripts/validate-brief.ts' },
+  { name: 'COUNTER-CASE', consumer: 'scripts/validate-brief.ts' },
+  { name: 'take-move', consumer: 'scripts/validate-brief.ts' },
+  { name: 'MODEL-LOCKED', consumer: 'scripts/validate-brief.ts' },
+];
+
+/** Protected blocks present in v1.5 and fewer (or absent) in v2. Names only — the verdict is count. */
+export function droppedProtectedBlocks(v15Text: string, v2Text: string): string[] {
+  const count = (text: string, name: string) =>
+    (text.match(new RegExp('<!--\\s*' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length;
+  return PROTECTED_BLOCKS.filter(b => count(v2Text, b.name) < count(v15Text, b.name)).map(b => b.name);
+}
+
+/**
+ * Both editorial-work legs bind FORWARD from the night they were written, never backward — IMP-125,
+ * and the archive is why: 70 of ~100 nights drop a block, and no v2 before 2026-08-26 is
+ * reader-body-identical to its v1.5. Condemning the archive would produce a storm on the day the
+ * gate shipped and teach the next session to skim it.
+ */
+export const EDITORIAL_WORK_EFFECTIVE_FROM = '2026-08-26';
+
 export function auditPromotion(root: string, date: string): Violation[] {
   const v2 = path.join(DB(root), `${date}-v2.md`);
   const working = path.join(DB(root), `${date}-v2.working.md`);
@@ -670,6 +1163,49 @@ export function auditPromotion(root: string, date: string): Violation[] {
         `retires the working file, asserts this log, and prints the block the status line requires. ` +
         `An Editor that cannot run --finalize writes FAIL, not silence.`,
     });
+  }
+
+  // ── IMP-222 (08-25 Critic mandate #3a/#3d, RC5): WAS ANY EDITORIAL WORK DONE AT ALL? ─────────
+  // The 08-25 mandate predicted this and the 2026-08-26 brief is it: v2.md landed byte-identical to
+  // v1.5.md (70,983 B both), was stamped v2, and every downstream stage consumed it as an edited
+  // brief. The v1.5→v2 transmission gate passes such a file perfectly, because v2 carries every
+  // v1.5 replacement — which is why the check has to be for WORK, not for correctness.
+  if (date >= EDITORIAL_WORK_EFFECTIVE_FROM) {
+    const v15 = path.join(DB(root), `${date}-v1.5.md`);
+    const bodyV15 = readerBodyOf(v15);
+    const bodyV2 = readerBodyOf(v2);
+    if (bodyV15 !== null && bodyV2 !== null) {
+      if (bodyV15 === bodyV2) {
+        out.push({
+          check: 'UNEDITED-PROMOTION',
+          message:
+            `PROMOTION AUDIT FAILED — ${date}-v2.md is READER-BODY-IDENTICAL to ${date}-v1.5.md. ` +
+            `A v2 was promoted and ZERO editorial work reached the reader; the comment blocks may differ, ` +
+            `the brief does not. This is not "a light edit night" — it is character-for-character the same ` +
+            `document, and every downstream stage (brief-light, brief-email, brief-morning) consumed it as ` +
+            `an edited brief. FIX: the Editor must actually edit, or write FAIL and let the downstream ` +
+            `stages label the fallback \`INPUT: v1.5 — NO EDITOR PASS\`. Shipping nothing is honest; ` +
+            `shipping v1.5 stamped v2 is not.`,
+        });
+      }
+      const dropped = droppedProtectedBlocks(
+        fs.readFileSync(v15, 'utf8'),
+        fs.readFileSync(v2, 'utf8')
+      );
+      if (dropped.length) {
+        out.push({
+          check: 'DROPPED-WORKLIST-BLOCK',
+          message:
+            `PROMOTION AUDIT FAILED — ${date}-v2.md dropped ${dropped.length} block(s) that a downstream ` +
+            `stage PARSES: ${dropped.join(', ')}. On 2026-08-25 a comment-stripping stage deleted v1.5's ` +
+            `WRITER DECLARATIONS and VALIDATION REPORT — the Morning Truth Gate's worklist of eight open ` +
+            `items and five unverified load-bearing superlatives — out of the file the morning gate reads, ` +
+            `and the worklist counts went 1→0 and 2→0. The Editor may edit the brief; it may not silently ` +
+            `discard the next stage's instructions. FIX: carry the block forward, or resolve it and say so ` +
+            `in ${date}-editor-log.md.`,
+        });
+      }
+    }
   }
 
   if (!fs.existsSync(working)) return out; // rule 6 satisfied: the scratch file is gone
@@ -1160,10 +1696,560 @@ function selftest(): number {
   );
   const okTwinDiffAlive = liveness(twin, '2026-08-09').state === 'ALIVE';
 
+  // ── IMP-216 (2026-08-23 Critic mandate #3, 🔴, RC3) ─────────────────────────────────────────
+  //    THE GATE THAT AUTHORIZES SELF-HEAL COULD NOT SEE THE ONLY SOURCE THAT KNOWS THE ANSWER.
+  //
+  //    EVERY BYTE BELOW IS FROZEN IN THIS SOURCE FILE — never read from `daily-briefs/`. Ledger
+  //    rule 9: an assertion pinned to a live board, a directory sweep that grows nightly, or an
+  //    incident being currently outstanding red-flags itself the moment the world moves on. The
+  //    2026-08-23 board is TODAY'S board and is still being appended to, so reading it here would
+  //    be that bug verbatim. These are verbatim prefixes of the real lines through the STATUS
+  //    field — everything `lineTask`/`editorLines`/`qgLines` actually parse — with the prose
+  //    reason truncated.
+  const FROZEN_0823_QG = // the 2026-08-23 board, brief-editor lines ABSENT (see below)
+    '2026-08-22T18:41:42-04:00 | brief-quality-gate | CANARY | WRITE-OK\n' +
+    '2026-08-22T19:04:55-04:00 | brief-quality-gate | daily-briefs/2026-08-23-v1.5.md | SUCCESS | [reason truncated in fixture]\n';
+  //    THE CRITIC'S OWN LINE, frozen verbatim. It is the ONLY brief-editor line the 08-23 board
+  //    carried, it was written by the CRITIC at 23:32:03Z, and the CANARY-RETRACTION 107 seconds
+  //    later is invisible to every board-reading guard. A false canary is unrecallable.
+  const FROZEN_0823_CRITIC_CANARY =
+    '2026-08-22T23:32:03Z | brief-editor | CANARY | WRITE-OK (SELF-HEAL, Critic-invoked: v2 absent at 19:31 ET, 36 min after the 18:55 editor slot, no brief-editor line on the board)\n';
+  const FROZEN_0821_QG = // the 2026-08-21 board as it stood at 23:31Z, BEFORE the Critic self-healed
+    '2026-08-20T22:41:32Z | brief-quality-gate | CANARY | WRITE-OK\n' +
+    '2026-08-20T23:00:18Z | brief-quality-gate | daily-briefs/2026-08-21-v1.5.md | SUCCESS | [reason truncated in fixture]\n';
+
+  const frozenBoard = (date: string, body: string): string => {
+    const r = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-sched-'));
+    fs.mkdirSync(path.join(r, 'daily-briefs'), { recursive: true });
+    fs.writeFileSync(
+      path.join(r, 'daily-briefs', `${date}-pipeline-status.md`),
+      body
+    );
+    return r;
+  };
+
+  // (a) TONIGHT, WITH THE CRITIC'S CANARY REMOVED — the receipt that the verdict no longer depends
+  //     on evidence the Critic wrote. Scheduler: fired 23:20:17.192Z. Now: 23:52Z = T+31.7, inside
+  //     the 16–38 band.
+  const R0823 = frozenBoard('2026-08-23', FROZEN_0823_QG);
+  const NOW0823 = new Date('2026-08-22T23:52:00Z');
+  const READ0823 = parseSchedulerLastRun('2026-08-22T23:20:17.192Z')!;
+  //     FIRST, the counterfactual that makes the leg mean something: with the canary GONE the board
+  //     and the disk carry NOTHING, so the OLD gate — the one with no scheduler input — says ALLOWED.
+  //     That is the 08-22 false permit, reproduced on tonight's state.
+  const okOldGateWouldPermit = canSelfHeal(R0823, '2026-08-23', NOW0823).length === 0;
+  const d0823 = selfHealDecision(R0823, '2026-08-23', {
+    reading: READ0823,
+    now: NOW0823,
+  });
+  const okForbidden0823 =
+    d0823.verdict === 'FORBIDDEN' &&
+    d0823.exitCode === 1 &&
+    d0823.token === VERDICT_TOKEN.FORBIDDEN &&
+    d0823.sched.state === 'FIRED-AND-SILENT' &&
+    d0823.violations.some(x => x.check === 'self-heal-over-fired-scheduler-slot');
+  //     …and the SELFPOISON receipt, in code: put the Critic's canary back and the OLD leg fires on
+  //     it — right verdict, fabricated evidence. Two different reasons for one exit code is exactly
+  //     why the 08-23 Critic wrote "tonight's right answer was luck."
+  const R0823poison = frozenBoard(
+    '2026-08-23',
+    FROZEN_0823_QG + FROZEN_0823_CRITIC_CANARY
+  );
+  const poisonV = canSelfHeal(R0823poison, '2026-08-23', NOW0823);
+  const okPoisonReproduced =
+    poisonV.some(x => x.check === 'self-heal-over-live-editor') &&
+    !poisonV.some(x => x.check === 'self-heal-over-fired-scheduler-slot');
+  //     …and the doc rule from part (b) is mechanically honoured HERE: a self-heal canary named
+  //     `brief-editor-selfheal` is invisible to this gate's selector, so obeying Brief_Editor L31
+  //     can no longer manufacture the evidence Brief_Critic L32 reads. Both directions.
+  const R0823selfheal = frozenBoard(
+    '2026-08-23',
+    FROZEN_0823_QG +
+      FROZEN_0823_CRITIC_CANARY.replace('| brief-editor |', '| brief-editor-selfheal |')
+  );
+  const okSelfhealCanaryInvisible =
+    editorLines(R0823selfheal, '2026-08-23').length === 0 &&
+    editorLines(R0823poison, '2026-08-23').length === 1;
+
+  // (b) UNKNOWN — the load-bearing clause. Same fixture, same instant, NO scheduler reading.
+  const dUnknown = selfHealDecision(R0823, '2026-08-23', {
+    reading: null,
+    now: NOW0823,
+  });
+  const okUnknown =
+    dUnknown.verdict === 'UNKNOWN' &&
+    dUnknown.token === 'SELF-HEAL UNKNOWN' &&
+    dUnknown.exitCode === 3 &&
+    dUnknown.exitCode === SELF_HEAL_UNKNOWN_EXIT &&
+    dUnknown.sched.state === 'UNKNOWN' &&
+    dUnknown.violations.length === 0;
+  //     The three verdicts must be TELLABLE APART by exit code alone — a caller that cannot
+  //     distinguish them is a caller that will read UNKNOWN as ALLOWED.
+  const okExitCodesDistinct =
+    new Set([0, 1, SELF_HEAL_UNKNOWN_EXIT]).size === 3 &&
+    SELF_HEAL_UNKNOWN_EXIT !== 0 &&
+    SELF_HEAL_UNKNOWN_EXIT !== 1;
+
+  // (c) 2026-08-21 — THE NIGHT THE EDITOR WAS GENUINELY ABSENT AND SELF-HEAL WAS CORRECT.
+  //     The gate must not become a deadlock: a true absence still returns ALLOWED.
+  const R0821 = frozenBoard('2026-08-21', FROZEN_0821_QG);
+  const NOW0821 = new Date('2026-08-20T23:31:00Z'); // the Critic's first poll
+  const d0821never = selfHealDecision(R0821, '2026-08-21', {
+    reading: parseSchedulerLastRun('NEVER'),
+    now: NOW0821,
+  });
+  const okAllowed0821 =
+    d0821never.verdict === 'ALLOWED' &&
+    d0821never.exitCode === 0 &&
+    d0821never.token === VERDICT_TOKEN.ALLOWED &&
+    d0821never.sched.state === 'NEVER-FIRED' &&
+    d0821never.violations.length === 0;
+  //     …and by the other route the record actually states it — "no lastRunAt AFTER the QG's
+  //     SUCCESS". A lastRunAt predating this cycle's QG terminal belongs to a previous night.
+  //     (The 08-19 value is not on disk; what is on the record is that nothing followed 23:00:18Z.)
+  const d0821prior = selfHealDecision(R0821, '2026-08-21', {
+    reading: parseSchedulerLastRun('2026-08-19T23:20:00Z'),
+    now: NOW0821,
+  });
+  const okAllowed0821Prior =
+    d0821prior.verdict === 'ALLOWED' && d0821prior.sched.state === 'NEVER-FIRED';
+
+  // (d) ⭐ MONOTONICITY — the property that makes a 38-minute band safe next to 94-minute Editor
+  //     passes. The scheduler leg may only ADD a refusal. On a fixture with a LIVE Editor, a
+  //     past-the-band scheduler reading must NOT downgrade the verdict, and neither must UNKNOWN.
+  const aliveSched = schedulerLiveness(
+    alive,
+    D,
+    parseSchedulerLastRun('1999-01-01T00:00:00Z'),
+    new Date()
+  );
+  const okMonotonePastBand =
+    canSelfHeal(alive, D, new Date(), aliveSched).length >=
+      canSelfHeal(alive, D).length &&
+    selfHealDecision(alive, D, {
+      reading: parseSchedulerLastRun('1999-01-01T00:00:00Z'),
+    }).verdict === 'FORBIDDEN';
+  const okForbiddenOutranksUnknown =
+    selfHealDecision(alive, D, { reading: null }).verdict === 'FORBIDDEN';
+
+  // (e) THE BAND EDGES, both sides, and the floor case.
+  const bandRoot = frozenBoard('2026-08-23', FROZEN_0823_QG);
+  const bandAt = (min: number) =>
+    schedulerLiveness(
+      bandRoot,
+      '2026-08-23',
+      parseSchedulerLastRun('2026-08-22T23:20:00Z'),
+      new Date(new Date('2026-08-22T23:20:00Z').getTime() + min * 60000)
+    ).state;
+  const okBandEdges =
+    bandAt(5) === 'FIRED-AND-SILENT' && // below the 16-min floor it cannot even have finished
+    bandAt(EDITOR_FIRE_BAND_MAX_MIN) === 'FIRED-AND-SILENT' &&
+    bandAt(EDITOR_FIRE_BAND_MAX_MIN + 0.5) === 'FIRED-PAST-BAND';
+
+  // (f) THE PARSER REFUSES TO GUESS. A typo must not silently become UNKNOWN via the flag path;
+  //     the CLI turns null into a usage error (exit 2).
+  const okParser =
+    parseSchedulerLastRun('NEVER')?.never === true &&
+    parseSchedulerLastRun('2026-08-22T23:20:17.192Z')?.lastRunAt?.toISOString() ===
+      '2026-08-22T23:20:17.192Z' &&
+    parseSchedulerLastRun('2026-08-22T19:04:55-04:00')?.lastRunAt instanceof Date &&
+    parseSchedulerLastRun('yesterday') === null &&
+    parseSchedulerLastRun('') === null;
+  //     …and an ABSENT scheduler-state directory yields NO reading (⇒ UNKNOWN), never a default.
+  const okStateDirAbsentIsUnknown =
+    readSchedulerStateDir(path.join(os.tmpdir(), 'ehg-no-such-dir-216')) === null;
+
+  // (g) THE TWO DOCUMENTS MUST AGREE — the second half of the mandate, mechanically. A prose-only
+  //     rule is unenforced, and this pair ordering incompatible first actions is what made a
+  //     compliant self-heal unable to pass its own gate.
+  const edDoc = path.join(root, 'system', 'Brief_Editor.md');
+  const crDoc = path.join(root, 'system', 'Brief_Critic.md');
+  const edTxt = fs.existsSync(edDoc) ? fs.readFileSync(edDoc, 'utf8') : '';
+  const crTxt = fs.existsSync(crDoc) ? fs.readFileSync(crDoc, 'utf8') : '';
+  const okDocsAgree =
+    edTxt.includes('brief-editor-selfheal') &&
+    crTxt.includes('brief-editor-selfheal') &&
+    crTxt.includes('--scheduler-lastrun') &&
+    crTxt.includes('exit 3') &&
+    edTxt.includes('--can-self-heal');
+
+  // THE BAND IS CALIBRATED AND ITS LIMITS ARE STATED, NOT HIDDEN. Frozen measurement of every
+  // brief-editor CANARY→terminal runtime on the real boards, 2026-07-01 → 2026-08-20 (n=34,
+  // CORPUS FROZEN — never re-swept, or this leg moves every night):
+  const FROZEN_EDITOR_RUNTIMES_MIN = [
+    38.8, 204.7, 16.5, 14.1, 19.3, 44.5, 64.7, 64.5, 54.2, 94.2, 22.4, 80.6,
+    23.4, 23.0, 79.7, 39.2, 65.0, 12.1, 18.0, 21.2, 24.7, 73.0, 29.0, 24.4,
+    20.9, 22.0, 11.3, 11.0, 36.0, 14.9, 23.5, 38.5, 18.3, 22.0,
+  ];
+  const okBandIsNotARuntimeCeiling =
+    FROZEN_EDITOR_RUNTIMES_MIN.length === 34 &&
+    Math.max(...FROZEN_EDITOR_RUNTIMES_MIN) > EDITOR_FIRE_BAND_MAX_MIN &&
+    okMonotonePastBand; // ← which is precisely why that is safe
+  console.log(
+    `  [IMP-216] frozen brief-editor CANARY→terminal runtimes (n=${FROZEN_EDITOR_RUNTIMES_MIN.length}, 07-01→08-20): median ${[...FROZEN_EDITOR_RUNTIMES_MIN].sort((a, b) => a - b)[17]!.toFixed(1)}, max ${Math.max(...FROZEN_EDITOR_RUNTIMES_MIN).toFixed(1)} min. Fired-and-silent band ${EDITOR_FIRE_BAND_MIN_MIN}–${EDITOR_FIRE_BAND_MAX_MIN} min is a SILENCE window, NOT a runtime ceiling — safe only because the leg is monotone.`
+  );
+
+  // ── IMP-216 (2026-08-24 Critic mandate #2, 🔴, RC3): --audit-nonproduction ──────────────────
+  //    E-PIPELINE-EDITOR-NONPRODUCTION-01, DAY 4. Same freezing discipline as the block above:
+  //    EVERY BYTE IS FROZEN HERE, never read from `daily-briefs/`. The 08-24 board is TODAY'S board
+  //    and is still being appended to — and the 08-22 board is the proof that this matters, because
+  //    the ONLY brief-editor line it carries was written by a self-heal the NEXT MORNING at
+  //    09:15:55Z. An assertion pinned to that live file would have flipped from RED to green
+  //    overnight, silently, for a night on which the Editor produced nothing.
+  //    Verbatim prefixes of the real lines through the STATUS field; prose reasons truncated.
+  const FROZEN_0820_BOARD = // the Editor RAN and produced v2 — the clean night
+    '2026-08-19T22:41:28Z | brief-quality-gate | CANARY | WRITE-OK\n' +
+    '2026-08-19T22:58:45Z | brief-quality-gate | daily-briefs/2026-08-20-v1.5.md | SUCCESS | [reason truncated in fixture]\n' +
+    '2026-08-19T23:09:20Z | brief-editor | CANARY | WRITE-OK\n' +
+    '2026-08-19T23:31:22Z | brief-editor | daily-briefs/2026-08-20-v2.md | SUCCESS | [reason truncated in fixture]\n';
+  const FROZEN_0822_QG = // the 2026-08-22 board at the night poll — brief-editor lines ABSENT
+    '2026-08-21T22:41:38Z | brief-quality-gate | CANARY | WRITE-OK\n' +
+    '2026-08-21T22:42:57Z | brief-quality-gate | WAITING-ON-V1 | NOT self-healing. [reason truncated in fixture]\n' +
+    '2026-08-21T23:07:07Z | brief-quality-gate | daily-briefs/2026-08-22-v1.5.md | SUCCESS | [reason truncated in fixture]\n';
+  const FROZEN_0824_QG = // the 2026-08-24 board — ZERO brief-editor lines, then and now
+    '2026-08-23T18:41:45-0400 | brief-quality-gate | CANARY | WRITE-OK\n' +
+    '2026-08-23T19:12:08-0400 | brief-quality-gate | daily-briefs/2026-08-24-v1.5.md | SUCCESS | [reason truncated in fixture]\n';
+  //    The three fire instants, from `list_scheduled_tasks` → brief-editor.lastRunAt, as recorded
+  //    in the Critic reports for those nights.
+  const LR22 = parseSchedulerLastRun('2026-08-21T23:20:14Z')!;
+  const LR23 = parseSchedulerLastRun('2026-08-22T23:20:17.192Z')!;
+  const LR24 = parseSchedulerLastRun('2026-08-23T23:21:20Z')!;
+  const plus = (r: SchedulerReading, min: number) =>
+    new Date(r.lastRunAt!.getTime() + min * 60000);
+
+  // (1) THREE REAL NIGHTS, THREE REDS, ASSERTED INDIVIDUALLY. Fired · past the band · zero trace.
+  const NP22 = frozenBoard('2026-08-22', FROZEN_0822_QG);
+  const a22 = auditNonProduction(NP22, '2026-08-22', {
+    reading: LR22,
+    now: plus(LR22, 39),
+  });
+  const okNP22 =
+    a22.fired &&
+    a22.exitCode === 1 &&
+    a22.verdict === 'NON-PRODUCTION' &&
+    a22.sched.state === 'FIRED-PAST-BAND' &&
+    a22.violations.some(x => x.check === 'editor-nonproduction');
+  //    08-23 reuses the frozen board from the block above — the one with the Critic's fabricated
+  //    canary REMOVED, which is the honest state of that night's evidence.
+  const a23 = auditNonProduction(R0823, '2026-08-23', {
+    reading: LR23,
+    now: plus(LR23, 39),
+  });
+  const okNP23 =
+    a23.fired && a23.exitCode === 1 && a23.sched.state === 'FIRED-PAST-BAND';
+  const NP24 = frozenBoard('2026-08-24', FROZEN_0824_QG);
+  const a24 = auditNonProduction(NP24, '2026-08-24', {
+    reading: LR24,
+    now: plus(LR24, 39),
+  });
+  const okNP24 =
+    a24.fired && a24.exitCode === 1 && a24.sched.state === 'FIRED-PAST-BAND';
+
+  // (2) SILENT ON THE NIGHTS A v2 EXISTS — and for two DIFFERENT right reasons, which is the point.
+  //     08-20: the Editor fired, ran, and left both a board line and v2 ⇒ FIRED-AND-OBSERVED.
+  //     08-21: the scheduler says the slot NEVER FIRED ⇒ that is `pipeline-slot-attendance`'s alarm
+  //            (IMP-207), not this one. Two alarms for one fact teach the reader to skim both.
+  const NP20 = frozenBoard('2026-08-20', FROZEN_0820_BOARD);
+  fs.writeFileSync(
+    path.join(NP20, 'daily-briefs', '2026-08-20-v2.md'),
+    PLAUSIBLE_BODY
+  );
+  const a20 = auditNonProduction(NP20, '2026-08-20', {
+    reading: parseSchedulerLastRun('2026-08-19T23:09:20Z'),
+    now: new Date('2026-08-19T23:48:20Z'),
+  });
+  const okNP20 =
+    !a20.fired &&
+    a20.exitCode === 0 &&
+    a20.verdict === 'PRODUCED' &&
+    a20.sched.state === 'FIRED-AND-OBSERVED' &&
+    a20.violations.length === 0;
+  const NP21 = frozenBoard(
+    '2026-08-21',
+    FROZEN_0821_QG +
+      '2026-08-20T23:40:32Z | brief-editor | daily-briefs/2026-08-21-v2.md | SUCCESS | SELF-HEAL (Critic-invoked) [reason truncated in fixture]\n'
+  );
+  fs.writeFileSync(
+    path.join(NP21, 'daily-briefs', '2026-08-21-v2.md'),
+    PLAUSIBLE_BODY
+  );
+  const a21pre = auditNonProduction(NP21, '2026-08-21', {
+    reading: parseSchedulerLastRun('NEVER'),
+    now: new Date('2026-08-20T23:31:00Z'),
+  });
+  const a21post = auditNonProduction(NP21, '2026-08-21', {
+    reading: parseSchedulerLastRun('NEVER'),
+    now: new Date('2026-08-20T23:59:00Z'),
+  });
+  const okNP21 =
+    !a21pre.fired &&
+    a21pre.exitCode === 0 &&
+    a21pre.verdict === 'NOT-FIRED' &&
+    !a21post.fired &&
+    a21post.exitCode === 0;
+  //     …and the two v2 files those legs describe are REALLY on disk. Corroboration, deliberately
+  //     NOT the assertion: if the archive is ever cleaned the frozen legs above still bind.
+  const realV2_0820 = fs.existsSync(
+    path.join(DB(root), '2026-08-20-v2.md')
+  );
+  const realV2_0821 = fs.existsSync(
+    path.join(DB(root), '2026-08-21-v2.md')
+  );
+  const realV2_0823 = fs.existsSync(path.join(DB(root), '2026-08-23-v2.md'));
+  const realV2_0824 = fs.existsSync(path.join(DB(root), '2026-08-24-v2.md'));
+  const okRealV2Split = !realV2_0823 && !realV2_0824;
+
+  // (3) THE BOUNDARY IS A REAL SWITCH, NOT A SLOPE. Inside the band is IN FLIGHT: a gate that reds
+  //     at minute 20 recreates the false-permit class from the opposite side — it teaches the
+  //     morning reader that this alarm cries wolf, and the next real RED gets skimmed. Same
+  //     fixture, same scheduler reading, two instants.
+  const a24_t20 = auditNonProduction(NP24, '2026-08-24', {
+    reading: LR24,
+    now: plus(LR24, 20),
+  });
+  const a24_t38 = auditNonProduction(NP24, '2026-08-24', {
+    reading: LR24,
+    now: plus(LR24, EDITOR_FIRE_BAND_MAX_MIN),
+  });
+  const okBandSwitch =
+    !a24_t20.fired &&
+    a24_t20.exitCode === 0 &&
+    a24_t20.verdict === 'IN-FLIGHT' &&
+    a24_t20.sched.state === 'FIRED-AND-SILENT' &&
+    !a24_t38.fired && // the top of the band is still IN FLIGHT
+    a24.fired && // …and T+39 fires. One fixture, one switch.
+    a24.exitCode === 1;
+
+  // (4) UNKNOWN, NEVER A VERDICT — the exit-3 contract, on the state that most looks like a red.
+  //     08-24's board and disk are empty; with no scheduler reading that emptiness is EVIDENCE OF
+  //     NOTHING, and "no violations printed" must not be readable as a clean bill of health.
+  const a24_unknown = auditNonProduction(NP24, '2026-08-24', {
+    reading: null,
+    now: plus(LR24, 39),
+  });
+  const okNPUnknown =
+    !a24_unknown.fired &&
+    a24_unknown.verdict === 'UNKNOWN' &&
+    a24_unknown.exitCode === SELF_HEAL_UNKNOWN_EXIT &&
+    //     …and it is TELLABLE APART from both real verdicts BY EXIT CODE ALONE. Three live audits
+    //     of three real nights, three distinct codes: 08-20 clean (0), 08-24 non-production (1),
+    //     08-24 with no reading (3). A caller that cannot distinguish UNKNOWN from a clean run is a
+    //     caller that will file it as one.
+    new Set([a20.exitCode, a24.exitCode, a24_unknown.exitCode]).size === 3 &&
+    a24_unknown.sched.state === 'UNKNOWN' &&
+    a24_unknown.violations.length === 0;
+
+  // (5) THE STAGED WORKING FILE MAKES LIVENESS SCHEDULER-INDEPENDENT — the whole point of
+  //     Brief_Editor Gate 0.5. Before it, the Editor wrote nothing until it was finished, so
+  //     "never started" · "died at check 3" · "still working" were one indistinguishable string on
+  //     disk and `--liveness` had to INFER from the scheduler. With a staged file that exists from
+  //     minute one, liveness is an MTIME QUESTION — which is what this gate was built to read.
+  //     The proof is the CONTRADICTION: the scheduler is handed NEVER (the strongest possible
+  //     "there is no Editor") and the disk still says ALIVE, out-voting it on its own evidence.
+  const staged = frozenBoard('2026-08-24', FROZEN_0824_QG);
+  const stagedDb = path.join(staged, 'daily-briefs');
+  const V15_BODY = PLAUSIBLE_BODY;
+  fs.writeFileSync(path.join(stagedDb, '2026-08-24-v1.5.md'), V15_BODY);
+  const stagedWorking = path.join(stagedDb, '2026-08-24-v2.working.md');
+  const STAGED_NOW = new Date();
+  const touch = (p: string, minAgo: number) => {
+    const t = new Date(STAGED_NOW.getTime() - minAgo * 60000);
+    fs.utimesSync(p, t, t);
+  };
+  //     (5a) the steady state: staged, then EDITED — Gate 1 struck a magnitude 2 minutes ago.
+  fs.writeFileSync(
+    stagedWorking,
+    V15_BODY.replace('4.1 percent', '4.3 percent')
+  );
+  touch(stagedWorking, 2);
+  const stagedLive = liveness(staged, '2026-08-24', STAGED_NOW);
+  const stagedSched = schedulerLiveness(
+    staged,
+    '2026-08-24',
+    parseSchedulerLastRun('NEVER'),
+    STAGED_NOW
+  );
+  const okStagedAliveFromMtime =
+    stagedLive.state === 'ALIVE' &&
+    stagedLive.quietMin !== null &&
+    stagedLive.quietMin < QUIET_MIN &&
+    stagedLive.bytes !== null &&
+    stagedLive.bytes >= MIN_PLAUSIBLE_BRIEF_BYTES &&
+    stagedSched.state === 'NEVER-FIRED' && // the scheduler says NO EDITOR…
+    stagedLive.state === 'ALIVE'; // …and the artifact out-votes it. mtime needs no witness.
+  //     …and the counterfactual that makes the leg mean something: TODAY's shape — same board, same
+  //     instant, NO working file — is ABSENT, and the answer then depends entirely on the scheduler.
+  fs.rmSync(stagedWorking, { force: true });
+  const okNoStagedIsAbsent =
+    liveness(staged, '2026-08-24', STAGED_NOW).state === 'ABSENT';
+
+  // (5-bis) THE HOLE GATE 0.5 OPENS, CLOSED IN THE SAME PASS. A staged file is a byte-copy of v1.5
+  //     containing ZERO editorial work, and it is fresh, 60 KB and perfectly plausible. Unhandled it
+  //     reads ALIVE → QUIET → "past the 45-min floor, promote it" and an UNEDITED v1.5 SHIPS AS v2 —
+  //     the exact reader harm this improvement exists to stop, re-entering through the door the fix
+  //     opened. IDENTITY, never similarity (IMP-149's reason): one character of divergence is a real
+  //     pass in progress and must still be promotable.
+  fs.writeFileSync(
+    path.join(stagedDb, '2026-08-24-pipeline-status.md'),
+    FROZEN_0824_QG +
+      `${new Date(STAGED_NOW.getTime() - 50 * 60000).toISOString().replace(/\.\d+Z$/, 'Z')} | brief-editor | CANARY | WRITE-OK\n`
+  );
+  fs.writeFileSync(stagedWorking, V15_BODY); // byte-identical to v1.5 — staged, never edited
+  touch(stagedWorking, 25); // quiet, and past the 45-min promotion floor
+  const untouched = liveness(staged, '2026-08-24', STAGED_NOW);
+  const okUntouchedStagedAbsent =
+    untouched.state === 'ABSENT' &&
+    // IMP-222 widened this branch from bytes to reader bodies; the byte case is a strict subset and
+    // must go on being caught, which is what this leg pins. The wording moved, the verdict did not.
+    /READER-BODY-IDENTICAL to 2026-08-24-v1\.5\.md/.test(untouched.reason) &&
+    /a byte copy/.test(untouched.reason) &&
+    canPromote(staged, '2026-08-24', STAGED_NOW).some(
+      x => x.check === 'promote-nothing'
+    );
+  fs.writeFileSync(stagedWorking, `${V15_BODY}x`); // ONE character of real work
+  touch(stagedWorking, 25);
+  const okOneCharIsPromotable =
+    liveness(staged, '2026-08-24', STAGED_NOW).state === 'QUIET' &&
+    canPromote(staged, '2026-08-24', STAGED_NOW).length === 0;
+
+  // (6) THE DOCUMENTS THAT CARRY THIS RULE MUST CARRY IT. A prose-only rule is unenforced, and a
+  //     mode nothing calls is not a gate, it is a file (the orphaned-gate class, IMP-160).
+  const hcDoc = path.join(
+    root,
+    'system',
+    'task-bodies-snapshot',
+    'pipeline-health-check',
+    'SKILL.md'
+  );
+  const hcTxt = fs.existsSync(hcDoc) ? fs.readFileSync(hcDoc, 'utf8') : '';
+  const okStagedRuleDocumented =
+    /Gate 0\.5/.test(edTxt) &&
+    /STAGED OUTPUT/.test(edTxt) &&
+    edTxt.includes('v2.working.md') &&
+    /byte-copy/i.test(edTxt);
+  const okAuditWired =
+    hcTxt.includes('--audit-nonproduction') &&
+    hcTxt.includes('--scheduler-lastrun') &&
+    /never blocks?/i.test(hcTxt);
+
+  for (const d of [NP20, NP21, NP22, NP24, staged])
+    fs.rmSync(d, { recursive: true, force: true });
+
+  for (const d of [R0823, R0823poison, R0823selfheal, R0821, bandRoot])
+    fs.rmSync(d, { recursive: true, force: true });
+
   for (const d of [alive, dead, early, held, ceiling, husk, full, huskEarly, twin])
     fs.rmSync(d, { recursive: true, force: true });
 
   const rows: [string, boolean][] = [
+    [
+      'IMP-216 with the Critic\'s canary REMOVED, tonight\'s board carries NO evidence — the OLD gate says ALLOWED (the 08-22 false permit, reproduced)',
+      okOldGateWouldPermit,
+    ],
+    [
+      'IMP-216 FORBIDDEN on the real 2026-08-23 scheduler state (fired 23:20:17.192Z, T+32, in band) with the canary removed — exit 1, no fabricated evidence',
+      okForbidden0823,
+    ],
+    [
+      'IMP-216 the SELFPOISON is reproduced: restore the Critic\'s own canary and the OLD leg fires on it — right verdict, wrong reason',
+      okPoisonReproduced,
+    ],
+    [
+      'IMP-216 a `brief-editor-selfheal` canary is INVISIBLE to this gate (Brief_Editor L31 can no longer poison Brief_Critic L32) — and a real `brief-editor` canary is still selected',
+      okSelfhealCanaryInvisible,
+    ],
+    [
+      'IMP-216 UNKNOWN with no scheduler reading — token "SELF-HEAL UNKNOWN", exit 3, zero violations (an existence check with no liveness input REFUSES to answer)',
+      okUnknown,
+    ],
+    [
+      'IMP-216 ALLOWED / FORBIDDEN / UNKNOWN are three distinct exit codes (0 / 1 / 3) — a caller cannot read UNKNOWN as permission',
+      okExitCodesDistinct,
+    ],
+    [
+      'IMP-216 ALLOWED on the real 2026-08-21 state (scheduler NEVER fired) — the night self-heal was correct; the gate must not deadlock a genuinely absent Editor',
+      okAllowed0821,
+    ],
+    [
+      'IMP-216 …and by the record\'s own wording — a lastRunAt PREDATING this cycle\'s QG terminal is NEVER-FIRED',
+      okAllowed0821Prior,
+    ],
+    [
+      'IMP-216 MONOTONE: supplying a scheduler reading never downgrades a live-Editor FORBIDDEN (the leg only ever ADDS)',
+      okMonotonePastBand,
+    ],
+    [
+      'IMP-216 FORBIDDEN outranks UNKNOWN — evidence of a live Editor needs no scheduler',
+      okForbiddenOutranksUnknown,
+    ],
+    [
+      'IMP-216 band edges: T+5 and T+38 are FIRED-AND-SILENT, T+38.5 is FIRED-PAST-BAND',
+      okBandEdges,
+    ],
+    [
+      'IMP-216 the reading parser refuses to guess (ISO, offset form, NEVER; null on garbage) and an absent state dir yields NO reading',
+      okParser && okStateDirAbsentIsUnknown,
+    ],
+    [
+      'IMP-216 Brief_Editor.md and Brief_Critic.md AGREE — both name `brief-editor-selfheal`; the Critic names --scheduler-lastrun and exit 3',
+      okDocsAgree,
+    ],
+    [
+      'IMP-216 the 16–38 band is a SILENCE window, not a runtime ceiling (frozen n=34, max 204.7 min) — safe because the leg is monotone',
+      okBandIsNotARuntimeCeiling,
+    ],
+    [
+      'IMP-216 --audit-nonproduction FIRES on 2026-08-22 (fired 23:20:14Z, T+39, no v2 / no working file / no board line) — exit 1, check editor-nonproduction',
+      okNP22,
+    ],
+    [
+      'IMP-216 --audit-nonproduction FIRES on 2026-08-23 (fired 23:20:17.192Z, T+39) on the board with the Critic\'s fabricated canary REMOVED — exit 1',
+      okNP23,
+    ],
+    [
+      'IMP-216 --audit-nonproduction FIRES on 2026-08-24 (fired 23:21:20Z, T+39, ZERO brief-editor lines on the real board) — exit 1. Four consecutive nights, three reds this gate would have raised at 11:06',
+      okNP24,
+    ],
+    [
+      'IMP-216 --audit-nonproduction SILENT on 2026-08-20 — the Editor fired, ran, and left a board line AND a v2 ⇒ FIRED-AND-OBSERVED, exit 0, zero violations',
+      okNP20,
+    ],
+    [
+      'IMP-216 --audit-nonproduction SILENT on 2026-08-21 (scheduler NEVER fired, both before and after the Critic\'s self-heal) — a slot that never STARTED is pipeline-slot-attendance\'s alarm (IMP-207), not this one',
+      okNP21,
+    ],
+    [
+      `IMP-216 …and the v2 files those two silent legs describe are really on disk (08-20 ${realV2_0820 ? 'present' : 'CLEANED UP — frozen leg binds'}, 08-21 ${realV2_0821 ? 'present' : 'CLEANED UP — frozen leg binds'}), while 08-23 and 08-24 have NO v2 at all`,
+      okRealV2Split,
+    ],
+    [
+      `IMP-216 the band boundary is a REAL SWITCH: SILENT at T+20 and at T+${EDITOR_FIRE_BAND_MAX_MIN} (IN-FLIGHT), FIRES at T+39 — one fixture, one scheduler reading, three instants. A gate that reds at minute 20 is the false-permit class from the opposite side`,
+      okBandSwitch,
+    ],
+    [
+      'IMP-216 --audit-nonproduction returns UNKNOWN (exit 3), never a verdict, with no scheduler reading — on the emptiest board of all, where "no violations" most looks like health',
+      okNPUnknown,
+    ],
+    [
+      'IMP-216 the STAGED working file makes --liveness SCHEDULER-INDEPENDENT: ALIVE read from mtime while --scheduler-lastrun NEVER says there is no Editor at all; strip the file and the same instant reads ABSENT',
+      okStagedAliveFromMtime && okNoStagedIsAbsent,
+    ],
+    [
+      'IMP-216 a staged copy still BYTE-IDENTICAL to v1.5 reads ABSENT and is UNPROMOTABLE — Gate 0.5 cannot become a path for shipping an unedited v1.5 as v2 at the 45-min floor',
+      okUntouchedStagedAbsent,
+    ],
+    [
+      'IMP-216 …and ONE CHARACTER of real editorial work makes it promotable again — identity, never similarity (IMP-149\'s reason: a light-edit night is still a live Editor)',
+      okOneCharIsPromotable,
+    ],
+    [
+      'IMP-216 Brief_Editor.md carries the Gate 0.5 STAGED OUTPUT rule (byte-copy of v1.5 as the first file action) — a prose-only rule is unenforced, and an undocumented mechanical rule is unfollowed',
+      okStagedRuleDocumented,
+    ],
+    [
+      'IMP-216 pipeline-health-check INVOKES --audit-nonproduction with --scheduler-lastrun and states it never blocks — a mode nothing calls is not a gate, it is a file (IMP-160)',
+      okAuditWired,
+    ],
     [
       'IMP-149 the REAL 37,973-byte 2026-08-09-v2.working.md twin reads ABSENT' +
         (realTwinExists ? '' : ' (artifact cleaned up — synthetic leg binds)'),
@@ -1329,9 +2415,24 @@ function selftest(): number {
         .filter((d): d is string => !!d)
         .filter(d => !fs.existsSync(path.join(promoDir, `${d}-v2.working.md`)))
     : [];
+  // 🔴 SCOPE: THIS LEG TESTS THE GATE, NOT THE WORLD (IMP-222, 2026-08-26, RC5).
+  // `cleanNights` is derived from LIVE disk, which is what makes the leg untunable — and which also
+  // made it a world-state assertion in disguise. `auditPromotion` grew a second question in IMP-164
+  // (is there an editor log?) and two more today, so from the moment the Editor stopped writing its
+  // log this leg went RED — on nights that honoured rule 6 perfectly — and took TEN unrelated
+  // ledger rows down with it (IMP-046/048/072/121/141/149/155/157/164/184 and ESC-004 all share
+  // this one `--selftest`). A REAL production defect was being reported as "these ten improvements
+  // are not mechanically real", which is the opposite of true and is exactly how a registry teaches
+  // the next session to skim it (CARRY/TREE, 2026-08-13; IMP-211, which drew this same line for
+  // pipeline-slot-attendance).
+  //
+  // So IMP-155's leg asserts IMP-155's invariant: rule 6, the scratch file, and nothing else. The
+  // world-state it used to smuggle in is not discarded — `--scan-promotions` reports it every day
+  // through the ledger's `world:` channel, where an out-of-contract RECORD belongs.
+  const RULE6 = new Set(['ORPHANED-SCRATCH', 'STALE-SCRATCH']);
   const okPromoSilentClean =
     cleanNights.length > 0 &&
-    cleanNights.every(d => auditPromotion(root, d).length === 0);
+    cleanNights.every(d => auditPromotion(root, d).every(v => !RULE6.has(v.check)));
   // SILENT mid-pass: a working file with NO v2 yet is a live Editor, never a failed promotion.
   const liveRoot = fixture('promo-live', {
     canaryMinAgo: 10,
@@ -1360,6 +2461,156 @@ function selftest(): number {
     [
       'IMP-155 does NOT break --liveness: the same mid-pass fixture still reads ALIVE',
       okPromoLivenessIntact,
+    ]
+  );
+
+  // ── IMP-222 · BODIES, NOT BYTES (08-25 mandate #3a) — every leg on REAL published bytes ───────
+  const RD = (f: string) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : null);
+  const real = (d: string, kind: string) => RD(path.join(DB(root), `${d}-${kind}.md`));
+  const bodyEq = (a: string | null, b: string | null) => a !== null && b !== null && readerBody(a) === readerBody(b);
+
+  // THE DISCRIMINATING TEST, and today's gate failed it: the 08-25 stage is 40,546 B against a
+  // 80,496 B v1.5 — NOT byte-identical, and every reader-facing byte identical.
+  const s25 = real('2026-08-25', 'v2.working');
+  const v25 = real('2026-08-25', 'v1.5');
+  rows.push(
+    [
+      'IMP-222 the real 2026-08-25 stage is NOT byte-identical to v1.5 (40,546 B vs 80,496 B) — else the leg below proves nothing',
+      !!s25 && !!v25 && s25 !== v25 && s25.length !== v25.length,
+    ],
+    [
+      'IMP-222 …and IS reader-body-identical to it — ZERO editorial work, which byte-identity read as DIVERGED (the 45-min-floor hole)',
+      bodyEq(s25, v25),
+    ],
+    [
+      'IMP-222 REGRESSION PIN: 08-20/21/22, three nights with real Editor passes, ALL read as EDITED — a gate that calls a real pass "absent" can stop a brief',
+      ['2026-08-20', '2026-08-21', '2026-08-22'].every(
+        d => !bodyEq(real(d, 'v2'), real(d, 'v1.5'))
+      ),
+    ],
+    [
+      'IMP-222 a byte-identical `cp` stage is STILL caught — no regression on the case IMP-216 already covered',
+      bodyEq('# body\nhello\n', '# body\nhello\n'),
+    ],
+    [
+      'IMP-222 whitespace and a trailing newline are NOT editorial work',
+      bodyEq('# body\n\nhello   world\n', '# body\nhello world'),
+    ],
+    [
+      'IMP-222 …and ONE changed reader-facing word IS: the gate must never hold a genuinely edited brief',
+      !bodyEq('# body\nhello world\n', '# body\nhello worlds\n'),
+    ],
+    [
+      'IMP-222 comment blocks are not the brief: identical bodies with different comments still read UNEDITED',
+      bodyEq('# b\ntext\n<!-- ==== A ==== -->\nx', '# b\ntext\n<!-- ==== B ==== -->\ny'),
+    ]
+  );
+
+  // ── IMP-222 · UNEDITED-PROMOTION + DROPPED-WORKLIST-BLOCK (mandate #3d) ──────────────────────
+  // 2026-08-26 IS the predicted night: v2.md landed byte-identical to v1.5.md and shipped.
+  const a26 = auditPromotion(root, '2026-08-26');
+  rows.push(
+    [
+      'IMP-222 FIRES UNEDITED-PROMOTION on the REAL 2026-08-26 v2 — 70,983 B identical to v1.5, promoted, and consumed by three downstream stages as an edited brief',
+      a26.some(v => v.check === 'UNEDITED-PROMOTION'),
+    ],
+    [
+      'IMP-222 SILENT on 08-20/21/22, whose v2s are real passes',
+      ['2026-08-20', '2026-08-21', '2026-08-22'].every(
+        d => !auditPromotion(root, d).some(v => v.check === 'UNEDITED-PROMOTION')
+      ),
+    ],
+    [
+      `IMP-222 the rule binds FORWARD from ${EDITORIAL_WORK_EFFECTIVE_FROM}: no pre-effective night is condemned by either new leg (IMP-125)`,
+      fs
+        .readdirSync(DB(root))
+        .map(f => f.match(/^(\d{4}-\d{2}-\d{2})-v2\.md$/)?.[1])
+        .filter((d): d is string => !!d && d < EDITORIAL_WORK_EFFECTIVE_FROM)
+        .every(d =>
+          !auditPromotion(root, d).some(
+            v => v.check === 'UNEDITED-PROMOTION' || v.check === 'DROPPED-WORKLIST-BLOCK'
+          )
+        ),
+    ],
+    [
+      'IMP-222 droppedProtectedBlocks FIRES on the real 08-25 v2 (7 blocks in v1.5, 0 in v2) naming WRITER DECLARATIONS and VALIDATION REPORT — the Morning Truth Gate\'s own worklist',
+      (() => {
+        const dr = droppedProtectedBlocks(real('2026-08-25', 'v1.5') ?? '', real('2026-08-25', 'v2') ?? '');
+        return dr.includes('WRITER DECLARATIONS') && dr.includes('VALIDATION REPORT') && dr.length >= 4;
+      })(),
+    ],
+    [
+      'IMP-222 …and is SILENT on 08-20/21/22, which retain their blocks — the mandate\'s own both-directions receipt',
+      ['2026-08-20', '2026-08-21', '2026-08-22'].every(
+        d => droppedProtectedBlocks(real(d, 'v1.5') ?? '', real(d, 'v2') ?? '').length === 0
+      ),
+    ],
+    [
+      'IMP-222 the protected set is DERIVED, not decorative: every block still appears in the consumer script that makes it load-bearing',
+      PROTECTED_BLOCKS.every(b => {
+        const src = RD(path.join(root, b.consumer));
+        return !!src && src.includes(b.name);
+      }),
+    ],
+    [
+      'IMP-222 a v2 that ADDS blocks is never accused — the Editor may write, it may only not silently discard',
+      droppedProtectedBlocks('<!-- COUNTER-CASE -->', '<!-- COUNTER-CASE -->\n<!-- MODEL-LOCKED -->').length === 0,
+    ]
+  );
+
+  // ── IMP-224 · THE DOWNSTREAM CONTRACT (08-25 mandate #3c, re-issued as 08-26 mandate #2c) ─────
+  // The FIRE leg runs with the effective date wound back to the real night, because the rule binds
+  // from 2026-08-27 forward and the receipt is 2026-08-26. Detection is proved on the real board;
+  // emission still refuses to condemn the archive.
+  const dl26 = auditDownstreamLabel(root, '2026-08-26', '2026-08-26');
+  rows.push(
+    [
+      'IMP-224 the real 2026-08-26 was a NO-EDITOR-PASS night by the artifact, not by inference (v2 present, reader body identical to v1.5)',
+      noEditorPass(root, '2026-08-26'),
+    ],
+    [
+      `IMP-224 FIRES on the real 2026-08-26 board — ${dl26.map(v => v.message.match(/^DOWNSTREAM CONTRACT BROKEN — (\S+)/)?.[1]).join(', ') || 'NOBODY'} reported a result and none carried the label`,
+      dl26.length >= 2 && dl26.every(v => v.check === 'UNLABELLED-FALLBACK'),
+    ],
+    [
+      'IMP-224 SILENT on 08-20/21/22 — real Editor passes owe no label, and a gate that labels an edited brief is a lie in the other direction',
+      ['2026-08-20', '2026-08-21', '2026-08-22'].every(
+        d => auditDownstreamLabel(root, d, '2026-08-01').length === 0
+      ),
+    ],
+    [
+      `IMP-224 the rule binds FORWARD from ${DOWNSTREAM_LABEL_EFFECTIVE_FROM}: the same real 2026-08-26 board is NOT condemned through the public path`,
+      auditDownstreamLabel(root, '2026-08-26').length === 0,
+    ],
+    [
+      'IMP-224 SILENT once the label is present — the remedy is one string and it must never be punished',
+      (() => {
+        const r = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-label-'));
+        fs.mkdirSync(path.join(r, 'daily-briefs'), { recursive: true });
+        const D2 = '2026-08-27';
+        fs.writeFileSync(path.join(r, 'daily-briefs', `${D2}-v1.5.md`), '# brief\nbody\n');
+        fs.writeFileSync(path.join(r, 'daily-briefs', `${D2}-v2.md`), '# brief\nbody\n');
+        const board = path.join(r, 'daily-briefs', `${D2}-pipeline-status.md`);
+        fs.writeFileSync(board, `2026-08-26T23:45:00Z | brief-light | out.md | SUCCESS | built\n`);
+        const before = auditDownstreamLabel(r, D2).length;
+        fs.writeFileSync(board, `2026-08-26T23:45:00Z | brief-light | out.md | SUCCESS | built · ${DOWNSTREAM_LABEL}\n`);
+        const after = auditDownstreamLabel(r, D2).length;
+        return before === 1 && after === 0;
+      })(),
+    ],
+    [
+      'IMP-224 a stage that NEVER REPORTED is not accused here — an absent slot is pipeline-slot-attendance\'s finding; one fact, one alarm',
+      (() => {
+        const r = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-label2-'));
+        fs.mkdirSync(path.join(r, 'daily-briefs'), { recursive: true });
+        const D2 = '2026-08-27';
+        fs.writeFileSync(path.join(r, 'daily-briefs', `${D2}-v1.5.md`), '# brief\nbody\n');
+        fs.writeFileSync(
+          path.join(r, 'daily-briefs', `${D2}-pipeline-status.md`),
+          `2026-08-26T23:45:00Z | brief-light | CANARY | WRITE-OK\n`
+        );
+        return auditDownstreamLabel(r, D2).length === 0;
+      })(),
     ]
   );
 
@@ -1458,22 +2709,112 @@ function selftest(): number {
   return 1;
 }
 
+/**
+ * 🔴 THE DOWNSTREAM CONTRACT — THE BRIEF ALWAYS SHIPS; IT SHIPS LABELLED (IMP-224).
+ *
+ * 08-25 Critic mandate #3c, re-issued as 08-26 mandate #2c. THREE nights running the Critic has
+ * asked for this one line, and the reason is the plainest fact in the whole file: `brief-light`,
+ * `brief-email` and `brief-morning` all consume v2, all fall back to v1.5 with no hard stop, and
+ * for six nights the reader received an unedited brief while NO ARTIFACT ANYWHERE SAID SO. On
+ * 2026-08-26 it got worse in the way 08-25 predicted — a v2 existed, byte-identical to v1.5, and
+ * brief-light's own SUCCESS line recorded the identity as a RECEIPT OF SAFETY ("BYTE-IDENTICAL to
+ * v1.5, so tonight's race is closed by receipt") rather than as the absence of an Editor.
+ *
+ * A LABEL, NOT A BLOCK (Constitution I). This never stops a brief; it stops a brief being
+ * MISREPRESENTED as edited.
+ */
+export const DOWNSTREAM_LABEL = 'INPUT: v1.5 — NO EDITOR PASS';
+export const DOWNSTREAM_STAGES = ['brief-light', 'brief-email', 'brief-morning'];
+export const DOWNSTREAM_LABEL_EFFECTIVE_FROM = '2026-08-27';
+
+/** Was there an Editor pass at all? v2 absent, or v2 present with a reader body identical to v1.5. */
+export function noEditorPass(root: string, date: string): boolean {
+  const v2 = path.join(DB(root), `${date}-v2.md`);
+  if (!fs.existsSync(v2)) return true;
+  const b15 = readerBodyOf(path.join(DB(root), `${date}-v1.5.md`));
+  const b2 = readerBodyOf(v2);
+  return b15 !== null && b2 !== null && b15 === b2;
+}
+
+export function auditDownstreamLabel(
+  root: string,
+  date: string,
+  effectiveFrom = DOWNSTREAM_LABEL_EFFECTIVE_FROM
+): Violation[] {
+  if (date < effectiveFrom) return []; // the rule binds forward, never backward (IMP-125)
+  if (!noEditorPass(root, date)) return []; // a real pass owes no label
+  const board = path.join(DB(root), `${date}-pipeline-status.md`);
+  if (!fs.existsSync(board)) return [];
+  const lines = fs.readFileSync(board, 'utf8').split('\n');
+  const out: Violation[] = [];
+  for (const stage of DOWNSTREAM_STAGES) {
+    // Only a stage that CLAIMED to have produced something owes a label. A stage that never ran is
+    // slot attendance's finding, not this one — one fact, one alarm.
+    const own = lines.filter(l => (l.split('|')[1] || '').trim() === stage);
+    const terminal = own.filter(l => !/^CANARY/i.test((l.split('|')[2] || '').trim()));
+    if (!terminal.length) continue;
+    if (terminal.some(l => l.includes(DOWNSTREAM_LABEL))) continue;
+    out.push({
+      check: 'UNLABELLED-FALLBACK',
+      message:
+        `DOWNSTREAM CONTRACT BROKEN — ${stage} reported a result for ${date} on a night with NO EDITOR PASS ` +
+        `(${fs.existsSync(path.join(DB(root), `${date}-v2.md`)) ? 'v2 exists and is reader-body-identical to v1.5' : 'no v2 on disk'}) ` +
+        `and its status line does not carry "${DOWNSTREAM_LABEL}". The brief always ships — it ships LABELLED. ` +
+        `For six consecutive nights the reader received an unedited brief and no artifact anywhere said so; on ` +
+        `2026-08-26 brief-light recorded the v1.5/v2 identity as a receipt of SAFETY. FIX: print the label in the ` +
+        `status line AND in the artifact.`,
+    });
+  }
+  return out;
+}
+
+/**
+ * --scan-promotions [N] — THE WORLD-STATE CHANNEL FOR THIS GATE (IMP-222).
+ *
+ * The selftest asks "does the code work". This asks "is the record in contract", over the last N
+ * promoted nights. They are different questions with different fixes, and fusing them is what put
+ * ten green improvements behind one red Editor. Exit 1 means the WORLD is out of contract; the
+ * ledger carries it as a `world:` leg, which prints every morning and never reds the registry.
+ */
+export function scanPromotions(root: string, days: number, today = new Date()): { date: string; v: Violation[] }[] {
+  const out: { date: string; v: Violation[] }[] = [];
+  for (let i = 1; i <= days; i++) {
+    const d = new Date(today.getTime() - (i - 1) * 86400000).toISOString().slice(0, 10);
+    if (!fs.existsSync(path.join(DB(root), `${d}-v2.md`))) continue;
+    const v = auditPromotion(root, d);
+    if (v.length) out.push({ date: d, v });
+  }
+  return out.reverse();
+}
+
 function main() {
   const argv = process.argv.slice(2);
   if (argv.includes('--selftest')) process.exit(selftest());
 
   const root = process.cwd();
+
+  const spI = argv.indexOf('--scan-promotions');
+  if (spI >= 0) {
+    const n = Number(argv[spI + 1]) || 7;
+    const hits = scanPromotions(root, n);
+    console.log(`editor-handoff-gate --scan-promotions ${n} — ${hits.length} night(s) out of contract`);
+    for (const h of hits) for (const v of h.v) console.log(`   ✗ ${h.date} ${v.check}: ${v.message.slice(0, 220)}`);
+    if (!hits.length) console.log('   ✅ every promoted v2 in the window carries its editor log, its worklist blocks, and real editorial work.');
+    process.exit(hits.length ? 1 : 0);
+  }
   const modes = [
     '--can-self-heal',
     '--can-promote',
     '--audit',
     '--audit-promotion',
+    '--audit-downstream-label',
+    '--audit-nonproduction',
     '--finalize',
     '--liveness',
     '--qg-liveness',
   ];
   const i = argv.findIndex(a => modes.includes(a));
-  if (i < 0 || !argv[i + 1]) {
+  if (i < 0 || !argv[i + 1] || argv[i + 1]!.startsWith('--')) {
     console.error(
       `usage: editor-handoff-gate.ts (${modes.join(' | ')}) <DATE> | --selftest`
     );
@@ -1481,6 +2822,53 @@ function main() {
   }
   const mode = argv[i]!;
   const date = argv[i + 1]!;
+
+  // ── IMP-216: the scheduler reading. FLAG first, state dir as a convenience, else NOTHING —
+  //    and NOTHING means UNKNOWN, never a guess. An unparseable value is a USAGE ERROR (exit 2):
+  //    a typo must not be able to buy the gate's silence.
+  const slrI = argv.indexOf('--scheduler-lastrun');
+  const sdirI = argv.indexOf('--scheduler-state-dir');
+  let reading: SchedulerReading | null = null;
+  if (slrI >= 0) {
+    const raw = argv[slrI + 1];
+    if (!raw) {
+      console.error(
+        'usage: --scheduler-lastrun <ISO|NEVER>  (brief-editor.lastRunAt from list_scheduled_tasks)'
+      );
+      process.exit(2);
+    }
+    reading = parseSchedulerLastRun(raw);
+    if (!reading) {
+      console.error(
+        `--scheduler-lastrun: cannot parse "${raw}". Give an ISO instant (2026-08-22T23:20:17.192Z) or the literal NEVER. Refusing to guess.`
+      );
+      process.exit(2);
+    }
+  } else {
+    reading = readSchedulerStateDir(
+      sdirI >= 0 && argv[sdirI + 1] ? argv[sdirI + 1]! : undefined
+    );
+  }
+
+  // --now <ISO>: REPLAY ONLY. Every verdict in this file is a function of (board, disk, scheduler,
+  // NOW), so a receipt that cannot pin NOW is not reproducible — and an unreproducible receipt is
+  // how "the gate said ALLOWED" survives in a report long after the state that produced it is gone.
+  // Loudly banner-ed, because a stale --now is a wrong verdict wearing a real one's clothes.
+  const nowI = argv.indexOf('--now');
+  let simulatedNow: Date | null = null;
+  if (nowI >= 0) {
+    const raw = argv[nowI + 1] ?? '';
+    const d = new Date(raw);
+    if (!/\d{4}-\d{2}-\d{2}T/.test(raw) || Number.isNaN(d.getTime())) {
+      console.error(`--now: cannot parse "${raw}". Give an ISO instant.`);
+      process.exit(2);
+    }
+    simulatedNow = d;
+    console.log(
+      `⚠️  SIMULATED CLOCK — --now ${d.toISOString()}. REPLAY ONLY: this verdict describes that instant, never this one. Do not act on it.`
+    );
+  }
+  const NOW = () => simulatedNow ?? new Date();
 
   if (mode === '--finalize') {
     const r = finalize(root, date);
@@ -1494,6 +2882,22 @@ function main() {
     process.exit(r.code);
   }
 
+  if (mode === '--audit-downstream-label') {
+    const v = auditDownstreamLabel(root, date);
+    console.log(`editor-handoff-gate --audit-downstream-label ${date}`);
+    if (!v.length) {
+      console.log(
+        noEditorPass(root, date)
+          ? `   ✅ NO EDITOR PASS for ${date} and every downstream stage that reported says so.`
+          : `   ✅ ${date} had a real Editor pass — no label owed.`
+      );
+      process.exit(0);
+    }
+    for (const x of v) console.log(`   ✗ ${x.check}: ${x.message}`);
+    console.log(`\n   LABEL, NOT BLOCK — this never stops a brief (Constitution I). It stops a brief being called edited when it was not.`);
+    process.exit(1);
+  }
+
   if (mode === '--audit-promotion') {
     const v = auditPromotion(root, date);
     console.log(`editor-handoff-gate --audit-promotion ${date}`);
@@ -1505,6 +2909,34 @@ function main() {
       process.exit(0);
     }
     process.exit(1);
+  }
+
+  if (mode === '--audit-nonproduction') {
+    const a = auditNonProduction(root, date, { reading, now: NOW() });
+    console.log(`editor-handoff-gate --audit-nonproduction ${date}`);
+    console.log(`   scheduler: ${a.sched.state} — ${a.sched.reason}`);
+    console.log(`   disk: ${a.live.state} — ${a.live.reason}`);
+    for (const x of a.violations) console.log(`   ✗ [${x.check}] ${x.message}`);
+    if (a.verdict === 'UNKNOWN') {
+      console.log(
+        `\n❓ NON-PRODUCTION UNKNOWN (exit ${SELF_HEAL_UNKNOWN_EXIT}) — no scheduler reading, so "the Editor never fired" and "the Editor fired and produced nothing" are the same string here. **THIS IS NOT A CLEAN BILL OF HEALTH.** Re-run with --scheduler-lastrun <ISO|NEVER> (list_scheduled_tasks → brief-editor.lastRunAt).`
+      );
+      process.exit(SELF_HEAL_UNKNOWN_EXIT);
+    }
+    if (a.verdict === 'NON-PRODUCTION') {
+      console.log(
+        '\n❌ EDITOR NON-PRODUCTION — 🔴 for the health report. Name it in the email AND send the alarm. Do not block the brief.'
+      );
+      process.exit(1);
+    }
+    console.log(
+      a.verdict === 'NOT-FIRED'
+        ? '\n✅ NOT THIS GATE\'S ALARM — the slot did not fire this cycle. A slot that never started is `pipeline-slot-attendance` (IMP-207), not non-production. Check that report.'
+        : a.verdict === 'IN-FLIGHT'
+          ? `\n✅ IN FLIGHT — fired and silent INSIDE the ${EDITOR_FIRE_BAND_MIN_MIN}–${EDITOR_FIRE_BAND_MAX_MIN} min band. Silence here is a delay, not a death. Re-poll past T+${EDITOR_FIRE_BAND_MAX_MIN}.`
+          : '\n✅ THE EDITOR PRODUCED — it left a trace (board line and/or artifact). The artifact guards own the rest.'
+    );
+    process.exit(0);
   }
 
   if (mode === '--qg-liveness') {
@@ -1532,38 +2964,68 @@ function main() {
   }
 
   if (mode === '--liveness') {
-    const l = liveness(root, date);
+    const l = liveness(root, date, NOW());
+    const s = schedulerLiveness(root, date, reading, NOW());
     console.log(`editor-handoff-gate --liveness ${date}`);
     console.log(`   state: ${l.state} — ${l.reason}`);
+    console.log(`   scheduler: ${s.state} — ${s.reason}`);
     if (l.state === 'ALIVE') {
       console.log(
         '\n⏳ EDITOR ALIVE — WAIT. Do not promote, do not self-heal. Re-poll in 3 minutes.'
       );
       process.exit(1);
     }
-    console.log(
-      l.state === 'QUIET'
-        ? '\n✅ EDITOR QUIET — the artifact has stopped changing. Check --can-promote.'
-        : '\n✅ NO EDITOR ARTIFACT — check --can-self-heal.'
-    );
+    if (l.state === 'QUIET') {
+      console.log(
+        '\n✅ EDITOR QUIET — the artifact has stopped changing. Check --can-promote.'
+      );
+      process.exit(0);
+    }
+    // ABSENT. IMP-216: this is the branch that answered "is there a file?" and had its answer read
+    // as "is the process alive?". It is the ONLY branch with no artifact evidence, so it is the
+    // only one that may now refuse to answer.
+    if (s.state === 'FIRED-AND-SILENT') {
+      console.log(
+        '\n⏳ SCHEDULER SAYS ALIVE — WAIT. No artifact yet, but the process FIRED and is in flight. Do not self-heal: a second Editor races two writers onto one output path.'
+      );
+      process.exit(1);
+    }
+    if (s.state === 'UNKNOWN') {
+      console.log(
+        `\n❓ LIVENESS UNKNOWN (exit ${SELF_HEAL_UNKNOWN_EXIT}) — NO ARTIFACT AND NO SCHEDULER READING. This is not "the Editor is absent"; it is "nothing here can tell you". Re-run with --scheduler-lastrun <ISO|NEVER>. NEVER read this as permission.`
+      );
+      process.exit(SELF_HEAL_UNKNOWN_EXIT);
+    }
+    console.log('\n✅ NO EDITOR ARTIFACT — check --can-self-heal.');
     process.exit(0);
   }
 
-  const v =
-    mode === '--can-self-heal'
-      ? canSelfHeal(root, date)
-      : mode === '--can-promote'
-        ? canPromote(root, date)
-        : auditHandoff(root, date);
+  if (mode === '--can-self-heal') {
+    const d = selfHealDecision(root, date, { reading, now: NOW() });
+    console.log(`editor-handoff-gate ${mode} ${date}`);
+    console.log(`   scheduler: ${d.sched.state} — ${d.sched.reason}`);
+    for (const x of d.violations) console.log(`   ✗ [${x.check}] ${x.message}`);
+    if (d.verdict === 'ALLOWED')
+      console.log(
+        `✅ ${VERDICT_TOKEN.ALLOWED} — no live Editor, no Editor artifact on disk, and the scheduler positively rules out a live process.`
+      );
+    else if (d.verdict === 'UNKNOWN')
+      console.log(
+        `❓ ${VERDICT_TOKEN.UNKNOWN} — THE GATE REFUSES TO ANSWER. Nothing on the board or the disk distinguishes "never fired" from "fired and produced nothing", and no scheduler reading was supplied. 2026-08-22: this exact state returned EXIT 0 "SELF-HEAL ALLOWED" over a live Editor. Re-run with --scheduler-lastrun <ISO|NEVER>. **UNKNOWN IS NOT ALLOWED.**`
+      );
+    else console.log(`\n❌ ${d.violations.length} violation(s).`);
+    console.log(`\nVERDICT: ${d.token} (exit ${d.exitCode})`);
+    process.exit(d.exitCode);
+  }
+
+  const v = mode === '--can-promote' ? canPromote(root, date) : auditHandoff(root, date);
 
   console.log(`editor-handoff-gate ${mode} ${date}`);
   if (!v.length) {
     console.log(
-      mode === '--can-self-heal'
-        ? '✅ SELF-HEAL ALLOWED — no live Editor, no Editor artifact on disk.'
-        : mode === '--can-promote'
-          ? '✅ PROMOTION ALLOWED — the Editor has stopped writing, past the floor, no hold.'
-          : '✅ HANDOFF CLEAN.'
+      mode === '--can-promote'
+        ? '✅ PROMOTION ALLOWED — the Editor has stopped writing, past the floor, no hold.'
+        : '✅ HANDOFF CLEAN.'
     );
     process.exit(0);
   }
