@@ -68,7 +68,8 @@ function main(): void {
     // 'contested' is a third, load-bearing state: two readings disagree and the entry is set to
     // whichever KEEPS THE ALARM ON. Admitting it beats picking a side quietly.
     t('[roster] every entry declares its epistemic status — measured, declared, or contested — so a reader can tell what was observed from what was asserted',
-      Object.entries(R).filter(([k]) => !k.startsWith('_')).every(([, v]) => ['measured', 'declared', 'contested'].includes(String((v as CadenceEntry).source))));
+      Object.entries(R).filter(([k]) => !k.startsWith('_')).every(([, v]) => ['measured', 'declared', 'contested'].includes(String((v as CadenceEntry).source).split(' ')[0]) ||
+        String((v as CadenceEntry).source).startsWith('owner-observed')));
 
     // 🔴 THE MECHANISM ON A FIXTURE, not on today's roster. An earlier revision asserted these
     // against the LIVE entry for daily-improvement — and when that entry was corrected from
@@ -95,11 +96,22 @@ function main(): void {
     t('[W3] a paused component can never starve a row', starveBudgetDays('paused-thing', '2026-08-29', FX) === Number.POSITIVE_INFINITY);
     t('[W3] an UNKNOWN task falls back to the default and is treated as daily', starveBudgetDays('nobody', '2026-08-27', FX) === 2 && isDue('nobody', '2026-08-27', FX));
 
-    // 🔴 AND THE LIVE ENTRY, asserted for the property that actually matters about it.
-    t('[R6] the contested components are set to DAILY, keeping their alarm ON while the question is open — a cadence claim that silences an alarm must be measured, never declared',
-      cadenceFor('daily-improvement', R).cadence === 'daily' && cadenceFor('selection-judge', R).cadence === 'daily');
-    t('[R6] and both are marked contested with the Saturday discriminator in the falsifier',
-      cadenceFor('daily-improvement', R).source === 'contested' && /2026-08-29/.test(cadenceFor('daily-improvement', R).falsifier ?? ''));
+    // 🔴 THE MECHANISM ON FIXTURES, NOT ON TODAY'S ROSTER. These two legs used to assert the LIVE
+    // daily-improvement entry ("is contested", "is set to daily"). On 2026-08-28 the owner READ THE
+    // SCHEDULER CARDS — both weekly — the contest resolved, the roster was corrected, and these tests
+    // went red without one line of logic changing. FOURTH instance of the same defect in this repo.
+    // The property worth protecting is not what the roster says today; it is that a CONTESTED entry
+    // resolves toward the alarm, and that an owner reading outranks a board inference.
+    const CONTESTED_FX: Record<string, CadenceEntry> = {
+      'fx-contested': { cadence: 'daily', dow: 6, source: 'contested', falsifier: 'resolves 2026-08-29' } as CadenceEntry,
+      'fx-owner': { cadence: 'weekly', dow: 6, source: 'owner-observed 2026-08-28', falsifier: 'no line by Saturday + grace' } as CadenceEntry,
+    };
+    t('[R6] a CONTESTED entry keeps its alarm ON — it reads daily while the question is open, because a cadence claim that silences an alarm must never be merely declared',
+      cadenceFor('fx-contested', CONTESTED_FX).cadence === 'daily' && isDue('fx-contested', '2026-08-27', CONTESTED_FX));
+    t('[R6] an OWNER-OBSERVED entry outranks a board inference and may go weekly — the owner can read the scheduler; no session can',
+      cadenceFor('fx-owner', CONTESTED_FX).cadence === 'weekly' && !isDue('fx-owner', '2026-08-27', CONTESTED_FX));
+    t('[R6] and a weekly component still ALARMS on its own missed day — resolution narrows the window, it never removes the check',
+      isDue('fx-owner', '2026-08-29', CONTESTED_FX));
 
     console.log(`\n${fail ? '❌' : '✅'} cadence --selftest: ${pass}/${pass + fail} assertions passed.`);
     process.exit(fail ? 1 : 0);

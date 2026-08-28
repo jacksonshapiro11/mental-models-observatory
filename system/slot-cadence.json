@@ -3,7 +3,7 @@
   "_fields": {
     "cadence": "daily | weekly | paused",
     "dow": "for weekly: the day it runs (0=Sun \u2026 6=Sat)",
-    "source": "measured = derived from the boards \u00b7 declared = stated by the owner and not yet observable here",
+    "source": "measured = derived from the boards \u00b7 declared = stated by the owner and not yet observable here \u00b7 contested = two readings disagree, entry set to whichever KEEPS THE ALARM ON \u00b7 owner-observed = the owner read the app scheduler directly, which no session can do \u2014 outranks a board inference",
     "falsifier": "what would prove this entry wrong. An entry with no falsifier is a belief, not a record."
   },
   "_effective_from": "2026-08-28",
