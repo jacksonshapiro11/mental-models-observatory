@@ -1,32 +1,32 @@
 {
-  "_doc": "SLOT CADENCE ROSTER — ONE SOURCE OF TRUTH (work order W3, 2026-08-28). Every accountability consumer reads a component's cadence from HERE and never hardcodes 'daily'. The class this ends: a component moved to weekly, and every checker that assumed daily started reporting it dead — so the alarms became noise on exactly the days they should have been trusted.",
+  "_doc": "SLOT CADENCE ROSTER \u2014 ONE SOURCE OF TRUTH (work order W3, 2026-08-28). Every accountability consumer reads a component's cadence from HERE and never hardcodes 'daily'. The class this ends: a component moved to weekly, and every checker that assumed daily started reporting it dead \u2014 so the alarms became noise on exactly the days they should have been trusted.",
   "_fields": {
     "cadence": "daily | weekly | paused",
-    "dow": "for weekly: the day it runs (0=Sun … 6=Sat)",
-    "source": "measured = derived from the boards · declared = stated by the owner and not yet observable here",
+    "dow": "for weekly: the day it runs (0=Sun \u2026 6=Sat)",
+    "source": "measured = derived from the boards \u00b7 declared = stated by the owner and not yet observable here",
     "falsifier": "what would prove this entry wrong. An entry with no falsifier is a belief, not a record."
   },
   "_effective_from": "2026-08-28",
   "tasks": {
     "daily-improvement": {
-      "cadence": "daily",
+      "cadence": "weekly",
       "dow": 6,
-      "source": "contested",
-      "evidence": "Ran EVERY day 08-01 → 08-26 (n=26). Last board line 2026-08-26; SILENT 08-27 and 08-28 while system-update and pipeline-health-check kept running daily through 08-28. Two silent days is consistent with the 08-26 cadence order moving it to weekly, and equally consistent with it having died on 08-26 — the boards cannot tell those apart, and this session cannot read the app scheduler. 🔴 CONTESTED 2026-08-28: the 07:06 ET pipeline-health-check, with fuller evidence than this roster had, concludes the loop is DEAD — not weekly. Its receipts: daily-briefs/2026-08-27-improvements.md and -08-28-improvements.md both ABSENT (last is 08-26); zero daily-improvement status lines on either board, each apparent grep hit checked by hand and found to be a substring collision inside another task's prose; last ledger row IMP-228 dated 08-26; three Critical 08-27 mandates with no row in any state.",
-      "falsifier": "🔴 RESOLVES SATURDAY 2026-08-29: a board line + grace ⇒ WEEKLY confirmed, set cadence back to weekly/dow 6. No line ⇒ DEAD, and the task must be recreated in the app scheduler. UNTIL THEN THIS ENTRY READS 'daily' ON PURPOSE: an earlier revision recorded 'weekly (declared)' on the strength of a cadence order this session could not verify, and that entry SUPPRESSED the very alarm that should fire for a dead component. A cadence claim that silences an alarm must be measured, never declared — erring toward the alarm is the only safe direction while the question is open."
+      "source": "owner-observed 2026-08-28",
+      "evidence": "OWNER CONFIRMED 2026-08-28 ~10:00 ET: both scheduler cards read WEEKLY in the app \u2014 the one reading no session can take. This resolves the 08-28 contest: the 08-26 cadence order took effect; the 08-27/28 silence was correct weekly behaviour, and the health-check DEAD verdict was the roster-lag false alarm this file exists to end. Prior daily history: ran daily through 08-26.",
+      "falsifier": "First weekly firing due Saturday 2026-08-29. NO board line by end of Saturday + grace => the schedule exists but the body does not execute (paste/frontmatter class \u2014 the brief-editor signature) => alarm fires and the body needs inspection. A line on any non-Saturday => roster wrong again, re-measure."
     },
     "selection-judge": {
-      "cadence": "daily",
+      "cadence": "weekly",
       "dow": 6,
-      "source": "contested",
-      "evidence": "Same shape and the same last day: ran daily 08-16 → 08-26 (n=11), silent 08-27 and 08-28. It stopped on the SAME board as daily-improvement, which is evidence of one cadence order rather than two independent deaths. 🔴 CONTESTED 2026-08-28: the 07:06 ET pipeline-health-check, with fuller evidence than this roster had, concludes the loop is DEAD — not weekly. Its receipts: daily-briefs/2026-08-27-improvements.md and -08-28-improvements.md both ABSENT (last is 08-26); zero daily-improvement status lines on either board, each apparent grep hit checked by hand and found to be a substring collision inside another task's prose; last ledger row IMP-228 dated 08-26; three Critical 08-27 mandates with no row in any state.",
-      "falsifier": "🔴 RESOLVES SATURDAY 2026-08-29: a board line + grace ⇒ WEEKLY confirmed, set cadence back to weekly/dow 6. No line ⇒ DEAD, and the task must be recreated in the app scheduler. UNTIL THEN THIS ENTRY READS 'daily' ON PURPOSE: an earlier revision recorded 'weekly (declared)' on the strength of a cadence order this session could not verify, and that entry SUPPRESSED the very alarm that should fire for a dead component. A cadence claim that silences an alarm must be measured, never declared — erring toward the alarm is the only safe direction while the question is open."
+      "source": "owner-observed 2026-08-28",
+      "evidence": "OWNER CONFIRMED 2026-08-28 ~10:00 ET: both scheduler cards read WEEKLY in the app \u2014 the one reading no session can take. This resolves the 08-28 contest: the 08-26 cadence order took effect; the 08-27/28 silence was correct weekly behaviour, and the health-check DEAD verdict was the roster-lag false alarm this file exists to end. Prior daily history: ran daily through 08-26.",
+      "falsifier": "First weekly firing due Saturday 2026-08-29. NO board line by end of Saturday + grace => the schedule exists but the body does not execute (paste/frontmatter class \u2014 the brief-editor signature) => alarm fires and the body needs inspection. A line on any non-Saturday => roster wrong again, re-measure."
     },
     "accountability-cycle-weekly": {
       "cadence": "weekly",
       "dow": 0,
       "source": "measured",
-      "evidence": "2026-08-02, 08-09, 08-16, 08-23 — four consecutive Sundays, no other day.",
+      "evidence": "2026-08-02, 08-09, 08-16, 08-23 \u2014 four consecutive Sundays, no other day.",
       "falsifier": "a line on a non-Sunday, or a missed Sunday."
     },
     "weekly-draft": {
