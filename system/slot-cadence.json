@@ -1,0 +1,37 @@
+{
+  "_doc": "SLOT CADENCE ROSTER — ONE SOURCE OF TRUTH (work order W3, 2026-08-28). Every accountability consumer reads a component's cadence from HERE and never hardcodes 'daily'. The class this ends: a component moved to weekly, and every checker that assumed daily started reporting it dead — so the alarms became noise on exactly the days they should have been trusted.",
+  "_fields": {
+    "cadence": "daily | weekly | paused",
+    "dow": "for weekly: the day it runs (0=Sun … 6=Sat)",
+    "source": "measured = derived from the boards · declared = stated by the owner and not yet observable here",
+    "falsifier": "what would prove this entry wrong. An entry with no falsifier is a belief, not a record."
+  },
+  "_effective_from": "2026-08-28",
+  "tasks": {
+    "daily-improvement": {
+      "cadence": "weekly",
+      "dow": 6,
+      "source": "declared",
+      "evidence": "Ran EVERY day 08-01 → 08-26 (n=26). Last board line 2026-08-26; SILENT 08-27 and 08-28 while system-update and pipeline-health-check kept running daily through 08-28. Two silent days is consistent with the 08-26 cadence order moving it to weekly, and equally consistent with it having died on 08-26 — the boards cannot tell those apart, and this session cannot read the app scheduler.",
+      "falsifier": "🔴 IF daily-improvement does not write a board line by Saturday 2026-08-29 + its grace window, the 'weekly' claim is REFUTED and the component is DEAD. That is the only observation that separates the two readings; until it is made, this row is DECLARED, not measured."
+    },
+    "selection-judge": {
+      "cadence": "weekly",
+      "dow": 6,
+      "source": "declared",
+      "evidence": "Same shape and the same last day: ran daily 08-16 → 08-26 (n=11), silent 08-27 and 08-28. It stopped on the SAME board as daily-improvement, which is evidence of one cadence order rather than two independent deaths.",
+      "falsifier": "no board line by Saturday 2026-08-29 + grace → REFUTED, component dead."
+    },
+    "accountability-cycle-weekly": {
+      "cadence": "weekly",
+      "dow": 0,
+      "source": "measured",
+      "evidence": "2026-08-02, 08-09, 08-16, 08-23 — four consecutive Sundays, no other day.",
+      "falsifier": "a line on a non-Sunday, or a missed Sunday."
+    },
+    "weekly-draft": { "cadence": "weekly", "dow": 6, "source": "measured", "evidence": "2026-08-02, 08-09, 08-16 canaries, Saturdays only.", "falsifier": "a missed Saturday." },
+    "weekly-critic": { "cadence": "weekly", "dow": 6, "source": "measured", "evidence": "same three Saturdays as weekly-draft.", "falsifier": "a missed Saturday." },
+    "source-health-check-monthly": { "cadence": "paused", "source": "measured", "evidence": "one canary in the whole archive (n=1); no observable schedule.", "falsifier": "a second line, which would make a cadence derivable." },
+    "_default": { "cadence": "daily", "source": "measured", "evidence": "every other rostered slot canaries every day in the archive.", "falsifier": "two consecutive silent days for a task carrying no explicit entry here." }
+  }
+}

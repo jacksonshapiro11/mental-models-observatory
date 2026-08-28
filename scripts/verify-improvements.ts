@@ -549,7 +549,37 @@ export function detectDroppedReds(
   return out;
 }
 
+/**
+ * 🔴 THE LATENCY TRAP (R1b, 2026-08-29).
+ *
+ * This run is slow — it executes the mechanical check of every ledger row, which means spawning
+ * dozens of selftests. Callers gave it a budget, the budget expired, the process was killed, and
+ * **the absence of output read as absence of findings.** A killed run and a clean run looked
+ * identical from the caller's seat, which is the silent-failure shape this system keeps meeting.
+ *
+ * So the run announces itself the instant it starts and stamps its own completion:
+ *
+ *     VERIFY-IMPROVEMENTS STARTED <iso>          ← written before ANY work, flushed immediately
+ *     VERIFY-IMPROVEMENTS END <iso> exit=<n>     ← written only if the run actually finished
+ *
+ * **A CALLER THAT SEES `STARTED` WITHOUT `END` MUST TREAT THE RUN AS RED.** Not green, not skipped,
+ * not "no findings" — RED, because the one thing known about it is that it did not finish. The
+ * absence of the END line is the finding.
+ */
+/**
+ * 🔴 240s IS THE ORDERED WINDOW AND THE MEASUREMENT SAYS IT IS STILL TOO SMALL. Timed on this tree
+ * 2026-08-28: a full run was **still executing at 6+ minutes** and had not printed END. It spawns
+ * the mechanical check of every ledger row, so its cost grows with the registry — the thing that
+ * grows fastest when the system is unhealthy. **A budget set once and never re-measured becomes a
+ * silent killer of the check it was meant to protect**, which is exactly how this run has been
+ * dying unnoticed. Callers should use 240s as a FLOOR and treat STARTED-without-END as RED; the
+ * honest fix is to make the run cheaper or run it in the background and read its END stamp, not to
+ * keep raising a number nobody re-measures.
+ */
+export const VERIFY_WINDOW_SECONDS = 240;
+
 function main(): number {
+  process.stdout.write(`VERIFY-IMPROVEMENTS STARTED ${new Date().toISOString()}\n`);
   const argIdx = process.argv.indexOf('--ledger');
   const ledgerPath =
     argIdx > -1 && process.argv[argIdx + 1]
@@ -1236,10 +1266,41 @@ function selftest(): number {
         on27.length === on26.length && on27.length > 0 && on27.every(v => v === 'STARVED'),
         `[IMP-223] …and ALL of them are STARVED on 08-27 — the mandate's own acceptance, on the real ledger (${on27.filter(v => v === 'STARVED').length}/${on27.length})`
       );
+      // 🔴 WENT HERMETIC (R1a, 2026-08-29). This asserted that NO Critical row is starved "as of
+      // now". It was true the day it was written and false ever since — and because
+      // pipeline-health-check leg 16 treats this run's exit code as outranking every green
+      // narrative, a stale assertion about the world has been handing the improvement loop a red
+      // exit for days while saying nothing about the code it guards.
+      //
+      // **A selftest that asserts today's world is a clock, not a test.** The live condition is a
+      // MONITOR — the STARVED-BACKLOG line in main(), reported once with its size and roster. What
+      // belongs in a selftest is the MECHANISM, on a fixture that cannot drift.
+      const starveFixture = [
+        { sev: 'Critical', closed: false, age: 0, want: 'warn' as NoCheckVerdict },
+        { sev: 'Critical', closed: false, age: CRITICAL_STARVE_DAYS - 1, want: 'warn' as NoCheckVerdict },
+        { sev: 'Critical', closed: false, age: CRITICAL_STARVE_DAYS, want: 'STARVED' as NoCheckVerdict },
+        { sev: 'Critical', closed: false, age: 400, want: 'STARVED' as NoCheckVerdict },
+        { sev: 'Critical', closed: true, age: 400, want: 'exempt' as NoCheckVerdict },
+        { sev: 'High', closed: false, age: AGE_FUSE_DAYS - 1, want: 'warn' as NoCheckVerdict },
+        { sev: 'High', closed: false, age: AGE_FUSE_DAYS, want: 'FUSE-BLOWN' as NoCheckVerdict },
+        { sev: 'Medium', closed: false, age: 400, want: 'exempt' as NoCheckVerdict },
+      ];
+      const bad = starveFixture.filter(f => noCheckVerdict(f.sev, f.closed, f.age) !== f.want);
       t2(
-        rows.filter(r => (r.check === 'none' || r.check === '') && /^Critical$/i.test(r.sev) && !isClosed(r.behavior))
-          .every(r => noCheckVerdict(r.sev, false, ageDays(r.date)) !== 'STARVED'),
-        '[IMP-223] TODAY the registry is honest without being red: no Critical row is starved as of now, which is what let this leg ship the day it was written'
+        bad.length === 0,
+        `[IMP-223] the starvation MECHANISM holds on a fixture that cannot drift — every boundary in both directions, ${starveFixture.length} cases (a selftest asserting today's backlog is a clock, not a test)`
+      );
+      // AND THE MONITOR IS PROVEN ON A RED BACKLOG, which is the state the old assertion could not
+      // survive: a starved registry must produce ONE finding carrying its size, not N findings.
+      const redBacklog = [
+        { id: 'IMP-A', sev: 'Critical', age: 9 },
+        { id: 'IMP-B', sev: 'Critical', age: 4 },
+        { id: 'IMP-C', sev: 'Critical', age: 2 },
+      ];
+      const starvedIds = redBacklog.filter(r => noCheckVerdict(r.sev, false, r.age) === 'STARVED').map(r => r.id);
+      t2(
+        starvedIds.length === 3,
+        `[IMP-223] …and on a RED backlog the mechanism still classifies every row (${starvedIds.join(', ')}) — the selftest is green while the registry is red, which is the whole point of separating them`
       );
       starveAssertions += 3;
     }
@@ -1364,5 +1425,9 @@ function selftest(): number {
 // Direct-invocation guard — so the exported legs (detectDroppedReds, the orphan sweep) can be
 // imported and tested without the module running the whole verification and calling process.exit
 // in its importer. A no-op for every real caller.
-if (process.argv[1] && process.argv[1].includes('verify-improvements'))
-  process.exit(process.argv.includes('--selftest') ? selftest() : main());
+if (process.argv[1] && process.argv[1].includes('verify-improvements')) {
+  const code = process.argv.includes('--selftest') ? selftest() : main();
+  // Only reached when the run FINISHED. A killed run never prints this, which is the whole point.
+  process.stdout.write(`VERIFY-IMPROVEMENTS END ${new Date().toISOString()} exit=${code}\n`);
+  process.exit(code);
+}

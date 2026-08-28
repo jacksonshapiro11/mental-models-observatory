@@ -12,6 +12,18 @@ daily-intelligence/
 
 # System skills & production pipeline (NEVER push)
 system/
+# 🔴 EXCEPTIONS — TRACKED BY FORCE, DELIBERATELY (R2, 2026-08-29).
+#   git cannot re-include a file whose parent directory is excluded, so these are `git add -f`'d
+#   once and thereafter tracked normally (the same mechanism that already carries the two
+#   task-bodies SKILL.md files). Listed here so the exception is documented rather than mysterious.
+#
+#   THE RULE THEY EXIST FOR: A COMMITTED SCRIPT MUST NEVER DEPEND ON AN UNCOMMITTED FILE.
+#   The pointer-body lesson — a body that lived only on one machine took the editor slot down for
+#   six nights. gate-attendance.ts, cadence.ts and novelty-gate.ts each read one of these; a clone
+#   without them is a clone where those instruments silently do nothing.
+#     system/gate-manifest.json   ← the gate wiring roster (gate-attendance.ts)
+#     system/slot-cadence.json    ← the cadence roster        (cadence.ts, slot-attendance, verify)
+#     system/story-ledger.json    ← the story cooldown ledger (novelty-gate.ts --stories)
 
 # Claude project config
 .claude/

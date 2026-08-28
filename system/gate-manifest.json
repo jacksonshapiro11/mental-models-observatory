@@ -1,0 +1,253 @@
+{
+  "_doc": "GATE WIRING MANIFEST — work order 2026-08-28 item 4. The roster of gates that MUST leave an exit stamp on the board, per artifact class. Seeded from 2026-08-27, a green night, by MEASUREMENT: each entry below was stamped by the named task on that board. A gate here with no stamp on a later board is RED on the next morning's summary. A scripts/*-gate.ts absent from BOTH `classes` and `retired` is an ORPHAN.",
+  "_class_meaning": {
+    "draft": "produces or gates v1 inputs — signal/discovery/take/cc pre-drafts and the Writer",
+    "v2": "produces or gates v1.5 -> v2 — quality gate, editor, critic",
+    "light": "produces or gates the Brief Light",
+    "publish": "morning publish path and its verification"
+  },
+  "_seeded_from": "daily-briefs/2026-08-27-pipeline-status.md",
+  "_effective_from": "2026-08-28",
+  "classes": {
+    "draft": [
+      {
+        "gate": "fact-gate",
+        "tasks": [
+          "brief-draft",
+          "take-draft"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "assembly-gate",
+        "tasks": [
+          "brief-draft"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "predraft-consumption-gate",
+        "tasks": [
+          "brief-draft"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "provenance-gate",
+        "tasks": [
+          "brief-draft"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "six-conversion-gate",
+        "tasks": [
+          "take-draft"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "novelty-gate",
+        "tasks": [
+          "brief-draft",
+          "take-draft"
+        ],
+        "wired": false,
+        "note": "🔴 CLAIMED, NOT CONNECTED. Named 'the binding novelty check' in six prose places across system/, stamped PASS on the boards, and invoked by NOTHING — no body carries an executable line for it. This is the defect class item 4 exists to end, and it is the manifest's own first RED. Flips to wired:true when item 5 lands."
+      }
+    ],
+    "v2": [
+      {
+        "gate": "fact-gate",
+        "tasks": [
+          "brief-quality-gate",
+          "brief-editor",
+          "brief-critic"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "assembly-gate",
+        "tasks": [
+          "brief-quality-gate",
+          "brief-critic"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "declaration-binding-gate",
+        "tasks": [
+          "brief-quality-gate"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "predraft-consumption-gate",
+        "tasks": [
+          "brief-quality-gate"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "provenance-gate",
+        "tasks": [
+          "brief-quality-gate"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "novelty-gate",
+        "tasks": [
+          "brief-quality-gate"
+        ],
+        "wired": false,
+        "note": "same defect as the draft-class row"
+      }
+    ],
+    "light": [
+      {
+        "gate": "brief-light-format-gate",
+        "tasks": [
+          "brief-light"
+        ],
+        "wired": true,
+        "stamp": [
+          "brief-light-format-gate",
+          "format-gate"
+        ]
+      },
+      {
+        "gate": "brief-light-craft-gate",
+        "tasks": [
+          "brief-light"
+        ],
+        "wired": true,
+        "stamp": [
+          "brief-light-craft-gate",
+          "craft-gate"
+        ]
+      },
+      {
+        "gate": "novelty-gate",
+        "tasks": [
+          "brief-light"
+        ],
+        "wired": false,
+        "note": "work-order item 5(a) wires this into the brief-light body; ADVISORY, exit 0"
+      }
+    ],
+    "publish": [
+      {
+        "gate": "fact-gate",
+        "tasks": [
+          "brief-morning"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "register-gate",
+        "tasks": [
+          "brief-morning"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "pipeline-integrity-gate",
+        "tasks": [
+          "brief-morning"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "six-conversion-gate",
+        "tasks": [
+          "brief-morning"
+        ],
+        "wired": true
+      },
+      {
+        "gate": "published-header-gate",
+        "tasks": [
+          "readback-full"
+        ],
+        "wired": true
+      }
+    ]
+  },
+  "retired": {
+    "_probe-old-craft-gate": "probe scaffolding, never a pipeline gate",
+    "audio-gate-regression": "regression harness for the audio gate, run by hand",
+    "gate-sweep": "meta-tool that runs other gates; not itself rostered",
+    "gate-selfreport-gate": "runs INSIDE Editor Gate 1 (Pipeline_Controller IMP-128), not stamped separately",
+    "quality-gate-timestamp": "freshness probe invoked inside the editor pass, not a rostered gate",
+    "editor-handoff-gate": "liveness/handoff instrument, not an artifact gate",
+    "pipeline-integrity-gate": "rostered under publish; also run warn-level by pipeline-health-check",
+    "gate-input-freshness": "health-check warn-level leg (IMP-066), not an artifact gate",
+    "persistence-gate": "health-check warn-level leg, not an artifact gate",
+    "compression-receipt-gate": "health-check warn-level leg (IMP-182), yesterday-scoped",
+    "corrections-gate": "weekly accountability path",
+    "gate-attendance": "THE ORPHAN DETECTOR'S FIRST CATCH WAS ITSELF — it matches its own scripts/*gate*.ts glob. Retired as a meta-tool (same reason as gate-sweep): it audits gates, it is not one. Recorded rather than quietly excluded from the glob, because a detector that silently exempts itself is the defect it exists to find."
+  },
+  "unrostered_unretired": {
+    "_doc": "Gates that exist, are not retired, and are NOT yet rostered to a class. These are the ORPHAN backlog — each needs a class or a retirement reason. Listed explicitly so the count is a number rather than a feeling.",
+    "gates": [
+      "adverse-datum-gate",
+      "ai-release-freshness-gate",
+      "audio-intro-gate",
+      "causal-sequence-gate",
+      "concept-cooldown-gate",
+      "dashboard-math-gate",
+      "enforcement-persistence-gate",
+      "evening-truth-gate",
+      "index-record-claim-gate",
+      "inner-game-compounding-gate",
+      "killed-thesis-gate",
+      "latest-brief-parity-gate",
+      "predraft-correction-gate",
+      "qg-growth-gate",
+      "reaction-symmetry-gate",
+      "reader-surface-gate",
+      "relay-provenance-gate",
+      "relevance-gate",
+      "selfheal-verification-gate",
+      "session-mortality-gate",
+      "superlative-escalation-gate",
+      "title-grounding-gate",
+      "truth-corroboration-gate",
+      "weekly-predictions-gate",
+      "weekly-repeat-gate",
+      "wildcard-count-gate",
+      "wildcard-freshness-gate"
+    ]
+  },
+  "_stamp_note": "A rostered row's `stamp` lists the ALIASES a board actually uses for that gate. Measured, not assumed: the light gates are written `craft-gate PASS` / `format-gate --enforce-length PASS`, never by their script basenames, so matching on the filename reported two healthy gates as missing. The script name is always an implicit alias.",
+  "instruments": {
+    "_doc": "Non-gate instruments and the body that invokes each. A gate belongs to an artifact class; an INSTRUMENT belongs to a moment in the day. Recorded here for the same reason the gates are: the 4th occurrence of 'correct thing, not connected' was a gate, and nothing says the 5th has to be.",
+    "mandate-fastlane": {
+      "home": "daily canary (Pipeline_Controller CANARY-FIRST, step 1c)",
+      "cadence": "daily",
+      "invocation": "node --experimental-strip-types scripts/mandate-fastlane.ts {YESTERDAY}",
+      "note": "Breaks the SILENCE on urgent Critic mandates; conversion still waits for Saturday."
+    },
+    "tree-canary": {
+      "home": "daily canary (step 1b)",
+      "cadence": "daily",
+      "invocation": "node --experimental-strip-types scripts/tree-canary.ts --task={task}"
+    },
+    "wip-shunt": {
+      "home": "pre-integration step, before any rebase",
+      "cadence": "per-integration",
+      "invocation": "node --experimental-strip-types scripts/wip-shunt.ts --shunt"
+    },
+    "gate-attendance": {
+      "home": "pipeline-health-check leg 21",
+      "cadence": "daily",
+      "invocation": "node --experimental-strip-types scripts/gate-attendance.ts {BRIEF_DATE}"
+    },
+    "cadence": {
+      "home": "library — read by slot-attendance and verify-improvements",
+      "cadence": "n/a",
+      "invocation": "imported, not invoked"
+    }
+  }
+}

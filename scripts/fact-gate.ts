@@ -4945,6 +4945,105 @@ function briefCarries(v: number, briefValues: number[]): boolean {
   return briefValues.some(b => b > 0 && Math.abs(b - v) / v <= 0.02);
 }
 
+// ── 🔴 SETTLED-CLOSE LEG — E-INTRADAY-FOR-CLOSE-01 (R3, 2026-08-29) ──────────────────────────
+//
+// THE DEFECT, RECURRING ONE BRIEF LATER AND WIDER, which is why it is an EMERGENCY rather than a
+// finding: after the 16:00 ET settle, the close is available — and three units on 2026-08-28 (plus
+// the 08-27 pair before them) shipped INTRADAY marks wearing SETTLED-SESSION VERBS.
+//
+//   SHIPPED "rose about 21 percent on Thursday"    · settled CRM close +22.60%  ($252.10)
+//   SHIPPED "finished 5.8 percent off its high"    · settled MU  close  −1.14%  (actual 4.08% off)
+//   SHIPPED 8.55%/$227.58 and 3.33%                · settled NVDA +8.74% / AVGO +4.49%
+//
+// Market close 16:00 ET; the editor's SUCCESS line was 19:51 ET. The numbers were not unavailable —
+// they were unfetched, and a session verb asserted a vintage the value did not have.
+//
+// **THE RULE THE VERBS ENCODE: a settled verb is a claim about a FINISHED session. If the session
+// has closed, the close is the number.** An intraday mark may still be printed — but only with the
+// hour on it ("at 10:43 ET"), never with a session verb and never as "on Thursday".
+//
+// 🔴 MEASURED STATE, 2026-08-29, and it is why this leg ships ADVISORY and does NOT close
+// E-INTRADAY-FOR-CLOSE-01: the pattern half works — it catches BOTH named 08-28 receipts (Micron's
+// "finished 5.8 percent off its high", Salesforce's "rose about 21 percent on Thursday"). The
+// DISCRIMINATOR half does not exist yet. Separating a settled verb on a WRONG number from a settled
+// verb on the RIGHT one requires knowing the close, and every `{BRIEF_DATE}-truth.json` on disk
+// carries **ZERO `close:` rows** — the convention the Critic's spec depends on has never been
+// written. So on the archive this fires ~2 sentences a night, including nights that were clean, and
+// **the acceptance "silent on a clean night" is NOT met.** The exemption path below is wired and
+// waiting; the Writer/QG rule that populates it ships alongside. Until closes are recorded, a
+// finding here means "this sentence asserts a vintage nobody verified", which is true of the good
+// sentences too — and saying so is better than tuning the regex until the receipts fall out with
+// the noise.
+//
+// SCOPE, deliberately narrow so it can be believed: it fires only when all three coincide — a
+// settled-session verb, a numeric move or level bound to it, and a file written more than
+// SETTLE_GRACE_MIN after the session's 16:00 ET close. An hour-stamped mark is exempt because it
+// tells the reader its own vintage, which is the whole remedy.
+export const SETTLE_GRACE_MIN = 60;
+export const SETTLED_VERB_RE =
+  /\b(closed|finished|ended|settled|ran to|rose[^.]{0,60}\bon (?:Monday|Tuesday|Wednesday|Thursday|Friday)|fell[^.]{0,60}\bon (?:Monday|Tuesday|Wednesday|Thursday|Friday)|gained[^.]{0,60}\bon (?:Monday|Tuesday|Wednesday|Thursday|Friday)|lost[^.]{0,60}\bon (?:Monday|Tuesday|Wednesday|Thursday|Friday))\b/i;
+/** An hour-stamped mark declares its own vintage and is exactly what the rule asks for. */
+export const HOUR_STAMP_RE = /\b(?:at\s+)?\d{1,2}:\d{2}\s*(?:a\.?m\.?|p\.?m\.?|ET|EDT|EST)\b/i;
+export const NUMERIC_MOVE_RE = /(\d+(?:\.\d+)?\s*percent|\d+(?:\.\d+)?%|\$\s?\d[\d,]*(?:\.\d+)?)/i;
+/** Intraday self-labels: a bullet that says it is a live/provisional mark is not asserting a close. */
+export const INTRADAY_LABEL_RE = /\b(intraday|post-?market|pre-?market|overnight|as of \d|live price|provisional)\b/i;
+/**
+ * "Closed" is not only a market word. MEASURED on the real briefs: the first cut flagged
+ * *"Copper, the London crypto custodian ... closed a $200 million round"* — a financing close, not a
+ * session close. A verb that means two things needs the other word in the sentence to disambiguate,
+ * so a finding must ALSO carry market context.
+ */
+export const FINANCING_RE =
+  /\b(closed|completed|raised)\b[^.]{0,60}\b(seed|series\s+[A-F]|round|financing|funding|raise|deal|acquisition|placement|valuation)\b/i;
+export const HISTORICAL_RE =
+  /\b(in|by|since|during|through)\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)?\s*(?:19|20)\d{2}\b|\bover the (?:year|decade|month)\b|\bthat week\b|\ba year ago\b/i;
+export const MARKET_CONTEXT_RE =
+  /\b(shares?|stock|ticker|index|futures?|the session|trading|market|close|closing|spot|yield|contract|[A-Z]{2,5}\s*[+-]?\d)\b/;
+
+export interface SettledCloseFinding { sentence: string; verb: string; value: string }
+
+/**
+ * Sentences that bind a settled-session verb to a number, in a file written after the session had
+ * settled. `resolved` carries `close:<ticker>:<date>` rows from {BRIEF_DATE}-truth.json — a unit
+ * whose close was actually fetched and recorded is not guessing, and is exempt.
+ */
+export function settledCloseFindings(
+  body: string,
+  minutesAfterClose: number,
+  resolved: Set<string> = new Set()
+): SettledCloseFinding[] {
+  if (minutesAfterClose <= SETTLE_GRACE_MIN) return [];
+  const out: SettledCloseFinding[] = [];
+  for (const raw of body.split(/(?<=[.!?])\s+/)) {
+    const sentence = raw.trim();
+    if (!sentence || sentence.length > 600) continue;
+    const v = SETTLED_VERB_RE.exec(sentence);
+    if (!v) continue;
+    const n = NUMERIC_MOVE_RE.exec(sentence);
+    if (!n) continue;
+    if (HOUR_STAMP_RE.test(sentence)) continue;      // declares its own vintage
+    if (INTRADAY_LABEL_RE.test(sentence)) continue;  // says it is not a close
+    if (FINANCING_RE.test(sentence)) continue;       // a financing close, not a session close
+    // A statement about a PAST period is not a claim about yesterday's session. Measured false
+    // positives this removes: "traded to a 49 percent discount in December 2022 and closed it",
+    // "up 82.68 percent over the year", "unit prices fell from $32 in 1961".
+    if (HISTORICAL_RE.test(sentence)) continue;
+    // NOTE: an earlier cut also required MARKET_CONTEXT_RE here. It dropped the Micron receipt —
+    // "Micron opened up 3.1 percent ... and finished 5.8 percent off its high" names no ticker,
+    // no "shares", no "session". Requiring market vocabulary rejected a named defect to exclude one
+    // financing sentence the FINANCING_RE already handles. The narrower filter was the wrong one.
+    // Any standalone uppercase token may be the instrument. Matching broadly is safe here BECAUSE
+    // the exemption is keyed on the RESOLVED set — a spurious match ("ET", "GDP") only matters if
+    // someone recorded a close under that name. The earlier form required the ticker to be followed
+    // by a number with no lowercase between, which "CRM closed up 22.60 percent" never satisfies:
+    // the exemption existed and could never fire.
+    const ticks = sentence.match(/\b[A-Z]{1,5}\b/g) ?? [];
+    if (ticks.some(tk => resolved.has(tk))) continue; // the close WAS fetched for this instrument
+    out.push({ sentence: sentence.slice(0, 200), verb: v[0].slice(0, 40), value: n[0] });
+  }
+  return out;
+}
+
 export function derivedFigureContradictionFindings(
   body: string,
   predrafts: Array<[string, string]>
@@ -7958,6 +8057,39 @@ function selftest(): number {
     `  [IMP-208] SEVERITY: FLAG in the evening (the brief ships), FAIL under --require-resolved (nothing publishes carrying its own refutation): ${okCrSeverity ? '✓' : '✗'}`
   );
 
+  // ── SETTLED-CLOSE LEG (R3, 2026-08-29) — E-INTRADAY-FOR-CLOSE-01 ──────────────────────────
+  // Fires on BOTH named 08-28 receipts, on the real bytes. See the leg's scope note: the pattern
+  // half is proven here; the discriminator half (a recorded close) does not exist on disk yet, so
+  // this ships ADVISORY and the escalation stays OPEN.
+  const sc28 = locRead('daily-briefs/2026-08-28-v2.md');
+  const scFindings = sc28 ? settledCloseFindings(sc28, 231) : [];
+  const okR3Fire =
+    !sc28 ||
+    (scFindings.some(f => /finished 5\.8 percent off its high/i.test(f.sentence)) &&
+      scFindings.some(f => /rose about 21 percent on Thursday/i.test(f.sentence)));
+  // Before the settle + grace, nothing fires — an intraday brief is allowed intraday marks.
+  const okR3Grace = !sc28 || settledCloseFindings(sc28, SETTLE_GRACE_MIN).length === 0;
+  // An hour-stamped mark declares its own vintage and is exactly the remedy the rule asks for.
+  const okR3HourStamp =
+    settledCloseFindings('Micron finished 5.8 percent off its high at 10:43 ET.', 231).length === 0 &&
+    settledCloseFindings('Micron finished 5.8 percent off its high.', 231).length === 1;
+  // A FINANCING close is not a session close (the Copper false positive, from the real bytes).
+  const okR3Financing =
+    settledCloseFindings(
+      'Copper, the London crypto custodian, closed a $200 million funding round this week.',
+      231
+    ).length === 0;
+  // A statement about a PAST period is not a claim about yesterday's session.
+  const okR3Historical =
+    settledCloseFindings(
+      "Grayscale's trust traded to a 49 percent discount in December 2022 and closed it by converting.",
+      231
+    ).length === 0;
+  // THE EXEMPTION, wired and waiting: a ticker whose close WAS recorded is not guessing.
+  const okR3Resolved =
+    settledCloseFindings('CRM closed up 22.60 percent.', 231).length === 1 &&
+    settledCloseFindings('CRM closed up 22.60 percent.', 231, new Set(['CRM'])).length === 0;
+
   const ok =
     okCrMath &&
     okCrFire &&
@@ -8182,7 +8314,16 @@ function selftest(): number {
     okDfcNoStorm &&
     okDlsFire &&
     okDlsSilent &&
-    okDlsNoStorm;
+    okDlsNoStorm &&
+    okR3Fire &&
+    okR3Grace &&
+    okR3HourStamp &&
+    okR3Financing &&
+    okR3Historical &&
+    okR3Resolved;
+  console.log(
+    `  [R3] settled-close FIRES on both named 08-28 receipts (Micron, Salesforce): ${okR3Fire ? '✓' : '✗'} · silent before settle+grace: ${okR3Grace ? '✓' : '✗'} · hour-stamp exempt: ${okR3HourStamp ? '✓' : '✗'} · financing close exempt: ${okR3Financing ? '✓' : '✗'} · historical period exempt: ${okR3Historical ? '✓' : '✗'} · recorded-close exemption wired: ${okR3Resolved ? '✓' : '✗'}`
+  );
   if (ok) {
     console.log(
       '\n✅ SELFTEST PASS — gate bites the 07-10/07-11/07-13 failures (reuse, transposition, entity misattribution, harmonize-to-published, release-date falsehood) and stays silent on the corrected/healthy cases — including its own two false positives.'
