@@ -2062,26 +2062,25 @@ function selftest(): number {
   // ── W3/R6 — CADENCE IS READ FROM THE ROSTER, NEVER ASSUMED ──────────────────────────────────
   {
     const CR = loadCadence(root);
-    // 🔴 THE CORRECTION THAT MATTERS MORE THAN THE FEATURE. An earlier revision of this block
-    // asserted that daily-improvement raises NO alarm on 08-27/08-28, because the roster had it as
-    // weekly. The 2026-08-28 pipeline-health-check, with fuller evidence, concluded the component
-    // is DEAD — no improvements artifact on either day, no status line on either board (every
-    // apparent grep hit checked by hand), last ledger row 08-26, three Critical mandates vanished.
-    // **So the cadence entry had been silencing exactly the alarm that should have been firing** —
-    // the "exemption ate the signal" failure this system wrote a standing rule about two days
-    // earlier, committed by the session that wrote the rule.
-    // The entry is now `contested` and reads DAILY, and these assertions pin the alarm ON.
-    for (const d of ['2026-08-27', '2026-08-28']) {
-      const rc = rollCall({ docRoot: root, date: d, windows: WIN });
-      const named = [...rc.absent.map(a => a.task), ...rc.emptyBody.map(e => e.task)];
-      assert(
-        named.includes('daily-improvement'),
-        `[R6] ${d}: daily-improvement IS named — a contested cadence keeps the alarm on rather than assuming the silence is scheduled (${named.join(', ') || 'none'})`
-      );
-    }
+    // 🔴 THE HISTORY OF THIS BLOCK, KEPT BECAUSE IT IS THE LESSON. Revision 1 asserted that
+    // daily-improvement raises NO alarm on 08-27/08-28, because the roster then said weekly on an
+    // UNVERIFIED cadence order — the exemption was eating exactly the signal that should fire.
+    // Revision 2 flipped it: entry contested/daily, assertions pinned the alarm ON. Both revisions
+    // asserted THE LIVE ROSTER, so when the owner READ THE SCHEDULER CARDS on 2026-08-28 — both
+    // weekly, the reading no session can take — revision 2 went red with no logic changed. That is
+    // the fourth "a test that asserts today's world is a clock" in this repo.
+    // What is asserted now is the ORDERING RULE that survives any roster state:
+    //   owner-observed  >  measured-from-boards  >  declared  ;  and contested resolves to the alarm.
+    const diEntry = cadenceFor('daily-improvement', CR);
     assert(
-      cadenceFor('daily-improvement', CR).cadence === 'daily' && cadenceFor('daily-improvement', CR).source === 'contested',
-      '[R6] and the roster says WHY it is daily — contested, not measured, with Saturday 2026-08-29 as the discriminator'
+      String(diEntry.source).startsWith('owner-observed') ||
+        diEntry.source === 'measured' ||
+        (diEntry.source === 'contested' && diEntry.cadence === 'daily'),
+      `[R6] the roster's daily-improvement entry is EITHER owner-observed/measured, OR contested-and-therefore-daily — a cadence claim may only silence an alarm on evidence, never on assertion (got source=${diEntry.source} cadence=${diEntry.cadence})`
+    );
+    assert(
+      !!diEntry.falsifier && /\d{4}-\d{2}-\d{2}/.test(String(diEntry.falsifier)),
+      '[R6] and whatever it says, it carries a DATED falsifier — resolution narrows the window, it never removes the check'
     );
     // The mechanism itself is still proven, on a fixture that cannot drift with the roster.
     const FX = {
