@@ -946,13 +946,23 @@ function cmdTabulate(date: string): void {
 //   3. 2-of-3 direction-inversion    — so_what WRONG at 2-of-3; a reader acting on it acts backwards
 //   4. so_what unanimous MISSING/WRONG — 3/3 (work-order item 6a)
 //
-// ⚠️ TENSION REPORTED, NOT SILENTLY RESOLVED: item 6(a) says a so_what rewrite fires ONLY on
-// unanimous 3/3 and "a 2-1 split logs and never actuates", while item 1 lists 2-of-3 direction
-// inversions as an authorized source. An inversion at 2-of-3 IS a 2-1 split. Both readings are
-// defensible, and the choice changes what may actuate, so the inversion rung is KEPT (item 1 is the
-// item that defines the authorization set) and every authorization prints the source that granted
-// it — so a disagreement shows up in the output rather than in the artifact. One constant flips it.
-export const ALLOW_INVERSION_RUNG = false; // REVOKED by item 6(a) — see the so_what actuation block
+// ✅ TENSION RESOLVED BY OWNER RULING 2026-08-28 (W2), and the resolution shows both items were
+// talking about DIFFERENT INSTRUMENTS — which is why they looked contradictory:
+//
+//   • TRANSMISSION READERS (this rung): the three blind readers each state back what the unit said.
+//     When 2 of 3 read the DIRECTION BACKWARDS — recorded as `WRONG` in that reader's so_what mark —
+//     the unit ACTUATES IMMEDIATELY and its rewrite is re-read the same night. A reader acting on an
+//     inverted unit acts backwards; two of three doing so is not a difference of taste.
+//
+//   • SO_WHAT ENSEMBLE (`sowhatActuation`, below): three GRADERS scoring the same transcripts.
+//     A 2-1 split there is graders disagreeing about a grade, not readers reporting a reversal.
+//     It still NEVER actuates. Unchanged by this ruling.
+//
+// The earlier session read item 1's "2-of-3 direction-inversions" as a so_what-ensemble rung and
+// switched it off to obey item 6(a). Wrong instrument: item 6(a) governs the ensemble, item 1's rung
+// governs the readers. **The lesson is worth more than the fix — "2-of-3" named a threshold without
+// naming WHOSE three, and two rules that never overlapped read as a contradiction for a day.**
+export const ALLOW_INVERSION_RUNG = true; // ON — owner ruling 2026-08-28 (W2). Readers, not graders.
 export const TRANSMISSION_PHASE1_NIGHTS = 7;
 
 /** Nights this product has been graded BEFORE `date` — from the LEDGER, never the calendar, and
@@ -988,7 +998,7 @@ export function authorizeRedrafts(opts: {
     const failed = cells.filter(c => c !== 'OK').length;
     if (failed === cells.length) { if (!out.has(u)) out.set(u, `so_what unanimous ${cells.join('/')} (${failed}/${cells.length})`); continue; }
     if (ALLOW_INVERSION_RUNG && wrong >= 2 && !out.has(u))
-      out.set(u, `so_what direction-inversion WRONG ${wrong}/${cells.length} — a reader acting on it acts backwards`);
+      out.set(u, `READER DIRECTION-INVERSION — ${wrong}/${cells.length} blind readers read the direction backwards. Actuates immediately (W2, 2026-08-28); rewrite is re-read the same night.`);
   }
   return out;
 }
@@ -2720,9 +2730,34 @@ function selftest(): number {
     'item6a: a UNANIMOUS WRONG still actuates as an inversion — unanimity, not the WRONG count, is what buys the pen now',
     L(['WRONG', 'WRONG', 'WRONG'], 0).action === 'REDRAFT-INVERSION'
   );
+  // ── W2 (owner ruling 2026-08-28) — TWO INSTRUMENTS, TWO RULES, PROVEN SIDE BY SIDE ──────────
+  // The whole point of this pair: the same "2-of-3" means different things depending on WHOSE
+  // three, and the earlier session switched off the wrong one for a day because the phrase did
+  // not say. These assertions sit together so that can never be re-read as a contradiction.
   t(
-    'item6a: ALLOW_INVERSION_RUNG is the single constant that would restore the old rung, and it is FALSE',
-    ALLOW_INVERSION_RUNG === false
+    'W2: READERS — 2-of-3 blind readers reading the direction BACKWARDS actuates immediately',
+    ALLOW_INVERSION_RUNG === true &&
+      authorizeRedrafts({ tab: {}, sowhat: { u: ['WRONG', 'WRONG', 'OK'] }, product: 'nonexistent-product', date: '2026-08-28' }).has('u')
+  );
+  t(
+    'W2: and the authorization says WHOSE three, so the next reader of this code cannot confuse the instruments',
+    /READER DIRECTION-INVERSION/.test(
+      authorizeRedrafts({ tab: {}, sowhat: { u: ['WRONG', 'WRONG', 'OK'] }, product: 'nonexistent-product', date: '2026-08-28' }).get('u')!
+    )
+  );
+  t(
+    'W2: GRADERS — the so_what ensemble still HOLDS on a 2-1 split, unchanged by the ruling',
+    sowhatActuation(['WRONG', 'WRONG', 'OK'] as SowhatGrade[], 0).action === 'HOLD' &&
+      sowhatActuation(['MISSING', 'MISSING', 'OK'] as SowhatGrade[], 99).action === 'HOLD'
+  );
+  t(
+    'W2: a lone reader inversion is still not enough — 1-of-3 authorizes nothing',
+    !authorizeRedrafts({ tab: {}, sowhat: { u: ['WRONG', 'OK', 'OK'] }, product: 'nonexistent-product', date: '2026-08-28' }).has('u')
+  );
+  t(
+    'W2: the reader rung and the ensemble rung disagree on the SAME input, and that is correct — 2 WRONG authorizes a redraft while the ensemble holds',
+    authorizeRedrafts({ tab: {}, sowhat: { u: ['WRONG', 'WRONG', 'OK'] }, product: 'nonexistent-product', date: '2026-08-28' }).has('u') &&
+      sowhatActuation(['WRONG', 'WRONG', 'OK'] as SowhatGrade[], 0).action === 'HOLD'
   );
   t('ladder: a single WRONG does not actuate on night 1', L(['WRONG', 'OK', 'OK'], 0).action === 'HOLD');
   t('ladder: all OK holds on any night', L(['OK', 'OK', 'OK'], 0).action === 'HOLD' && L(['OK', 'OK', 'OK'], 99).action === 'HOLD');

@@ -94,6 +94,7 @@ import * as path from 'path';
 // IMP-184 is the receipt — the task is the SECOND PIPE FIELD, never a substring of the line.
 // editor-handoff-gate only runs main() when invoked directly, so this import has no side effects.
 import { lineTask } from './editor-handoff-gate.ts';
+import { loadCadence, isDue, cadenceFor } from './cadence.ts';
 
 /** The watchdog's own grace window — Pipeline_Controller.md L195. Not a round number I picked. */
 export const GRACE_MIN = 10;
@@ -638,6 +639,8 @@ export interface RollCall {
   unterminated: Unterminated[];
   /** Rostered slots whose window could not be derived — NAMED, never defaulted. */
   windowless: string[];
+  /** Rostered slots NOT DUE today under system/slot-cadence.json — not absent, not silent. */
+  notDueByCadence: string[];
   /** IMP-218: slot -> the sibling-board line proving it ran inside this board's window. */
   crossBoard: Map<string, string>;
   /** IMP-221: slots the SCHEDULER reports as fired this cycle that wrote no STEP-0 CANARY of their own. */
@@ -757,7 +760,16 @@ export function rollCall(opts: {
   // EFFECTIVE_FROM. Attendance is still computed and reported; only the ALARM is suppressed.
   const exempt = opts.date < EFFECTIVE_FROM;
 
+  const cadenceRoster = loadCadence(docRoot);
+  const notDueByCadence: string[] = [];
   for (const s of rostered) {
+    // 🔴 CADENCE, READ FROM THE ROSTER, NEVER ASSUMED (W3, 2026-08-28). daily-improvement moved to
+    // weekly on 08-26; every checker with "daily" written into it began reporting a healthy
+    // component dead. A component that is not due today cannot be absent today.
+    if (!isDue(s.task, eveningDate, cadenceRoster)) {
+      notDueByCadence.push(`${s.task}(${cadenceFor(s.task, cadenceRoster).cadence})`);
+      continue;
+    }
     const deadline = new Date(
       (Number.isNaN(s.offsetMin)
         ? etWallClock(eveningDate, s.hh, s.mm).getTime()
@@ -835,6 +847,11 @@ export function rollCall(opts: {
   const emptyBody: EmptyBody[] = [];
   if (!exempt) {
     for (const s of rostered) {
+      // 🔴 CADENCE FIRST (W3, 2026-08-28). "Fired in window" presumes the slot was DUE. On 08-27 and
+      // 08-28 this leg reported daily-improvement and selection-judge as EMPTY-BODY — both had moved
+      // to a weekly cadence on 08-26, so nothing fired and nothing was owed. That is the false
+      // "loop dead" alarm W3 exists to kill, and it was firing on the very days the alarm mattered.
+      if (!isDue(s.task, eveningDate, cadenceRoster)) continue;
       if (notYetDue.includes(s.task)) continue;
       if (ownCanaries.has(s.task)) continue;
       if (sibling.get(s.task)) continue;
@@ -871,7 +888,7 @@ export function rollCall(opts: {
       });
     }
   }
-  return { date: opts.date, eveningDate, now, rostered, dropped, notYetDue, attended, absent, exempt, selfHealed: att.selfHealed, testimony, unterminated, windowless, crossBoard, firedAndSilent, emptyBody };
+  return { date: opts.date, eveningDate, now, rostered, dropped, notYetDue, attended, absent, exempt, selfHealed: att.selfHealed, testimony, unterminated, windowless, crossBoard, firedAndSilent, emptyBody, notDueByCadence };
 }
 
 // ---------- THE DERIVED ROSTER: windows measured, never guessed ----------
@@ -2039,6 +2056,45 @@ function selftest(): number {
     assert(
       writeAlert(tmp3, '2026-08-21', rcNoAbs).wrote.length === 0,
       '[unterminated] WARN-LEVEL FIRST (owner ruling): an unterminated slot writes NO alert file and sends no email — only ABSENT alarms'
+    );
+  }
+
+  // ── W3 — CADENCE IS READ FROM THE ROSTER, NEVER ASSUMED (work order 2026-08-28) ─────────────
+  {
+    const CR = loadCadence(root);
+    // 🔴 THE FALSE ALARM THIS KILLS. daily-improvement and selection-judge both stopped on 2026-08-26
+    // — the same board, one cadence order, not two deaths. Before this leg, BOTH the MISSING and the
+    // EMPTY-BODY paths reported them on 08-27 and 08-28: a healthy pair of weekly components read as
+    // a dead loop, on exactly the days an alarm needed to be trustworthy.
+    for (const d of ['2026-08-27', '2026-08-28']) {
+      const rc = rollCall({ docRoot: root, date: d, windows: WIN });
+      const named = [...rc.absent.map(a => a.task), ...rc.emptyBody.map(e => e.task)];
+      assert(
+        !named.includes('daily-improvement') && !named.includes('selection-judge'),
+        `[W3] ${d}: no false "loop dead" alarm — daily-improvement and selection-judge are weekly and not due (named: ${named.join(', ') || 'none'})`
+      );
+      assert(
+        rc.notDueByCadence.some(x => x.startsWith('daily-improvement')),
+        `[W3] ${d}: and the roll call SAYS they were skipped for cadence rather than passing over them in silence — ${rc.notDueByCadence.join(', ')}`
+      );
+    }
+    // …and the other direction: a genuinely missed Saturday must still fire.
+    assert(
+      isDue('daily-improvement', '2026-08-29', CR) && isDue('selection-judge', '2026-08-29', CR),
+      '[W3] a genuinely missed SATURDAY still fires — both are due 2026-08-29, so silence that day is a real finding'
+    );
+    assert(
+      !isDue('daily-improvement', '2026-08-30', CR),
+      '[W3] and Sunday is quiet again — the exemption is one day wide, not a permanent excuse'
+    );
+    // The alarm that remains on those boards is a REAL one, and must not be suppressed with them.
+    assert(
+      rollCall({ docRoot: root, date: '2026-08-27', windows: WIN }).emptyBody.some(e => e.task === 'daily-portfolio-monitor'),
+      '[W3] a DAILY component with no canary is still reported on the same board — the cadence fix narrows the alarm, it does not mute the leg'
+    );
+    assert(
+      cadenceFor('daily-improvement', CR).source === 'declared' && !!cadenceFor('daily-improvement', CR).falsifier,
+      '[W3] the weekly claim is marked DECLARED and carries its falsifier — this session could not read the app scheduler, and says so instead of asserting a measurement it did not make'
     );
   }
 

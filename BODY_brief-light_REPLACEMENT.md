@@ -455,3 +455,12 @@ node --experimental-strip-types scripts/novelty-gate.ts --stories {ARTIFACT} --d
 **(c) PASSIVE CALIBRATION — NO SCHEDULED LABELING SESSIONS.** The owner's ordinary listening marks keep landing in the ledger as they always have. A weekly one-liner (`transmission-readback calibration`, run by selection-judge or the improvement pass) computes ensemble-vs-owner agreement **on marked units only**. **Promotion — splits gaining the pen — requires ≥85% agreement on ≥15 accumulated marks AND the owner's signature; the line never promotes anything by itself.** **DEMOTION to log-only is AUTOMATIC below 80% and needs nobody's signature.** **n=0 is a valid receipt and READS as n=0 — NOT COMPUTABLE, explicitly not 100%.**
 
 **(d) THRASH GUARD.** More than **4 units rewritten a night for 3 consecutive nights** is 🔴 — **"suspect the instrument or the writer, not the units."** Mechanically: `sowhatThrash`.
+
+### 🔵 INVERSION RUNG — OWNER RULING 2026-08-28 (W2)
+
+**`ALLOW_INVERSION_RUNG = true`.** The rung is ON, and the ruling settles which instrument it belongs to:
+
+- **TRANSMISSION READERS — 2-of-3 DIRECTION-INVERSION ACTUATES IMMEDIATELY.** When two of the three blind readers read a unit's direction **backwards** (recorded as `WRONG` in that reader's so_what mark), the unit is redrafted that night and **the rewrite is re-read the same night**. A reader acting on an inverted unit acts backwards; two of three doing so is not a difference of taste.
+- **SO_WHAT ENSEMBLE — 2-1 SPLITS STILL NEVER ACTUATE.** Unchanged. Three *graders* disagreeing about a grade is not the same event as two *readers* reporting a reversal.
+
+⭐ **Why this looked like a contradiction for a day:** the phrase "2-of-3" named a threshold without naming **whose three**. Item 1 of the 08-28 work order meant the readers; item 6(a) meant the graders. The two rules never overlapped — the earlier session switched off the reader rung to satisfy a rule about graders. **A threshold without its population is not a rule, it is a number.**

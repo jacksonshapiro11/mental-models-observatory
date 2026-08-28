@@ -19,6 +19,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
+import { loadCadence, starveBudgetDays } from './cadence.ts';
 import * as os from 'os';
 
 interface Row {
@@ -60,9 +61,12 @@ export const CRITICAL_STARVE_DAYS = 2;
 export type NoCheckVerdict = 'exempt' | 'warn' | 'STARVED' | 'FUSE-BLOWN';
 
 /** The acceptance gate's verdict for a row carrying no mechanical check. Pure, so it is testable. */
-export function noCheckVerdict(sev: string, closed: boolean, age: number): NoCheckVerdict {
+export function noCheckVerdict(sev: string, closed: boolean, age: number, budget = CRITICAL_STARVE_DAYS): NoCheckVerdict {
   if (closed) return 'exempt';
-  if (/^Critical$/i.test(sev.trim())) return age >= CRITICAL_STARVE_DAYS ? 'STARVED' : 'warn';
+  // 🔴 CADENCE-AWARE (W3, 2026-08-28). The budget is no longer "2 days" by assumption — it is the
+  // budget of the COMPONENT THAT WOULD CLEAR THE ROW, read from system/slot-cadence.json. A row
+  // that only a weekly component can clear is not starved for existing between its runs.
+  if (/^Critical$/i.test(sev.trim())) return age >= budget ? 'STARVED' : 'warn';
   if (/^High$/i.test(sev.trim())) return age >= AGE_FUSE_DAYS ? 'FUSE-BLOWN' : 'warn';
   return 'exempt';
 }
