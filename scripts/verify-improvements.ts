@@ -568,6 +568,11 @@ function main(): number {
 
   const fails: string[] = [];
   const warns: string[] = [];
+  // 🔴 THE AMPLIFIER (W5, 2026-08-28). Every starved Critical row used to push its OWN failure, so
+  // a backlog of 22 produced 22 failures and buried the handful of real gate breakages underneath
+  // a list nobody could read past. A backlog is ONE condition with a size, not N conditions.
+  // Collected here and reported once, below.
+  const starved: { id: string; age: number; summary: string }[] = [];
   let verified = 0;
 
   for (const r of rows) {
@@ -587,11 +592,7 @@ function main(): number {
       const verdict = noCheckVerdict(r.sev, closed, age);
       if (verdict !== 'exempt') {
         const msg = `${r.id} [${r.sev}] has NO mechanical check (age ${age}d): "${r.summary.slice(0, 80)}" — convert to a code gate or close WONT-FIX-VIA-PROSE`;
-        if (verdict === 'STARVED')
-          fails.push(
-            `STARVED — ${msg} — a CRITICAL row may not be deferred for budget past ` +
-              `${CRITICAL_STARVE_DAYS} days (IMP-223). Ship its gate, downgrade it with a reason, or close it.`
-          );
+        if (verdict === 'STARVED') starved.push({ id: r.id, age, summary: r.summary.slice(0, 60) });
         else if (verdict === 'FUSE-BLOWN')
           fails.push(msg + ` — ${AGE_FUSE_DAYS}d fuse blown, this now BLOCKS`);
         else warns.push(msg);
@@ -682,6 +683,19 @@ function main(): number {
     `  behavior: ${counts.behaviorY} changed · ${counts.pending} pending · ${counts.recurred} recurred-open (theater candidates) · ${counts.closedByCode} closed-by-code`
   );
   if (coverageLine) console.log(coverageLine);
+
+  // THE STARVATION MONITOR — one line, with its size and its roster. Reported ONCE.
+  if (starved.length) {
+    starved.sort((a, b) => b.age - a.age);
+    fails.push(
+      `STARVED-BACKLOG — ${starved.length} Critical row(s) past their cadence budget: ` +
+        starved.map(x => `${x.id}(${x.age}d)`).join(', ') +
+        `\n      Oldest: ${starved[0]!.id} — "${starved[0]!.summary}"` +
+        `\n      A CRITICAL row may not be deferred for budget past its component's budget (IMP-223,` +
+        ` cadence-aware since W3). Ship its gate, downgrade it with a reason, or close it.` +
+        `\n      ONE finding, not ${starved.length} — a backlog is a condition with a size.`
+    );
+  }
 
   // ── 🔴 ORPHAN-GATE LEG (work order 2026-08-28, item 4) ──────────────────────────────────────
   // CREATION-TIME half of the gate wiring manifest. The class it ends, on its 4th occurrence: a
