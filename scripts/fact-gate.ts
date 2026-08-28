@@ -4962,18 +4962,19 @@ function briefCarries(v: number, briefValues: number[]): boolean {
 // has closed, the close is the number.** An intraday mark may still be printed — but only with the
 // hour on it ("at 10:43 ET"), never with a session verb and never as "on Thursday".
 //
-// 🔴 MEASURED STATE, 2026-08-29, and it is why this leg ships ADVISORY and does NOT close
-// E-INTRADAY-FOR-CLOSE-01: the pattern half works — it catches BOTH named 08-28 receipts (Micron's
-// "finished 5.8 percent off its high", Salesforce's "rose about 21 percent on Thursday"). The
-// DISCRIMINATOR half does not exist yet. Separating a settled verb on a WRONG number from a settled
-// verb on the RIGHT one requires knowing the close, and every `{BRIEF_DATE}-truth.json` on disk
-// carries **ZERO `close:` rows** — the convention the Critic's spec depends on has never been
-// written. So on the archive this fires ~2 sentences a night, including nights that were clean, and
-// **the acceptance "silent on a clean night" is NOT met.** The exemption path below is wired and
-// waiting; the Writer/QG rule that populates it ships alongside. Until closes are recorded, a
-// finding here means "this sentence asserts a vintage nobody verified", which is true of the good
-// sentences too — and saying so is better than tuning the regex until the receipts fall out with
-// the noise.
+// 🔴 MEASURED STATE, 2026-08-28 (updated after C2 landed the discriminator).
+//
+//   nights with recorded closes: 1 (2026-08-28, 4 rows) -> 2 findings, BOTH contradicting a
+//                                recorded close. Precision where the discriminator exists: 2/2.
+//   nights without:              4 -> 8 findings, precision NOT COMPUTABLE. With no close on
+//                                record, "settled verb + number" only says the sentence asserts a
+//                                vintage nobody verified — which is true of the good sentences too.
+//
+// So the leg has two modes and reports which one it is in. Where a close is recorded it names the
+// CONTRADICTION ("quotes 21 percent, settled close +22.6%") and is a defect report. Where none is,
+// it is an advisory that a vintage went unchecked. **The escalation closes when the evening-truth
+// pass writes close: rows nightly, not before** — the same night that happens, every clean sentence
+// falls out of this list by construction rather than by tuning.
 //
 // SCOPE, deliberately narrow so it can be believed: it fires only when all three coincide — a
 // settled-session verb, a numeric move or level bound to it, and a file written more than
@@ -5000,7 +5001,92 @@ export const HISTORICAL_RE =
 export const MARKET_CONTEXT_RE =
   /\b(shares?|stock|ticker|index|futures?|the session|trading|market|close|closing|spot|yield|contract|[A-Z]{2,5}\s*[+-]?\d)\b/;
 
-export interface SettledCloseFinding { sentence: string; verb: string; value: string }
+/**
+ * THE DISCRIMINATOR, LOADED (C2, 2026-08-28). A `close:{TICKER}:{YYYY-MM-DD}` claim in the night's
+ * truth.json is the record that somebody FETCHED the settled close rather than guessing it. Until
+ * these rows existed, this leg could not tell a settled verb on the right number from one on an
+ * intraday number, and shipped advisory for exactly that reason.
+ *
+ * A row counts only when `resolved` is true. An unresolved close row is a claim that was LOOKED FOR
+ * and not found — which is the opposite of an exemption.
+ */
+export interface RecordedClose { key: string; pct: number | null; value: number | null; names: string[] }
+
+export function loadRecordedCloses(truthPath: string): Set<string> {
+  const out = new Set<string>();
+  if (!fs.existsSync(truthPath)) return out;
+  let doc: { claims?: Record<string, { resolved?: boolean }> };
+  try {
+    doc = JSON.parse(fs.readFileSync(truthPath, 'utf8'));
+  } catch {
+    return out;
+  }
+  for (const [k, v] of Object.entries(doc.claims ?? {})) {
+    const m = /^close:([A-Za-z.\-]{1,8}):(\d{4}-\d{2}-\d{2})$/.exec(k);
+    if (!m || !v || v.resolved !== true) continue;
+    out.add(m[1]!.toUpperCase());
+  }
+  return out;
+}
+
+/**
+ * 🔴 THE EXEMPTION HAD TO BE NUMERIC, AND FINDING OUT WHY IS THE POINT OF C2.
+ *
+ * The specified rule — exempt any instrument whose close was recorded — was wired first and
+ * measured immediately: it would have exempted **the Salesforce sentence**, whose whole defect is
+ * that it says *"rose about 21 percent"* while the close it is exempted by is **+22.60%**.
+ * **Recording a close does not mean the prose used it**, so an instrument-level exemption hides
+ * exactly the sentence the leg exists to catch.
+ *
+ * A sentence is therefore exempt only when its own number MATCHES the recorded close. Everything
+ * else is flagged — and now flagged with a reason a reader can act on ("quotes 21 percent, settled
+ * close 22.60 percent") instead of "asserts a vintage nobody verified".
+ */
+export function recordedCloses(truthPath: string): RecordedClose[] {
+  if (!fs.existsSync(truthPath)) return [];
+  let doc: { claims?: Record<string, { resolved?: boolean; magnitudePct?: number | null; value?: number | null; names?: string[] }> };
+  try {
+    doc = JSON.parse(fs.readFileSync(truthPath, 'utf8'));
+  } catch {
+    return [];
+  }
+  const out: RecordedClose[] = [];
+  for (const [k, v] of Object.entries(doc.claims ?? {})) {
+    const m = /^close:([A-Za-z.\-]{1,8}):(\d{4}-\d{2}-\d{2})$/.exec(k);
+    if (!m || !v || v.resolved !== true) continue;
+    out.push({
+      key: m[1]!.toUpperCase(),
+      pct: typeof v.magnitudePct === 'number' ? v.magnitudePct : null,
+      value: typeof v.value === 'number' ? v.value : null,
+      names: [m[1]!.toUpperCase(), ...(v.names ?? [])],
+    });
+  }
+  return out;
+}
+
+export const CLOSE_PCT_TOLERANCE = 0.15; // percentage points — a rounding difference, not a rewrite
+
+/** The recorded close a sentence is about, if any. */
+export function closeFor(sentence: string, closes: RecordedClose[]): RecordedClose | null {
+  for (const c of closes)
+    for (const n of c.names)
+      if (new RegExp(`\\b${n.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`, 'i').test(sentence)) return c;
+  return null;
+}
+
+/** Does the sentence quote a number consistent with the recorded close? */
+export function agreesWithClose(sentence: string, c: RecordedClose): boolean {
+  if (c.pct === null) return false;
+  const target = Math.abs(c.pct);
+  for (const m of sentence.matchAll(/(\d+(?:\.\d+)?)\s*(?:percent|%)/gi))
+    if (Math.abs(Number(m[1]) - target) <= CLOSE_PCT_TOLERANCE) return true;
+  if (c.value !== null)
+    for (const m of sentence.matchAll(/\$\s?([\d,]+(?:\.\d+)?)/g))
+      if (Math.abs(Number(m[1]!.replace(/,/g, '')) - c.value) <= Math.max(0.02, c.value * 0.001)) return true;
+  return false;
+}
+
+export interface SettledCloseFinding { sentence: string; verb: string; value: string; recorded?: string }
 
 /**
  * Sentences that bind a settled-session verb to a number, in a file written after the session had
@@ -5010,7 +5096,8 @@ export interface SettledCloseFinding { sentence: string; verb: string; value: st
 export function settledCloseFindings(
   body: string,
   minutesAfterClose: number,
-  resolved: Set<string> = new Set()
+  resolved: Set<string> = new Set(),
+  closes: RecordedClose[] = []
 ): SettledCloseFinding[] {
   if (minutesAfterClose <= SETTLE_GRACE_MIN) return [];
   const out: SettledCloseFinding[] = [];
@@ -5038,8 +5125,18 @@ export function settledCloseFindings(
     // by a number with no lowercase between, which "CRM closed up 22.60 percent" never satisfies:
     // the exemption existed and could never fire.
     const ticks = sentence.match(/\b[A-Z]{1,5}\b/g) ?? [];
-    if (ticks.some(tk => resolved.has(tk))) continue; // the close WAS fetched for this instrument
-    out.push({ sentence: sentence.slice(0, 200), verb: v[0].slice(0, 40), value: n[0] });
+    if (ticks.some(tk => resolved.has(tk))) continue; // legacy set-based exemption (ticker in prose)
+    const rc = closes.length ? closeFor(sentence, closes) : null;
+    if (rc && agreesWithClose(sentence, rc)) continue; // quotes the recorded close: correct usage
+    out.push({
+      sentence: sentence.slice(0, 200),
+      verb: v[0].slice(0, 40),
+      value: n[0],
+      // When a close IS on record and the sentence disagrees with it, say what it disagrees with.
+      // "asserts a vintage nobody verified" is a worry; "quotes 21 percent, settled close 22.60"
+      // is a defect someone can fix in one edit.
+      recorded: rc && rc.pct !== null ? `${rc.key} settled ${rc.pct > 0 ? '+' : ''}${rc.pct}%` : undefined,
+    });
   }
   return out;
 }
@@ -8089,6 +8186,29 @@ function selftest(): number {
   const okR3Resolved =
     settledCloseFindings('CRM closed up 22.60 percent.', 231).length === 1 &&
     settledCloseFindings('CRM closed up 22.60 percent.', 231, new Set(['CRM'])).length === 0;
+  // ── C2: THE NUMERIC DISCRIMINATOR, on the real truth rows ──────────────────────────────────
+  const c2Closes = recordedCloses(path.join(root, 'daily-briefs/2026-08-28-truth.json'));
+  const okC2Load = c2Closes.length === 4 && c2Closes.some(c => c.key === 'CRM' && c.pct === 22.6);
+  const crm = c2Closes.find(c => c.key === 'CRM')!;
+  const mu = c2Closes.find(c => c.key === 'MU')!;
+  // A sentence quoting the recorded close is CORRECT USAGE and must fall out.
+  const okC2Agrees =
+    agreesWithClose('Salesforce closed up 22.60 percent on Thursday.', crm) &&
+    !agreesWithClose('Salesforce rose about 21 percent on Thursday.', crm);
+  // 🔴 THE REJECTED DESIGN, pinned so it cannot come back: exempting every sentence about a
+  // recorded INSTRUMENT would have exempted the Salesforce defect itself.
+  const okC2NotInstrumentLevel =
+    !!closeFor('Salesforce rose about 21 percent on Thursday.', c2Closes) &&
+    settledCloseFindings('Salesforce rose about 21 percent on Thursday.', 231, new Set(), c2Closes).length === 1;
+  // …and the finding NAMES what it contradicts.
+  const okC2Names =
+    settledCloseFindings('Salesforce rose about 21 percent on Thursday.', 231, new Set(), c2Closes)[0]?.recorded ===
+    'CRM settled +22.6%';
+  // Company name, not ticker — the prose never says "MU".
+  const okC2ByName = !!closeFor('Micron finished 5.8 percent off its high.', c2Closes) && mu.names.includes('Micron');
+  // An UNRESOLVED close row is a close that was looked for and NOT found — never an exemption.
+  const okC2Unresolved =
+    recordedCloses(path.join(root, 'daily-briefs/2026-08-27-truth.json')).length === 0;
 
   const ok =
     okCrMath &&
@@ -8320,7 +8440,16 @@ function selftest(): number {
     okR3HourStamp &&
     okR3Financing &&
     okR3Historical &&
-    okR3Resolved;
+    okR3Resolved &&
+    okC2Load &&
+    okC2Agrees &&
+    okC2NotInstrumentLevel &&
+    okC2Names &&
+    okC2ByName &&
+    okC2Unresolved;
+  console.log(
+    `  [C2] close: rows load (${okC2Load ? '✓' : '✗'}) · a sentence quoting the recorded close falls out (${okC2Agrees ? '✓' : '✗'}) · instrument-level exemption REJECTED, the Salesforce defect still fires (${okC2NotInstrumentLevel ? '✓' : '✗'}) · the finding names what it contradicts (${okC2Names ? '✓' : '✗'}) · matched by company NAME not ticker (${okC2ByName ? '✓' : '✗'}) · a night with no rows exempts nothing (${okC2Unresolved ? '✓' : '✗'})`
+  );
   console.log(
     `  [R3] settled-close FIRES on both named 08-28 receipts (Micron, Salesforce): ${okR3Fire ? '✓' : '✗'} · silent before settle+grace: ${okR3Grace ? '✓' : '✗'} · hour-stamp exempt: ${okR3HourStamp ? '✓' : '✗'} · financing close exempt: ${okR3Financing ? '✓' : '✗'} · historical period exempt: ${okR3Historical ? '✓' : '✗'} · recorded-close exemption wired: ${okR3Resolved ? '✓' : '✗'}`
   );

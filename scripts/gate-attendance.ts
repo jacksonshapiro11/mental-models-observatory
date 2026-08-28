@@ -22,6 +22,12 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+// 🔴 C1 (2026-08-28): this was `require('os')` inline. `npx tsx` transpiles to CJS and it worked;
+// the nightly path runs `node --experimental-strip-types`, which is true ESM, where `require` is
+// not defined — so the selftest printed its passes and then the PROCESS died, and every caller
+// read FAILURE from a passing run. **A selftest is only evidence under the runner that actually
+// invokes it**; green under one runner proved nothing about the one the pipeline uses.
+import * as os from 'os';
 
 export const MANIFEST = 'system/gate-manifest.json';
 const DB = (root: string) => path.join(root, 'daily-briefs');
@@ -148,7 +154,7 @@ function main(): void {
       /^MISSING-GATE: [a-z0-9-]+ \([a-z0-9]+\) — no exit stamp from .+ on \d{4}-\d{2}-\d{2}$/.test(empty.findings[0]!.line)
     );
     // A stamp only counts from an EXPECTED task — a narration by anyone else is not attendance.
-    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'gate-att-'));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-att-'));
     fs.mkdirSync(path.join(tmp, 'daily-briefs'), { recursive: true });
     fs.mkdirSync(path.join(tmp, 'system'), { recursive: true });
     fs.copyFileSync(path.join(root, MANIFEST), path.join(tmp, MANIFEST));
@@ -168,7 +174,7 @@ function main(): void {
       o.orphans.length === 0
     );
     // The orphan leg must actually be capable of firing, or it is decoration.
-    const tmp2 = fs.mkdtempSync(path.join(require('os').tmpdir(), 'gate-orph-'));
+    const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-orph-'));
     fs.mkdirSync(path.join(tmp2, 'scripts'), { recursive: true });
     fs.mkdirSync(path.join(tmp2, 'system'), { recursive: true });
     fs.copyFileSync(path.join(root, MANIFEST), path.join(tmp2, MANIFEST));

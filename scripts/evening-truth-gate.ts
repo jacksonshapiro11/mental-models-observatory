@@ -20,6 +20,34 @@
  *   node --experimental-strip-types scripts/evening-truth-gate.ts {BRIEF_DATE} --strict   # exit 1 on findings
  *   node --experimental-strip-types scripts/evening-truth-gate.ts --selftest
  */
+
+/**
+ * 🔴 SETTLED-CLOSE CAPTURE (C2, 2026-08-28) — REQUIRED OF THE EVENING TRUTH PASS.
+ *
+ * For EVERY price or percentage move the brief quotes on a US-listed instrument, after the 16:00 ET
+ * settle, write a claim to `daily-briefs/{BRIEF_DATE}-truth.json`:
+ *
+ *   "close:{TICKER}:{SESSION_DATE}": {
+ *     "resolved": true, "direction": "up"|"down",
+ *     "value": <settled level>, "magnitudePct": <settled % move>,
+ *     "window": "{SESSION_DATE} settled close",
+ *     "source": "<where the close came from>",
+ *     "names": ["Micron"]            // company names as the prose writes them
+ *   }
+ *
+ * `names` is not decoration: the prose says "Salesforce", not "CRM", and without it the check
+ * cannot connect a sentence to its own close.
+ *
+ * WHAT IT IS FOR, and why an instrument-level exemption was rejected: `fact-gate`'s
+ * `settledCloseFindings` exempts a sentence only when the NUMBER IT QUOTES matches this row.
+ * Exempting every sentence about a recorded instrument was wired first and measured — it would have
+ * exempted the Salesforce sentence, whose defect is that it says "about 21 percent" while the close
+ * is +22.60%. **Recording a close does not mean the prose used it.**
+ *
+ * A row with `resolved: false` is a close that was looked for and not found. That is the opposite of
+ * an exemption and must never be written as one.
+ */
+
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';

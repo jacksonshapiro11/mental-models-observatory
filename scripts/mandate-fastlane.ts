@@ -14,6 +14,12 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+// 🔴 C1 (2026-08-28): this was `require('os')` inline. `npx tsx` transpiles to CJS and it worked;
+// the nightly path runs `node --experimental-strip-types`, which is true ESM, where `require` is
+// not defined — so the selftest printed its passes and then the PROCESS died, and every caller
+// read FAILURE from a passing run. **A selftest is only evidence under the runner that actually
+// invokes it**; green under one runner proved nothing about the one the pipeline uses.
+import * as os from 'os';
 
 export const CRITICAL_RC = 2; // RC1-RC2 are the top ranks the Critic uses; RC3+ are lower
 export interface Mandate { n: number; title: string; rc: number | null; critical: boolean; recurring: boolean; recurrenceNote?: string }
@@ -133,7 +139,7 @@ function main(): void {
       fl.carry.some(c => /never RECEIVED/.test(c)));
 
     // SILENT on clean: a critic with no mandates, and one whose date the ledger already cites.
-    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fastlane-'));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'fastlane-'));
     fs.mkdirSync(path.join(tmp, 'daily-briefs'), { recursive: true });
     fs.mkdirSync(path.join(tmp, 'system'), { recursive: true });
     fs.writeFileSync(path.join(tmp, 'daily-briefs', '2026-01-01-critic.md'), '## VERDICT\nfine\n');
