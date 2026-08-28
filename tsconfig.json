@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "lib": [
       "dom",
       "dom.iterable",
@@ -61,6 +62,8 @@
   ],
   "exclude": [
     "node_modules",
+    "daily-briefs",
+    "zz_scratch.trash-1786274640",
     "scripts",
     "zz_Old",
     "_to_delete",

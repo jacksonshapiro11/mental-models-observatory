@@ -68,7 +68,7 @@ function main(): void {
     // 'contested' is a third, load-bearing state: two readings disagree and the entry is set to
     // whichever KEEPS THE ALARM ON. Admitting it beats picking a side quietly.
     t('[roster] every entry declares its epistemic status — measured, declared, or contested — so a reader can tell what was observed from what was asserted',
-      Object.entries(R).filter(([k]) => !k.startsWith('_')).every(([, v]) => ['measured', 'declared', 'contested'].includes(String((v as CadenceEntry).source).split(' ')[0]) ||
+      Object.entries(R).filter(([k]) => !k.startsWith('_')).every(([, v]) => ['measured', 'declared', 'contested'].includes(String((v as CadenceEntry).source).split(' ')[0] ?? '') ||
         String((v as CadenceEntry).source).startsWith('owner-observed')));
 
     // 🔴 THE MECHANISM ON A FIXTURE, not on today's roster. An earlier revision asserted these
