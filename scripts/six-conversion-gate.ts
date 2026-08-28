@@ -532,6 +532,23 @@ const SPECIALIZED_CONCEPTS = [
   'martingale',
   'prospect theory',
   'ricardian equivalence',
+  // Added 2026-08-26 (take-draft, 2026-08-27 draft). NATIONAL-INCOME-ACCOUNTING / post-Keynesian
+  // machinery was a genuine gap, and it is the SAME class of miss as the 2026-08-20 CES/sigma
+  // addition above — so it is fixed the same way, in the list, rather than as a one-off Editor
+  // waiver. Kalecki's profit identity (1942) and the Levy-Kalecki/sectoral-balance and
+  // stock-flow-consistent literature that descends from it (Godley) are graduate-level
+  // macroeconomics: the identity decides whether aggregate profit is a performance measure or a
+  // residual of investment plus the government deficit, which is not a distinction intro courses
+  // draw. Check G fired a FALSE POSITIVE on a Take whose entire argument turns on that identity.
+  // DELIBERATELY NOT ADDED: bare 'accounting identity' and bare 'identity' — those are generic
+  // enough that adding them would widen the loophole the check exists to close. Only the named
+  // specialist constructs go in.
+  'kalecki',
+  'profit identity',
+  'sectoral balance',
+  'stock-flow consistent',
+  'stock flow consistent',
+  'godley',
   'endogeneity',
   // --- added 2026-08-13 by take-draft (for the 08-14 Take), a LIST GAP not a rule change ---
   // Check G fired on a Take grounded in Dubins & Savage (1965) bold play for subfair primitive

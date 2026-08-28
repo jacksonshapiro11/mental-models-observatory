@@ -450,3 +450,13 @@ cannot legislate. Hence the ensemble.
 **Ensemble on 2026-08-19: 43/75 = 57.3%. All three graders agreed on 67/75 = 89% of grades; 8 were
 2-1 splits, and a 2-1 split flips only if two graders move.** The drift line carries `so_what OK %
 (ens/3)` so the number always says how it was produced.
+
+## SO_WHAT REWRITE LOOP — THE SELF-GUARDING RULES (owner ruling 2026-08-28, work order item 6)
+
+**(a) ACTUATION.** A so_what rewrite fires **ONLY on unanimous MISSING/WRONG (3/3)**. A 2-1 split **LOGS and never actuates**. 🔴 **This REVOKES the 2-of-3 direction-inversion rung adopted 2026-08-20** — an inversion at 2-of-3 is a 2-1 split, and the newer ruling governs. A unanimous WRONG still actuates as `REDRAFT-INVERSION`; unanimity, not the WRONG count, is what buys the pen. Mechanically: `sowhatActuation` in `scripts/transmission-readback.ts`; `ALLOW_INVERSION_RUNG` is the one constant that would restore the old rung and it is **false**.
+
+**(b) EVERY REWRITE IS RE-READ THE SAME NIGHT** by fresh readers, **both legs — claim AND so_what** — exactly as transmission redrafts are. **HARD CAP: TWO cycles per unit.** *Perfect is not the bar; landing is.* A unit still failing after cycle 2 **SHIPS AS-IS**, rows **RESIDUAL**, and **leads the morning summary**. The cap is the point: without it a loop that cannot land spends the night optimising prose against its own graders, which is how an instrument starts serving itself instead of the reader. Mechanically: `sowhatCycleAction(verdicts, cyclesDone)`.
+
+**(c) PASSIVE CALIBRATION — NO SCHEDULED LABELING SESSIONS.** The owner's ordinary listening marks keep landing in the ledger as they always have. A weekly one-liner (`transmission-readback calibration`, run by selection-judge or the improvement pass) computes ensemble-vs-owner agreement **on marked units only**. **Promotion — splits gaining the pen — requires ≥85% agreement on ≥15 accumulated marks AND the owner's signature; the line never promotes anything by itself.** **DEMOTION to log-only is AUTOMATIC below 80% and needs nobody's signature.** **n=0 is a valid receipt and READS as n=0 — NOT COMPUTABLE, explicitly not 100%.**
+
+**(d) THRASH GUARD.** More than **4 units rewritten a night for 3 consecutive nights** is 🔴 — **"suspect the instrument or the writer, not the units."** Mechanically: `sowhatThrash`.
