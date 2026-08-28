@@ -430,3 +430,28 @@ and nobody knew until 5 AM.
 ---
 
 **ADDENDUM 2026-08-10 (FINAL WORK ORDER item 4) — THE HURRIED READER, ADVISORY.** `prepare` (step 4b.0) now also writes `hurried-prompt.txt` and prints `HURRIED_HASH`. After spawning the three calibrated Readers, ALSO spawn ONE hurried Reader the same way — pass the prompt file's TEXT, same blindness rules — save its raw reply to `readback-hurried.txt`, and write its grades to `hurried-grades.json` as `{"<unit-id>":{"grade":"TRANSMITTED|DISTORTED|LOST","sowhat":"OK|MISSING|WRONG"}}` BEFORE running `ledger`. It is ADVISORY: it never triggers a redraft, never counts toward actuation, and lands only in the `hurried_read` ledger field. It measures the "in a hurry" half of the success criterion and earns actuation only through the owner-marks calibration bar, like everything else.
+
+## NOVELTY + STORY COOLDOWN — ADVISORY, RUN BEFORE YOU FINISH (added 2026-08-28, work order item 5)
+
+Run both, paste both lines onto the board, and **do not branch on either — exit 0 always, the brief always ships:**
+
+```
+node --experimental-strip-types scripts/novelty-gate.ts {ARTIFACT} --move {move-id}
+node --experimental-strip-types scripts/novelty-gate.ts --stories {ARTIFACT} --date {BRIEF_DATE} --update
+```
+
+🔴 **WHY THIS LINE EXISTS AT ALL: `novelty-gate` was named "the binding novelty check" in SIX prose places across `system/`, stamped `PASS` on the boards — and invoked by NOTHING.** Measured 2026-08-28: zero executable invocations in any task body. The boards were reporting a gate that does not run. `system/gate-manifest.json` carries it as `wired: false` until this line is live in the executed body, and `gate-attendance` reports it RED every night until then.
+
+⚠️ **The STORY COOLDOWN pass is advisory AND currently unproven:** on 5 real published nights it produced 294 keys and zero repeats, so it has never been shown capable of firing on production prose. A silent run means UNMEASURED, not clean. Paste its line anyway — the ledger it writes is what will eventually calibrate it. If it flags, declare a genuine development inside the unit with `<!-- story-new: what changed -->` rather than rewording the story.
+
+**BODY_VERSION=brief-light@2026-08-28** — echo this on the canary line, field 5, exactly as written. A pointer-only session never reaches this step and never echoes the marker.
+
+## SO_WHAT REWRITE LOOP — THE SELF-GUARDING RULES (owner ruling 2026-08-28, work order item 6)
+
+**(a) ACTUATION.** A so_what rewrite fires **ONLY on unanimous MISSING/WRONG (3/3)**. A 2-1 split **LOGS and never actuates**. 🔴 **This REVOKES the 2-of-3 direction-inversion rung adopted 2026-08-20** — an inversion at 2-of-3 is a 2-1 split, and the newer ruling governs. A unanimous WRONG still actuates as `REDRAFT-INVERSION`; unanimity, not the WRONG count, is what buys the pen. Mechanically: `sowhatActuation` in `scripts/transmission-readback.ts`; `ALLOW_INVERSION_RUNG` is the one constant that would restore the old rung and it is **false**.
+
+**(b) EVERY REWRITE IS RE-READ THE SAME NIGHT** by fresh readers, **both legs — claim AND so_what** — exactly as transmission redrafts are. **HARD CAP: TWO cycles per unit.** *Perfect is not the bar; landing is.* A unit still failing after cycle 2 **SHIPS AS-IS**, rows **RESIDUAL**, and **leads the morning summary**. The cap is the point: without it a loop that cannot land spends the night optimising prose against its own graders, which is how an instrument starts serving itself instead of the reader. Mechanically: `sowhatCycleAction(verdicts, cyclesDone)`.
+
+**(c) PASSIVE CALIBRATION — NO SCHEDULED LABELING SESSIONS.** The owner's ordinary listening marks keep landing in the ledger as they always have. A weekly one-liner (`transmission-readback calibration`, run by selection-judge or the improvement pass) computes ensemble-vs-owner agreement **on marked units only**. **Promotion — splits gaining the pen — requires ≥85% agreement on ≥15 accumulated marks AND the owner's signature; the line never promotes anything by itself.** **DEMOTION to log-only is AUTOMATIC below 80% and needs nobody's signature.** **n=0 is a valid receipt and READS as n=0 — NOT COMPUTABLE, explicitly not 100%.**
+
+**(d) THRASH GUARD.** More than **4 units rewritten a night for 3 consecutive nights** is 🔴 — **"suspect the instrument or the writer, not the units."** Mechanically: `sowhatThrash`.

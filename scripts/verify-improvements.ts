@@ -19,6 +19,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
+import * as os from 'os';
 
 interface Row {
   id: string;
@@ -496,6 +497,54 @@ function executeCheck(check: string, id: string): string[] {
   return fails;
 }
 
+export interface DroppedRed { date: string; phrase: string; how: string }
+
+/** Defect-shaped 🔴 declarations on the trailing N boards with no CARRY/ledger reference. */
+export function detectDroppedReds(
+  root: string,
+  boards: number,
+  DEFECT: RegExp,
+  RESOLVED: RegExp
+): DroppedRed[] {
+  const ID = /\b(?:ESC|IMP)-\d+\b|\bE-[A-Z0-9-]{4,}\b|\bL-\d{4}-\d+\b/g;
+  const dir = path.join(root, 'daily-briefs');
+  const files = fs
+    .readdirSync(dir)
+    .filter(f => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(f))
+    .sort()
+    .slice(-boards);
+  const hay = ['system/CARRY.md', 'system/Improvement_Ledger.md']
+    .map(f => (fs.existsSync(path.join(root, f)) ? fs.readFileSync(path.join(root, f), 'utf8') : ''))
+    .join('\n')
+    .toUpperCase();
+  const cooc = (keys: string[]): boolean => {
+    for (let i = 0; i < hay.length; i += 450)
+      if (keys.every(k => hay.slice(i, i + 900).includes(k))) return true;
+    return false;
+  };
+  const out: DroppedRed[] = [];
+  for (const f of files) {
+    const date = f.slice(0, 10);
+    const txt = fs.readFileSync(path.join(dir, f), 'utf8');
+    for (const m of txt.matchAll(/🔴 ([A-Z][A-Z0-9 _'\-]{6,70})/g)) {
+      const phrase = m[1]!.trim().replace(/\s+/g, ' ');
+      const dm = DEFECT.exec(phrase);
+      if (!dm || RESOLVED.test(phrase)) continue;
+      const ids = phrase.match(ID);
+      if (ids) {
+        if (!ids.every(i => hay.includes(i))) out.push({ date, phrase, how: `ID ${ids.join(',')}` });
+        continue;
+      }
+      const noun = dm[0];
+      const others = (phrase.match(/[A-Z0-9'\-]{4,}/g) ?? []).filter(w => !noun.includes(w));
+      others.sort((a, b) => b.length - a.length);
+      const keys = [noun, ...others.slice(0, 1)];
+      if (!cooc(keys)) out.push({ date, phrase, how: `co-occur ${keys.join('+')}` });
+    }
+  }
+  return out;
+}
+
 function main(): number {
   const argIdx = process.argv.indexOf('--ledger');
   const ledgerPath =
@@ -629,6 +678,62 @@ function main(): number {
     `  behavior: ${counts.behaviorY} changed · ${counts.pending} pending · ${counts.recurred} recurred-open (theater candidates) · ${counts.closedByCode} closed-by-code`
   );
   if (coverageLine) console.log(coverageLine);
+
+  // ── 🔴 ORPHAN-GATE LEG (work order 2026-08-28, item 4) ──────────────────────────────────────
+  // CREATION-TIME half of the gate wiring manifest. The class it ends, on its 4th occurrence: a
+  // gate is written, tested, documented as binding — and connected to nothing. MEASURED 2026-08-28:
+  // of 49 gate scripts on disk, NINE had no executable invocation in any task body, and
+  // `novelty-gate` was named "the binding novelty check" in six prose places, stamped PASS on the
+  // boards, and invoked by nobody. This leg means a NEW gate cannot be born disconnected: any
+  // scripts/*gate*.ts that the manifest neither rosters, retires, nor explicitly backlogs is an
+  // ORPHAN. Warn-level — it must never fail a night over a file that was just created.
+  try {
+    const gm = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'system/gate-manifest.json'), 'utf8'));
+    const onDisk = fs
+      .readdirSync(path.join(process.cwd(), 'scripts'))
+      .filter((f: string) => /gate.*\.ts$/.test(f) && !/\.bak|scratch/.test(f))
+      .map((f: string) => f.replace(/\.ts$/, ''));
+    const known = new Set<string>([
+      ...Object.values(gm.classes as Record<string, { gate: string }[]>).flat().map(r => r.gate),
+      ...Object.keys(gm.retired ?? {}),
+      ...((gm.unrostered_unretired?.gates ?? []) as string[]),
+    ]);
+    const orph = onDisk.filter((g: string) => !known.has(g));
+    for (const g of orph)
+      warns.push(`ORPHAN-GATE: scripts/${g}.ts is in no artifact class and not retired — a gate that belongs to no class runs on no night. Add it to system/gate-manifest.json or record why it is retired.`);
+    if (!orph.length)
+      console.log(`  ✓ gate wiring: ${onDisk.length} gate script(s), 0 orphan(s) — every one rostered, retired or backlogged (system/gate-manifest.json)`);
+  } catch (e) {
+    warns.push(`gate-manifest unreadable — the orphan leg did NOT run: ${(e as Error).message}. An unread manifest is not a clean one.`);
+  }
+
+  // ── 🔴 DROP DETECTOR (work order 2026-08-28, item 8) ────────────────────────────────────────
+  // A defect declared 🔴 on a board and then never carried is a defect that disappears. The case
+  // that forced this: 2026-08-27 declared "🔴 SEGMENTER BUG — prepare's reader-prompt.txt appended
+  // the trailing DECLARATIONS/staleness/truth blocks to the last unit", the readers were run on a
+  // hand-stripped copy, and the bug appeared on no open list. A workaround that fixes one night is
+  // not a fix, and the only thing that would have surfaced it is this leg.
+  //
+  // PRECISION, MEASURED not hoped: most 🔴 markers on these boards are announcements, many of them
+  // GOOD news ("🔴 GOLD CONFLICT RESOLVED"). Flagging all of them would produce a storm and be
+  // ignored. So a declaration counts only when it reads as a DEFECT and not as a resolution, and
+  // coverage is tested two ways — an escalation ID is matched exactly, because an ID is a precise
+  // reference; free text needs its defect noun AND its most distinctive word to CO-OCCUR in one
+  // window of CARRY/ledger, because a lone topic word matches unrelated older rows (an early cut
+  // called SEGMENTER BUG "covered" on the strength of the word "segmenter" appearing in a months-old
+  // ledger row — the exact false green this leg exists to refuse).
+  // Over the trailing 7 boards this yields 4 findings, not 40. Warn-level.
+  try {
+    const DEFECT = /\b(BUG|DEFECT|BROKEN|REGRESSION|LEAKED|LEAKS|LEAK|NEVER FIRED|NOT DONE|NON-?PRODUCTION|MISFIRE|UNAUTHORI[SZ]ED|DID NOT RUN|FAILED TO)\b/;
+    const RESOLVED = /\b(RESOLVED|CLOSED|FIXED|CORRECTED|CLEARED|PASSED|WIN)\b/;
+    const dropFindings = detectDroppedReds(process.cwd(), 7, DEFECT, RESOLVED);
+    for (const d of dropFindings)
+      warns.push(`DROPPED-RED: ${d.date} declared "${d.phrase}" and no CARRY or ledger row references it (${d.how}). A defect declared and not carried is a defect that disappears.`);
+    if (!dropFindings.length) console.log('  ✓ drop detector: every defect-shaped 🔴 on the last 7 boards is carried');
+  } catch (e) {
+    warns.push(`drop detector did NOT run: ${(e as Error).message}`);
+  }
+
   for (const w of warns) console.log(`  ⚠ ${w}`);
   for (const f of fails) console.error(`  ✗ ${f}`);
   if (fails.length) {
@@ -1163,6 +1268,34 @@ function selftest(): number {
     routingAssertions += 5;
   }
 
+  // ── DROP DETECTOR (work order 2026-08-28, item 8) ──────────────────────────────────────────
+  {
+    const DEFECT = /\b(BUG|DEFECT|BROKEN|REGRESSION|LEAKED|LEAKS|LEAK|NEVER FIRED|NOT DONE|NON-?PRODUCTION|MISFIRE|UNAUTHORI[SZ]ED|DID NOT RUN|FAILED TO)\b/;
+    const RESOLVED = /\b(RESOLVED|CLOSED|FIXED|CORRECTED|CLEARED|PASSED|WIN)\b/;
+    const found = detectDroppedReds(process.cwd(), 7, DEFECT, RESOLVED);
+    // THE NAMED CASE. 2026-08-27 declared "🔴 SEGMENTER BUG" and nothing carried it.
+    const seg = found.some(f => f.date === '2026-08-27' && /SEGMENTER BUG/.test(f.phrase));
+    t2(seg, '[ITEM8] the drop detector CATCHES the segmenter-bug case — 🔴 on the 08-27 board, no CARRY or ledger row');
+    // …and it must not be catching it by flagging everything.
+    t2(
+      found.length > 0 && found.length <= 8,
+      `[ITEM8] and it is selective, not a storm — ${found.length} finding(s) across 7 boards, where most 🔴 markers are announcements and many are good news`
+    );
+    // A resolved declaration is never a drop.
+    t2(
+      !found.some(f => RESOLVED.test(f.phrase)),
+      '[ITEM8] a 🔴 that says RESOLVED/FIXED/CORRECTED is never reported as dropped'
+    );
+    // N/A STATE: a tree with no boards produces no findings rather than an error or a zero-claim.
+    const tmpNA = fs.mkdtempSync(path.join(os.tmpdir(), 'drop-na-'));
+    fs.mkdirSync(path.join(tmpNA, 'daily-briefs'), { recursive: true });
+    t2(
+      detectDroppedReds(tmpNA, 7, DEFECT, RESOLVED).length === 0,
+      '[ITEM8] N/A STATE: no boards means no findings — an empty archive is not a clean one, and it is not an error either'
+    );
+    forensicAssertions += 4;
+  }
+
   const total =
     cases.length +
     forensicAssertions +
@@ -1184,4 +1317,8 @@ function selftest(): number {
   return 0;
 }
 
-process.exit(process.argv.includes('--selftest') ? selftest() : main());
+// Direct-invocation guard — so the exported legs (detectDroppedReds, the orphan sweep) can be
+// imported and tested without the module running the whole verification and calling process.exit
+// in its importer. A no-op for every real caller.
+if (process.argv[1] && process.argv[1].includes('verify-improvements'))
+  process.exit(process.argv.includes('--selftest') ? selftest() : main());

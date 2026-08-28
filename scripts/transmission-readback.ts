@@ -494,6 +494,54 @@ export function pairByLabel(
 }
 
 /** 🔴 The claims file is authoritative. This VALIDATES the prose against it and never invents units. */
+/**
+ * 🔴 TRAILING COMMENT BLOCKS ARE NOT PART OF THE LAST UNIT (declared on the 2026-08-27 board, fixed
+ * 2026-08-28 — work order item 3).
+ *
+ * THE BOARD'S OWN WORDS: *"SEGMENTER BUG: prepare's reader-prompt.txt appended the trailing
+ * DECLARATIONS/staleness/truth blocks to the last unit and would have shown the readers the Take's
+ * framework and the Inner Game discomfort line; readers were run on a stripped copy."*
+ *
+ * The last unit's `end` runs to EOF, so every end-of-file comment block — declarations, the
+ * staleness ledger, the truth log — was pasted into the reader's view of the final unit. That is
+ * not a cosmetic leak: those blocks name the Take's framework and the Inner Game's intended
+ * discomfort, which is precisely the material a BLIND reader must not see. The night it was caught,
+ * the readers were run on a hand-stripped copy — a workaround that fixes one night and no other,
+ * and the bug was declared 🔴 and then left off the open list. (Carried as its own CARRY row.)
+ *
+ * The boundary is CLAMPED, never deleted: `segment` stops the last unit before the trailing run, and
+ * assembly's `out += md.slice(cursor)` re-appends those bytes verbatim. So the readers stop seeing
+ * them and the artifact keeps them. A file with no trailing blocks is untouched — the clamp is a
+ * no-op, which is the second direction of the selftest.
+ */
+/** Clamp the final unit so it stops before any end-of-file comment run. Mutates in place. */
+export function clampTrailing(units: { start: number; end: number }[], md: string): void {
+  if (!units.length) return;
+  const cut = trailingBlockStart(md);
+  const last = units[units.length - 1]!;
+  if (cut < last.end && cut > last.start) last.end = cut;
+}
+
+export function trailingBlockStart(md: string): number {
+  let i = md.length;
+  let stripped = 0;
+  for (;;) {
+    let j = i;
+    while (j > 0 && /\s/.test(md[j - 1]!)) j--;      // skip whitespace before the block
+    if (j === 0) break;
+    if (!md.slice(0, j).endsWith('-->')) break;       // not a comment block: boundary found
+    const open = md.lastIndexOf('<!--', j - 3);
+    if (open < 0) break;                              // unbalanced: change nothing
+    i = open;
+    stripped++;
+  }
+  if (!stripped) return md.length;                    // clean file: untouched, to the byte
+  // Having stripped at least one block, take the separating whitespace with it — otherwise the
+  // last unit keeps a trailing blank line that was only ever there to separate it from the block.
+  while (i > 0 && /\s/.test(md[i - 1]!)) i--;
+  return i;
+}
+
 function segment(md: string, claims: Claim[], product = ''): Unit[] {
   const full = product === 'full';
   const cands = full ? candidatesFull(md) : candidates(md);
@@ -501,6 +549,11 @@ function segment(md: string, claims: Claim[], product = ''): Unit[] {
   // not the counts agree. Counts agreeing was never what made the pairing safe; the labels are.
   if (full) {
     const { units, findings, scores } = pairByLabel(md, cands, claims);
+    clampTrailing(units, md);
+    if (units.length) {
+      const last = units[units.length - 1]!;
+      last.sha = sha(md.slice(last.start, last.end)); // re-fingerprint after the clamp
+    }
     LAST_FINDINGS = findings;
     SEG_SCORES = scores;
     if (!units.length) {
@@ -540,14 +593,18 @@ function segment(md: string, claims: Claim[], product = ''): Unit[] {
     }
     process.exit(1);
   }
-  return cands.map((x, i) => ({
+  const plain = cands.map((x, i) => ({
     id: claims[i]!.unit,
     section: claims[i]!.section,
     idx: i,
     start: x.start,
     end: x.end,
-    sha: sha(md.slice(x.start, x.end)),
+    sha: '',
   }));
+  clampTrailing(plain, md);
+  // sha AFTER the clamp — a unit's fingerprint must cover exactly the bytes a reader is shown.
+  for (const u of plain) u.sha = sha(md.slice(u.start, u.end));
+  return plain;
 }
 
 // ── PARROT GUARD ──────────────────────────────────────────────────────────────
@@ -869,6 +926,108 @@ function cmdTabulate(date: string): void {
   );
 }
 
+// ── 🔴 THE ASSEMBLY INVARIANT (WORK ORDER 2026-08-28, item 1) ─────────────────────────────────
+//
+// THE DEFECT THIS EXISTS TO END, stated exactly: on 2026-08-26 `redrafts.json` carried FOUR keys —
+// `update-1`, `line-7`, `line-5`, `line-4` — while `tabulation.json` recorded `unanimous: []` and
+// `majority: ["update-1","line-7"]`. **Two of the four splices were authorized by nothing.** They
+// were spliced anyway, because `assemble` checked only that a redraft key NAMED A KNOWN UNIT. That
+// is a spell-check standing in for a permission check, and it is the only defect in this instrument's
+// history that reached readers.
+//
+// Note what did NOT save it. Assembly already re-segments and proves every UNTOUCHED unit is
+// byte-identical — a real guarantee, and useless here: both unauthorized units were TOUCHED, so
+// the freeze check waved them through by construction. **A guard that only inspects what you did
+// not change cannot see an unauthorized change.**
+//
+// AUTHORIZED means one of four sources said so, and the source is recorded per key:
+//   1. unanimous                     — all three readers failed the unit (any night)
+//   2. majority-if-past-phase-1      — 2-of-3, only after the ladder's first 7 GRADED nights
+//   3. 2-of-3 direction-inversion    — so_what WRONG at 2-of-3; a reader acting on it acts backwards
+//   4. so_what unanimous MISSING/WRONG — 3/3 (work-order item 6a)
+//
+// ⚠️ TENSION REPORTED, NOT SILENTLY RESOLVED: item 6(a) says a so_what rewrite fires ONLY on
+// unanimous 3/3 and "a 2-1 split logs and never actuates", while item 1 lists 2-of-3 direction
+// inversions as an authorized source. An inversion at 2-of-3 IS a 2-1 split. Both readings are
+// defensible, and the choice changes what may actuate, so the inversion rung is KEPT (item 1 is the
+// item that defines the authorization set) and every authorization prints the source that granted
+// it — so a disagreement shows up in the output rather than in the artifact. One constant flips it.
+export const ALLOW_INVERSION_RUNG = false; // REVOKED by item 6(a) — see the so_what actuation block
+export const TRANSMISSION_PHASE1_NIGHTS = 7;
+
+/** Nights this product has been graded BEFORE `date` — from the LEDGER, never the calendar, and
+ *  never including the night under assembly (a replay must see what that night could see). */
+export function nightsGradedBefore(product: string, date: string): number {
+  if (!fs.existsSync(LEDGER)) return 0;
+  const rows = JSON.parse(fs.readFileSync(LEDGER, 'utf-8')) as Record<string, unknown>[];
+  const prod = product || 'light';
+  return new Set(
+    rows.filter(r => (r['product'] ?? 'light') === prod && String(r['date']) < date).map(r => r['date'])
+  ).size;
+}
+
+export type SowhatCell = 'OK' | 'MISSING' | 'WRONG' | string;
+
+/** unit -> the source that authorized redrafting it. Absent from the map == NOT authorized. */
+export function authorizeRedrafts(opts: {
+  tab: { unanimous?: string[]; majority?: string[] };
+  sowhat?: Record<string, SowhatCell[] | undefined>;
+  product: string;
+  date: string;
+}): Map<string, string> {
+  const out = new Map<string, string>();
+  const nights = nightsGradedBefore(opts.product, opts.date);
+  const past = nights >= TRANSMISSION_PHASE1_NIGHTS;
+  for (const u of opts.tab.unanimous ?? []) out.set(u, 'unanimous (3/3 readers failed)');
+  for (const u of opts.tab.majority ?? []) {
+    if (past) { if (!out.has(u)) out.set(u, `majority 2-of-3 · past phase 1 (${nights} graded nights >= ${TRANSMISSION_PHASE1_NIGHTS})`); }
+  }
+  for (const [u, cells] of Object.entries(opts.sowhat ?? {})) {
+    if (!cells || !cells.length) continue;
+    const wrong = cells.filter(c => c === 'WRONG').length;
+    const failed = cells.filter(c => c !== 'OK').length;
+    if (failed === cells.length) { if (!out.has(u)) out.set(u, `so_what unanimous ${cells.join('/')} (${failed}/${cells.length})`); continue; }
+    if (ALLOW_INVERSION_RUNG && wrong >= 2 && !out.has(u))
+      out.set(u, `so_what direction-inversion WRONG ${wrong}/${cells.length} — a reader acting on it acts backwards`);
+  }
+  return out;
+}
+
+export interface StrictFinding { kind: string; detail: string }
+
+/**
+ * STRICT WHOLE-ARTIFACT VALIDATION, run AFTER the splice — always, both products.
+ *
+ * The claims-anchored pairing (`pairByLabel`) deliberately tolerates unmatched prose blocks, because
+ * an unbalanced section's count difference is itself the finding. That tolerance is correct for
+ * DIAGNOSIS and wrong for SHIPPING: post-splice there is nothing left to diagnose, and a prose block
+ * bound to no claim — or two blocks bound to one claim — is a duplicated or orphaned unit heading for
+ * a reader. 2026-08-26's board records both halves of that: *"tonight's lede sat last in claims,
+ * assemble mangled the artifact ... also, prepare accepted a DUPLICATE unit id."*
+ */
+export function strictArtifactCheck(md: string, claims: Claim[], product: string): StrictFinding[] {
+  const f: StrictFinding[] = [];
+  const cands = product === 'full' ? candidatesFull(md) : candidates(md);
+  if (cands.length !== claims.length)
+    f.push({
+      kind: 'COUNT-MISMATCH',
+      detail: `${cands.length} prose block(s) vs ${claims.length} claim row(s) — post-splice the two must agree exactly; the claims file DEFINES the units`,
+    });
+  const dupClaimIds = Object.entries(
+    claims.reduce<Record<string, number>>((a, c) => ((a[c.unit] = (a[c.unit] || 0) + 1), a), {})
+  ).filter(([, n]) => n > 1);
+  if (dupClaimIds.length)
+    f.push({ kind: 'DUPLICATE-UNIT-ID', detail: `claims file carries the same unit id more than once: ${dupClaimIds.map(([k, n]) => `${k}×${n}`).join(', ')}` });
+  // Two candidates binding one claim. Section-level is the only binding the pairing has, so an
+  // over-subscribed section is exactly that condition.
+  const bySec = (xs: { section: string }[]) => xs.reduce<Record<string, number>>((a, x) => ((a[x.section] = (a[x.section] || 0) + 1), a), {});
+  const pc = bySec(cands), cc = bySec(claims.map(c => ({ section: c.section })));
+  for (const k of new Set([...Object.keys(pc), ...Object.keys(cc)]))
+    if ((pc[k] || 0) > (cc[k] || 0))
+      f.push({ kind: 'OVER-BOUND-SECTION', detail: `section "${k}" has ${pc[k]} prose block(s) for ${cc[k] || 0} claim(s) — two candidates would bind one claim` });
+  return f;
+}
+
 function cmdAssemble(date: string): void {
   const meta: Meta = JSON.parse(
     fs.readFileSync(rbPath(date, 'meta.json'), 'utf-8')
@@ -881,6 +1040,33 @@ function cmdAssemble(date: string): void {
   for (const k of touched)
     if (!meta.units.some(u => u.id === k))
       die(`redraft names unknown unit "${k}"`);
+
+  // ── LEG (a): AUTHORIZATION. Naming a real unit is not permission to rewrite it. ──────────────
+  const product = PRODUCT_SUFFIX.replace('-', '');
+  const tabPath = rbPath(date, 'tabulation.json');
+  if (!fs.existsSync(tabPath))
+    die(
+      `NO TABULATION — assemble cannot authorize a single splice without it. Run: tabulate ${date}\n` +
+        `   (Refusing is the point: 2026-08-26 spliced two units nothing had authorized.)`
+    );
+  const tab = JSON.parse(fs.readFileSync(tabPath, 'utf-8'));
+  const gradesForAuth: Record<string, { sowhat?: SowhatCell[] }> = fs.existsSync(rbPath(date, 'grades.json'))
+    ? JSON.parse(fs.readFileSync(rbPath(date, 'grades.json'), 'utf-8'))
+    : {};
+  const sowhatCells: Record<string, SowhatCell[] | undefined> = {};
+  for (const [u, g] of Object.entries(gradesForAuth)) sowhatCells[u] = g?.sowhat;
+  const auth = authorizeRedrafts({ tab, sowhat: sowhatCells, product, date });
+  const unauthorized = [...touched].filter(k => !auth.has(k));
+  if (unauthorized.length)
+    die(
+      `UNAUTHORIZED REDRAFT — ${unauthorized.length} unit(s) in redrafts.json that nothing actuated: ${unauthorized.join(', ')}\n` +
+        `   authorized this night (${auth.size}): ${[...auth].map(([k, why]) => `${k} ← ${why}`).join('; ') || 'NONE'}\n` +
+        `   tabulation: unanimous [${(tab.unanimous ?? []).join(', ')}] · majority [${(tab.majority ?? []).join(', ')}]\n` +
+        `   Receipt this rule exists for — 2026-08-26: redrafts carried update-1, line-7, line-5, line-4;\n` +
+        `   tabulation authorized only update-1 and line-7. line-4 and line-5 shipped on nobody's say-so.\n` +
+        `   A redraft is authorized by a TABULATED FAILURE, never by appearing in the file.`
+    );
+  for (const [k, why] of auth) if (touched.has(k)) console.log(`   AUTHORIZED ${k} ← ${why}`);
 
   let out = '',
     cursor = 0;
@@ -906,6 +1092,17 @@ function cmdAssemble(date: string): void {
       `ASSEMBLY INTEGRITY FAILURE — ${drift.length} passed unit(s) changed: ${drift.map(d => d.id).join(', ')}. Passed units are frozen by assembly, not by instruction. Nothing ships from this state.`
     );
 
+  // ── LEG (b): STRICT WHOLE-ARTIFACT RE-VALIDATION, always, after the splice ──────────────────
+  const strict = strictArtifactCheck(out, claims, product);
+  if (strict.length)
+    die(
+      `POST-SPLICE STRICT VALIDATION FAILED — ${strict.length} finding(s):\n` +
+        strict.map(x => `     ${x.kind}: ${x.detail}`).join('\n') +
+        `\n   The claims-anchored pairing tolerates unmatched prose during DIAGNOSIS; after the splice\n` +
+        `   there is nothing left to diagnose, and an unbound block is a duplicated or orphaned unit\n` +
+        `   heading for a reader. Nothing ships from this state.`
+    );
+
   fs.writeFileSync(rbPath(date, 'assembled.md'), out);
   fs.writeFileSync(
     rbPath(date, `diff-${Date.now()}.txt`),
@@ -917,7 +1114,7 @@ function cmdAssemble(date: string): void {
       .join('\n')
   );
   console.log(
-    `✓ ASSEMBLED ${date} — ${touched.size} unit(s) redrafted, ${meta.units.length - touched.size} frozen and verified byte-identical`
+    `✓ ASSEMBLED ${date} — ${touched.size} unit(s) redrafted (all authorized), ${meta.units.length - touched.size} frozen and verified byte-identical, whole artifact strictly re-validated`
   );
   console.log(
     `  → ${rbPath(date, 'assembled.md')} (copy over the draft) · before/after diff written for the night-one report`
@@ -1569,27 +1766,113 @@ export function ensembleVerdict(three: SowhatGrade[][]): { verdict: SowhatGrade;
 export type SowhatAction = 'HOLD' | 'REDRAFT' | 'REDRAFT-INVERSION';
 
 /** The ladder. `nightsGraded` = how many nights this leg has ALREADY graded before tonight. */
+// ── 🔴 SO_WHAT REWRITE LOOP — SELF-GUARDING (owner ruling 2026-08-28, work order item 6) ──────
+//
+// (a) ACTUATION: a so_what rewrite fires ONLY on unanimous MISSING/WRONG (3/3). A 2-1 split LOGS
+//     and never actuates.
+//
+// 🔴 THIS REVOKES THE 2-OF-3 INVERSION RUNG, and the revocation is deliberate rather than an
+// oversight. The ladder adopted 2026-08-20 fired REDRAFT-INVERSION on WRONG at 2-of-3 "on any
+// night". Item 6(a) says plainly that a 2-1 split never actuates, and an inversion at 2-of-3 IS a
+// 2-1 split. The later, more specific ruling wins, and it moves in the conservative direction: a
+// rewrite that does not fire is a logged split someone can read, while a rewrite that fires on a
+// split rewrites prose two of three readers understood. Item 1's authorization list names the
+// inversion rung — `ALLOW_INVERSION_RUNG` is the single constant that restores it, and it is now
+// FALSE. **This is the one place where two items of the same work order disagree; it is resolved
+// here in favour of the newer text, visibly, rather than silently.**
+export const SOWHAT_MAX_CYCLES = 2;
+
 export function sowhatActuation(
   verdicts: SowhatGrade[],
-  nightsGraded: number
+  _nightsGraded: number
 ): { action: SowhatAction; reason: string } {
   const wrong = verdicts.filter(v => v === 'WRONG').length;
   const failed = verdicts.filter(v => v === 'WRONG' || v === 'MISSING').length;
   const n = verdicts.length;
-  if (wrong >= 2)
+  if (n === 0) return { action: 'HOLD', reason: 'NOT GRADED — no verdicts. Not a pass; unmeasured.' };
+  if (failed === n)
     return {
-      action: 'REDRAFT-INVERSION',
-      reason: `WRONG ${wrong}/${n} — a direction inversion actuates at 2-of-3 on any night; a reader acting on it acts backwards`,
+      action: wrong >= 2 ? 'REDRAFT-INVERSION' : 'REDRAFT',
+      reason: `MISSING/WRONG ${failed}/${n} — UNANIMOUS${wrong >= 2 ? `, and ${wrong} of them WRONG: a reader acting on this acts backwards` : ''}`,
     };
-  const unanimousOnly = nightsGraded < SOWHAT_LADDER_NIGHTS;
-  if (unanimousOnly) {
-    if (failed === n)
-      return { action: 'REDRAFT', reason: `MISSING/WRONG ${failed}/${n} — unanimous (ladder night ${nightsGraded + 1} of ${SOWHAT_LADDER_NIGHTS}: unanimous-only)` };
-    return { action: 'HOLD', reason: `${failed}/${n} failed — logged and left alone (ladder night ${nightsGraded + 1} of ${SOWHAT_LADDER_NIGHTS}: unanimous-only)` };
+  return {
+    action: 'HOLD',
+    reason: `${failed}/${n} failed — a split LOGS and never actuates (item 6a, 2026-08-28). ${wrong >= 2 ? `Note ${wrong} WRONG in a split: recorded, not acted on — the inversion rung was revoked with the rest.` : ''}`.trim(),
+  };
+}
+
+/**
+ * (b) EVERY REWRITE IS RE-READ THE SAME NIGHT, both legs, by fresh readers — same as transmission
+ * redrafts. HARD CAP TWO CYCLES per unit. "Perfect" is not the bar; LANDING is. A unit still
+ * failing after cycle 2 SHIPS AS-IS, rows RESIDUAL, and leads the morning summary.
+ *
+ * The cap is the point. Without it a rewrite loop that cannot land optimises the prose against its
+ * own graders all night, which is how a loop starts serving itself instead of the reader.
+ */
+export function sowhatCycleAction(
+  verdicts: SowhatGrade[],
+  cyclesDone: number
+): { action: SowhatAction | 'RESIDUAL'; reason: string } {
+  const base = sowhatActuation(verdicts, 0);
+  if (base.action === 'HOLD') return base;
+  if (cyclesDone >= SOWHAT_MAX_CYCLES)
+    return {
+      action: 'RESIDUAL',
+      reason: `still failing after ${cyclesDone} cycle(s) — SHIPS AS-IS and leads tomorrow's summary. The cap is ${SOWHAT_MAX_CYCLES}: landing is the bar, not perfection, and a loop that keeps rewriting is optimising against its own graders.`,
+    };
+  return { action: base.action, reason: `${base.reason} · cycle ${cyclesDone + 1} of ${SOWHAT_MAX_CYCLES}, re-read tonight by fresh readers on BOTH legs` };
+}
+
+/**
+ * (c) PASSIVE CALIBRATION. No scheduled labeling sessions — the owner's ordinary listening marks
+ * land in the ledger as they always have, and a weekly one-liner computes ensemble-vs-owner
+ * agreement on the marked units only. n=0 is a valid receipt and must READ as n=0, never as 100%.
+ *
+ * PROMOTION (splits gain the pen) requires agreement >= 85% on >= 15 accumulated marks AND the
+ * owner's signature — this function never promotes, it only reports eligibility.
+ * DEMOTION to log-only is AUTOMATIC below 80%, and needs nobody's signature.
+ */
+export const SOWHAT_PROMOTE_PCT = 85, SOWHAT_PROMOTE_N = 15, SOWHAT_DEMOTE_PCT = 80;
+
+export function sowhatAgreement(
+  rows: { owner_mark?: unknown; sowhat_grades?: unknown }[]
+): { n: number; agree: number; pct: number | null; verdict: 'PROMOTE-ELIGIBLE' | 'HOLD' | 'DEMOTE' | 'UNMEASURED'; line: string } {
+  const marked = rows.filter(r => typeof r.owner_mark === 'string' && (r.owner_mark as string).trim());
+  let n = 0, agree = 0;
+  for (const r of marked) {
+    const g = Array.isArray(r.sowhat_grades) ? (r.sowhat_grades as string[]) : [];
+    if (!g.length) continue;
+    n++;
+    const ensembleOk = g.filter(x => x === 'OK').length > g.length / 2;
+    const ownerOk = /\b(ok|landed|clear|got it|yes)\b/i.test(String(r.owner_mark));
+    if (ensembleOk === ownerOk) agree++;
   }
-  if (failed >= 2)
-    return { action: 'REDRAFT', reason: `MISSING/WRONG ${failed}/${n} — majority (night ${nightsGraded + 1}, past the unanimous-only window)` };
-  return { action: 'HOLD', reason: `${failed}/${n} failed — below the majority bar` };
+  if (n === 0)
+    return { n: 0, agree: 0, pct: null, verdict: 'UNMEASURED', line: 'so_what calibration — n=0 marked units. NOT COMPUTABLE: no agreement rate exists yet. This is a valid first receipt and is NOT 100%.' };
+  const pct = Math.round((100 * agree) / n);
+  const verdict = pct < SOWHAT_DEMOTE_PCT ? 'DEMOTE' : pct >= SOWHAT_PROMOTE_PCT && n >= SOWHAT_PROMOTE_N ? 'PROMOTE-ELIGIBLE' : 'HOLD';
+  const tail =
+    verdict === 'DEMOTE'
+      ? `🔴 AUTOMATIC DEMOTION to log-only — below ${SOWHAT_DEMOTE_PCT}%. Needs nobody's signature.`
+      : verdict === 'PROMOTE-ELIGIBLE'
+        ? `ELIGIBLE for promotion (>=${SOWHAT_PROMOTE_PCT}% on >=${SOWHAT_PROMOTE_N} marks) — REQUIRES THE OWNER'S SIGNATURE. This line never promotes anything.`
+        : `HOLD — needs >=${SOWHAT_PROMOTE_PCT}% on >=${SOWHAT_PROMOTE_N} marks to be eligible.`;
+  return { n, agree, pct, verdict, line: `so_what calibration — ensemble agrees with the owner on ${agree}/${n} marked unit(s) = ${pct}%. ${tail}` };
+}
+
+/** (d) THRASH GUARD — >4 units rewritten a night for 3 consecutive nights is RED. */
+export const THRASH_UNITS = 4, THRASH_NIGHTS = 3;
+
+export function sowhatThrash(perNight: { date: string; rewrites: number }[]): { red: boolean; line: string } {
+  const sorted = [...perNight].sort((a, b) => a.date.localeCompare(b.date));
+  const tail = sorted.slice(-THRASH_NIGHTS);
+  const red = tail.length === THRASH_NIGHTS && tail.every(x => x.rewrites > THRASH_UNITS);
+  return {
+    red,
+    line: red
+      ? `🔴 SO_WHAT THRASH — >${THRASH_UNITS} units rewritten on ${THRASH_NIGHTS} consecutive nights (${tail.map(x => `${x.date}:${x.rewrites}`).join(', ')}). SUSPECT THE INSTRUMENT OR THE WRITER, NOT THE UNITS.`
+      : `so_what rewrites, last ${tail.length} night(s): ${tail.map(x => `${x.date}:${x.rewrites}`).join(', ') || 'none'} — below the thrash bar (>${THRASH_UNITS} for ${THRASH_NIGHTS} straight).`,
+  };
 }
 
 /** How many nights this leg has already graded on the ensemble basis. Read from the ledger, never
@@ -1792,6 +2075,197 @@ function selftest(): number {
   PRODUCT_SUFFIX = beforeSuffix;
   t('--product routes to a separate state dir', fullPath !== lightPath);
   t('default product path is unchanged', lightPath.includes('2026-01-01/'));
+
+  // ── 🔴 THE ASSEMBLY INVARIANT (work order 2026-08-28, item 1) ──────────────────────────────
+  // Held-out replay against the REAL state on disk, both directions. No fixture: the bytes that
+  // shipped are the test.
+  {
+    const RBROOT = RB_DIR;
+    const readNight = (d: string) => {
+      const dir = path.join(RBROOT, d);
+      const rp = path.join(dir, 'redrafts.json'), tp = path.join(dir, 'tabulation.json');
+      if (!fs.existsSync(rp) || !fs.existsSync(tp)) return null;
+      const keys = Object.keys(JSON.parse(fs.readFileSync(rp, 'utf-8')));
+      const tab = JSON.parse(fs.readFileSync(tp, 'utf-8'));
+      const gp = path.join(dir, 'grades.json');
+      const g = fs.existsSync(gp) ? JSON.parse(fs.readFileSync(gp, 'utf-8')) : {};
+      const sw: Record<string, SowhatCell[] | undefined> = {};
+      for (const [u, v] of Object.entries<{ sowhat?: SowhatCell[] }>(g)) sw[u] = v?.sowhat;
+      const m = d.match(/^(\d{4}-\d{2}-\d{2})(?:-(\w+))?$/);
+      if (!m) return null;
+      const auth = authorizeRedrafts({ tab, sowhat: sw, product: m[2] ?? '', date: m[1]! });
+      return { keys, auth, unauth: keys.filter(k => !auth.has(k)) };
+    };
+
+    // MUST FIRE — the night the work order names. redrafts carried 4 keys; tabulation authorized 2.
+    const n26 = readNight('2026-08-26');
+    t(
+      'ITEM1 · 2026-08-26 FIRES — line-4 and line-5 were spliced with nothing authorizing them',
+      !!n26 && n26.unauth.length === 2 && n26.unauth.includes('line-4') && n26.unauth.includes('line-5')
+    );
+    t(
+      'ITEM1 · and the two that WERE authorized are still authorized — this refuses unauthorized splices, it does not refuse redrafting',
+      !!n26 && n26.auth.has('update-1') && n26.auth.has('line-7')
+    );
+
+    // 🔴 A SECOND NIGHT, FOUND BY THE REPLAY AND WORSE THAN THE FIRST. On 2026-08-20 the redraft
+    // set was DISJOINT from the authorized set: line-2 and line-7 were graded TRANSMITTED 3/3 with
+    // so_what OK 3/3 — perfectly clean — and were rewritten anyway, while line-1, the ONLY unit the
+    // tabulation named, was left alone. Not a near-miss: the loop actuated on something other than
+    // its own measurement.
+    const n20 = readNight('2026-08-20');
+    t(
+      'ITEM1 · 2026-08-20 FIRES TOO — two units graded TRANSMITTED 3/3 and so_what OK 3/3 were rewritten; the one flagged unit was not',
+      !!n20 && n20.unauth.length === 2 && n20.unauth.includes('line-2') && n20.unauth.includes('line-7')
+    );
+
+    // MUST STAY SILENT — every other night that redrafted anything.
+    const clean = ['2026-08-08', '2026-08-14', '2026-08-15', '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-21', '2026-08-25', '2026-08-27']
+      .map(d => ({ d, r: readNight(d) }))
+      .filter(x => x.r);
+    t(
+      `ITEM1 · SILENT on all ${clean.length} other redrafting nights in the archive — ${clean.map(x => x.d.slice(5)).join(' ')}`,
+      clean.length >= 8 && clean.every(x => x.r!.unauth.length === 0)
+    );
+
+    // The phase-1 rung is REAL, counted from the ledger and never the calendar.
+    t(
+      'ITEM1 · majority authorizes only past phase 1 — same tabulation, phase-1 night refuses it',
+      authorizeRedrafts({ tab: { unanimous: [], majority: ['x'] }, product: 'nonexistent-product', date: '2026-08-26' }).size === 0 &&
+        authorizeRedrafts({ tab: { unanimous: [], majority: ['x'] }, product: '', date: '2026-08-26' }).has('x')
+    );
+    t(
+      'ITEM1 · unanimous authorizes on ANY night, phase or no phase',
+      authorizeRedrafts({ tab: { unanimous: ['x'], majority: [] }, product: 'nonexistent-product', date: '2026-08-26' }).has('x')
+    );
+    t(
+      'ITEM1 · so_what unanimous MISSING authorizes (work-order item 6a)',
+      authorizeRedrafts({ tab: {}, sowhat: { x: ['MISSING', 'MISSING', 'MISSING'] }, product: 'nonexistent-product', date: '2026-08-26' }).has('x')
+    );
+    t(
+      'ITEM1 · a so_what 2-1 split that is NOT an inversion never authorizes',
+      !authorizeRedrafts({ tab: {}, sowhat: { x: ['MISSING', 'MISSING', 'OK'] }, product: 'nonexistent-product', date: '2026-08-26' }).has('x')
+    );
+    t(
+      'ITEM1 · a clean so_what authorizes nothing — N/A state',
+      authorizeRedrafts({ tab: {}, sowhat: { x: ['OK', 'OK', 'OK'] }, product: 'nonexistent-product', date: '2026-08-26' }).size === 0
+    );
+    t(
+      'ITEM1 · an EMPTY tabulation authorizes NOTHING — the permissive direction is the one that shipped',
+      authorizeRedrafts({ tab: { unanimous: [], majority: [] }, product: '', date: '2026-08-26' }).size === 0
+    );
+
+    // ── LEG (b): STRICT POST-SPLICE VALIDATION ────────────────────────────────────────────────
+    const claims26: Claim[] = JSON.parse(fs.readFileSync(path.join(RBROOT, '2026-08-26', 'claims.json'), 'utf-8'));
+    const asm26 = fs.readFileSync(path.join(RBROOT, '2026-08-26', 'assembled.md'), 'utf-8');
+    t(
+      'ITEM1b · the strict check is SILENT on a well-formed assembled artifact (2026-08-26 after the claims renumbering that unblocked it)',
+      strictArtifactCheck(asm26, claims26, '').length === 0
+    );
+    const dupClaims = [...claims26, { ...claims26[0]! }] as Claim[];
+    t(
+      'ITEM1b · DUPLICATE-UNIT-ID fires — the exact condition the 08-26 board recorded ("prepare accepted a DUPLICATE unit id")',
+      strictArtifactCheck(asm26, dupClaims, '').some(x => x.kind === 'DUPLICATE-UNIT-ID')
+    );
+    t(
+      'ITEM1b · COUNT-MISMATCH fires when the splice leaves a prose block bound to no claim',
+      strictArtifactCheck(asm26, claims26.slice(0, -1), '').some(x => x.kind === 'COUNT-MISMATCH')
+    );
+    t(
+      'ITEM1b · OVER-BOUND-SECTION fires when two candidates would bind one claim',
+      strictArtifactCheck(asm26, claims26.filter((_, i) => i !== 1), '').some(x => x.kind === 'OVER-BOUND-SECTION')
+    );
+  }
+
+  // ── 🔴 ITEM 3 — TRAILING COMMENT BLOCKS ARE NOT PART OF THE LAST UNIT ────────────────────────
+  {
+    const body = '## ▸ THE CLOSE\n\nMost of what moved prices today has not been delivered yet.\n';
+    const decls =
+      '\n<!-- DECLARATIONS\n  take-move: hidden-precondition\n  inner-game: the discomfort is the point\n-->\n\n<!-- staleness ledger: DGS2 printed 2026-08-27 -->\n';
+    t(
+      'ITEM3 · the trailing comment run is found and the boundary sits at the end of real content (the blank line that only separated them goes with the block)',
+      trailingBlockStart(body + decls) === body.trimEnd().length
+    );
+    t(
+      'ITEM3 · a file with NO trailing blocks loses nothing — the clamp is a no-op (the second direction)',
+      trailingBlockStart(body) === body.length
+    );
+    t(
+      'ITEM3 · consecutive trailing blocks are stripped as one run, not one deep',
+      trailingBlockStart(body + decls + '\n<!-- truth log: 0 unresolved -->\n') === body.trimEnd().length
+    );
+    t(
+      'ITEM3 · an INLINE comment is never touched — only an end-of-file run is trailing',
+      trailingBlockStart('a <!-- take-move: inversion --> b\n\ntail text\n') ===
+        'a <!-- take-move: inversion --> b\n\ntail text\n'.length
+    );
+    t(
+      'ITEM3 · an UNBALANCED "-->" changes nothing rather than eating the file',
+      trailingBlockStart(body + '\n-->\n') === (body + '\n-->\n').length
+    );
+    // The clamp itself, on the shape the bug actually had: last unit runs to EOF.
+    const u = [{ start: 0, end: (body + decls).length }];
+    clampTrailing(u, body + decls);
+    t(
+      'ITEM3 · clampTrailing pulls the LAST unit back off the declarations block',
+      u[0]!.end === body.trimEnd().length
+    );
+    const u2 = [{ start: 0, end: body.length }];
+    clampTrailing(u2, body);
+    t('ITEM3 · and leaves a clean file exactly as it found it', u2[0]!.end === body.length);
+    // 🔴 THE REAL FILE THAT CARRIES THE BUG TODAY.
+    const v2 = 'daily-briefs/2026-08-28-v2.md';
+    if (fs.existsSync(v2)) {
+      const raw = fs.readFileSync(v2, 'utf-8');
+      t(
+        `ITEM3 · the LIVE full brief ends in a comment block and the clamp moves the boundary — ${raw.length - trailingBlockStart(raw)} byte(s) would have been shown to a blind reader`,
+        trailingBlockStart(raw) < raw.length
+      );
+    }
+  }
+
+  // ── ITEM 6 (b)(c)(d) — the rewrite loop guards itself ────────────────────────────────────────
+  {
+    const C = (v: string[], n: number) => sowhatCycleAction(v as SowhatGrade[], n);
+    t('item6b: cycle 1 of a unanimous fail is a REDRAFT that will be re-read the same night, both legs',
+      C(['MISSING', 'MISSING', 'MISSING'], 0).action === 'REDRAFT' && /re-read tonight by fresh readers on BOTH legs/.test(C(['MISSING', 'MISSING', 'MISSING'], 0).reason));
+    t('item6b: cycle 2 is still allowed', C(['MISSING', 'MISSING', 'MISSING'], 1).action === 'REDRAFT');
+    t('item6b: HARD CAP — a unit still failing after 2 cycles ships as-is and rows RESIDUAL, never a third rewrite',
+      C(['MISSING', 'MISSING', 'MISSING'], 2).action === 'RESIDUAL' && /SHIPS AS-IS/.test(C(['MISSING', 'MISSING', 'MISSING'], 2).reason));
+    t('item6b: the cap says why — landing is the bar, and a loop past it optimises against its own graders',
+      /optimising against its own graders/.test(C(['MISSING', 'MISSING', 'MISSING'], 2).reason));
+    t('item6b: a HOLD never consumes a cycle — a split is not a failed rewrite', C(['MISSING', 'OK', 'OK'], 0).action === 'HOLD');
+
+    // (c) PASSIVE CALIBRATION
+    const A = sowhatAgreement;
+    t('item6c: n=0 READS as n=0 — NOT COMPUTABLE, explicitly not 100%',
+      A([]).verdict === 'UNMEASURED' && A([]).pct === null && /NOT COMPUTABLE/.test(A([]).line) && /NOT 100%/.test(A([]).line));
+    t('item6c: an owner mark with no ensemble grades is not counted — an unmeasured pair is not an agreement',
+      A([{ owner_mark: 'landed', sowhat_grades: [] }]).n === 0);
+    const agreeRows = Array.from({ length: 15 }, () => ({ owner_mark: 'landed', sowhat_grades: ['OK', 'OK', 'OK'] }));
+    t('item6c: >=85% on >=15 marks is PROMOTE-ELIGIBLE and says out loud that it requires the owner’s signature',
+      A(agreeRows).verdict === 'PROMOTE-ELIGIBLE' && /REQUIRES THE OWNER'S SIGNATURE/.test(A(agreeRows).line));
+    t('item6c: the same agreement on too FEW marks is only HOLD — the n bar is real',
+      A(agreeRows.slice(0, 14)).verdict === 'HOLD');
+    const disagree = [
+      ...Array.from({ length: 7 }, () => ({ owner_mark: 'landed', sowhat_grades: ['OK', 'OK', 'OK'] })),
+      ...Array.from({ length: 3 }, () => ({ owner_mark: 'landed', sowhat_grades: ['MISSING', 'MISSING', 'MISSING'] })),
+    ];
+    t('item6c: below 80% is AUTOMATIC DEMOTION to log-only and needs nobody’s signature',
+      A(disagree).verdict === 'DEMOTE' && /AUTOMATIC DEMOTION/.test(A(disagree).line) && /nobody/.test(A(disagree).line));
+
+    // (d) THRASH GUARD
+    const T = sowhatThrash;
+    t('item6d: >4 units on 3 consecutive nights is RED and names the instrument, not the units',
+      T([{ date: '2026-08-25', rewrites: 5 }, { date: '2026-08-26', rewrites: 6 }, { date: '2026-08-27', rewrites: 5 }]).red &&
+        /SUSPECT THE INSTRUMENT OR THE WRITER, NOT THE UNITS/.test(T([{ date: '2026-08-25', rewrites: 5 }, { date: '2026-08-26', rewrites: 6 }, { date: '2026-08-27', rewrites: 5 }]).line));
+    t('item6d: exactly 4 is not thrash — the bar is MORE than 4, not at least 4',
+      !T([{ date: '2026-08-25', rewrites: 4 }, { date: '2026-08-26', rewrites: 4 }, { date: '2026-08-27', rewrites: 4 }]).red);
+    t('item6d: two heavy nights broken by a quiet one is not thrash — consecutive means consecutive',
+      !T([{ date: '2026-08-25', rewrites: 6 }, { date: '2026-08-26', rewrites: 1 }, { date: '2026-08-27', rewrites: 6 }]).red);
+    t('item6d: N/A STATE — fewer than 3 recorded nights can never be RED, and says how many it has',
+      !T([{ date: '2026-08-27', rewrites: 9 }]).red && /last 1 night/.test(T([{ date: '2026-08-27', rewrites: 9 }]).line));
+  }
 
   // tabulation arithmetic
   const g: Grade[][] = [
@@ -2233,10 +2707,22 @@ function selftest(): number {
   const L = (v: string[], n: number) => sowhatActuation(v as SowhatGrade[], n);
   t('ladder: unanimous MISSING actuates on night 1', L(['MISSING', 'MISSING', 'MISSING'], 0).action === 'REDRAFT');
   t('ladder: 2-of-3 MISSING HOLDS inside the unanimous-only window', L(['MISSING', 'MISSING', 'OK'], 0).action === 'HOLD');
-  t('ladder: 2-of-3 MISSING actuates from the 8th graded night', L(['MISSING', 'MISSING', 'OK'], 7).action === 'REDRAFT');
+  // 🔴 REVOKED BY ITEM 6(a), 2026-08-28. This asserted that a 2-of-3 MISSING actuates once the
+  // ladder passed 7 graded nights. The ruling is now unambiguous — "a so_what rewrite fires ONLY on
+  // unanimous MISSING/WRONG (3/3); a 2-1 split logs and never actuates" — so the night count no
+  // longer buys a split the pen, on night 8 or night 800.
+  t('item6a: a 2-of-3 MISSING HOLDS even far past the old ladder window — nights no longer buy a split the pen', L(['MISSING', 'MISSING', 'OK'], 99).action === 'HOLD');
   t(
-    'ladder: WRONG at 2-of-3 actuates on night 1 — an inversion never waits',
-    L(['WRONG', 'WRONG', 'OK'], 0).action === 'REDRAFT-INVERSION'
+    'item6a: WRONG at 2-of-3 no longer actuates — the inversion rung was revoked with the rest of the split rungs, and the split is LOGGED with its WRONG count named',
+    L(['WRONG', 'WRONG', 'OK'], 0).action === 'HOLD' && /2 WRONG in a split/.test(L(['WRONG', 'WRONG', 'OK'], 0).reason)
+  );
+  t(
+    'item6a: a UNANIMOUS WRONG still actuates as an inversion — unanimity, not the WRONG count, is what buys the pen now',
+    L(['WRONG', 'WRONG', 'WRONG'], 0).action === 'REDRAFT-INVERSION'
+  );
+  t(
+    'item6a: ALLOW_INVERSION_RUNG is the single constant that would restore the old rung, and it is FALSE',
+    ALLOW_INVERSION_RUNG === false
   );
   t('ladder: a single WRONG does not actuate on night 1', L(['WRONG', 'OK', 'OK'], 0).action === 'HOLD');
   t('ladder: all OK holds on any night', L(['OK', 'OK', 'OK'], 0).action === 'HOLD' && L(['OK', 'OK', 'OK'], 99).action === 'HOLD');
@@ -2244,7 +2730,7 @@ function selftest(): number {
     'ladder: mixed MISSING+WRONG counts as failed for the unanimous bar',
     L(['MISSING', 'WRONG', 'MISSING'], 0).action === 'REDRAFT'
   );
-  t('ladder: the reason always names the night, so a verdict can be audited later', L(['OK', 'OK', 'OK'], 2).reason.includes('night 3'));
+  t('item6a: an ungraded unit is HOLD with an explicit NOT GRADED reason — never a silent pass', L([], 0).action === 'HOLD' && /NOT GRADED/.test(L([], 0).reason));
   t('ladder window is 7 nights', SOWHAT_LADDER_NIGHTS === 7);
 
   // ── CLAIM-UNDRAFTED POLICY (owner ruling 2026-08-20, decision 2) ──────────
@@ -2343,6 +2829,12 @@ function selftest(): number {
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
+// 🔴 DIRECT-INVOCATION GUARD (2026-08-28). The CLI dispatch below used to run at module top level,
+// so `import { … } from './transmission-readback.ts'` EXECUTED it — printing usage and calling
+// process.exit(2) in the importer. That made the exported arithmetic untestable from outside the
+// file and, worse, made this module unsafe for any other script to depend on. The guard is a
+// no-op for every real caller: `npx tsx scripts/transmission-readback.ts <cmd>` still matches.
+const INVOKED_DIRECTLY = !!process.argv[1] && process.argv[1].includes('transmission-readback');
 const rawArgs = process.argv.slice(2);
 const flags = rawArgs.filter(x => x.startsWith('--'));
 const prod = flags.find(x => x.startsWith('--product='))?.split('=')[1] ?? '';
@@ -2351,7 +2843,7 @@ const positional = rawArgs.filter(x => !x.startsWith('--'));
 const cmd = rawArgs[0]?.startsWith('--') ? rawArgs[0] : positional[0];
 const a = positional[1];
 const b = positional[2];
-switch (cmd) {
+if (INVOKED_DIRECTLY) switch (cmd) {
   case '--selftest':
     process.exit(selftest());
   case 'prepare':
@@ -2366,6 +2858,24 @@ switch (cmd) {
     if (!a) die('usage: tabulate <DATE>');
     cmdTabulate(a);
     break;
+  case 'calibration': {
+    // The weekly one-liner (item 6c) + the thrash guard (item 6d). Emitting n=0 is a valid receipt.
+    const rowsAll: Record<string, unknown>[] = fs.existsSync(LEDGER)
+      ? JSON.parse(fs.readFileSync(LEDGER, 'utf-8'))
+      : [];
+    const prod = PRODUCT_SUFFIX.replace('-', '') || 'light';
+    const mine = rowsAll.filter(r => (r['product'] ?? 'light') === prod);
+    console.log(sowhatAgreement(mine as { owner_mark?: unknown; sowhat_grades?: unknown }[]).line);
+    const perNight = Object.entries(
+      mine.reduce<Record<string, number>>((acc, r) => {
+        if (r['final'] === 'REDRAFTED' || r['cycle']) acc[String(r['date'])] = (acc[String(r['date'])] ?? 0) + 1;
+        return acc;
+      }, {})
+    ).map(([date, rewrites]) => ({ date, rewrites }));
+    console.log(sowhatThrash(perNight).line);
+    process.exit(0);
+    break;
+  }
   case 'assemble':
     if (!a) die('usage: assemble <DATE>');
     cmdAssemble(a);
@@ -2394,7 +2904,7 @@ switch (cmd) {
       'transmission-readback.ts — mechanical half of the read-back loop. Never calls a model.'
     );
     console.log(
-      '  prepare <light.md> <claims.json> | check <DATE> | panel <DATE> | sowhat <DATE> | tabulate <DATE> | assemble <DATE> | ledger <DATE> | dirty <DATE> <published.md> [--mark] | akcheck <DATE> | --selftest'
+      '  prepare <light.md> <claims.json> | check <DATE> | panel <DATE> | sowhat <DATE> | calibration | tabulate <DATE> | assemble <DATE> | ledger <DATE> | dirty <DATE> <published.md> [--mark] | akcheck <DATE> | --selftest'
     );
     console.log(
       '  --product=full routes state to .readback/<DATE>-full/ so the full brief and the light never collide.'

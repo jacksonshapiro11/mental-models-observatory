@@ -233,3 +233,18 @@ Then append one line to `daily-briefs/{BRIEF_DATE}-pipeline-status.md`:
 **Write a `FAIL` line if you produced no v1.** A silent failure is what cost the 07-27 Critic
 and the evening super-brief: the task ran, wrote nothing, said nothing, and nobody knew until
 5 AM. Never exit without a status line.
+
+## NOVELTY + STORY COOLDOWN — ADVISORY, RUN BEFORE YOU FINISH (added 2026-08-28, work order item 5)
+
+Run both, paste both lines onto the board, and **do not branch on either — exit 0 always, the brief always ships:**
+
+```
+node --experimental-strip-types scripts/novelty-gate.ts {ARTIFACT} --move {move-id}
+node --experimental-strip-types scripts/novelty-gate.ts --stories {ARTIFACT} --date {BRIEF_DATE} --update
+```
+
+🔴 **WHY THIS LINE EXISTS AT ALL: `novelty-gate` was named "the binding novelty check" in SIX prose places across `system/`, stamped `PASS` on the boards — and invoked by NOTHING.** Measured 2026-08-28: zero executable invocations in any task body. The boards were reporting a gate that does not run. `system/gate-manifest.json` carries it as `wired: false` until this line is live in the executed body, and `gate-attendance` reports it RED every night until then.
+
+⚠️ **The STORY COOLDOWN pass is advisory AND currently unproven:** on 5 real published nights it produced 294 keys and zero repeats, so it has never been shown capable of firing on production prose. A silent run means UNMEASURED, not clean. Paste its line anyway — the ledger it writes is what will eventually calibrate it. If it flags, declare a genuine development inside the unit with `<!-- story-new: what changed -->` rather than rewording the story.
+
+**BODY_VERSION=brief-draft@2026-08-28** — echo this on the canary line, field 5, exactly as written. A pointer-only session never reaches this step and never echoes the marker.

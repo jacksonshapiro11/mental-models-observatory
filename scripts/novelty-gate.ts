@@ -336,6 +336,40 @@ function selftest(): number {
     `[IMP-198] FALSE-POSITIVE FLOOR — 0 flags across ${scanned} staleness rows on every other July/August v2${noisy.length ? ` (got ${noisy.join(', ')})` : ''}`
   );
 
+  // ── STORY COOLDOWN (work order 2026-08-28, item 5b) ─────────────────────────────────────────
+  {
+    const nvda =
+      '**Nvidia said its backlog passed two trillion dollars.** The backlog is the number that matters because Nvidia books the backlog before revenue, and the backlog converts on a lag.\n';
+    const k = storyKey(nvda);
+    assert(k.entity === 'nvidia' && k.mechanism === 'backlog', `[item5b] the key is entity+mechanism, both read from the unit — got ${k.key}`);
+    assert(
+      storyKey('**The factory drew its boundary around the supplier.** A factory that treats its supplier as external takes a price rise as a shock.').entity === '',
+      '[item5b] a sentence-initial capital is grammar, not a name — a unit with no proper noun yields no entity and is never keyed'
+    );
+    const hist = [
+      { date: '2026-08-24', keys: ['nvidia|backlog'] },
+      { date: '2026-08-25', keys: ['nvidia|backlog'] },
+      { date: '2026-08-26', keys: ['other|thing'] },
+    ];
+    assert(
+      storyFlags([nvda], hist, '2026-08-27').length === 1,
+      '[item5b] FIRES — the same entity+mechanism on 3 of the last 5 days with no new-increment marker'
+    );
+    assert(
+      storyFlags([nvda], hist.slice(0, 1), '2026-08-27').length === 0,
+      '[item5b] SILENT at 2 of 5 — the threshold is a real threshold, not a synonym for "seen before"'
+    );
+    assert(
+      storyFlags([nvda.replace('**', '<!-- story-new: backlog converted to revenue -->\n**')], hist, '2026-08-27').length === 0,
+      '[item5b] a declared NEW INCREMENT is never flagged — a running story that is actually moving is not punished for continuing'
+    );
+    assert(
+      storyFlags([], hist, '2026-08-27').length === 0 && storyFlags([nvda], [], '2026-08-27').length === 0,
+      '[item5b] N/A STATE: no units, or no history at all, produces no flags — an empty ledger is unmeasured, not clean'
+    );
+    total += 6;
+  }
+
   console.log(`\nnovelty-gate selftest — ${total - fails}/${total} assertions passed`);
   return fails ? 1 : 0;
 }
@@ -343,6 +377,31 @@ function selftest(): number {
 function main() {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) process.exit(selftest());
+
+  // ── --stories: the STORY COOLDOWN pass (work order 2026-08-28 item 5b). ADVISORY, exit 0 ALWAYS.
+  if (args.includes('--stories')) {
+    const f = args.find(a => /\.md$/.test(a));
+    if (!f) { console.error('usage: novelty-gate --stories <brief.md> [--date YYYY-MM-DD] [--update]'); process.exit(2); }
+    const di = args.indexOf('--date');
+    const date = di > -1 && args[di + 1] ? args[di + 1]! : (/(\d{4}-\d{2}-\d{2})/.exec(path.basename(f)) ?? [, 'undated'])[1]!;
+    const flags = runStoryCooldown(f, date, args.includes('--update'));
+    console.log(`STORY COOLDOWN ${date} — window ${STORY_WINDOW} day(s), threshold ${STORY_THRESHOLD} · ADVISORY, never blocks`);
+    if (!flags.length)
+      console.log(
+        '  ➖ no story ran the window without a new increment.\n' +
+          '     ⚠️ READ THIS AS UNMEASURED, NOT CLEAN. CALIBRATION RECEIPT (2026-08-28, 5 real published\n' +
+          '     nights): 294 distinct entity|mechanism keys, ZERO recurring on two days, so this pass has\n' +
+          '     never yet been shown capable of firing on production prose. Its selftests prove the\n' +
+          '     arithmetic on synthetic units; they do not prove the KEY finds real repeats. Until a flag\n' +
+          '     appears on a real night, a silent run means the key may be too sparse — not that the\n' +
+          '     product repeated nothing. Advisory, and honestly so.'
+      );
+    for (const fl of flags)
+      console.log(`  🟡 STORY-COOLDOWN: ${fl.key} — ${fl.days} of the last ${fl.window} day(s), no <!-- story-new: … --> marker\n     ${fl.unit}…`);
+    if (flags.length)
+      console.log(`\n  Declare a genuine development with <!-- story-new: what changed --> inside the unit.\n  Advisory until it earns blocking through catches; the weekly selection-judge grades these flags.`);
+    process.exit(0);
+  }
   const briefArg = args.find(a => !a.startsWith('--'));
   const moveArg = args.includes('--move')
     ? args[args.indexOf('--move') + 1]
@@ -481,6 +540,131 @@ function main() {
   console.log(`\n❌ NOVELTY-GATE FAIL:`);
   for (const f of failures) console.log(`   ✗ ${f}`);
   process.exit(1);
+}
+
+// ── 🔴 STORY COOLDOWN (work order 2026-08-28, item 5b) ────────────────────────────────────────
+//
+// The move ledger above catches a repeated MANEUVER. This catches a repeated STORY: the same
+// entity running the same mechanism night after night, each night's prose fresh enough to pass
+// every word-overlap and skeleton check while the reader reads about the same thing for a week.
+// Same pattern as the Take's persistence counters — a key, a days-appeared count, a window.
+//
+// KEY = entity + mechanism. The entity is the unit's most-repeated proper noun; the mechanism is
+// its most-repeated content noun. Both are crude on purpose: a key precise enough to be always
+// unique would count nothing, and the failure this catches is coarse — "Nvidia / backlog" four
+// nights running, not a subtle rhyme.
+//
+// ADVISORY, and it stays advisory until it earns blocking through catches. A unit may declare a
+// genuine development with `<!-- story-new: what changed -->`, which resets nothing but marks the
+// night as a NEW INCREMENT so a running story that is actually moving is not punished for
+// continuing. The weekly selection-judge grades these flags; a flag nobody grades is decoration.
+export const STORY_LEDGER = 'system/story-ledger.json';
+export const STORY_WINDOW = 5;
+export const STORY_THRESHOLD = 3;
+// CALIBRATION 2026-08-28, measured on 5 real published nights: the first cut produced 100 keys
+// with ZERO repeats — an instrument that could not fire. Two causes, both visible in the keys it
+// emitted: the "entity" was picking up NATIONALITIES, MONTHS and SECTION WORDS ("chinese" on 4 of
+// 5 nights, "close" from THE CLOSE, "august"), and the exact entity|mechanism PAIR is too sparse to
+// recur even when the story does. Fixed by stopping those classes and by matching on the entity
+// plus ANY of its top mechanism tokens rather than one exact pair.
+const STORY_STOP = new Set(
+  ('the a an and or but of to in on for with is are was were be been it its this that as at by from not no than then so if into over under up down out about what which who whom whose when where why how more most other some such only own same too very can will just should now their there here they them his her him she he you your our we us i me my one two three first second next last year years day days week weeks month months time percent point points ' +
+    // measured noise: nationalities and demonyms read as entities, months and section words too
+    'american americans america chinese china european europe japanese japan german british russian indian korean ' +
+    'january february march april may june july august september october november december ' +
+    'close dashboard take signal discovery wildcard headlines practice model models explore brief today tomorrow yesterday ' +
+    'market markets price prices number numbers report reports company companies business against because without again ' +
+    'through before after under between during still while where after'
+  ).split(' ').filter(Boolean)
+);
+
+export function storyKey(unit: string): { entity: string; mechanism: string; mechanisms: string[]; key: string } {
+  const body = unit.replace(/<!--[\s\S]*?-->/g, ' ');
+  const proper = new Map<string, number>();
+  // Skip the first word of each sentence — a capital there is grammar, not a name.
+  for (const sent of body.split(/(?<=[.!?])\s+/))
+    for (const m of sent.matchAll(/\b([A-Z][A-Za-z&.'-]{2,})\b/g)) {
+      const w = m[1]!;
+      if (sent.trimStart().startsWith(w)) continue;
+      const k = w.toLowerCase().replace(/[.'-]+$/, '');
+      if (STORY_STOP.has(k)) continue;
+      proper.set(k, (proper.get(k) ?? 0) + 1);
+    }
+  const nouns = new Map<string, number>();
+  for (const m of body.toLowerCase().matchAll(/\b([a-z]{5,})\b/g)) {
+    const w = m[1]!;
+    if (STORY_STOP.has(w) || proper.has(w)) continue;
+    nouns.set(w, (nouns.get(w) ?? 0) + 1);
+  }
+  const top = (m: Map<string, number>) =>
+    [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? '';
+  const entity = top(proper);
+  const mechanisms = [...nouns.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 3)
+    .map(x => x[0]);
+  const mechanism = mechanisms[0] ?? '';
+  return { entity, mechanism, mechanisms, key: `${entity}|${mechanism}` };
+}
+
+export const hasNewIncrement = (unit: string): boolean => /<!--\s*story-new:/i.test(unit);
+
+export interface StoryFlag { key: string; days: number; window: number; unit: string }
+
+/** Keys that ran on >= THRESHOLD of the last WINDOW recorded days, with no new-increment marker. */
+export function storyFlags(
+  todaysUnits: string[],
+  history: { date: string; keys: string[] }[],
+  date: string
+): StoryFlag[] {
+  const prior = history.filter(h => h.date !== date).slice(-(STORY_WINDOW - 1));
+  const out: StoryFlag[] = [];
+  const seen = new Set<string>();
+  for (const u of todaysUnits) {
+    const { key, entity, mechanism } = storyKey(u);
+    if (!entity || !mechanism || seen.has(key)) continue;
+    seen.add(key);
+    if (hasNewIncrement(u)) continue;
+    // ENTITY + ANY SHARED MECHANISM. The exact pair is too sparse to recur (measured: 0 repeats in
+    // 100 keys over 5 nights); the same story on two nights routinely leads with a different one of
+    // its own top nouns. Requiring the entity AND at least one shared mechanism keeps the key from
+    // collapsing into "this entity was mentioned again", which would fire on every index name.
+    const mine = new Set(storyKey(u).mechanisms);
+    const days =
+      prior.filter(h =>
+        h.keys.some(pk => {
+          const [pe, pm] = pk.split('|');
+          return pe === entity && !!pm && mine.has(pm);
+        })
+      ).length + 1;
+    if (days >= STORY_THRESHOLD)
+      out.push({ key, days, window: Math.min(STORY_WINDOW, prior.length + 1), unit: u.slice(0, 90).replace(/\s+/g, ' ') });
+  }
+  return out;
+}
+
+export function runStoryCooldown(file: string, date: string, update: boolean, root = process.cwd()): StoryFlag[] {
+  const md = fs.readFileSync(file, 'utf-8');
+  const units = md.split(/\n(?=\*\*)/).filter(u => u.trim().length > 120);
+  const lp = path.join(root, STORY_LEDGER);
+  const led: { _doc?: string; history: { date: string; keys: string[] }[] } = fs.existsSync(lp)
+    ? JSON.parse(fs.readFileSync(lp, 'utf-8'))
+    : { _doc: 'STORY COOLDOWN LEDGER — entity|mechanism keys per published day. Advisory (work order 2026-08-28 item 5b).', history: [] };
+  const flags = storyFlags(units, led.history, date);
+  if (update) {
+    // Record EVERY top mechanism per entity, so tomorrow can match on any of them.
+    const keys = [
+      ...new Set(
+        units.flatMap(u => {
+          const k = storyKey(u);
+          return k.entity ? k.mechanisms.filter(Boolean).map(m => `${k.entity}|${m}`) : [];
+        })
+      ),
+    ];
+    led.history = [...led.history.filter(h => h.date !== date), { date, keys }].sort((a, b) => a.date.localeCompare(b.date)).slice(-60);
+    try { fs.writeFileSync(lp, JSON.stringify(led, null, 2)); } catch { /* read-only */ }
+  }
+  return flags;
 }
 
 // Direct-invocation guard (added 2026-08-19 — IMP-198, mirroring fact-gate/ceiling-lint): the
