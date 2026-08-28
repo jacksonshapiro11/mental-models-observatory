@@ -1,6 +1,6 @@
 {
   "brief": "2026-W27-jun-28-jul-04.md",
-  "generated": "2026-08-26T11:34:43.073Z",
+  "generated": "2026-08-28T11:13:05.199Z",
   "truthFile": null,
   "summary": {
     "claims": 5,
@@ -45,12 +45,12 @@
     {
       "check": "price-vs-archive",
       "severity": "FLAG",
-      "message": "Brent crude stated near 105 deviates 14% from our last-3 archive median 92 (2026-08-25:91.97, 2026-08-21:93.01, 2026-08-19:92). Possible fabrication/stale — verify vs PRIMARY source."
+      "message": "Brent crude stated near 105 deviates 14% from our last-3 archive median 91.97 (2026-08-27:86, 2026-08-25:91.97, 2026-08-21:93.01). Possible fabrication/stale — verify vs PRIMARY source."
     },
     {
       "check": "price-vs-archive",
       "severity": "FLAG",
-      "message": "gold stated near 4000 deviates 13% from our last-3 archive median 4590.51 (2026-08-26:4658.79, 2026-08-22:4590.51, 2026-08-20:4480). Possible fabrication/stale — verify vs PRIMARY source."
+      "message": "gold stated near 4000 deviates 13% from our last-3 archive median 4600 (2026-08-28:4600, 2026-08-27:4597.75, 2026-08-26:4658.79). Possible fabrication/stale — verify vs PRIMARY source."
     },
     {
       "check": "dated-event-weekday",
