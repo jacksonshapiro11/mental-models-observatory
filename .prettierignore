@@ -44,3 +44,6 @@ postcss.config.mjs
 SYSTEM_MAP.html
 tailwind.config.ts
 tsconfig*.json
+BLIND_MAYTEST_2026-08-10/
+scripts/_diag_*.scratch.ts
+scripts/*.scratch.ts

@@ -192,8 +192,8 @@ function selftest(): number {
 
   // Direction 1: the gate must FIRE on the real failure shape.
   const broken = checkPublishedHeader(BROKEN, '2026-08-08');
-  const firedOnMarkup = broken.some((f) => f.check === 'header-process-markup');
-  const firedOnEmpty = broken.some((f) => f.check.startsWith('empty-'));
+  const firedOnMarkup = broken.some(f => f.check === 'header-process-markup');
+  const firedOnEmpty = broken.some(f => f.check.startsWith('empty-'));
   if (!firedOnMarkup || !firedOnEmpty) {
     console.log(
       `  ✗ FAIL: broken header produced ${broken.length} finding(s); ` +
@@ -204,7 +204,7 @@ function selftest(): number {
   } else {
     console.log(
       `  ✓ fires on the 08-08 shape (${broken.length} findings: ${broken
-        .map((f) => f.check)
+        .map(f => f.check)
         .join(', ')})`
     );
   }
@@ -214,7 +214,7 @@ function selftest(): number {
   if (healthy.length !== 0) {
     console.log(
       `  ✗ FAIL: healthy header produced ${healthy.length} finding(s): ` +
-        healthy.map((f) => f.check).join(', ')
+        healthy.map(f => f.check).join(', ')
     );
     fail = 1;
   } else {

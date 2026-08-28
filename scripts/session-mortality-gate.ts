@@ -181,7 +181,10 @@ function selftest(): number {
   const healthy =
     '2026-08-25T07:03:20-0400 | daily-improvement | CANARY | WRITE-OK\n' +
     '2026-08-25T09:41:02-0400 | daily-improvement | daily-briefs/x-improvements.md | SUCCESS | done\n';
-  assert(deadSlots(healthy).length === 0, 'SILENT when the canary is followed by SUCCESS');
+  assert(
+    deadSlots(healthy).length === 0,
+    'SILENT when the canary is followed by SUCCESS'
+  );
 
   assert(
     deadSlots(
@@ -219,7 +222,10 @@ function selftest(): number {
     ).join(',') === 'a,b',
     'reports EVERY unterminated slot, and a slot with only a verdict is not one'
   );
-  assert(deadSlots('').length === 0, 'an empty status file yields no deaths (no phantom RED)');
+  assert(
+    deadSlots('').length === 0,
+    'an empty status file yields no deaths (no phantom RED)'
+  );
 
   // Window arithmetic, on a real directory, without depending on what the producers wrote.
   const dbDir = path.join(process.cwd(), 'daily-briefs');
@@ -237,7 +243,9 @@ function selftest(): number {
     // The historical receipt, asserted as history: these two deaths are on disk and are why this
     // gate exists. Pinned to fixed dates, so this leg cannot drift with tomorrow's record.
     const hist = scan(dbDir, '2026-08-25', 7).deaths.filter(
-      d => d.slot === 'daily-improvement' && (d.date === '2026-08-23' || d.date === '2026-08-24')
+      d =>
+        d.slot === 'daily-improvement' &&
+        (d.date === '2026-08-23' || d.date === '2026-08-24')
     );
     assert(
       hist.length === 2,
@@ -265,7 +273,9 @@ function main(argv: string[]): number {
     `session-mortality-gate — ${filesRead.length} elapsed day(s) in a ${days}d window (today excluded)`
   );
   if (!deaths.length) {
-    console.log('✓ no UNTERMINATED SESSION: every canary in the window is matched by a verdict line.');
+    console.log(
+      '✓ no UNTERMINATED SESSION: every canary in the window is matched by a verdict line.'
+    );
     return 0;
   }
   for (const d of deaths) {

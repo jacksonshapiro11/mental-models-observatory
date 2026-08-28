@@ -109,12 +109,36 @@ const FAIL_AT_BINDING_MISSES = 3; // IMP-217: >= 3 binding misses = FAIL
 
 /** Spelled-out numbers the Writer uses in prose but the Validator cites as digits. */
 const NUMBER_WORDS: Record<string, string> = {
-  zero: '0', one: '1', two: '2', three: '3', four: '4', five: '5', six: '6',
-  seven: '7', eight: '8', nine: '9', ten: '10', eleven: '11', twelve: '12',
-  thirteen: '13', fourteen: '14', fifteen: '15', sixteen: '16', seventeen: '17',
-  eighteen: '18', nineteen: '19', twenty: '20', thirty: '30', forty: '40',
-  fifty: '50', sixty: '60', seventy: '70', eighty: '80', ninety: '90',
-  hundred: '100', thousand: '1000',
+  zero: '0',
+  one: '1',
+  two: '2',
+  three: '3',
+  four: '4',
+  five: '5',
+  six: '6',
+  seven: '7',
+  eight: '8',
+  nine: '9',
+  ten: '10',
+  eleven: '11',
+  twelve: '12',
+  thirteen: '13',
+  fourteen: '14',
+  fifteen: '15',
+  sixteen: '16',
+  seventeen: '17',
+  eighteen: '18',
+  nineteen: '19',
+  twenty: '20',
+  thirty: '30',
+  forty: '40',
+  fifty: '50',
+  sixty: '60',
+  seventy: '70',
+  eighty: '80',
+  ninety: '90',
+  hundred: '100',
+  thousand: '1000',
 };
 
 function norm(s: string): string {
@@ -143,7 +167,9 @@ function digitiseWords(s: string): string {
   return s.replace(/\b[a-z]+\b/g, w => NUMBER_WORDS[w] ?? w);
 }
 
-const WORD_KEYS = Object.keys(NUMBER_WORDS).filter(w => w !== 'hundred' && w !== 'thousand');
+const WORD_KEYS = Object.keys(NUMBER_WORDS).filter(
+  w => w !== 'hundred' && w !== 'thousand'
+);
 const CARDINAL_RE = new RegExp(
   `\\b(${WORD_KEYS.join('|')})(?:[- ](${WORD_KEYS.join('|')}))?\\s+(hundred|thousand|million|billion)\\b`,
   'g'
@@ -161,7 +187,9 @@ function augmentBody(normedBody: string): string {
   for (const m of normedBody.matchAll(CARDINAL_RE)) {
     const a = Number(NUMBER_WORDS[m[1]!] ?? 0);
     const b = m[2] ? Number(NUMBER_WORDS[m[2]!] ?? 0) : 0;
-    const scale = { hundred: 100, thousand: 1000, million: 1e6, billion: 1e9 }[m[3]!]!;
+    const scale = { hundred: 100, thousand: 1000, million: 1e6, billion: 1e9 }[
+      m[3]!
+    ]!;
     const v = (a + b) * scale;
     extra.push(String(v), v.toLocaleString('en-US'));
   }
@@ -176,7 +204,9 @@ function augmentBody(normedBody: string): string {
 
 /** Trailing/leading punctuation a citation picks up from its host sentence. */
 function trim(s: string): string {
-  return s.replace(/^[\s"'“”‘’(\[.,;:—–-]+/, '').replace(/[\s"'“”‘’)\].,;:—–-]+$/, '');
+  return s
+    .replace(/^[\s"'“”‘’(\[.,;:—–-]+/, '')
+    .replace(/[\s"'“”‘’)\].,;:—–-]+$/, '');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -194,7 +224,8 @@ export interface Split {
 
 const FENCE = /^<!--\s*={10,}\s*$/;
 const FENCE_CLOSE = /^={10,}\s*-->\s*$/;
-const DECL_HEADER = /^\s*(VALIDATION REPORT|WRITER DECLARATIONS|DECLARATIONS)\b/i;
+const DECL_HEADER =
+  /^\s*(VALIDATION REPORT|WRITER DECLARATIONS|DECLARATIONS)\b/i;
 
 /**
  * IMP-217 · the split, verified empirically against the real files before it was coded.
@@ -329,7 +360,8 @@ export const ABSENT_LINE_MARKERS: RegExp[] = [
 ];
 
 /** Draft arithmetic: a line counting WORDS is about the document, never quoting it. */
-const WORD_ARITHMETIC_LINE = /\b\d[\d,]*\s+words\b|\bword (ceiling|count|budget)\b|\bwords against\b/i;
+const WORD_ARITHMETIC_LINE =
+  /\b\d[\d,]*\s+words\b|\bword (ceiling|count|budget)\b|\bwords against\b/i;
 
 /**
  * Regions that are a QUEUE, not a receipt. A list of things NOT yet verified cannot
@@ -348,18 +380,19 @@ const REGION_END = /^\s{0,2}\d{1,2}\.\s/;
 export function isNonBodyCitation(s: string): boolean {
   const t = s.trim();
   if (t.length < 4) return true;
-  if (/^https?:\/\//i.test(t)) return true;                      // URLs
+  if (/^https?:\/\//i.test(t)) return true; // URLs
   if (/\.(ts|js|mjs|json|md|py|sh|tsx)\b/i.test(t)) return true; // file paths / script names
-  if (/^[\w.-]+\/[\w./-]+$/.test(t)) return true;                // bare paths
-  if (/\b(IMP|ESC|RC)-?\d+\b/i.test(t)) return true;             // ledger IDs
+  if (/^[\w.-]+\/[\w./-]+$/.test(t)) return true; // bare paths
+  if (/\b(IMP|ESC|RC)-?\d+\b/i.test(t)) return true; // ledger IDs
   if (/^\d{4}-\d{2}(-\d{2})?([T ]\d{2}:\d{2})?/.test(t)) return true; // ISO dates/timestamps
-  if (/^\d{1,2}-\d{1,2}(-held)?$/.test(t)) return true;          // MM-DD short dates
-  if (/^[a-z0-9]+(:[a-z0-9-]+)+$/i.test(t)) return true;         // ledger keys (causal:foo-bar)
-  if (/^[a-z0-9-]+$/i.test(t) && t.includes('-') && !t.includes(' ')) return true; // slugs
-  if (/[|\\]/.test(t)) return true;                              // grep alternations
+  if (/^\d{1,2}-\d{1,2}(-held)?$/.test(t)) return true; // MM-DD short dates
+  if (/^[a-z0-9]+(:[a-z0-9-]+)+$/i.test(t)) return true; // ledger keys (causal:foo-bar)
+  if (/^[a-z0-9-]+$/i.test(t) && t.includes('-') && !t.includes(' '))
+    return true; // slugs
+  if (/[|\\]/.test(t)) return true; // grep alternations
   if (/gate\b|-gate\b|validate-brief|fact-gate/i.test(t)) return true; // gate names
   if (/\b[XYZ]\b/.test(t) && /\b(X|Y|Z)\b.*\b(X|Y|Z)\b/.test(t)) return true; // templates
-  if (/^#\s|▸/.test(t)) return true;                             // section headers
+  if (/^#\s|▸/.test(t)) return true; // section headers
   return false;
 }
 
@@ -411,7 +444,9 @@ const SECTION_ID = /^(M&M|C&C|AI&T|AI|Geo|WC|S)-?\d?$/i;
  */
 function datumLabel(line: string, at: number): string {
   const before = line.slice(Math.max(0, at - 40), at);
-  const m = before.match(/([A-Z][A-Za-z&']{1,14})\s+(?:near |at |of |around )?$/);
+  const m = before.match(
+    /([A-Z][A-Za-z&']{1,14})\s+(?:near |at |of |around )?$/
+  );
   if (!m || SECTION_ID.test(m[1]!)) return '';
   return m[1]!;
 }
@@ -448,7 +483,9 @@ export function logicalLines(lines: string[]): string[] {
   const out: string[] = [];
   for (const raw of lines) {
     const isContinuation =
-      /^ {4,}\S/.test(raw) && !/^\s*(?:\d{1,2}\.|\([a-z]\)|[-*])\s/.test(raw) && out.length > 0;
+      /^ {4,}\S/.test(raw) &&
+      !/^\s*(?:\d{1,2}\.|\([a-z]\)|[-*])\s/.test(raw) &&
+      out.length > 0;
     if (isContinuation) out[out.length - 1] += ' ' + raw.trim();
     else out.push(raw);
   }
@@ -478,7 +515,10 @@ export function extractCitations(blocks: DeclBlock[]): Citation[] {
       if (!line.trim()) continue;
 
       // queue regions are not receipts
-      if (QUEUE_REGION_HEADERS.some(r => r.test(line))) { inQueue = true; continue; }
+      if (QUEUE_REGION_HEADERS.some(r => r.test(line))) {
+        inQueue = true;
+        continue;
+      }
       if (inQueue) {
         if (REGION_END.test(line)) inQueue = false;
         else continue;
@@ -498,13 +538,18 @@ export function extractCitations(blocks: DeclBlock[]): Citation[] {
       // exact items are still in the brief, which is a receipt in every sense but quotation
       // marks. The pattern is deliberately narrow: `(taxonomy token, verbatim)` is a note
       // ABOUT a token and must not be read as a body claim.
-      if (/\b(retained|carried|kept|reproduced|held|present)\s+(verbatim|unaltered|unchanged)\b/i.test(line)) {
+      if (
+        /\b(retained|carried|kept|reproduced|held|present)\s+(verbatim|unaltered|unchanged)\b/i.test(
+          line
+        )
+      ) {
         for (const p of line.matchAll(/\(([^()]{12,300})\)/g)) {
           const inner = p[1]!;
           if (/^https?:|\.ts\b|\.md\b/i.test(inner)) continue;
           for (const item of inner.split(';')) {
             const t = trim(item);
-            if (t.length >= 8 && t.length <= 120 && /\s/.test(t)) push(t, 'BINDING', section);
+            if (t.length >= 8 && t.length <= 120 && /\s/.test(t))
+              push(t, 'BINDING', section);
           }
         }
       }
@@ -581,7 +626,8 @@ function repoRoot(): string {
   const fromScript = process.argv[1]
     ? path.resolve(path.dirname(process.argv[1]), '..')
     : '';
-  if (fromScript && fs.existsSync(path.join(fromScript, 'daily-briefs'))) return fromScript;
+  if (fromScript && fs.existsSync(path.join(fromScript, 'daily-briefs')))
+    return fromScript;
   return process.cwd();
 }
 const ROOT = repoRoot();
@@ -589,8 +635,16 @@ const F = (p: string) => path.join(ROOT, p);
 
 /** Jackson's verified receipt, 2026-08-24. Every one must be NAMED by a flag. */
 const RECEIPT_11 = [
-  'Brent', '93.86', 'finished Friday', '17 of 70', '$76 vs $24', 'CNY 9,502.33',
-  '5-7m', '58-63', 'eleven-at-night', 'standing weekly call',
+  'Brent',
+  '93.86',
+  'finished Friday',
+  '17 of 70',
+  '$76 vs $24',
+  'CNY 9,502.33',
+  '5-7m',
+  '58-63',
+  'eleven-at-night',
+  'standing weekly call',
   'the next time it comes round',
 ];
 
@@ -602,7 +656,9 @@ const PIN_SWEEP_FIRES = 5;
 
 function covers(misses: Miss[], needle: string): boolean {
   const n = norm(needle);
-  return misses.some(m => norm(m.display).includes(n) || n.includes(norm(m.display)));
+  return misses.some(
+    m => norm(m.display).includes(n) || n.includes(norm(m.display))
+  );
 }
 
 function selftest(): number {
@@ -656,7 +712,10 @@ function selftest(): number {
   ]);
 
   // ── TEST 3 — the ordinary case must not red ───────────────────────────────
-  for (const f of ['daily-briefs/2026-08-22-v2.md', 'daily-briefs/2026-08-21-v2.md']) {
+  for (const f of [
+    'daily-briefs/2026-08-22-v2.md',
+    'daily-briefs/2026-08-21-v2.md',
+  ]) {
     cases.push([
       `[T3] SILENT on ${path.basename(f)} (a real Editor pass)`,
       false,
@@ -677,7 +736,11 @@ function selftest(): number {
   // have hidden entirely if two moved in opposite directions.
   const PIN_FIRING = new Set([
     // The 08-10..08-15 report-format era — the original, adjudicated cases.
-    '2026-08-10-v2.md', '2026-08-12-v2.md', '2026-08-13-v2.md', '2026-08-14-v2.md', '2026-08-15-v2.md',
+    '2026-08-10-v2.md',
+    '2026-08-12-v2.md',
+    '2026-08-13-v2.md',
+    '2026-08-14-v2.md',
+    '2026-08-15-v2.md',
     // ⚠️ NEWLY FIRING AND NOT YET ADJUDICATED (added 2026-08-28 so the set is honest rather than
     // green). Both carry BINDING declarations the gate cannot bind; several look like PROSE QUOTED
     // INSIDE a declarations block ("Huh, I had that backwards", "yes, obviously") being read as
@@ -685,19 +748,30 @@ function selftest(): number {
     // made yet, and pinning them as "expected" without making it would be exactly the categorical
     // exemption the house rule forbids. Carried; adjudicate and then either fix the gate or fix
     // the nights.
-    '2026-08-26-v2.md', '2026-08-27-v2.md',
+    '2026-08-26-v2.md',
+    '2026-08-27-v2.md',
   ]);
   const sweep = sweepFiles('daily-briefs/2026-08-*-v2.md');
   const fired = sweep.filter(v => v.fail);
   const firedNames = new Set(fired.map(v => path.basename(v.file)));
   const newlyFiring = [...firedNames].filter(n => !PIN_FIRING.has(n)).sort();
-  const stoppedFiring = [...PIN_FIRING].filter(n => sweep.some(v => path.basename(v.file) === n) && !firedNames.has(n)).sort();
+  const stoppedFiring = [...PIN_FIRING]
+    .filter(
+      n => sweep.some(v => path.basename(v.file) === n) && !firedNames.has(n)
+    )
+    .sort();
   cases.push([
     `[T4] regression pin — the SET of firing nights is exactly the pinned set (${firedNames.size} firing of ${sweep.length})` +
-      (newlyFiring.length ? ` · 🔴 NEWLY FIRING: ${newlyFiring.join(', ')}` : '') +
-      (stoppedFiring.length ? ` · 🟡 STOPPED FIRING: ${stoppedFiring.join(', ')}` : ''),
+      (newlyFiring.length
+        ? ` · 🔴 NEWLY FIRING: ${newlyFiring.join(', ')}`
+        : '') +
+      (stoppedFiring.length
+        ? ` · 🟡 STOPPED FIRING: ${stoppedFiring.join(', ')}`
+        : ''),
     true,
-    () => sweep.length === 0 || (newlyFiring.length === 0 && stoppedFiring.length === 0),
+    () =>
+      sweep.length === 0 ||
+      (newlyFiring.length === 0 && stoppedFiring.length === 0),
   ]);
   cases.push([
     '[T4] the seven most recent v2 nights (08-16 .. 08-22) are all green — no nightly false alarm',
@@ -718,46 +792,80 @@ function selftest(): number {
     false,
     () =>
       findMisses(
-        mk('   (h) The kill list was honoured: "silver tops $75" and "~130/day Hormuz baseline" appear nowhere in this brief.')
+        mk(
+          '   (h) The kill list was honoured: "silver tops $75" and "~130/day Hormuz baseline" appear nowhere in this brief.'
+        )
       ).length > 0,
   ]);
   cases.push([
     '[IGNORE] replacement record does not fire ("REPLACEMENT ... rejected by a gate")',
     false,
-    () => findMisses(mk('REPLACEMENT (second attempt; the first was rejected by a gate): "a quote that is not in the body".')).length > 0,
+    () =>
+      findMisses(
+        mk(
+          'REPLACEMENT (second attempt; the first was rejected by a gate): "a quote that is not in the body".'
+        )
+      ).length > 0,
   ]);
   cases.push([
     '[IGNORE] negative citation does not fire (`No "watch for"`)',
     false,
-    () => findMisses(mk('8. NO PREDICTION THEATER — PASS. No "if X by date Y then Z", no "watch for" on the reader surface.')).length > 0,
+    () =>
+      findMisses(
+        mk(
+          '8. NO PREDICTION THEATER — PASS. No "if X by date Y then Z", no "watch for" on the reader surface.'
+        )
+      ).length > 0,
   ]);
   cases.push([
     '[IGNORE] grep receipt does not fire (a pattern is not prose)',
     false,
-    () => findMisses(mk('DISCOVERY SUBJECT: grep -ril "discrepancy theory|Komlos|Bansal" content/ returns ZERO.')).length > 0,
+    () =>
+      findMisses(
+        mk(
+          'DISCOVERY SUBJECT: grep -ril "discrepancy theory|Komlos|Bansal" content/ returns ZERO.'
+        )
+      ).length > 0,
   ]);
   cases.push([
     '[IGNORE] Morning-Truth-Gate queue does not fire (a to-verify list is not a receipt)',
     false,
     () =>
       findMisses(
-        mk('10. OPEN ITEMS FOR THE MORNING TRUTH GATE:\n   (c) Geo-2: "$40 trillion of federal debt, crossed this month" is on a secondary source.')
+        mk(
+          '10. OPEN ITEMS FOR THE MORNING TRUTH GATE:\n   (c) Geo-2: "$40 trillion of federal debt, crossed this month" is on a secondary source.'
+        )
       ).length > 0,
   ]);
   cases.push([
     '[IGNORE] ledger IDs, ISO dates and script names are not body citations',
     false,
-    () => findMisses(mk('PRICING RUNG (IMP-050) run by scripts/validate-brief.ts on 2026-08-23.')).length > 0,
+    () =>
+      findMisses(
+        mk(
+          'PRICING RUNG (IMP-050) run by scripts/validate-brief.ts on 2026-08-23.'
+        )
+      ).length > 0,
   ]);
   cases.push([
     '[BITES] a plain quoted claim absent from the body DOES fire',
     true,
-    () => findMisses(mk('3. DASHBOARD — PASS. The Dashboard says "urea finished Friday at $412.00 a tonne".')).length > 0,
+    () =>
+      findMisses(
+        mk(
+          '3. DASHBOARD — PASS. The Dashboard says "urea finished Friday at $412.00 a tonne".'
+        )
+      ).length > 0,
   ]);
   cases.push([
     '[BITES] a quoted claim PRESENT in the body stays silent (trailing punctuation tolerated)',
     false,
-    () => findMisses(mk('3. DASHBOARD — PASS. The Dashboard says "urea ended the week at $390.00 a tonne."')).length > 0,
+    () =>
+      findMisses(
+        mk(
+          '3. DASHBOARD — PASS. The Dashboard says "urea ended the week at $390.00 a tonne."'
+        )
+      ).length > 0,
   ]);
   cases.push([
     '[NORM] `$390m`-style shorthand meets "$390 million" prose; `80bp` meets "Eighty basis points"',
@@ -765,7 +873,12 @@ function selftest(): number {
     () =>
       findMisses({
         body: 'The wedge is Eighty basis points and the fund raised $390 million.',
-        blocks: [{ header: 'VALIDATION REPORT', lines: ['4. THE SIX — PASS. M&M-2 80bp; C&C-1 $390m.'] }],
+        blocks: [
+          {
+            header: 'VALIDATION REPORT',
+            lines: ['4. THE SIX — PASS. M&M-2 80bp; C&C-1 $390m.'],
+          },
+        ],
       }).length > 0,
   ]);
   cases.push([
@@ -777,7 +890,9 @@ function selftest(): number {
     '[SPLIT] the legacy `<!-- VALIDATION REPORT ...` opener is recognised as a declaration block',
     true,
     () =>
-      splitBrief('# BRIEF\n\nbody\n\n<!-- VALIDATION REPORT, Brief_Validator.md, run to clean.\n1. STRUCTURE — PASS.\n-->\n').blocks.length === 1,
+      splitBrief(
+        '# BRIEF\n\nbody\n\n<!-- VALIDATION REPORT, Brief_Validator.md, run to clean.\n1. STRUCTURE — PASS.\n-->\n'
+      ).blocks.length === 1,
   ]);
   cases.push([
     '[SPLIT] single-line body annotations do not truncate the reader-facing body',
@@ -797,25 +912,34 @@ function selftest(): number {
 
   if (a15) {
     console.log('\n  ── 2026-08-24-v1.5.md, what fired ──');
-    for (const m of a15.binding) console.log(`   ✗ BINDING-MISS [${m.section}] "${m.display}"`);
-    for (const m of a15.datum) console.log(`   ⚠ DATUM-MISS   [${m.section}] "${m.display}"`);
+    for (const m of a15.binding)
+      console.log(`   ✗ BINDING-MISS [${m.section}] "${m.display}"`);
+    for (const m of a15.datum)
+      console.log(`   ⚠ DATUM-MISS   [${m.section}] "${m.display}"`);
   }
   if (apre) {
     console.log(
       `\n  ── 2026-08-24-v1-pre-quality-gate.md (control): ${apre.binding.length} BINDING · ${apre.datum.length} DATUM · ${apre.fail ? 'FAIL' : 'exit 0'} ──`
     );
-    for (const m of apre.datum) console.log(`   ⚠ DATUM-MISS   [${m.section}] "${m.display}"`);
+    for (const m of apre.datum)
+      console.log(`   ⚠ DATUM-MISS   [${m.section}] "${m.display}"`);
   }
   console.log(
     `\n  ── REGRESSION SWEEP: ${fired.length} of ${sweep.length} daily-briefs/2026-08-*-v2.md FAIL ──`
   );
 
-  console.log(`\ndeclaration-binding-gate selftest — ${cases.length - fails}/${cases.length} assertions passed`);
+  console.log(
+    `\ndeclaration-binding-gate selftest — ${cases.length - fails}/${cases.length} assertions passed`
+  );
   if (fails) {
-    console.error('✗ SELFTEST FAILED — the gate no longer bites both directions.');
+    console.error(
+      '✗ SELFTEST FAILED — the gate no longer bites both directions.'
+    );
     return 1;
   }
-  console.log('✓ Fires on the inherited report; silent on the body that earns it.');
+  console.log(
+    '✓ Fires on the inherited report; silent on the body that earns it.'
+  );
   return 0;
 }
 
@@ -826,7 +950,9 @@ function selftest(): number {
 function sweepFiles(pattern: string): Verdict[] {
   const dir = path.join(ROOT, path.dirname(pattern));
   const base = path.basename(pattern);
-  const re = new RegExp('^' + base.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
+  const re = new RegExp(
+    '^' + base.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$'
+  );
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
@@ -838,7 +964,9 @@ function sweepFiles(pattern: string): Verdict[] {
 function report(v: Verdict): void {
   console.log(`declaration-binding-gate — ${path.basename(v.file)}`);
   if (!v.hasDeclarations) {
-    console.log('  no VALIDATION REPORT / WRITER DECLARATIONS block — nothing to bind.');
+    console.log(
+      '  no VALIDATION REPORT / WRITER DECLARATIONS block — nothing to bind.'
+    );
     console.log('\n✓ DECLARATION BINDING CLEAN.');
     return;
   }
@@ -846,9 +974,13 @@ function report(v: Verdict): void {
     `  ${v.binding.length} BINDING-MISS (fail-material) · ${v.datum.length} DATUM-MISS (advisory)`
   );
   for (const m of v.binding)
-    console.log(`   ✗ BINDING-MISS [${m.section}] "${m.display}" — declared as a passed check; returns ZERO against the reader-facing body.`);
+    console.log(
+      `   ✗ BINDING-MISS [${m.section}] "${m.display}" — declared as a passed check; returns ZERO against the reader-facing body.`
+    );
   for (const m of v.datum)
-    console.log(`   ⚠ DATUM-MISS   [${m.section}] "${m.display}" — cited as a shipped figure; not in the body.`);
+    console.log(
+      `   ⚠ DATUM-MISS   [${m.section}] "${m.display}" — cited as a shipped figure; not in the body.`
+    );
 
   if (v.fail) {
     console.error(
@@ -857,9 +989,13 @@ function report(v: Verdict): void {
         `or stamp the inherited report SUPERSEDED before the Editor reads it.`
     );
   } else if (v.binding.length || v.datum.length) {
-    console.log('\n✓ DECLARATION BINDING PASS (flags advisory; the brief always ships).');
+    console.log(
+      '\n✓ DECLARATION BINDING PASS (flags advisory; the brief always ships).'
+    );
   } else {
-    console.log('\n✓ DECLARATION BINDING CLEAN — every cited string is in the body it certifies.');
+    console.log(
+      '\n✓ DECLARATION BINDING CLEAN — every cited string is in the body it certifies.'
+    );
   }
 }
 
@@ -878,16 +1014,22 @@ function main(): void {
       );
       if (v.fail) fired++;
     }
-    console.log(`\ndeclaration-binding-gate sweep — ${fired}/${results.length} FAIL on ${pattern}`);
+    console.log(
+      `\ndeclaration-binding-gate sweep — ${fired}/${results.length} FAIL on ${pattern}`
+    );
     process.exit(fired > 0 ? 1 : 0);
   }
 
   const fileArg = args.find(a => !a.startsWith('--'));
   if (!fileArg) {
-    console.error('Usage: declaration-binding-gate.ts <brief.md> [--selftest] [--sweep <glob>]');
+    console.error(
+      'Usage: declaration-binding-gate.ts <brief.md> [--selftest] [--sweep <glob>]'
+    );
     process.exit(2);
   }
-  const file = path.isAbsolute(fileArg) ? fileArg : path.join(process.cwd(), fileArg);
+  const file = path.isAbsolute(fileArg)
+    ? fileArg
+    : path.join(process.cwd(), fileArg);
   if (!fs.existsSync(file)) {
     console.error(`File not found: ${file}`);
     process.exit(2);
@@ -898,5 +1040,6 @@ function main(): void {
 }
 
 const invokedDirectly =
-  !!process.argv[1] && path.resolve(process.argv[1]).endsWith('declaration-binding-gate.ts');
+  !!process.argv[1] &&
+  path.resolve(process.argv[1]).endsWith('declaration-binding-gate.ts');
 if (invokedDirectly) main();

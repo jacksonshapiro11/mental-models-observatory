@@ -47,8 +47,18 @@ const WORLDVIEW = path.join(process.cwd(), 'system', 'Current_Worldview_v5.md');
 const SECTION_HEADING = '## WHAT CHANGED TODAY';
 
 const MONTHS: Record<string, number> = {
-  january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
-  july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
+  january: 1,
+  february: 2,
+  march: 3,
+  april: 4,
+  may: 5,
+  june: 6,
+  july: 7,
+  august: 8,
+  september: 9,
+  october: 10,
+  november: 11,
+  december: 12,
 };
 
 export interface DatedEntry {
@@ -101,12 +111,15 @@ export function parseEntries(body: string): DatedEntry[] {
   };
 
   // ---- Convention A: `**Month D, YYYY:**` under `## WHAT CHANGED TODAY` ----
-  const start = lines.findIndex((l) => l.trim() === SECTION_HEADING);
+  const start = lines.findIndex(l => l.trim() === SECTION_HEADING);
   if (start !== -1) {
     // Section runs to the next top-level `## ` heading.
     let end = lines.length;
     for (let i = start + 1; i < lines.length; i++) {
-      if (lines[i].startsWith('## ')) { end = i; break; }
+      if (lines[i].startsWith('## ')) {
+        end = i;
+        break;
+      }
     }
     const reA = /^\*\*([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4}):?\*\*/;
     for (let i = start + 1; i < end; i++) {
@@ -183,26 +196,37 @@ export const DEADLINE_HOUR_ET = 10;
 
 function etParts(d = new Date()): { date: string; hour: number } {
   const date = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).format(d);
-  const hour = Number(new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York', hour: '2-digit', hour12: false,
-  }).format(d));
+  const hour = Number(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: '2-digit',
+      hour12: false,
+    }).format(d)
+  );
   return { date, hour };
 }
 
 function shiftDays(iso: string, n: number): string {
   return new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000)
-    .toISOString().slice(0, 10);
+    .toISOString()
+    .slice(0, 10);
 }
 
-export interface EvalNow { date: string; hour: number }
+export interface EvalNow {
+  date: string;
+  hour: number;
+}
 
 /** The entry date this run is entitled to demand, and whether grace applied. */
 export function requiredNewest(
   briefDate: string,
   now: EvalNow,
-  deadlineHourET = DEADLINE_HOUR_ET,
+  deadlineHourET = DEADLINE_HOUR_ET
 ): { required: string; grace: boolean } {
   if (now.date === briefDate && now.hour < deadlineHourET) {
     return { required: shiftDays(briefDate, -1), grace: true };
@@ -210,17 +234,27 @@ export function requiredNewest(
   return { required: briefDate, grace: false };
 }
 
-export function evaluate(body: string, briefDate: string, now?: EvalNow): Verdict {
+export function evaluate(
+  body: string,
+  briefDate: string,
+  now?: EvalNow
+): Verdict {
   const clock = now ?? etParts();
   const { required, grace } = requiredNewest(briefDate, clock);
   const entries = parseEntries(body);
   if (entries.length === 0) {
     return {
-      ok: false, newest: null, expected: required, gapDays: null, previous: null, grace,
-      reason: 'no dated entries found under `## WHAT CHANGED TODAY` (section missing or format changed)',
+      ok: false,
+      newest: null,
+      expected: required,
+      gapDays: null,
+      previous: null,
+      grace,
+      reason:
+        'no dated entries found under `## WHAT CHANGED TODAY` (section missing or format changed)',
     };
   }
-  const sorted = [...entries].map((e) => e.iso).sort();
+  const sorted = [...entries].map(e => e.iso).sort();
   const newest = sorted[sorted.length - 1];
   const previous = sorted.length > 1 ? sorted[sorted.length - 2] : null;
 
@@ -234,14 +268,24 @@ export function evaluate(body: string, briefDate: string, now?: EvalNow): Verdic
   // requirement (written early, or written during the grace window) must pass.
   if (newest < required) {
     return {
-      ok: false, newest, expected: required, gapDays, previous, grace,
+      ok: false,
+      newest,
+      expected: required,
+      gapDays,
+      previous,
+      grace,
       reason: grace
         ? `newest WHAT CHANGED TODAY entry is ${newest}, expected at least ${required} — the record is DELINQUENT (today's ${briefDate} entry is not yet due; system-update writes it 09:36 ET)`
         : `newest WHAT CHANGED TODAY entry is ${newest}, expected ${required} — today's synthesis was not written`,
     };
   }
   return {
-    ok: true, newest, expected: required, gapDays, previous, grace,
+    ok: true,
+    newest,
+    expected: required,
+    gapDays,
+    previous,
+    grace,
     reason: grace
       ? `newest entry ${newest} satisfies the pre-deadline requirement (${required}); today's ${briefDate} entry is not yet due`
       : 'newest entry matches BRIEF_DATE',
@@ -257,49 +301,80 @@ function selftest(): number {
   let pass = 0;
   let fail = 0;
   const assert = (name: string, cond: boolean) => {
-    if (cond) { pass++; console.log(`  ✅ ${name}`); }
-    else { fail++; console.log(`  ❌ ${name}`); }
+    if (cond) {
+      pass++;
+      console.log(`  ✅ ${name}`);
+    } else {
+      fail++;
+      console.log(`  ❌ ${name}`);
+    }
   };
 
   // Reconstruction of the file as it stood at 07:0x ET on 2026-08-17: the
   // 08-15 and 08-16 syntheses were never appended, so the newest entry is
   // August 14. This is the REAL failure case, not a synthetic one.
   const broken = [
-    '## BIG STORIES', '', '### Active', '',
-    '## WHAT CHANGED TODAY', '',
-    '**August 14, 2026:**', '',
-    'Body prose that itself mentions August 16, 2026 in passing.', '',
-    '**August 13, 2026:**', '', 'more body', '',
-    '## FRAMEWORKS LIBRARY', '',
+    '## BIG STORIES',
+    '',
+    '### Active',
+    '',
+    '## WHAT CHANGED TODAY',
+    '',
+    '**August 14, 2026:**',
+    '',
+    'Body prose that itself mentions August 16, 2026 in passing.',
+    '',
+    '**August 13, 2026:**',
+    '',
+    'more body',
+    '',
+    '## FRAMEWORKS LIBRARY',
+    '',
   ].join('\n');
 
   const repaired = broken.replace(
     '**August 14, 2026:**',
-    '**August 17, 2026:**\n\nToday\'s synthesis.\n\n**August 14, 2026:**',
+    "**August 17, 2026:**\n\nToday's synthesis.\n\n**August 14, 2026:**"
   );
 
   console.log('whatchanged-freshness --selftest');
   console.log('\nDIRECTION 1 — must FIRE on the real 2026-08-17 07:0x state:');
   const v1 = evaluate(broken, '2026-08-17');
-  assert('FAILS when newest entry (Aug 14) != BRIEF_DATE (2026-08-17)', v1.ok === false);
+  assert(
+    'FAILS when newest entry (Aug 14) != BRIEF_DATE (2026-08-17)',
+    v1.ok === false
+  );
   assert('names the newest date it actually found', v1.newest === '2026-08-14');
-  assert('mid-prose "August 16, 2026" is NOT parsed as an entry heading', v1.newest !== '2026-08-16');
+  assert(
+    'mid-prose "August 16, 2026" is NOT parsed as an entry heading',
+    v1.newest !== '2026-08-16'
+  );
 
   console.log('\nDIRECTION 2 — must go SILENT once the entry is written:');
   const v2 = evaluate(repaired, '2026-08-17');
   assert('PASSES once the 2026-08-17 entry is appended', v2.ok === true);
   assert('newest is 2026-08-17', v2.newest === '2026-08-17');
-  assert('advisory gap reports the 3-day skip (08-14 → 08-17)', v2.gapDays === 3);
+  assert(
+    'advisory gap reports the 3-day skip (08-14 → 08-17)',
+    v2.gapDays === 3
+  );
 
-  console.log('\nDIRECTION 3 — healthy consecutive days stay silent and report gap 1:');
+  console.log(
+    '\nDIRECTION 3 — healthy consecutive days stay silent and report gap 1:'
+  );
   const healthy = broken
     .replace('**August 14, 2026:**', '**August 14, 2026:**')
     .replace('**August 13, 2026:**', '**August 13, 2026:**');
   const v3 = evaluate(healthy, '2026-08-14');
-  assert('PASSES on a file whose newest entry IS the brief date', v3.ok === true);
+  assert(
+    'PASSES on a file whose newest entry IS the brief date',
+    v3.ok === true
+  );
   assert('gap between Aug 14 and Aug 13 is 1 day', v3.gapDays === 1);
 
-  console.log('\nDIRECTION 4 — a missing section is a FAIL, not a pass by absence:');
+  console.log(
+    '\nDIRECTION 4 — a missing section is a FAIL, not a pass by absence:'
+  );
   const noSection = '## BIG STORIES\n\n### Active\n';
   const v4 = evaluate(noSection, '2026-08-17');
   assert('FAILS when the section is absent', v4.ok === false);
@@ -310,28 +385,60 @@ function selftest(): number {
   // system-update runs at 09:36 ET. The gate FAILED anyway, reddening the whole
   // registry. Grace must silence THAT and nothing else.
   const wcFile = (dates: string[]) =>
-    ['## WHAT CHANGED TODAY', '', ...dates.flatMap((d) => [`### WHAT CHANGED TODAY — ${d}`, '', 'body', '']), '## FRAMEWORKS LIBRARY', ''].join('\n');
-  const current = wcFile(['2026-08-19', '2026-08-18']);   // healthy at 07:03 ET on 08-20
-  const behind = wcFile(['2026-08-18', '2026-08-17']);    // yesterday genuinely missing
-  const early = wcFile(['2026-08-20', '2026-08-19']);     // today already written
+    [
+      '## WHAT CHANGED TODAY',
+      '',
+      ...dates.flatMap(d => [`### WHAT CHANGED TODAY — ${d}`, '', 'body', '']),
+      '## FRAMEWORKS LIBRARY',
+      '',
+    ].join('\n');
+  const current = wcFile(['2026-08-19', '2026-08-18']); // healthy at 07:03 ET on 08-20
+  const behind = wcFile(['2026-08-18', '2026-08-17']); // yesterday genuinely missing
+  const early = wcFile(['2026-08-20', '2026-08-19']); // today already written
   const EARLY = { date: '2026-08-20', hour: 7 };
   const AFTER = { date: '2026-08-20', hour: 10 };
 
-  console.log('\nDIRECTION 5 — producer-deadline grace (system-update writes the entry at 09:36 ET):');
+  console.log(
+    '\nDIRECTION 5 — producer-deadline grace (system-update writes the entry at 09:36 ET):'
+  );
   const v5a = evaluate(current, '2026-08-20', EARLY);
-  assert('SILENT at 07:03 ET when newest is yesterday — today\'s entry is not yet owed', v5a.ok === true);
-  assert('the pre-deadline requirement is stated as 2026-08-19, not 2026-08-20', v5a.expected === '2026-08-19');
+  assert(
+    "SILENT at 07:03 ET when newest is yesterday — today's entry is not yet owed",
+    v5a.ok === true
+  );
+  assert(
+    'the pre-deadline requirement is stated as 2026-08-19, not 2026-08-20',
+    v5a.expected === '2026-08-19'
+  );
   const v5b = evaluate(current, '2026-08-20', AFTER);
-  assert('FIRES at 10:03 ET on the SAME file — after the deadline the entry IS owed', v5b.ok === false);
+  assert(
+    'FIRES at 10:03 ET on the SAME file — after the deadline the entry IS owed',
+    v5b.ok === false
+  );
   const v5c = evaluate(behind, '2026-08-20', EARLY);
-  assert('FIRES at 07:03 ET when YESTERDAY is missing too — grace narrows the claim by one day, it does not switch the gate off', v5c.ok === false);
+  assert(
+    'FIRES at 07:03 ET when YESTERDAY is missing too — grace narrows the claim by one day, it does not switch the gate off',
+    v5c.ok === false
+  );
   const v5d = evaluate(early, '2026-08-20', EARLY);
-  assert('SILENT at 07:03 ET when today\'s entry was already written — writing early is never punished', v5d.ok === true);
+  assert(
+    "SILENT at 07:03 ET when today's entry was already written — writing early is never punished",
+    v5d.ok === true
+  );
   const v5e = evaluate(current, '2026-08-19', EARLY);
-  assert('a BRIEF_DATE in the past gets NO grace (backfill runs demand the exact date)', v5e.grace === false && v5e.ok === true);
-  assert('requiredNewest is a pure function of clock position and returns the grace flag', requiredNewest('2026-08-20', EARLY).required === '2026-08-19' && requiredNewest('2026-08-20', AFTER).required === '2026-08-20');
+  assert(
+    'a BRIEF_DATE in the past gets NO grace (backfill runs demand the exact date)',
+    v5e.grace === false && v5e.ok === true
+  );
+  assert(
+    'requiredNewest is a pure function of clock position and returns the grace flag',
+    requiredNewest('2026-08-20', EARLY).required === '2026-08-19' &&
+      requiredNewest('2026-08-20', AFTER).required === '2026-08-20'
+  );
 
-  console.log(`\nwhatchanged-freshness --selftest: ${pass} passed, ${fail} failed`);
+  console.log(
+    `\nwhatchanged-freshness --selftest: ${pass} passed, ${fail} failed`
+  );
   return fail === 0 ? 0 : 1;
 }
 
@@ -341,9 +448,11 @@ function main(): number {
   const argv = process.argv.slice(2);
   if (argv.includes('--selftest')) return selftest();
 
-  const briefDate = argv.find((a) => /^\d{4}-\d{2}-\d{2}$/.test(a));
+  const briefDate = argv.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a));
   if (!briefDate) {
-    console.error('usage: whatchanged-freshness.ts <BRIEF_DATE:YYYY-MM-DD> | --selftest');
+    console.error(
+      'usage: whatchanged-freshness.ts <BRIEF_DATE:YYYY-MM-DD> | --selftest'
+    );
     return 1;
   }
 
@@ -357,21 +466,32 @@ function main(): number {
 
   console.log('whatchanged-freshness — system/Current_Worldview_v5.md');
   console.log(`  BRIEF_DATE      ${briefDate}`);
-  console.log(`  required newest ${v.expected}${v.grace ? '  (GRACE — before system-update\'s 09:36 ET deadline, today\'s entry is not yet owed)' : ''}`);
+  console.log(
+    `  required newest ${v.expected}${v.grace ? "  (GRACE — before system-update's 09:36 ET deadline, today's entry is not yet owed)" : ''}`
+  );
   console.log(`  newest entry    ${v.newest ?? '(none)'}`);
-  if (v.previous) console.log(`  previous entry  ${v.previous}  (gap ${v.gapDays}d)`);
+  if (v.previous)
+    console.log(`  previous entry  ${v.previous}  (gap ${v.gapDays}d)`);
 
   if (!v.ok) {
     console.error(`\n❌ WHATCHANGED-FRESHNESS FAIL — ${v.reason}`);
-    console.error('   The Big Story and TH review blocks can exist while the synthesis does not.');
-    console.error('   Write the entry. Do NOT backfill missed days from review blocks —');
+    console.error(
+      '   The Big Story and TH review blocks can exist while the synthesis does not.'
+    );
+    console.error(
+      '   Write the entry. Do NOT backfill missed days from review blocks —'
+    );
     console.error('   reconstruction is not record (CARRY 2026-08-14).');
     return 1;
   }
 
   if (v.gapDays !== null && v.gapDays > 1) {
-    console.log(`\n⚠️  ADVISORY: ${v.gapDays - 1} day(s) skipped before this entry (${v.previous} → ${v.newest}).`);
-    console.log('   Not a failure for THIS run — the gap is historical and backfill is forbidden.');
+    console.log(
+      `\n⚠️  ADVISORY: ${v.gapDays - 1} day(s) skipped before this entry (${v.previous} → ${v.newest}).`
+    );
+    console.log(
+      '   Not a failure for THIS run — the gap is historical and backfill is forbidden.'
+    );
   }
 
   console.log('\n✅ WHATCHANGED-FRESHNESS PASS');
@@ -381,4 +501,5 @@ function main(): number {
 // C1 CLASS (2026-08-28): `require.main === module` is a CJS idiom. Under `npx tsx` it works; under
 // the production runner `node --experimental-strip-types` it throws before main() ever runs — so
 // this script has been exiting 1 on every nightly invocation while reading green in every check.
-if (process.argv[1] && process.argv[1].includes('whatchanged-freshness')) process.exit(main());
+if (process.argv[1] && process.argv[1].includes('whatchanged-freshness'))
+  process.exit(main());

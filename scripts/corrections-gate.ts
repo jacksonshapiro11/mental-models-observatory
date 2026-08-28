@@ -149,7 +149,9 @@ export function checkRow(
  * live on a reader surface. Absence is a valid fix for the companion; falsehood is not.
  */
 export function companionOf(file: string): string | null {
-  const m = file.match(/^(content\/daily-updates\/\d{4}-\d{2}-\d{2})(-light)?\.md$/);
+  const m = file.match(
+    /^(content\/daily-updates\/\d{4}-\d{2}-\d{2})(-light)?\.md$/
+  );
   if (!m) return null;
   return m[2] ? `${m[1]}.md` : `${m[1]}-light.md`;
 }
@@ -277,7 +279,9 @@ export function parseProseIds(md: string): string[] {
     const t = line.trim();
     if (t.startsWith('|')) continue; // the table is the parseable form; that is the point
     // "- **COR-010 / COR-011 (logged ...)" · "**COR-005 ...**" · "### COR-012"
-    const m = t.match(/^(?:[-*]\s+)?(?:\*\*|#{1,6}\s*)\s*((?:COR-\d+\s*(?:\/|,|and)?\s*)+)/i);
+    const m = t.match(
+      /^(?:[-*]\s+)?(?:\*\*|#{1,6}\s*)\s*((?:COR-\d+\s*(?:\/|,|and)?\s*)+)/i
+    );
     if (!m) continue;
     for (const id of m[1].match(/COR-\d+/gi) ?? []) out.add(id.toUpperCase());
   }
@@ -511,8 +515,10 @@ function selftest(): number {
       'SILENT on an ordinary cross-reference mid-sentence (no storm on prose that merely cites)',
       false,
       () =>
-        checkProseOnly([], 'The rule that created this ledger is visible in COR-001 and COR-002.\n')
-          .length > 0,
+        checkProseOnly(
+          [],
+          'The rule that created this ledger is visible in COR-001 and COR-002.\n'
+        ).length > 0,
     ],
     // IMP-179 — THE ID SEAM. COR-006/007 were re-used on 08-16 while already held.
     [
@@ -585,7 +591,8 @@ function selftest(): number {
             ...row,
             id: 'COR-014',
             file: 'content/daily-updates/2026-08-15.md',
-            correct: "`Hormuz has been shut or conditional since Iran's late-February closure`",
+            correct:
+              "`Hormuz has been shut or conditional since Iran's late-February closure`",
           },
           {
             ...row,
@@ -601,8 +608,18 @@ function selftest(): number {
       false,
       () =>
         conflictingPrescriptions([
-          { ...row, id: 'COR-001', file: 'a.md', correct: '`' + 'x'.repeat(60) + 'AAA`' },
-          { ...row, id: 'COR-002', file: 'b.md', correct: '`' + 'x'.repeat(60) + 'BBB`' },
+          {
+            ...row,
+            id: 'COR-001',
+            file: 'a.md',
+            correct: '`' + 'x'.repeat(60) + 'AAA`',
+          },
+          {
+            ...row,
+            id: 'COR-002',
+            file: 'b.md',
+            correct: '`' + 'x'.repeat(60) + 'BBB`',
+          },
         ]).length > 0,
     ],
     [
@@ -610,8 +627,18 @@ function selftest(): number {
       false,
       () =>
         conflictingPrescriptions([
-          { ...row, id: 'COR-001', file: 'a.md', correct: '`The Fed held rates at 4.25 percent`' },
-          { ...row, id: 'COR-002', file: 'a.md', correct: '`Brent settled at $82.40 on Friday`' },
+          {
+            ...row,
+            id: 'COR-001',
+            file: 'a.md',
+            correct: '`The Fed held rates at 4.25 percent`',
+          },
+          {
+            ...row,
+            id: 'COR-002',
+            file: 'a.md',
+            correct: '`Brent settled at $82.40 on Friday`',
+          },
         ]).length > 0,
     ],
     [
@@ -621,7 +648,8 @@ function selftest(): number {
         const p = path.join(process.cwd(), 'system/Corrections_Ledger.md');
         if (!fs.existsSync(p)) return false;
         return (
-          conflictingPrescriptions(parseLedger(fs.readFileSync(p, 'utf8'))).length > 0
+          conflictingPrescriptions(parseLedger(fs.readFileSync(p, 'utf8')))
+            .length > 0
         );
       },
     ],
@@ -693,7 +721,10 @@ function selftest(): number {
           source: 'Morning Truth Gate',
           applied: '2026-08-19',
         };
-        return checkCompanion(r, () => 'A brief with no Anthropic line at all.').length > 0;
+        return (
+          checkCompanion(r, () => 'A brief with no Anthropic line at all.')
+            .length > 0
+        );
       },
     ],
     [
@@ -727,8 +758,10 @@ function selftest(): number {
         };
         return (
           companionOf(r.file) === 'content/daily-updates/2026-08-19.md' &&
-          checkCompanion(r, () => 'growth ran hottest in the 500 to 999 band at 109 percent')
-            .length > 0
+          checkCompanion(
+            r,
+            () => 'growth ran hottest in the 500 to 999 band at 109 percent'
+          ).length > 0
         );
       },
     ],
@@ -794,9 +827,7 @@ function main(): number {
   fails.push(...checkIdIntegrity(rows).map(f => `[LEDGER]    ${f}`));
   // IMP-188: a pair no file can satisfy. Named separately so the verdict says "merge the rows",
   // not "apply the correction" — the 08-15/16/17 red said the latter and it was unactionable.
-  fails.push(
-    ...conflictingPrescriptions(rows).map(f => `[LEDGER]    ${f}`)
-  );
+  fails.push(...conflictingPrescriptions(rows).map(f => `[LEDGER]    ${f}`));
   for (const r of rows)
     fails.push(...checkRow(r, readLocal).map(f => `[LOCAL]     ${f}`));
   // IMP-199: the OTHER product. A row names one file; the day ships two reader surfaces.

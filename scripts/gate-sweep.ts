@@ -191,7 +191,9 @@ export function orphansOf(rows: SweepRow[]): SweepRow[] {
 
 // ── selftest ────────────────────────────────────────────────────────────────
 function selftest(): number {
-  const tmp = fs.mkdtempSync(path.join(process.env.TMPDIR ?? '/tmp', 'gsweep-'));
+  const tmp = fs.mkdtempSync(
+    path.join(process.env.TMPDIR ?? '/tmp', 'gsweep-')
+  );
   const S = path.join(tmp, 'scripts');
   const Y = path.join(tmp, 'system');
   fs.mkdirSync(S, { recursive: true });
@@ -258,7 +260,8 @@ function selftest(): number {
   if (fs.existsSync(path.join(REPO, 'scripts', 'fact-gate.ts'))) {
     const live = sweep(REPO);
     const liveOrphans = orphansOf(live).map(r => r.gate);
-    realSilent = (live.find(r => r.gate === 'fact-gate.ts')?.callers.length ?? 0) > 0;
+    realSilent =
+      (live.find(r => r.gate === 'fact-gate.ts')?.callers.length ?? 0) > 0;
     realFire = liveOrphans.length > 0;
     checks.push([
       'REAL REPO: fact-gate.ts is CALLED (silent on a wired gate)',
@@ -294,7 +297,9 @@ function main(): number {
   );
 
   for (const r of orphans) {
-    console.log(`  ✗ ORPHAN  scripts/${r.gate} — exists, has a CLI entry, called by NO stage`);
+    console.log(
+      `  ✗ ORPHAN  scripts/${r.gate} — exists, has a CLI entry, called by NO stage`
+    );
     if (args.includes('--run')) {
       let code = 0;
       let head = '';
@@ -305,15 +310,24 @@ function main(): number {
         );
       } catch (e: any) {
         code = e.status ?? 1;
-        head = (e.stdout ?? e.message ?? '').toString().split('\n').slice(-3).join('\n');
+        head = (e.stdout ?? e.message ?? '')
+          .toString()
+          .split('\n')
+          .slice(-3)
+          .join('\n');
       }
-      console.log(`      → --selftest exit ${code}: ${head.trim().replace(/\n/g, ' | ')}`);
+      console.log(
+        `      → --selftest exit ${code}: ${head.trim().replace(/\n/g, ' | ')}`
+      );
     }
   }
-  for (const r of retired) console.log(`  · retired  scripts/${r.gate} — ${r.retired}`);
+  for (const r of retired)
+    console.log(`  · retired  scripts/${r.gate} — ${r.retired}`);
 
   if (!orphans.length) {
-    console.log('  ✅ every CLI gate in scripts/ is invoked by at least one stage');
+    console.log(
+      '  ✅ every CLI gate in scripts/ is invoked by at least one stage'
+    );
     return 0;
   }
   console.log(

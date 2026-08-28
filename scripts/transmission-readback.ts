@@ -399,7 +399,10 @@ export function pairByLabel(
   scores: { unit: string; score: number; paired: boolean }[];
 } {
   const pool = cands.map((c, i) => ({ ...c, i, used: false }));
-  const byUnit = new Map<string, { start: number; end: number; score: number }>();
+  const byUnit = new Map<
+    string,
+    { start: number; end: number; score: number }
+  >();
   const scores: { unit: string; score: number; paired: boolean }[] = [];
   const mispaired: { unit: string; section: string; score: number }[] = [];
 
@@ -430,7 +433,8 @@ export function pairByLabel(
         pr[i]!.used = true;
         const sc = overlapScore(c.claim, md.slice(pr[i]!.start, pr[i]!.end));
         byUnit.set(c.unit, { start: pr[i]!.start, end: pr[i]!.end, score: sc });
-        if (sc < MISPAIR_FLAG) mispaired.push({ unit: c.unit, section: c.section, score: sc });
+        if (sc < MISPAIR_FLAG)
+          mispaired.push({ unit: c.unit, section: c.section, score: sc });
       });
       continue;
     }
@@ -442,7 +446,11 @@ export function pairByLabel(
     const cells: { ci: number; pi: number; s: number }[] = [];
     cl.forEach((c, ci) =>
       pr.forEach((b, pi) =>
-        cells.push({ ci, pi, s: overlapScore(c.claim, md.slice(b.start, b.end)) })
+        cells.push({
+          ci,
+          pi,
+          s: overlapScore(c.claim, md.slice(b.start, b.end)),
+        })
       )
     );
     cells.sort((a, b) => b.s - a.s);
@@ -463,7 +471,9 @@ export function pairByLabel(
     cl.forEach((c, ci) =>
       scores.push({
         unit: c.unit,
-        score: cells.filter(x => x.ci === ci).reduce((m, x) => Math.max(m, x.s), 0),
+        score: cells
+          .filter(x => x.ci === ci)
+          .reduce((m, x) => Math.max(m, x.s), 0),
         paired: tookC.has(ci),
       })
     );
@@ -475,7 +485,11 @@ export function pairByLabel(
   for (const cl of claims) {
     const hit = byUnit.get(cl.unit);
     if (!hit) {
-      claimUndrafted.push({ unit: cl.unit, section: cl.section, claim: cl.claim });
+      claimUndrafted.push({
+        unit: cl.unit,
+        section: cl.section,
+        claim: cl.claim,
+      });
       continue;
     }
     units.push({
@@ -489,8 +503,15 @@ export function pairByLabel(
   }
   const proseUnclaimed = pool
     .filter(c => !c.used)
-    .map(c => ({ section: c.section, words: md.slice(c.start, c.end).trim().split(/\s+/).length }));
-  return { units, findings: { claimUndrafted, proseUnclaimed, mispaired }, scores };
+    .map(c => ({
+      section: c.section,
+      words: md.slice(c.start, c.end).trim().split(/\s+/).length,
+    }));
+  return {
+    units,
+    findings: { claimUndrafted, proseUnclaimed, mispaired },
+    scores,
+  };
 }
 
 /** 🔴 The claims file is authoritative. This VALIDATES the prose against it and never invents units. */
@@ -515,7 +536,10 @@ export function pairByLabel(
  * no-op, which is the second direction of the selftest.
  */
 /** Clamp the final unit so it stops before any end-of-file comment run. Mutates in place. */
-export function clampTrailing(units: { start: number; end: number }[], md: string): void {
+export function clampTrailing(
+  units: { start: number; end: number }[],
+  md: string
+): void {
   if (!units.length) return;
   const cut = trailingBlockStart(md);
   const last = units[units.length - 1]!;
@@ -527,15 +551,15 @@ export function trailingBlockStart(md: string): number {
   let stripped = 0;
   for (;;) {
     let j = i;
-    while (j > 0 && /\s/.test(md[j - 1]!)) j--;      // skip whitespace before the block
+    while (j > 0 && /\s/.test(md[j - 1]!)) j--; // skip whitespace before the block
     if (j === 0) break;
-    if (!md.slice(0, j).endsWith('-->')) break;       // not a comment block: boundary found
+    if (!md.slice(0, j).endsWith('-->')) break; // not a comment block: boundary found
     const open = md.lastIndexOf('<!--', j - 3);
-    if (open < 0) break;                              // unbalanced: change nothing
+    if (open < 0) break; // unbalanced: change nothing
     i = open;
     stripped++;
   }
-  if (!stripped) return md.length;                    // clean file: untouched, to the byte
+  if (!stripped) return md.length; // clean file: untouched, to the byte
   // Having stripped at least one block, take the separating whitespace with it — otherwise the
   // last unit keeps a trailing blank line that was only ever there to separate it from the block.
   while (i > 0 && /\s/.test(md[i - 1]!)) i--;
@@ -560,9 +584,15 @@ function segment(md: string, claims: Claim[], product = ''): Unit[] {
       console.error(
         `\n❌ ZERO UNITS PAIRED — ${claims.length} claim(s), ${cands.length} prose block(s), no section label in common.`
       );
-      console.error(`   Prose labels: ${[...new Set(cands.map(c => c.section))].join(' · ')}`);
-      console.error(`   Claim labels: ${[...new Set(claims.map(c => c.section))].join(' · ')}`);
-      console.error(`   A segmenter returning zero units is a finding, never a pass.`);
+      console.error(
+        `   Prose labels: ${[...new Set(cands.map(c => c.section))].join(' · ')}`
+      );
+      console.error(
+        `   Claim labels: ${[...new Set(claims.map(c => c.section))].join(' · ')}`
+      );
+      console.error(
+        `   A segmenter returning zero units is a finding, never a pass.`
+      );
       process.exit(1);
     }
     return units;
@@ -712,14 +742,18 @@ function cmdPrepare(light: string, claimsPath: string): void {
       `🔴 RED — MISPAIR-SUSPECT. ${F.mispaired.length} unit(s) in a BALANCED section pair to prose that barely shares their words.`
     );
     for (const m of F.mispaired)
-      console.log(`   ⚠ MISPAIR-SUSPECT  ${m.unit}  [${m.section}]  content match ${m.score.toFixed(2)}`);
+      console.log(
+        `   ⚠ MISPAIR-SUSPECT  ${m.unit}  [${m.section}]  content match ${m.score.toFixed(2)}`
+      );
     console.log(
       `   A balanced count means the COUNTS match. It does NOT mean the claims correspond to the prose.`
     );
     console.log(
       `   2026-08-11 The Wild Card scored 0.06/0.00/0.00 — three claims about three different stories than the three bullets they were attached to.`
     );
-    console.log(`   NOT re-assigned. Document order is still the best guess; this is a finding for a human.`);
+    console.log(
+      `   NOT re-assigned. Document order is still the best guess; this is a finding for a human.`
+    );
   }
   if (F.claimUndrafted.length || F.proseUnclaimed.length) {
     console.log('');
@@ -736,9 +770,13 @@ function cmdPrepare(light: string, claimsPath: string): void {
     }
     const weak = SEG_SCORES.filter(x => x.paired && x.score < PAIR_WEAK);
     for (const w of weak)
-      console.log(`   ⚠ WEAK PAIR       ${w.unit}  matched at ${w.score.toFixed(2)} in an unbalanced section — paired by rank, look at it`);
+      console.log(
+        `   ⚠ WEAK PAIR       ${w.unit}  matched at ${w.score.toFixed(2)} in an unbalanced section — paired by rank, look at it`
+      );
     for (const c of F.proseUnclaimed)
-      console.log(`   ✗ PROSE-UNCLAIMED  [${c.section}]  ${c.words} words drafted with no claim row — ungradeable, there is nothing to grade it against`);
+      console.log(
+        `   ✗ PROSE-UNCLAIMED  [${c.section}]  ${c.words} words drafted with no claim row — ungradeable, there is nothing to grade it against`
+      );
     console.log(
       `   The drafted units ARE graded. This is a RED line in pipeline status, not a reason to grade nothing —`
     );
@@ -749,7 +787,9 @@ function cmdPrepare(light: string, claimsPath: string): void {
   }
   console.log(
     `✓ PREPARED ${date} — ${units.length} units validated against the claims file` +
-      (claims.length !== units.length ? `  (of ${claims.length} claim rows — see RED above)` : '')
+      (claims.length !== units.length
+        ? `  (of ${claims.length} claim rows — see RED above)`
+        : '')
   );
   for (const u of units)
     console.log(`    U${u.idx + 1}  ${u.section.padEnd(20)} ${u.id}`);
@@ -969,10 +1009,17 @@ export const TRANSMISSION_PHASE1_NIGHTS = 7;
  *  never including the night under assembly (a replay must see what that night could see). */
 export function nightsGradedBefore(product: string, date: string): number {
   if (!fs.existsSync(LEDGER)) return 0;
-  const rows = JSON.parse(fs.readFileSync(LEDGER, 'utf-8')) as Record<string, unknown>[];
+  const rows = JSON.parse(fs.readFileSync(LEDGER, 'utf-8')) as Record<
+    string,
+    unknown
+  >[];
   const prod = product || 'light';
   return new Set(
-    rows.filter(r => (r['product'] ?? 'light') === prod && String(r['date']) < date).map(r => r['date'])
+    rows
+      .filter(
+        r => (r['product'] ?? 'light') === prod && String(r['date']) < date
+      )
+      .map(r => r['date'])
   ).size;
 }
 
@@ -988,22 +1035,42 @@ export function authorizeRedrafts(opts: {
   const out = new Map<string, string>();
   const nights = nightsGradedBefore(opts.product, opts.date);
   const past = nights >= TRANSMISSION_PHASE1_NIGHTS;
-  for (const u of opts.tab.unanimous ?? []) out.set(u, 'unanimous (3/3 readers failed)');
+  for (const u of opts.tab.unanimous ?? [])
+    out.set(u, 'unanimous (3/3 readers failed)');
   for (const u of opts.tab.majority ?? []) {
-    if (past) { if (!out.has(u)) out.set(u, `majority 2-of-3 · past phase 1 (${nights} graded nights >= ${TRANSMISSION_PHASE1_NIGHTS})`); }
+    if (past) {
+      if (!out.has(u))
+        out.set(
+          u,
+          `majority 2-of-3 · past phase 1 (${nights} graded nights >= ${TRANSMISSION_PHASE1_NIGHTS})`
+        );
+    }
   }
   for (const [u, cells] of Object.entries(opts.sowhat ?? {})) {
     if (!cells || !cells.length) continue;
     const wrong = cells.filter(c => c === 'WRONG').length;
     const failed = cells.filter(c => c !== 'OK').length;
-    if (failed === cells.length) { if (!out.has(u)) out.set(u, `so_what unanimous ${cells.join('/')} (${failed}/${cells.length})`); continue; }
+    if (failed === cells.length) {
+      if (!out.has(u))
+        out.set(
+          u,
+          `so_what unanimous ${cells.join('/')} (${failed}/${cells.length})`
+        );
+      continue;
+    }
     if (ALLOW_INVERSION_RUNG && wrong >= 2 && !out.has(u))
-      out.set(u, `READER DIRECTION-INVERSION — ${wrong}/${cells.length} blind readers read the direction backwards. Actuates immediately (W2, 2026-08-28); rewrite is re-read the same night.`);
+      out.set(
+        u,
+        `READER DIRECTION-INVERSION — ${wrong}/${cells.length} blind readers read the direction backwards. Actuates immediately (W2, 2026-08-28); rewrite is re-read the same night.`
+      );
   }
   return out;
 }
 
-export interface StrictFinding { kind: string; detail: string }
+export interface StrictFinding {
+  kind: string;
+  detail: string;
+}
 
 /**
  * STRICT WHOLE-ARTIFACT VALIDATION, run AFTER the splice — always, both products.
@@ -1015,7 +1082,11 @@ export interface StrictFinding { kind: string; detail: string }
  * a reader. 2026-08-26's board records both halves of that: *"tonight's lede sat last in claims,
  * assemble mangled the artifact ... also, prepare accepted a DUPLICATE unit id."*
  */
-export function strictArtifactCheck(md: string, claims: Claim[], product: string): StrictFinding[] {
+export function strictArtifactCheck(
+  md: string,
+  claims: Claim[],
+  product: string
+): StrictFinding[] {
   const f: StrictFinding[] = [];
   const cands = product === 'full' ? candidatesFull(md) : candidates(md);
   if (cands.length !== claims.length)
@@ -1024,17 +1095,31 @@ export function strictArtifactCheck(md: string, claims: Claim[], product: string
       detail: `${cands.length} prose block(s) vs ${claims.length} claim row(s) — post-splice the two must agree exactly; the claims file DEFINES the units`,
     });
   const dupClaimIds = Object.entries(
-    claims.reduce<Record<string, number>>((a, c) => ((a[c.unit] = (a[c.unit] || 0) + 1), a), {})
+    claims.reduce<Record<string, number>>(
+      (a, c) => ((a[c.unit] = (a[c.unit] || 0) + 1), a),
+      {}
+    )
   ).filter(([, n]) => n > 1);
   if (dupClaimIds.length)
-    f.push({ kind: 'DUPLICATE-UNIT-ID', detail: `claims file carries the same unit id more than once: ${dupClaimIds.map(([k, n]) => `${k}×${n}`).join(', ')}` });
+    f.push({
+      kind: 'DUPLICATE-UNIT-ID',
+      detail: `claims file carries the same unit id more than once: ${dupClaimIds.map(([k, n]) => `${k}×${n}`).join(', ')}`,
+    });
   // Two candidates binding one claim. Section-level is the only binding the pairing has, so an
   // over-subscribed section is exactly that condition.
-  const bySec = (xs: { section: string }[]) => xs.reduce<Record<string, number>>((a, x) => ((a[x.section] = (a[x.section] || 0) + 1), a), {});
-  const pc = bySec(cands), cc = bySec(claims.map(c => ({ section: c.section })));
+  const bySec = (xs: { section: string }[]) =>
+    xs.reduce<Record<string, number>>(
+      (a, x) => ((a[x.section] = (a[x.section] || 0) + 1), a),
+      {}
+    );
+  const pc = bySec(cands),
+    cc = bySec(claims.map(c => ({ section: c.section })));
   for (const k of new Set([...Object.keys(pc), ...Object.keys(cc)]))
     if ((pc[k] || 0) > (cc[k] || 0))
-      f.push({ kind: 'OVER-BOUND-SECTION', detail: `section "${k}" has ${pc[k]} prose block(s) for ${cc[k] || 0} claim(s) — two candidates would bind one claim` });
+      f.push({
+        kind: 'OVER-BOUND-SECTION',
+        detail: `section "${k}" has ${pc[k]} prose block(s) for ${cc[k] || 0} claim(s) — two candidates would bind one claim`,
+      });
   return f;
 }
 
@@ -1060,11 +1145,13 @@ function cmdAssemble(date: string): void {
         `   (Refusing is the point: 2026-08-26 spliced two units nothing had authorized.)`
     );
   const tab = JSON.parse(fs.readFileSync(tabPath, 'utf-8'));
-  const gradesForAuth: Record<string, { sowhat?: SowhatCell[] }> = fs.existsSync(rbPath(date, 'grades.json'))
-    ? JSON.parse(fs.readFileSync(rbPath(date, 'grades.json'), 'utf-8'))
-    : {};
+  const gradesForAuth: Record<string, { sowhat?: SowhatCell[] }> =
+    fs.existsSync(rbPath(date, 'grades.json'))
+      ? JSON.parse(fs.readFileSync(rbPath(date, 'grades.json'), 'utf-8'))
+      : {};
   const sowhatCells: Record<string, SowhatCell[] | undefined> = {};
-  for (const [u, g] of Object.entries(gradesForAuth)) sowhatCells[u] = g?.sowhat;
+  for (const [u, g] of Object.entries(gradesForAuth))
+    sowhatCells[u] = g?.sowhat;
   const auth = authorizeRedrafts({ tab, sowhat: sowhatCells, product, date });
   const unauthorized = [...touched].filter(k => !auth.has(k));
   if (unauthorized.length)
@@ -1076,7 +1163,8 @@ function cmdAssemble(date: string): void {
         `   tabulation authorized only update-1 and line-7. line-4 and line-5 shipped on nobody's say-so.\n` +
         `   A redraft is authorized by a TABULATED FAILURE, never by appearing in the file.`
     );
-  for (const [k, why] of auth) if (touched.has(k)) console.log(`   AUTHORIZED ${k} ← ${why}`);
+  for (const [k, why] of auth)
+    if (touched.has(k)) console.log(`   AUTHORIZED ${k} ← ${why}`);
 
   let out = '',
     cursor = 0;
@@ -1403,7 +1491,9 @@ export function akSegment(body: string, segment?: string): string | null {
   const S = segment.toUpperCase();
   if (S !== 'AK' && S !== 'REF') return body;
   if (!isLabelled(body)) return null; // pre-v3 line: not a miss, not a hit — N/A
-  const m = body.match(new RegExp(`\\b${S}\\s*:(.*?)(?=\\|\\s*(?:AK|REF)\\s*:|$)`, 'i'));
+  const m = body.match(
+    new RegExp(`\\b${S}\\s*:(.*?)(?=\\|\\s*(?:AK|REF)\\s*:|$)`, 'i')
+  );
   return m ? m[1]! : '';
 }
 
@@ -1411,7 +1501,13 @@ export function akAudit(
   transcript: string,
   seeds: { unit: string; term: string; match: string; segment?: string }[],
   unitIds: string[]
-): { seed: string; unit: string; found: boolean; applicable: boolean; segment?: string }[] {
+): {
+  seed: string;
+  unit: string;
+  found: boolean;
+  applicable: boolean;
+  segment?: string;
+}[] {
   // v2 lines:  U<n>: <count> | <term> (CARRYABLE); …
   // v3 lines:  U<n>: <count> | AK: <term> (CARRYABLE); … | REF: "<word>" → <guess>; …
   const byIdx: Record<number, string> = {};
@@ -1480,7 +1576,10 @@ function cmdAkCheck(date: string): number {
   for (const r of res) {
     const seg = r.segment ? ` [${r.segment}]` : '';
     if (!r.applicable) console.log(`  ·  N/A   ${r.unit}${seg}  ${r.seed}`);
-    else console.log(`  ${r.found ? '✓     ' : '✗ MISS'}  ${r.unit}${seg}  ${r.seed}`);
+    else
+      console.log(
+        `  ${r.found ? '✓     ' : '✗ MISS'}  ${r.unit}${seg}  ${r.seed}`
+      );
   }
   if (na.length)
     console.log(
@@ -1515,9 +1614,24 @@ function cmdAkCheck(date: string): number {
  *  BRIEF. THE BRIEF ALWAYS SHIPS. Nothing here may be wired into a publish gate.
  */
 const PANEL_LEGS = [
-  { key: 'readers', files: ['readback-1.txt', 'readback-2.txt', 'readback-3.txt'], label: 'readers ', advisory: false },
-  { key: 'hurried', files: ['readback-hurried.txt'], label: 'hurried ', advisory: true },
-  { key: 'ak', files: ['readback-assumed-knowledge.txt'], label: 'ak (freshman)', advisory: true },
+  {
+    key: 'readers',
+    files: ['readback-1.txt', 'readback-2.txt', 'readback-3.txt'],
+    label: 'readers ',
+    advisory: false,
+  },
+  {
+    key: 'hurried',
+    files: ['readback-hurried.txt'],
+    label: 'hurried ',
+    advisory: true,
+  },
+  {
+    key: 'ak',
+    files: ['readback-assumed-knowledge.txt'],
+    label: 'ak (freshman)',
+    advisory: true,
+  },
 ] as const;
 
 /** Counts DISTINCT answered units in any panel transcript.
@@ -1544,9 +1658,20 @@ export function countUnitLines(text: string): number {
  *  different hat. A rise after a template change is a template effect, not a writing effect:
  *  windows either side of a hash move are different measurements and never pool. */
 export function flagStats(transcript: string): {
-  units: number; total: number; blocking: number; minor: number; unranked: number; preV3: number; perUnit: number;
+  units: number;
+  total: number;
+  blocking: number;
+  minor: number;
+  unranked: number;
+  preV3: number;
+  perUnit: number;
 } {
-  let units = 0, total = 0, blocking = 0, minor = 0, unranked = 0, preV3 = 0;
+  let units = 0,
+    total = 0,
+    blocking = 0,
+    minor = 0,
+    unranked = 0,
+    preV3 = 0;
   for (const line of transcript.split('\n')) {
     const m = line.match(/^\s*U(\d+)\s*:\s*(.*)$/);
     if (!m) continue;
@@ -1567,7 +1692,15 @@ export function flagStats(transcript: string): {
       }
     }
   }
-  return { units, total, blocking, minor, unranked, preV3, perUnit: units ? total / units : 0 };
+  return {
+    units,
+    total,
+    blocking,
+    minor,
+    unranked,
+    preV3,
+    perUnit: units ? total / units : 0,
+  };
 }
 
 /** One line, and it REFUSES to state a rate it cannot compute.
@@ -1580,7 +1713,9 @@ export function flagLine(f: ReturnType<typeof flagStats>): string {
     return `flags        ·  NOT COMPUTABLE — ${f.preV3}/${f.units} unit(s) are pre-v3 (no AK:/REF: passes to split or rank). NOT zero flags; unmeasured flags.`;
   return (
     `flags        ·  ${f.perUnit.toFixed(1)}/unit  (${f.blocking} blocking, ${f.minor} minor` +
-    (f.unranked ? `, ${f.unranked} UNRANKED — the reader ignored the rank` : '') +
+    (f.unranked
+      ? `, ${f.unranked} UNRANKED — the reader ignored the rank`
+      : '') +
     `) over ${f.units} unit(s)   ↓ is the win; 0 is not the target`
   );
 }
@@ -1593,17 +1728,35 @@ export type LegRow = {
   note: string;
 };
 
-export function legState(counts: number[], expected: number): { state: LegRow['state']; note: string } {
+export function legState(
+  counts: number[],
+  expected: number
+): { state: LegRow['state']; note: string } {
   if (counts.every(c => c < 0))
-    return { state: 'RED-LEG', note: 'transcript absent — the leg did not run' };
+    return {
+      state: 'RED-LEG',
+      note: 'transcript absent — the leg did not run',
+    };
   if (counts.some(c => c < 0))
-    return { state: 'RED-LEG', note: `${counts.filter(c => c < 0).length} of ${counts.length} transcript(s) absent` };
+    return {
+      state: 'RED-LEG',
+      note: `${counts.filter(c => c < 0).length} of ${counts.length} transcript(s) absent`,
+    };
   if (counts.some(c => c === 0))
-    return { state: 'RED-LEG', note: 'transcript present but zero units parsed — the leg produced nothing readable' };
+    return {
+      state: 'RED-LEG',
+      note: 'transcript present but zero units parsed — the leg produced nothing readable',
+    };
   if (counts.some(c => c > expected))
-    return { state: 'RED-LEG', note: `answered MORE units than exist (${Math.max(...counts)} > ${expected}) — parse or isolation failure` };
+    return {
+      state: 'RED-LEG',
+      note: `answered MORE units than exist (${Math.max(...counts)} > ${expected}) — parse or isolation failure`,
+    };
   if (counts.some(c => c < expected))
-    return { state: 'SHORT', note: `${Math.min(...counts)}/${expected} units answered — a partial pass is a hole, not a pass` };
+    return {
+      state: 'SHORT',
+      note: `${Math.min(...counts)}/${expected} units answered — a partial pass is a hole, not a pass`,
+    };
   return { state: 'GREEN', note: '' };
 }
 
@@ -1627,40 +1780,66 @@ export function surfaceRoster(
 /** Prints the roster for both surfaces of one date. Returns the RED-LEG count. */
 function printPanel(date: string): number {
   let red = 0;
-  console.log(`PANEL ${date} — every leg prints, run or not. Absence is a RED-LEG, never a blank.`);
-  for (const [suffix, surface] of [['', 'light'], ['-full', 'full ']] as const) {
+  console.log(
+    `PANEL ${date} — every leg prints, run or not. Absence is a RED-LEG, never a blank.`
+  );
+  for (const [suffix, surface] of [
+    ['', 'light'],
+    ['-full', 'full '],
+  ] as const) {
     const dir = `${RB_DIR}/${date}${suffix}`;
     const metaPath = `${dir}/meta.json`;
     if (!fs.existsSync(metaPath)) {
       if (surface.trim() === 'light') {
         red++;
-        console.log(`  ${surface}  🔴 RED-LEG — NOT PREPARED. The light loop is standing; a night with no ${dir}/meta.json is a night the loop did not run at all.`);
+        console.log(
+          `  ${surface}  🔴 RED-LEG — NOT PREPARED. The light loop is standing; a night with no ${dir}/meta.json is a night the loop did not run at all.`
+        );
       } else {
-        console.log(`  ${surface}  ·  NOT PREPARED — full-brief loop not activated for this date (editor install gates it). Printed, not hidden: this is the state, and it turns RED the moment ${dir} exists.`);
+        console.log(
+          `  ${surface}  ·  NOT PREPARED — full-brief loop not activated for this date (editor install gates it). Printed, not hidden: this is the state, and it turns RED the moment ${dir} exists.`
+        );
       }
       continue;
     }
     const meta: Meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
     const r = surfaceRoster(true, meta.units.length, f =>
-      fs.existsSync(`${dir}/${f}`) ? fs.readFileSync(`${dir}/${f}`, 'utf-8') : null
+      fs.existsSync(`${dir}/${f}`)
+        ? fs.readFileSync(`${dir}/${f}`, 'utf-8')
+        : null
     );
     const F = meta.findings;
-    const undraft = (F?.claimUndrafted?.length ?? 0) + (F?.proseUnclaimed?.length ?? 0);
+    const undraft =
+      (F?.claimUndrafted?.length ?? 0) + (F?.proseUnclaimed?.length ?? 0);
     console.log(
       `  ${surface}  ${dir}  ·  ${r.units} units prepared` +
-        (meta.claimsTotal && meta.claimsTotal !== r.units ? `  of ${meta.claimsTotal} claim rows` : '')
+        (meta.claimsTotal && meta.claimsTotal !== r.units
+          ? `  of ${meta.claimsTotal} claim rows`
+          : '')
     );
     if (undraft) {
       red++;
       for (const c of F!.claimUndrafted)
-        console.log(`      🔴 CLAIM-UNDRAFTED  ${c.unit}  [${c.section}]  — a claim row written and never drafted`);
+        console.log(
+          `      🔴 CLAIM-UNDRAFTED  ${c.unit}  [${c.section}]  — a claim row written and never drafted`
+        );
       for (const c of F!.proseUnclaimed)
-        console.log(`      🔴 PROSE-UNCLAIMED  [${c.section}] ${c.words}w  — drafted with no claim row`);
+        console.log(
+          `      🔴 PROSE-UNCLAIMED  [${c.section}] ${c.words}w  — drafted with no claim row`
+        );
     }
     for (const L of r.legs) {
       const shown = L.counts.map(c => (c < 0 ? '—' : String(c)));
-      const tally = L.counts.length > 1 ? `${L.counts.length}×[${shown.join(',')}]` : shown[0]!;
-      const icon = L.state === 'GREEN' ? '✓' : L.state === 'SHORT' ? '🟡 SHORT ' : '🔴 RED-LEG ';
+      const tally =
+        L.counts.length > 1
+          ? `${L.counts.length}×[${shown.join(',')}]`
+          : shown[0]!;
+      const icon =
+        L.state === 'GREEN'
+          ? '✓'
+          : L.state === 'SHORT'
+            ? '🟡 SHORT '
+            : '🔴 RED-LEG ';
       if (L.state === 'RED-LEG') red++;
       const leg = PANEL_LEGS.find(x => x.key === L.leg)!;
       console.log(
@@ -1678,23 +1857,37 @@ function printPanel(date: string): number {
     const akPath = rbPath(date, 'readback-assumed-knowledge.txt');
     if (!seeds.length) {
       if (fs.existsSync(akPath))
-        console.log('  ' + flagLine(flagStats(fs.readFileSync(akPath, 'utf-8'))));
-      console.log(`  calibration  ·  0 seeds registered for ${date} — nothing asserted, which is an absence, not a pass`);
+        console.log(
+          '  ' + flagLine(flagStats(fs.readFileSync(akPath, 'utf-8')))
+        );
+      console.log(
+        `  calibration  ·  0 seeds registered for ${date} — nothing asserted, which is an absence, not a pass`
+      );
     } else {
       const tPath = rbPath(date, 'readback-assumed-knowledge.txt');
       if (!fs.existsSync(tPath)) {
         red++;
-        console.log(`  calibration  🔴 RED-LEG — ${seeds.length} seed(s) registered and no freshman transcript to audit`);
+        console.log(
+          `  calibration  🔴 RED-LEG — ${seeds.length} seed(s) registered and no freshman transcript to audit`
+        );
       } else {
-        const meta: Meta = JSON.parse(fs.readFileSync(rbPath(date, 'meta.json'), 'utf-8'));
+        const meta: Meta = JSON.parse(
+          fs.readFileSync(rbPath(date, 'meta.json'), 'utf-8')
+        );
         const txt = fs.readFileSync(tPath, 'utf-8');
         console.log('  ' + flagLine(flagStats(txt)));
-        const res = akAudit(txt, seeds, meta.units.map(u => u.id));
+        const res = akAudit(
+          txt,
+          seeds,
+          meta.units.map(u => u.id)
+        );
         const app = res.filter(r => r.applicable);
         const hit = app.filter(r => r.found).length;
         console.log(
           `  calibration  ·  ${hit}/${app.length} seed(s) flagged` +
-            (res.length - app.length ? `  ·  ${res.length - app.length} N/A (transcript predates the pass asserted)` : '') +
+            (res.length - app.length
+              ? `  ·  ${res.length - app.length} N/A (transcript predates the pass asserted)`
+              : '') +
             `   → akcheck ${date} for the breakdown`
         );
       }
@@ -1747,7 +1940,9 @@ export const SOWHAT_LADDER_NIGHTS = 7;
 export function parseSowhatGrades(text: string): Record<number, SowhatGrade[]> {
   const out: Record<number, SowhatGrade[]> = {};
   for (const line of text.split('\n')) {
-    const m = line.match(/^\s*U(\d+)\s*(?:SO_WHAT)?\s*:\s*([A-Za-z]+)\s*\/\s*([A-Za-z]+)\s*\/\s*([A-Za-z]+)/i);
+    const m = line.match(
+      /^\s*U(\d+)\s*(?:SO_WHAT)?\s*:\s*([A-Za-z]+)\s*\/\s*([A-Za-z]+)\s*\/\s*([A-Za-z]+)/i
+    );
     if (!m) continue;
     const g = [m[2]!, m[3]!, m[4]!].map(x => x.toUpperCase()) as SowhatGrade[];
     if (g.some(x => x !== 'OK' && x !== 'MISSING' && x !== 'WRONG')) continue;
@@ -1760,11 +1955,15 @@ export function parseSowhatGrades(text: string): Record<number, SowhatGrade[]> {
  *  🔴 A three-way disagreement (OK/MISSING/WRONG) has no majority. It resolves to the WORST grade
  *  present, because the alternative is resolving a unit nobody agreed on toward OK, and this leg
  *  spent a full day being audited for exactly that direction of error. It is counted as a split. */
-export function ensembleVerdict(three: SowhatGrade[][]): { verdict: SowhatGrade; split: boolean } {
+export function ensembleVerdict(three: SowhatGrade[][]): {
+  verdict: SowhatGrade;
+  split: boolean;
+} {
   const c: Record<string, number> = {};
   for (const g of three) c[g[0]!] = (c[g[0]!] ?? 0) + 1;
   const top = Object.entries(c).sort((a, b) => b[1] - a[1])[0]!;
-  if (top[1] >= 2) return { verdict: top[0] as SowhatGrade, split: top[1] === 2 };
+  if (top[1] >= 2)
+    return { verdict: top[0] as SowhatGrade, split: top[1] === 2 };
   const worst: SowhatGrade = three.some(g => g[0] === 'WRONG')
     ? 'WRONG'
     : three.some(g => g[0] === 'MISSING')
@@ -1799,7 +1998,11 @@ export function sowhatActuation(
   const wrong = verdicts.filter(v => v === 'WRONG').length;
   const failed = verdicts.filter(v => v === 'WRONG' || v === 'MISSING').length;
   const n = verdicts.length;
-  if (n === 0) return { action: 'HOLD', reason: 'NOT GRADED — no verdicts. Not a pass; unmeasured.' };
+  if (n === 0)
+    return {
+      action: 'HOLD',
+      reason: 'NOT GRADED — no verdicts. Not a pass; unmeasured.',
+    };
   if (failed === n)
     return {
       action: wrong >= 2 ? 'REDRAFT-INVERSION' : 'REDRAFT',
@@ -1807,7 +2010,8 @@ export function sowhatActuation(
     };
   return {
     action: 'HOLD',
-    reason: `${failed}/${n} failed — a split LOGS and never actuates (item 6a, 2026-08-28). ${wrong >= 2 ? `Note ${wrong} WRONG in a split: recorded, not acted on — the inversion rung was revoked with the rest.` : ''}`.trim(),
+    reason:
+      `${failed}/${n} failed — a split LOGS and never actuates (item 6a, 2026-08-28). ${wrong >= 2 ? `Note ${wrong} WRONG in a split: recorded, not acted on — the inversion rung was revoked with the rest.` : ''}`.trim(),
   };
 }
 
@@ -1830,7 +2034,10 @@ export function sowhatCycleAction(
       action: 'RESIDUAL',
       reason: `still failing after ${cyclesDone} cycle(s) — SHIPS AS-IS and leads tomorrow's summary. The cap is ${SOWHAT_MAX_CYCLES}: landing is the bar, not perfection, and a loop that keeps rewriting is optimising against its own graders.`,
     };
-  return { action: base.action, reason: `${base.reason} · cycle ${cyclesDone + 1} of ${SOWHAT_MAX_CYCLES}, re-read tonight by fresh readers on BOTH legs` };
+  return {
+    action: base.action,
+    reason: `${base.reason} · cycle ${cyclesDone + 1} of ${SOWHAT_MAX_CYCLES}, re-read tonight by fresh readers on BOTH legs`,
+  };
 }
 
 /**
@@ -1842,41 +2049,78 @@ export function sowhatCycleAction(
  * owner's signature — this function never promotes, it only reports eligibility.
  * DEMOTION to log-only is AUTOMATIC below 80%, and needs nobody's signature.
  */
-export const SOWHAT_PROMOTE_PCT = 85, SOWHAT_PROMOTE_N = 15, SOWHAT_DEMOTE_PCT = 80;
+export const SOWHAT_PROMOTE_PCT = 85,
+  SOWHAT_PROMOTE_N = 15,
+  SOWHAT_DEMOTE_PCT = 80;
 
 export function sowhatAgreement(
   rows: { owner_mark?: unknown; sowhat_grades?: unknown }[]
-): { n: number; agree: number; pct: number | null; verdict: 'PROMOTE-ELIGIBLE' | 'HOLD' | 'DEMOTE' | 'UNMEASURED'; line: string } {
-  const marked = rows.filter(r => typeof r.owner_mark === 'string' && (r.owner_mark as string).trim());
-  let n = 0, agree = 0;
+): {
+  n: number;
+  agree: number;
+  pct: number | null;
+  verdict: 'PROMOTE-ELIGIBLE' | 'HOLD' | 'DEMOTE' | 'UNMEASURED';
+  line: string;
+} {
+  const marked = rows.filter(
+    r => typeof r.owner_mark === 'string' && (r.owner_mark as string).trim()
+  );
+  let n = 0,
+    agree = 0;
   for (const r of marked) {
-    const g = Array.isArray(r.sowhat_grades) ? (r.sowhat_grades as string[]) : [];
+    const g = Array.isArray(r.sowhat_grades)
+      ? (r.sowhat_grades as string[])
+      : [];
     if (!g.length) continue;
     n++;
     const ensembleOk = g.filter(x => x === 'OK').length > g.length / 2;
-    const ownerOk = /\b(ok|landed|clear|got it|yes)\b/i.test(String(r.owner_mark));
+    const ownerOk = /\b(ok|landed|clear|got it|yes)\b/i.test(
+      String(r.owner_mark)
+    );
     if (ensembleOk === ownerOk) agree++;
   }
   if (n === 0)
-    return { n: 0, agree: 0, pct: null, verdict: 'UNMEASURED', line: 'so_what calibration — n=0 marked units. NOT COMPUTABLE: no agreement rate exists yet. This is a valid first receipt and is NOT 100%.' };
+    return {
+      n: 0,
+      agree: 0,
+      pct: null,
+      verdict: 'UNMEASURED',
+      line: 'so_what calibration — n=0 marked units. NOT COMPUTABLE: no agreement rate exists yet. This is a valid first receipt and is NOT 100%.',
+    };
   const pct = Math.round((100 * agree) / n);
-  const verdict = pct < SOWHAT_DEMOTE_PCT ? 'DEMOTE' : pct >= SOWHAT_PROMOTE_PCT && n >= SOWHAT_PROMOTE_N ? 'PROMOTE-ELIGIBLE' : 'HOLD';
+  const verdict =
+    pct < SOWHAT_DEMOTE_PCT
+      ? 'DEMOTE'
+      : pct >= SOWHAT_PROMOTE_PCT && n >= SOWHAT_PROMOTE_N
+        ? 'PROMOTE-ELIGIBLE'
+        : 'HOLD';
   const tail =
     verdict === 'DEMOTE'
       ? `🔴 AUTOMATIC DEMOTION to log-only — below ${SOWHAT_DEMOTE_PCT}%. Needs nobody's signature.`
       : verdict === 'PROMOTE-ELIGIBLE'
         ? `ELIGIBLE for promotion (>=${SOWHAT_PROMOTE_PCT}% on >=${SOWHAT_PROMOTE_N} marks) — REQUIRES THE OWNER'S SIGNATURE. This line never promotes anything.`
         : `HOLD — needs >=${SOWHAT_PROMOTE_PCT}% on >=${SOWHAT_PROMOTE_N} marks to be eligible.`;
-  return { n, agree, pct, verdict, line: `so_what calibration — ensemble agrees with the owner on ${agree}/${n} marked unit(s) = ${pct}%. ${tail}` };
+  return {
+    n,
+    agree,
+    pct,
+    verdict,
+    line: `so_what calibration — ensemble agrees with the owner on ${agree}/${n} marked unit(s) = ${pct}%. ${tail}`,
+  };
 }
 
 /** (d) THRASH GUARD — >4 units rewritten a night for 3 consecutive nights is RED. */
-export const THRASH_UNITS = 4, THRASH_NIGHTS = 3;
+export const THRASH_UNITS = 4,
+  THRASH_NIGHTS = 3;
 
-export function sowhatThrash(perNight: { date: string; rewrites: number }[]): { red: boolean; line: string } {
+export function sowhatThrash(perNight: { date: string; rewrites: number }[]): {
+  red: boolean;
+  line: string;
+} {
   const sorted = [...perNight].sort((a, b) => a.date.localeCompare(b.date));
   const tail = sorted.slice(-THRASH_NIGHTS);
-  const red = tail.length === THRASH_NIGHTS && tail.every(x => x.rewrites > THRASH_UNITS);
+  const red =
+    tail.length === THRASH_NIGHTS && tail.every(x => x.rewrites > THRASH_UNITS);
   return {
     red,
     line: red
@@ -1889,11 +2133,16 @@ export function sowhatThrash(perNight: { date: string; rewrites: number }[]): { 
  *  from the calendar: a night the leg did not grade is not a night it learned anything. */
 function sowhatNightsGraded(product: string): number {
   if (!fs.existsSync(LEDGER)) return 0;
-  const rows = JSON.parse(fs.readFileSync(LEDGER, 'utf-8')) as Record<string, unknown>[];
+  const rows = JSON.parse(fs.readFileSync(LEDGER, 'utf-8')) as Record<
+    string,
+    unknown
+  >[];
   const prod = product || 'light';
   return new Set(
     rows
-      .filter(r => r['sowhat_basis'] === 'ens/3' && (r['product'] ?? 'light') === prod)
+      .filter(
+        r => r['sowhat_basis'] === 'ens/3' && (r['product'] ?? 'light') === prod
+      )
       .map(r => r['date'])
   ).size;
 }
@@ -1901,10 +2150,14 @@ function sowhatNightsGraded(product: string): number {
 function cmdSowhat(date: string): number {
   const product = PRODUCT_SUFFIX.replace('-', '') || 'light';
   const files = [1, 2, 3].map(n => rbPath(date, `sowhat-grader-${n}.txt`));
-  console.log(`SO_WHAT ENSEMBLE ${date} (${product}) — 3 graders, majority per reader`);
+  console.log(
+    `SO_WHAT ENSEMBLE ${date} (${product}) — 3 graders, majority per reader`
+  );
 
   const present = files.map(f => fs.existsSync(f));
-  files.forEach((f, i) => console.log(`  grader ${i + 1}  ${present[i] ? '✓' : '🔴 ABSENT'}  ${f}`));
+  files.forEach((f, i) =>
+    console.log(`  grader ${i + 1}  ${present[i] ? '✓' : '🔴 ABSENT'}  ${f}`)
+  );
   if (present.some(x => !x)) {
     console.log(
       `  🔴 RED-LEG — ${present.filter(x => !x).length} of 3 grader transcripts missing. An ensemble of fewer than three is not an ensemble, and a partial tally is NOT a lower number — it is an unmeasured one.`
@@ -1913,19 +2166,35 @@ function cmdSowhat(date: string): number {
   }
 
   const parsed = files.map(f => parseSowhatGrades(fs.readFileSync(f, 'utf-8')));
-  const meta: Meta = JSON.parse(fs.readFileSync(rbPath(date, 'meta.json'), 'utf-8'));
+  const meta: Meta = JSON.parse(
+    fs.readFileSync(rbPath(date, 'meta.json'), 'utf-8')
+  );
   const idx = meta.units.map(u => u.idx + 1);
-  const short = parsed.map((p, i) => ({ i, missing: idx.filter(n => !p[n]) })).filter(x => x.missing.length);
+  const short = parsed
+    .map((p, i) => ({ i, missing: idx.filter(n => !p[n]) }))
+    .filter(x => x.missing.length);
   if (short.length) {
     for (const s of short)
-      console.log(`  🔴 RED-LEG — grader ${s.i + 1} did not grade ${s.missing.length} unit(s): ${s.missing.map(n => 'U' + n).join(', ')}`);
-    console.log(`  A short grader is an unmeasured brief, not a worse one. Re-run that grader.`);
+      console.log(
+        `  🔴 RED-LEG — grader ${s.i + 1} did not grade ${s.missing.length} unit(s): ${s.missing.map(n => 'U' + n).join(', ')}`
+      );
+    console.log(
+      `  A short grader is an unmeasured brief, not a worse one. Re-run that grader.`
+    );
     return 1;
   }
 
   const nights = sowhatNightsGraded(product);
-  let ok = 0, splits = 0, total = 0;
-  const acts: { unit: string; n: number; v: SowhatGrade[]; a: SowhatAction; why: string }[] = [];
+  let ok = 0,
+    splits = 0,
+    total = 0;
+  const acts: {
+    unit: string;
+    n: number;
+    v: SowhatGrade[];
+    a: SowhatAction;
+    why: string;
+  }[] = [];
   for (const u of meta.units) {
     const n = u.idx + 1;
     const verdicts: SowhatGrade[] = [];
@@ -1937,7 +2206,8 @@ function cmdSowhat(date: string): number {
       total++;
     }
     const { action, reason } = sowhatActuation(verdicts, nights);
-    if (action !== 'HOLD') acts.push({ unit: u.id, n, v: verdicts, a: action, why: reason });
+    if (action !== 'HOLD')
+      acts.push({ unit: u.id, n, v: verdicts, a: action, why: reason });
   }
 
   console.log(
@@ -1946,13 +2216,18 @@ function cmdSowhat(date: string): number {
   console.log(
     `  🔴 NOT COMPARABLE to any pre-reset number. The retired single-pass path logged 90.7% on 2026-08-19 and 90.3% all-history; both are artifacts of a path that no longer exists.`
   );
-  console.log(`  2-1 splits ${splits}/${total} = ${((100 * splits) / total).toFixed(0)}%  — the leg's own noise reading`);
+  console.log(
+    `  2-1 splits ${splits}/${total} = ${((100 * splits) / total).toFixed(0)}%  — the leg's own noise reading`
+  );
   console.log(
     `  ── ACTUATION · ladder night ${nights + 1}${nights < SOWHAT_LADDER_NIGHTS ? ` of ${SOWHAT_LADDER_NIGHTS} (unanimous-only)` : ' (past the window: majority)'} · WRONG at 2-of-3 immediate ──`
   );
-  if (!acts.length) console.log(`  ✓ no unit meets the bar tonight. Nothing redrafts.`);
+  if (!acts.length)
+    console.log(`  ✓ no unit meets the bar tonight. Nothing redrafts.`);
   for (const a of acts)
-    console.log(`  🔴 ${a.a.padEnd(18)} ${a.unit.padEnd(20)} U${a.n}  ${a.v.join('/')}\n        ${a.why}`);
+    console.log(
+      `  🔴 ${a.a.padEnd(18)} ${a.unit.padEnd(20)} U${a.n}  ${a.v.join('/')}\n        ${a.why}`
+    );
   if (acts.length) {
     console.log(
       `  → ${acts.length} unit(s) to redraft. Rewrite the DELIVERING SENTENCE so the actionable point lands (carried-clause rule). ONE reader re-checks.`
@@ -2093,17 +2368,26 @@ function selftest(): number {
     const RBROOT = RB_DIR;
     const readNight = (d: string) => {
       const dir = path.join(RBROOT, d);
-      const rp = path.join(dir, 'redrafts.json'), tp = path.join(dir, 'tabulation.json');
+      const rp = path.join(dir, 'redrafts.json'),
+        tp = path.join(dir, 'tabulation.json');
       if (!fs.existsSync(rp) || !fs.existsSync(tp)) return null;
       const keys = Object.keys(JSON.parse(fs.readFileSync(rp, 'utf-8')));
       const tab = JSON.parse(fs.readFileSync(tp, 'utf-8'));
       const gp = path.join(dir, 'grades.json');
-      const g = fs.existsSync(gp) ? JSON.parse(fs.readFileSync(gp, 'utf-8')) : {};
+      const g = fs.existsSync(gp)
+        ? JSON.parse(fs.readFileSync(gp, 'utf-8'))
+        : {};
       const sw: Record<string, SowhatCell[] | undefined> = {};
-      for (const [u, v] of Object.entries<{ sowhat?: SowhatCell[] }>(g)) sw[u] = v?.sowhat;
+      for (const [u, v] of Object.entries<{ sowhat?: SowhatCell[] }>(g))
+        sw[u] = v?.sowhat;
       const m = d.match(/^(\d{4}-\d{2}-\d{2})(?:-(\w+))?$/);
       if (!m) return null;
-      const auth = authorizeRedrafts({ tab, sowhat: sw, product: m[2] ?? '', date: m[1]! });
+      const auth = authorizeRedrafts({
+        tab,
+        sowhat: sw,
+        product: m[2] ?? '',
+        date: m[1]!,
+      });
       return { keys, auth, unauth: keys.filter(k => !auth.has(k)) };
     };
 
@@ -2111,7 +2395,10 @@ function selftest(): number {
     const n26 = readNight('2026-08-26');
     t(
       'ITEM1 · 2026-08-26 FIRES — line-4 and line-5 were spliced with nothing authorizing them',
-      !!n26 && n26.unauth.length === 2 && n26.unauth.includes('line-4') && n26.unauth.includes('line-5')
+      !!n26 &&
+        n26.unauth.length === 2 &&
+        n26.unauth.includes('line-4') &&
+        n26.unauth.includes('line-5')
     );
     t(
       'ITEM1 · and the two that WERE authorized are still authorized — this refuses unauthorized splices, it does not refuse redrafting',
@@ -2126,11 +2413,24 @@ function selftest(): number {
     const n20 = readNight('2026-08-20');
     t(
       'ITEM1 · 2026-08-20 FIRES TOO — two units graded TRANSMITTED 3/3 and so_what OK 3/3 were rewritten; the one flagged unit was not',
-      !!n20 && n20.unauth.length === 2 && n20.unauth.includes('line-2') && n20.unauth.includes('line-7')
+      !!n20 &&
+        n20.unauth.length === 2 &&
+        n20.unauth.includes('line-2') &&
+        n20.unauth.includes('line-7')
     );
 
     // MUST STAY SILENT — every other night that redrafted anything.
-    const clean = ['2026-08-08', '2026-08-14', '2026-08-15', '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-21', '2026-08-25', '2026-08-27']
+    const clean = [
+      '2026-08-08',
+      '2026-08-14',
+      '2026-08-15',
+      '2026-08-17',
+      '2026-08-18',
+      '2026-08-19',
+      '2026-08-21',
+      '2026-08-25',
+      '2026-08-27',
+    ]
       .map(d => ({ d, r: readNight(d) }))
       .filter(x => x.r);
     t(
@@ -2141,33 +2441,69 @@ function selftest(): number {
     // The phase-1 rung is REAL, counted from the ledger and never the calendar.
     t(
       'ITEM1 · majority authorizes only past phase 1 — same tabulation, phase-1 night refuses it',
-      authorizeRedrafts({ tab: { unanimous: [], majority: ['x'] }, product: 'nonexistent-product', date: '2026-08-26' }).size === 0 &&
-        authorizeRedrafts({ tab: { unanimous: [], majority: ['x'] }, product: '', date: '2026-08-26' }).has('x')
+      authorizeRedrafts({
+        tab: { unanimous: [], majority: ['x'] },
+        product: 'nonexistent-product',
+        date: '2026-08-26',
+      }).size === 0 &&
+        authorizeRedrafts({
+          tab: { unanimous: [], majority: ['x'] },
+          product: '',
+          date: '2026-08-26',
+        }).has('x')
     );
     t(
       'ITEM1 · unanimous authorizes on ANY night, phase or no phase',
-      authorizeRedrafts({ tab: { unanimous: ['x'], majority: [] }, product: 'nonexistent-product', date: '2026-08-26' }).has('x')
+      authorizeRedrafts({
+        tab: { unanimous: ['x'], majority: [] },
+        product: 'nonexistent-product',
+        date: '2026-08-26',
+      }).has('x')
     );
     t(
       'ITEM1 · so_what unanimous MISSING authorizes (work-order item 6a)',
-      authorizeRedrafts({ tab: {}, sowhat: { x: ['MISSING', 'MISSING', 'MISSING'] }, product: 'nonexistent-product', date: '2026-08-26' }).has('x')
+      authorizeRedrafts({
+        tab: {},
+        sowhat: { x: ['MISSING', 'MISSING', 'MISSING'] },
+        product: 'nonexistent-product',
+        date: '2026-08-26',
+      }).has('x')
     );
     t(
       'ITEM1 · a so_what 2-1 split that is NOT an inversion never authorizes',
-      !authorizeRedrafts({ tab: {}, sowhat: { x: ['MISSING', 'MISSING', 'OK'] }, product: 'nonexistent-product', date: '2026-08-26' }).has('x')
+      !authorizeRedrafts({
+        tab: {},
+        sowhat: { x: ['MISSING', 'MISSING', 'OK'] },
+        product: 'nonexistent-product',
+        date: '2026-08-26',
+      }).has('x')
     );
     t(
       'ITEM1 · a clean so_what authorizes nothing — N/A state',
-      authorizeRedrafts({ tab: {}, sowhat: { x: ['OK', 'OK', 'OK'] }, product: 'nonexistent-product', date: '2026-08-26' }).size === 0
+      authorizeRedrafts({
+        tab: {},
+        sowhat: { x: ['OK', 'OK', 'OK'] },
+        product: 'nonexistent-product',
+        date: '2026-08-26',
+      }).size === 0
     );
     t(
       'ITEM1 · an EMPTY tabulation authorizes NOTHING — the permissive direction is the one that shipped',
-      authorizeRedrafts({ tab: { unanimous: [], majority: [] }, product: '', date: '2026-08-26' }).size === 0
+      authorizeRedrafts({
+        tab: { unanimous: [], majority: [] },
+        product: '',
+        date: '2026-08-26',
+      }).size === 0
     );
 
     // ── LEG (b): STRICT POST-SPLICE VALIDATION ────────────────────────────────────────────────
-    const claims26: Claim[] = JSON.parse(fs.readFileSync(path.join(RBROOT, '2026-08-26', 'claims.json'), 'utf-8'));
-    const asm26 = fs.readFileSync(path.join(RBROOT, '2026-08-26', 'assembled.md'), 'utf-8');
+    const claims26: Claim[] = JSON.parse(
+      fs.readFileSync(path.join(RBROOT, '2026-08-26', 'claims.json'), 'utf-8')
+    );
+    const asm26 = fs.readFileSync(
+      path.join(RBROOT, '2026-08-26', 'assembled.md'),
+      'utf-8'
+    );
     t(
       'ITEM1b · the strict check is SILENT on a well-formed assembled artifact (2026-08-26 after the claims renumbering that unblocked it)',
       strictArtifactCheck(asm26, claims26, '').length === 0
@@ -2175,21 +2511,30 @@ function selftest(): number {
     const dupClaims = [...claims26, { ...claims26[0]! }] as Claim[];
     t(
       'ITEM1b · DUPLICATE-UNIT-ID fires — the exact condition the 08-26 board recorded ("prepare accepted a DUPLICATE unit id")',
-      strictArtifactCheck(asm26, dupClaims, '').some(x => x.kind === 'DUPLICATE-UNIT-ID')
+      strictArtifactCheck(asm26, dupClaims, '').some(
+        x => x.kind === 'DUPLICATE-UNIT-ID'
+      )
     );
     t(
       'ITEM1b · COUNT-MISMATCH fires when the splice leaves a prose block bound to no claim',
-      strictArtifactCheck(asm26, claims26.slice(0, -1), '').some(x => x.kind === 'COUNT-MISMATCH')
+      strictArtifactCheck(asm26, claims26.slice(0, -1), '').some(
+        x => x.kind === 'COUNT-MISMATCH'
+      )
     );
     t(
       'ITEM1b · OVER-BOUND-SECTION fires when two candidates would bind one claim',
-      strictArtifactCheck(asm26, claims26.filter((_, i) => i !== 1), '').some(x => x.kind === 'OVER-BOUND-SECTION')
+      strictArtifactCheck(
+        asm26,
+        claims26.filter((_, i) => i !== 1),
+        ''
+      ).some(x => x.kind === 'OVER-BOUND-SECTION')
     );
   }
 
   // ── 🔴 ITEM 3 — TRAILING COMMENT BLOCKS ARE NOT PART OF THE LAST UNIT ────────────────────────
   {
-    const body = '## ▸ THE CLOSE\n\nMost of what moved prices today has not been delivered yet.\n';
+    const body =
+      '## ▸ THE CLOSE\n\nMost of what moved prices today has not been delivered yet.\n';
     const decls =
       '\n<!-- DECLARATIONS\n  take-move: hidden-precondition\n  inner-game: the discomfort is the point\n-->\n\n<!-- staleness ledger: DGS2 printed 2026-08-27 -->\n';
     t(
@@ -2202,7 +2547,9 @@ function selftest(): number {
     );
     t(
       'ITEM3 · consecutive trailing blocks are stripped as one run, not one deep',
-      trailingBlockStart(body + decls + '\n<!-- truth log: 0 unresolved -->\n') === body.trimEnd().length
+      trailingBlockStart(
+        body + decls + '\n<!-- truth log: 0 unresolved -->\n'
+      ) === body.trimEnd().length
     );
     t(
       'ITEM3 · an INLINE comment is never touched — only an end-of-file run is trailing',
@@ -2222,7 +2569,10 @@ function selftest(): number {
     );
     const u2 = [{ start: 0, end: body.length }];
     clampTrailing(u2, body);
-    t('ITEM3 · and leaves a clean file exactly as it found it', u2[0]!.end === body.length);
+    t(
+      'ITEM3 · and leaves a clean file exactly as it found it',
+      u2[0]!.end === body.length
+    );
     // 🔴 THE REAL FILE THAT CARRIES THE BUG TODAY.
     const v2 = 'daily-briefs/2026-08-28-v2.md';
     if (fs.existsSync(v2)) {
@@ -2236,45 +2586,116 @@ function selftest(): number {
 
   // ── ITEM 6 (b)(c)(d) — the rewrite loop guards itself ────────────────────────────────────────
   {
-    const C = (v: string[], n: number) => sowhatCycleAction(v as SowhatGrade[], n);
-    t('item6b: cycle 1 of a unanimous fail is a REDRAFT that will be re-read the same night, both legs',
-      C(['MISSING', 'MISSING', 'MISSING'], 0).action === 'REDRAFT' && /re-read tonight by fresh readers on BOTH legs/.test(C(['MISSING', 'MISSING', 'MISSING'], 0).reason));
-    t('item6b: cycle 2 is still allowed', C(['MISSING', 'MISSING', 'MISSING'], 1).action === 'REDRAFT');
-    t('item6b: HARD CAP — a unit still failing after 2 cycles ships as-is and rows RESIDUAL, never a third rewrite',
-      C(['MISSING', 'MISSING', 'MISSING'], 2).action === 'RESIDUAL' && /SHIPS AS-IS/.test(C(['MISSING', 'MISSING', 'MISSING'], 2).reason));
-    t('item6b: the cap says why — landing is the bar, and a loop past it optimises against its own graders',
-      /optimising against its own graders/.test(C(['MISSING', 'MISSING', 'MISSING'], 2).reason));
-    t('item6b: a HOLD never consumes a cycle — a split is not a failed rewrite', C(['MISSING', 'OK', 'OK'], 0).action === 'HOLD');
+    const C = (v: string[], n: number) =>
+      sowhatCycleAction(v as SowhatGrade[], n);
+    t(
+      'item6b: cycle 1 of a unanimous fail is a REDRAFT that will be re-read the same night, both legs',
+      C(['MISSING', 'MISSING', 'MISSING'], 0).action === 'REDRAFT' &&
+        /re-read tonight by fresh readers on BOTH legs/.test(
+          C(['MISSING', 'MISSING', 'MISSING'], 0).reason
+        )
+    );
+    t(
+      'item6b: cycle 2 is still allowed',
+      C(['MISSING', 'MISSING', 'MISSING'], 1).action === 'REDRAFT'
+    );
+    t(
+      'item6b: HARD CAP — a unit still failing after 2 cycles ships as-is and rows RESIDUAL, never a third rewrite',
+      C(['MISSING', 'MISSING', 'MISSING'], 2).action === 'RESIDUAL' &&
+        /SHIPS AS-IS/.test(C(['MISSING', 'MISSING', 'MISSING'], 2).reason)
+    );
+    t(
+      'item6b: the cap says why — landing is the bar, and a loop past it optimises against its own graders',
+      /optimising against its own graders/.test(
+        C(['MISSING', 'MISSING', 'MISSING'], 2).reason
+      )
+    );
+    t(
+      'item6b: a HOLD never consumes a cycle — a split is not a failed rewrite',
+      C(['MISSING', 'OK', 'OK'], 0).action === 'HOLD'
+    );
 
     // (c) PASSIVE CALIBRATION
     const A = sowhatAgreement;
-    t('item6c: n=0 READS as n=0 — NOT COMPUTABLE, explicitly not 100%',
-      A([]).verdict === 'UNMEASURED' && A([]).pct === null && /NOT COMPUTABLE/.test(A([]).line) && /NOT 100%/.test(A([]).line));
-    t('item6c: an owner mark with no ensemble grades is not counted — an unmeasured pair is not an agreement',
-      A([{ owner_mark: 'landed', sowhat_grades: [] }]).n === 0);
-    const agreeRows = Array.from({ length: 15 }, () => ({ owner_mark: 'landed', sowhat_grades: ['OK', 'OK', 'OK'] }));
-    t('item6c: >=85% on >=15 marks is PROMOTE-ELIGIBLE and says out loud that it requires the owner’s signature',
-      A(agreeRows).verdict === 'PROMOTE-ELIGIBLE' && /REQUIRES THE OWNER'S SIGNATURE/.test(A(agreeRows).line));
-    t('item6c: the same agreement on too FEW marks is only HOLD — the n bar is real',
-      A(agreeRows.slice(0, 14)).verdict === 'HOLD');
+    t(
+      'item6c: n=0 READS as n=0 — NOT COMPUTABLE, explicitly not 100%',
+      A([]).verdict === 'UNMEASURED' &&
+        A([]).pct === null &&
+        /NOT COMPUTABLE/.test(A([]).line) &&
+        /NOT 100%/.test(A([]).line)
+    );
+    t(
+      'item6c: an owner mark with no ensemble grades is not counted — an unmeasured pair is not an agreement',
+      A([{ owner_mark: 'landed', sowhat_grades: [] }]).n === 0
+    );
+    const agreeRows = Array.from({ length: 15 }, () => ({
+      owner_mark: 'landed',
+      sowhat_grades: ['OK', 'OK', 'OK'],
+    }));
+    t(
+      'item6c: >=85% on >=15 marks is PROMOTE-ELIGIBLE and says out loud that it requires the owner’s signature',
+      A(agreeRows).verdict === 'PROMOTE-ELIGIBLE' &&
+        /REQUIRES THE OWNER'S SIGNATURE/.test(A(agreeRows).line)
+    );
+    t(
+      'item6c: the same agreement on too FEW marks is only HOLD — the n bar is real',
+      A(agreeRows.slice(0, 14)).verdict === 'HOLD'
+    );
     const disagree = [
-      ...Array.from({ length: 7 }, () => ({ owner_mark: 'landed', sowhat_grades: ['OK', 'OK', 'OK'] })),
-      ...Array.from({ length: 3 }, () => ({ owner_mark: 'landed', sowhat_grades: ['MISSING', 'MISSING', 'MISSING'] })),
+      ...Array.from({ length: 7 }, () => ({
+        owner_mark: 'landed',
+        sowhat_grades: ['OK', 'OK', 'OK'],
+      })),
+      ...Array.from({ length: 3 }, () => ({
+        owner_mark: 'landed',
+        sowhat_grades: ['MISSING', 'MISSING', 'MISSING'],
+      })),
     ];
-    t('item6c: below 80% is AUTOMATIC DEMOTION to log-only and needs nobody’s signature',
-      A(disagree).verdict === 'DEMOTE' && /AUTOMATIC DEMOTION/.test(A(disagree).line) && /nobody/.test(A(disagree).line));
+    t(
+      'item6c: below 80% is AUTOMATIC DEMOTION to log-only and needs nobody’s signature',
+      A(disagree).verdict === 'DEMOTE' &&
+        /AUTOMATIC DEMOTION/.test(A(disagree).line) &&
+        /nobody/.test(A(disagree).line)
+    );
 
     // (d) THRASH GUARD
     const T = sowhatThrash;
-    t('item6d: >4 units on 3 consecutive nights is RED and names the instrument, not the units',
-      T([{ date: '2026-08-25', rewrites: 5 }, { date: '2026-08-26', rewrites: 6 }, { date: '2026-08-27', rewrites: 5 }]).red &&
-        /SUSPECT THE INSTRUMENT OR THE WRITER, NOT THE UNITS/.test(T([{ date: '2026-08-25', rewrites: 5 }, { date: '2026-08-26', rewrites: 6 }, { date: '2026-08-27', rewrites: 5 }]).line));
-    t('item6d: exactly 4 is not thrash — the bar is MORE than 4, not at least 4',
-      !T([{ date: '2026-08-25', rewrites: 4 }, { date: '2026-08-26', rewrites: 4 }, { date: '2026-08-27', rewrites: 4 }]).red);
-    t('item6d: two heavy nights broken by a quiet one is not thrash — consecutive means consecutive',
-      !T([{ date: '2026-08-25', rewrites: 6 }, { date: '2026-08-26', rewrites: 1 }, { date: '2026-08-27', rewrites: 6 }]).red);
-    t('item6d: N/A STATE — fewer than 3 recorded nights can never be RED, and says how many it has',
-      !T([{ date: '2026-08-27', rewrites: 9 }]).red && /last 1 night/.test(T([{ date: '2026-08-27', rewrites: 9 }]).line));
+    t(
+      'item6d: >4 units on 3 consecutive nights is RED and names the instrument, not the units',
+      T([
+        { date: '2026-08-25', rewrites: 5 },
+        { date: '2026-08-26', rewrites: 6 },
+        { date: '2026-08-27', rewrites: 5 },
+      ]).red &&
+        /SUSPECT THE INSTRUMENT OR THE WRITER, NOT THE UNITS/.test(
+          T([
+            { date: '2026-08-25', rewrites: 5 },
+            { date: '2026-08-26', rewrites: 6 },
+            { date: '2026-08-27', rewrites: 5 },
+          ]).line
+        )
+    );
+    t(
+      'item6d: exactly 4 is not thrash — the bar is MORE than 4, not at least 4',
+      !T([
+        { date: '2026-08-25', rewrites: 4 },
+        { date: '2026-08-26', rewrites: 4 },
+        { date: '2026-08-27', rewrites: 4 },
+      ]).red
+    );
+    t(
+      'item6d: two heavy nights broken by a quiet one is not thrash — consecutive means consecutive',
+      !T([
+        { date: '2026-08-25', rewrites: 6 },
+        { date: '2026-08-26', rewrites: 1 },
+        { date: '2026-08-27', rewrites: 6 },
+      ]).red
+    );
+    t(
+      'item6d: N/A STATE — fewer than 3 recorded nights can never be RED, and says how many it has',
+      !T([{ date: '2026-08-27', rewrites: 9 }]).red &&
+        /last 1 night/.test(T([{ date: '2026-08-27', rewrites: 9 }]).line)
+    );
   }
 
   // tabulation arithmetic
@@ -2574,12 +2995,15 @@ function selftest(): number {
     attachHurried({ final: 'PASS' }, undefined).hurried_read === null
   );
 
-
   // ── FRESHMAN READER + PANEL ROSTER (2026-08-20) ────────────────────────────
-  const V3 = 'U1: 3 | AK: USDC (STANDALONE); x402 transfers (STANDALONE) | REF: "it" → UNKNOWN';
+  const V3 =
+    'U1: 3 | AK: USDC (STANDALONE); x402 transfers (STANDALONE) | REF: "it" → UNKNOWN';
   const V2 = 'U1: 2 | USDC (STANDALONE); x402 transfers (STANDALONE)';
 
-  t('countUnitLines reads the reader/hurried shape', countUnitLines('U1 CLAIM: a | WHY: b') === 1);
+  t(
+    'countUnitLines reads the reader/hurried shape',
+    countUnitLines('U1 CLAIM: a | WHY: b') === 1
+  );
   t('countUnitLines reads the freshman shape', countUnitLines(V3) === 1);
   t(
     'countUnitLines does NOT count a colon-less prose line — over-counting would turn SHORT into GREEN',
@@ -2590,23 +3014,49 @@ function selftest(): number {
     countUnitLines('U1 CLAIM: a\nU1 CLAIM: a again\nU2 CLAIM: b') === 2
   );
 
-  t('legState: every transcript absent is RED-LEG', legState([-1, -1, -1], 25).state === 'RED-LEG');
-  t('legState: one of three absent is RED-LEG, not SHORT', legState([25, -1, 25], 25).state === 'RED-LEG');
-  t('legState: a transcript that parses to zero units is RED-LEG', legState([0], 25).state === 'RED-LEG');
+  t(
+    'legState: every transcript absent is RED-LEG',
+    legState([-1, -1, -1], 25).state === 'RED-LEG'
+  );
+  t(
+    'legState: one of three absent is RED-LEG, not SHORT',
+    legState([25, -1, 25], 25).state === 'RED-LEG'
+  );
+  t(
+    'legState: a transcript that parses to zero units is RED-LEG',
+    legState([0], 25).state === 'RED-LEG'
+  );
   t(
     'legState: answering MORE units than exist is RED-LEG (parse or isolation failure)',
     legState([26], 25).state === 'RED-LEG'
   );
-  t('legState: a partial pass is SHORT, printed with its numbers', legState([18], 25).state === 'SHORT');
-  t('legState: full coverage is GREEN', legState([25, 25, 25], 25).state === 'GREEN');
+  t(
+    'legState: a partial pass is SHORT, printed with its numbers',
+    legState([18], 25).state === 'SHORT'
+  );
+  t(
+    'legState: full coverage is GREEN',
+    legState([25, 25, 25], 25).state === 'GREEN'
+  );
   t(
     'legState: SHORT reports the WORST of the three readers, never the best',
     legState([25, 18, 25], 25).note.includes('18/25')
   );
 
-  t('akSegment with no segment returns the whole body — the 2026-08-17 seeds are unchanged', akSegment(V3) === V3);
-  t('akSegment ak slices only the first pass', akSegment(V3, 'ak').includes('USDC') && !akSegment(V3, 'ak').includes('UNKNOWN'));
-  t('akSegment ref slices only the second pass', akSegment(V3, 'ref').includes('UNKNOWN') && !akSegment(V3, 'ref').includes('USDC'));
+  t(
+    'akSegment with no segment returns the whole body — the 2026-08-17 seeds are unchanged',
+    akSegment(V3) === V3
+  );
+  t(
+    'akSegment ak slices only the first pass',
+    akSegment(V3, 'ak').includes('USDC') &&
+      !akSegment(V3, 'ak').includes('UNKNOWN')
+  );
+  t(
+    'akSegment ref slices only the second pass',
+    akSegment(V3, 'ref').includes('UNKNOWN') &&
+      !akSegment(V3, 'ref').includes('USDC')
+  );
   t(
     'akSegment ref on a v3 line with no REF content is EMPTY (a real miss), not null (N/A)',
     akSegment('U1: 1 | AK: x402 (STANDALONE) | REF: —', 'ref')!.trim() === '—'
@@ -2615,7 +3065,18 @@ function selftest(): number {
   const segIds = ['line-8'];
   t(
     'akAudit finds a referent seed in the REF pass',
-    akAudit(V3, [{ unit: 'line-8', term: 'dangling it', match: '["“]it["”]|\\bit\\b\\s*(?:→|->)', segment: 'ref' }], segIds)[0]!.found
+    akAudit(
+      V3,
+      [
+        {
+          unit: 'line-8',
+          term: 'dangling it',
+          match: '["“]it["”]|\\bit\\b\\s*(?:→|->)',
+          segment: 'ref',
+        },
+      ],
+      segIds
+    )[0]!.found
   );
   t(
     'akAudit does NOT let a REF flag satisfy an AK seed — the whole reason segment exists',
@@ -2627,10 +3088,15 @@ function selftest(): number {
   );
   t(
     'akAudit unsegmented still matches anywhere on the line (backward compatibility)',
-    akAudit(V3, [{ unit: 'line-8', term: 'x402', match: 'x402' }], segIds)[0]!.found
+    akAudit(V3, [{ unit: 'line-8', term: 'x402', match: 'x402' }], segIds)[0]!
+      .found
   );
 
-  t('AK template v3 carries BOTH passes', /FIRST PASS/.test(ASSUMED_KNOWLEDGE_TEMPLATE) && /SECOND PASS/.test(ASSUMED_KNOWLEDGE_TEMPLATE));
+  t(
+    'AK template v3 carries BOTH passes',
+    /FIRST PASS/.test(ASSUMED_KNOWLEDGE_TEMPLATE) &&
+      /SECOND PASS/.test(ASSUMED_KNOWLEDGE_TEMPLATE)
+  );
   t(
     'AK template v3 asks for the referent GUESS, not just the flag',
     /UNKNOWN/.test(ASSUMED_KNOWLEDGE_TEMPLATE)
@@ -2643,7 +3109,10 @@ function selftest(): number {
     'AK template v3 does NOT contain the calibration clause itself — teaching to the test would make the seed pass without detection power',
     !/constraint is a successor/i.test(ASSUMED_KNOWLEDGE_TEMPLATE)
   );
-  t('AK template still has exactly one interpolation slot', (ASSUMED_KNOWLEDGE_TEMPLATE.match(/\{artifact\}/g) ?? []).length === 1);
+  t(
+    'AK template still has exactly one interpolation slot',
+    (ASSUMED_KNOWLEDGE_TEMPLATE.match(/\{artifact\}/g) ?? []).length === 1
+  );
 
   t(
     'akSegment returns null (N/A) on a pre-v3 line, so a format mismatch is never reported as a detection miss',
@@ -2651,11 +3120,19 @@ function selftest(): number {
   );
   t(
     'akAudit marks a pre-v3 line NOT APPLICABLE rather than not-found',
-    akAudit(V2, [{ unit: 'line-8', term: 'x402', match: 'x402', segment: 'ak' }], ['line-8'])[0]!.applicable === false
+    akAudit(
+      V2,
+      [{ unit: 'line-8', term: 'x402', match: 'x402', segment: 'ak' }],
+      ['line-8']
+    )[0]!.applicable === false
   );
   t(
     'akAudit keeps unsegmented seeds APPLICABLE on a pre-v3 line — the 2026-08-17 seeds still measure',
-    akAudit(V2, [{ unit: 'line-8', term: 'x402', match: 'x402' }], ['line-8'])[0]!.applicable === true
+    akAudit(
+      V2,
+      [{ unit: 'line-8', term: 'x402', match: 'x402' }],
+      ['line-8']
+    )[0]!.applicable === true
   );
 
   // ── THE SHIPPED SEEDS, ROUND-TRIPPED ──────────────────────────────────────
@@ -2664,9 +3141,23 @@ function selftest(): number {
   if (fs.existsSync(PANEL_CALIBRATION)) {
     const cal = JSON.parse(fs.readFileSync(PANEL_CALIBRATION, 'utf-8'));
     const live = (cal.assumed_knowledge?.seeds ?? []) as {
-      date: string; unit: string; term: string; match: string; segment?: string;
+      date: string;
+      unit: string;
+      term: string;
+      match: string;
+      segment?: string;
     }[];
-    t('every shipped matcher compiles as a JS regex', live.every(sd => { try { new RegExp(sd.match, 'i'); return true; } catch { return false; } }));
+    t(
+      'every shipped matcher compiles as a JS regex',
+      live.every(sd => {
+        try {
+          new RegExp(sd.match, 'i');
+          return true;
+        } catch {
+          return false;
+        }
+      })
+    );
 
     const l8 = live.filter(sd => sd.unit === 'line-8');
     const tk = live.filter(sd => sd.unit === 'take');
@@ -2677,18 +3168,24 @@ function selftest(): number {
       'U1: 2 | AK: solvent deletion (CARRYABLE); "the constraint is a successor and not a lender" (STANDALONE) | REF: —';
     t(
       `all ${l8.length} shipped line-8 seeds fire on a correct v3 answer`,
-      l8.length > 0 && akAudit(GOOD_L8, l8, ['line-8']).every(r => r.applicable && r.found)
+      l8.length > 0 &&
+        akAudit(GOOD_L8, l8, ['line-8']).every(r => r.applicable && r.found)
     );
     t(
       `all ${tk.length} shipped take seed(s) fire on a correct v3 answer`,
-      tk.length > 0 && akAudit(GOOD_TAKE, tk, ['take']).every(r => r.applicable && r.found)
+      tk.length > 0 &&
+        akAudit(GOOD_TAKE, tk, ['take']).every(r => r.applicable && r.found)
     );
     // The negative direction: the v2 answer the detector ACTUALLY gave on 08-19 must NOT satisfy
     // the referent seeds. If it did, the seeds would be measuring nothing.
     const REAL_V2_L8 = 'U1: 2 | USDC (STANDALONE); x402 transfers (STANDALONE)';
     t(
       'the real 08-19 v2 answer satisfies NO segmented line-8 seed — the gap is real, not a matcher artifact',
-      akAudit(REAL_V2_L8, l8.filter(x => x.segment), ['line-8']).every(r => !r.found)
+      akAudit(
+        REAL_V2_L8,
+        l8.filter(x => x.segment),
+        ['line-8']
+      ).every(r => !r.found)
     );
     // And a v3 answer that flags the vocabulary but still misses the referents must FAIL.
     const HALF_L8 = 'U1: 2 | AK: x402 (STANDALONE); USDC (CARRYABLE) | REF: —';
@@ -2700,31 +3197,68 @@ function selftest(): number {
 
   // ── SO_WHAT ENSEMBLE + ACTUATION LADDER (owner adoption 2026-08-20) ───────
   const G = (x: string) => parseSowhatGrades(x);
-  t('parseSowhatGrades reads the grader line shape', Object.keys(G('U1 SO_WHAT: OK/MISSING/WRONG')).length === 1);
-  t('parseSowhatGrades keeps reader order', G('U1 SO_WHAT: OK/MISSING/WRONG')[1]!.join('/') === 'OK/MISSING/WRONG');
-  t('parseSowhatGrades ignores a line with an unknown label', Object.keys(G('U1 SO_WHAT: OK/MAYBE/WRONG')).length === 0);
-  t('parseSowhatGrades ignores prose', Object.keys(G('these units were hard to grade')).length === 0);
+  t(
+    'parseSowhatGrades reads the grader line shape',
+    Object.keys(G('U1 SO_WHAT: OK/MISSING/WRONG')).length === 1
+  );
+  t(
+    'parseSowhatGrades keeps reader order',
+    G('U1 SO_WHAT: OK/MISSING/WRONG')[1]!.join('/') === 'OK/MISSING/WRONG'
+  );
+  t(
+    'parseSowhatGrades ignores a line with an unknown label',
+    Object.keys(G('U1 SO_WHAT: OK/MAYBE/WRONG')).length === 0
+  );
+  t(
+    'parseSowhatGrades ignores prose',
+    Object.keys(G('these units were hard to grade')).length === 0
+  );
 
-  const E = (a: string, b: string, c: string) => ensembleVerdict([[a as SowhatGrade], [b as SowhatGrade], [c as SowhatGrade]]);
-  t('ensemble: unanimous OK is OK and not a split', E('OK', 'OK', 'OK').verdict === 'OK' && !E('OK', 'OK', 'OK').split);
-  t('ensemble: 2-1 takes the majority and IS counted as a split', E('OK', 'OK', 'MISSING').verdict === 'OK' && E('OK', 'OK', 'MISSING').split);
-  t('ensemble: 2-1 the other way', E('MISSING', 'MISSING', 'OK').verdict === 'MISSING');
+  const E = (a: string, b: string, c: string) =>
+    ensembleVerdict([
+      [a as SowhatGrade],
+      [b as SowhatGrade],
+      [c as SowhatGrade],
+    ]);
+  t(
+    'ensemble: unanimous OK is OK and not a split',
+    E('OK', 'OK', 'OK').verdict === 'OK' && !E('OK', 'OK', 'OK').split
+  );
+  t(
+    'ensemble: 2-1 takes the majority and IS counted as a split',
+    E('OK', 'OK', 'MISSING').verdict === 'OK' && E('OK', 'OK', 'MISSING').split
+  );
+  t(
+    'ensemble: 2-1 the other way',
+    E('MISSING', 'MISSING', 'OK').verdict === 'MISSING'
+  );
   t(
     'ensemble: a three-way disagreement resolves to the WORST grade, never to OK',
-    E('OK', 'MISSING', 'WRONG').verdict === 'WRONG' && E('OK', 'MISSING', 'WRONG').split
+    E('OK', 'MISSING', 'WRONG').verdict === 'WRONG' &&
+      E('OK', 'MISSING', 'WRONG').split
   );
 
   const L = (v: string[], n: number) => sowhatActuation(v as SowhatGrade[], n);
-  t('ladder: unanimous MISSING actuates on night 1', L(['MISSING', 'MISSING', 'MISSING'], 0).action === 'REDRAFT');
-  t('ladder: 2-of-3 MISSING HOLDS inside the unanimous-only window', L(['MISSING', 'MISSING', 'OK'], 0).action === 'HOLD');
+  t(
+    'ladder: unanimous MISSING actuates on night 1',
+    L(['MISSING', 'MISSING', 'MISSING'], 0).action === 'REDRAFT'
+  );
+  t(
+    'ladder: 2-of-3 MISSING HOLDS inside the unanimous-only window',
+    L(['MISSING', 'MISSING', 'OK'], 0).action === 'HOLD'
+  );
   // 🔴 REVOKED BY ITEM 6(a), 2026-08-28. This asserted that a 2-of-3 MISSING actuates once the
   // ladder passed 7 graded nights. The ruling is now unambiguous — "a so_what rewrite fires ONLY on
   // unanimous MISSING/WRONG (3/3); a 2-1 split logs and never actuates" — so the night count no
   // longer buys a split the pen, on night 8 or night 800.
-  t('item6a: a 2-of-3 MISSING HOLDS even far past the old ladder window — nights no longer buy a split the pen', L(['MISSING', 'MISSING', 'OK'], 99).action === 'HOLD');
+  t(
+    'item6a: a 2-of-3 MISSING HOLDS even far past the old ladder window — nights no longer buy a split the pen',
+    L(['MISSING', 'MISSING', 'OK'], 99).action === 'HOLD'
+  );
   t(
     'item6a: WRONG at 2-of-3 no longer actuates — the inversion rung was revoked with the rest of the split rungs, and the split is LOGGED with its WRONG count named',
-    L(['WRONG', 'WRONG', 'OK'], 0).action === 'HOLD' && /2 WRONG in a split/.test(L(['WRONG', 'WRONG', 'OK'], 0).reason)
+    L(['WRONG', 'WRONG', 'OK'], 0).action === 'HOLD' &&
+      /2 WRONG in a split/.test(L(['WRONG', 'WRONG', 'OK'], 0).reason)
   );
   t(
     'item6a: a UNANIMOUS WRONG still actuates as an inversion — unanimity, not the WRONG count, is what buys the pen now',
@@ -2737,46 +3271,92 @@ function selftest(): number {
   t(
     'W2: READERS — 2-of-3 blind readers reading the direction BACKWARDS actuates immediately',
     ALLOW_INVERSION_RUNG === true &&
-      authorizeRedrafts({ tab: {}, sowhat: { u: ['WRONG', 'WRONG', 'OK'] }, product: 'nonexistent-product', date: '2026-08-28' }).has('u')
+      authorizeRedrafts({
+        tab: {},
+        sowhat: { u: ['WRONG', 'WRONG', 'OK'] },
+        product: 'nonexistent-product',
+        date: '2026-08-28',
+      }).has('u')
   );
   t(
     'W2: and the authorization says WHOSE three, so the next reader of this code cannot confuse the instruments',
     /READER DIRECTION-INVERSION/.test(
-      authorizeRedrafts({ tab: {}, sowhat: { u: ['WRONG', 'WRONG', 'OK'] }, product: 'nonexistent-product', date: '2026-08-28' }).get('u')!
+      authorizeRedrafts({
+        tab: {},
+        sowhat: { u: ['WRONG', 'WRONG', 'OK'] },
+        product: 'nonexistent-product',
+        date: '2026-08-28',
+      }).get('u')!
     )
   );
   t(
     'W2: GRADERS — the so_what ensemble still HOLDS on a 2-1 split, unchanged by the ruling',
-    sowhatActuation(['WRONG', 'WRONG', 'OK'] as SowhatGrade[], 0).action === 'HOLD' &&
-      sowhatActuation(['MISSING', 'MISSING', 'OK'] as SowhatGrade[], 99).action === 'HOLD'
+    sowhatActuation(['WRONG', 'WRONG', 'OK'] as SowhatGrade[], 0).action ===
+      'HOLD' &&
+      sowhatActuation(['MISSING', 'MISSING', 'OK'] as SowhatGrade[], 99)
+        .action === 'HOLD'
   );
   t(
     'W2: a lone reader inversion is still not enough — 1-of-3 authorizes nothing',
-    !authorizeRedrafts({ tab: {}, sowhat: { u: ['WRONG', 'OK', 'OK'] }, product: 'nonexistent-product', date: '2026-08-28' }).has('u')
+    !authorizeRedrafts({
+      tab: {},
+      sowhat: { u: ['WRONG', 'OK', 'OK'] },
+      product: 'nonexistent-product',
+      date: '2026-08-28',
+    }).has('u')
   );
   t(
     'W2: the reader rung and the ensemble rung disagree on the SAME input, and that is correct — 2 WRONG authorizes a redraft while the ensemble holds',
-    authorizeRedrafts({ tab: {}, sowhat: { u: ['WRONG', 'WRONG', 'OK'] }, product: 'nonexistent-product', date: '2026-08-28' }).has('u') &&
-      sowhatActuation(['WRONG', 'WRONG', 'OK'] as SowhatGrade[], 0).action === 'HOLD'
+    authorizeRedrafts({
+      tab: {},
+      sowhat: { u: ['WRONG', 'WRONG', 'OK'] },
+      product: 'nonexistent-product',
+      date: '2026-08-28',
+    }).has('u') &&
+      sowhatActuation(['WRONG', 'WRONG', 'OK'] as SowhatGrade[], 0).action ===
+        'HOLD'
   );
-  t('ladder: a single WRONG does not actuate on night 1', L(['WRONG', 'OK', 'OK'], 0).action === 'HOLD');
-  t('ladder: all OK holds on any night', L(['OK', 'OK', 'OK'], 0).action === 'HOLD' && L(['OK', 'OK', 'OK'], 99).action === 'HOLD');
+  t(
+    'ladder: a single WRONG does not actuate on night 1',
+    L(['WRONG', 'OK', 'OK'], 0).action === 'HOLD'
+  );
+  t(
+    'ladder: all OK holds on any night',
+    L(['OK', 'OK', 'OK'], 0).action === 'HOLD' &&
+      L(['OK', 'OK', 'OK'], 99).action === 'HOLD'
+  );
   t(
     'ladder: mixed MISSING+WRONG counts as failed for the unanimous bar',
     L(['MISSING', 'WRONG', 'MISSING'], 0).action === 'REDRAFT'
   );
-  t('item6a: an ungraded unit is HOLD with an explicit NOT GRADED reason — never a silent pass', L([], 0).action === 'HOLD' && /NOT GRADED/.test(L([], 0).reason));
+  t(
+    'item6a: an ungraded unit is HOLD with an explicit NOT GRADED reason — never a silent pass',
+    L([], 0).action === 'HOLD' && /NOT GRADED/.test(L([], 0).reason)
+  );
   t('ladder window is 7 nights', SOWHAT_LADDER_NIGHTS === 7);
 
   // ── CLAIM-UNDRAFTED POLICY (owner ruling 2026-08-20, decision 2) ──────────
-  t('overlapScore is 1.0 when the claim is fully contained', overlapScore('alpha beta gamma', 'alpha beta gamma delta') === 1);
-  t('overlapScore is 0 on disjoint content', overlapScore('alpha beta', 'zulu yankee') === 0);
-  t('overlapScore ignores stopwords, so "the of and" cannot manufacture a match', overlapScore('the of and', 'zulu yankee') === 0);
+  t(
+    'overlapScore is 1.0 when the claim is fully contained',
+    overlapScore('alpha beta gamma', 'alpha beta gamma delta') === 1
+  );
+  t(
+    'overlapScore is 0 on disjoint content',
+    overlapScore('alpha beta', 'zulu yankee') === 0
+  );
+  t(
+    'overlapScore ignores stopwords, so "the of and" cannot manufacture a match',
+    overlapScore('the of and', 'zulu yankee') === 0
+  );
 
   const MD =
     '## S\n- **alpha widget** the alpha widget shipped tuesday\n\n- **charlie widget** the charlie widget shipped friday\n';
   const CANDS = [
-    { section: 'S', start: MD.indexOf('- **alpha'), end: MD.indexOf('\n\n- **charlie') },
+    {
+      section: 'S',
+      start: MD.indexOf('- **alpha'),
+      end: MD.indexOf('\n\n- **charlie'),
+    },
     { section: 'S', start: MD.indexOf('- **charlie'), end: MD.length },
   ];
   const CL3 = [
@@ -2787,15 +3367,19 @@ function selftest(): number {
   const r3 = pairByLabel(MD, CANDS, CL3);
   t(
     'UNBALANCED section: the MIDDLE claim is named undrafted, not the last — the 2026-08-10 ait-2 bug',
-    r3.findings.claimUndrafted.length === 1 && r3.findings.claimUndrafted[0]!.unit === 'b'
+    r3.findings.claimUndrafted.length === 1 &&
+      r3.findings.claimUndrafted[0]!.unit === 'b'
   );
   t(
-    'UNBALANCED section: the surviving claims keep their OWN prose, never the neighbour\'s',
+    "UNBALANCED section: the surviving claims keep their OWN prose, never the neighbour's",
     r3.units.length === 2 &&
       MD.slice(r3.units[0]!.start, r3.units[0]!.end).includes('alpha') &&
       MD.slice(r3.units[1]!.start, r3.units[1]!.end).includes('charlie')
   );
-  t('every claim in an unbalanced section reports a score', r3.scores.length === 3);
+  t(
+    'every claim in an unbalanced section reports a score',
+    r3.scores.length === 3
+  );
 
   const CL2 = [
     { unit: 'a', section: 'S', claim: 'totally unrelated words here' },
@@ -2804,11 +3388,18 @@ function selftest(): number {
   const r2 = pairByLabel(MD, CANDS, CL2);
   t(
     'BALANCED section pairs in document order and NEVER consults content — a low score cannot drop a unit',
-    r2.units.length === 2 && r2.findings.claimUndrafted.length === 0 && r2.scores.length === 0
+    r2.units.length === 2 &&
+      r2.findings.claimUndrafted.length === 0 &&
+      r2.scores.length === 0
   );
 
-  const r1 = pairByLabel(MD, CANDS, [{ unit: 'a', section: 'S', claim: 'alpha widget shipped tuesday' }]);
-  t('prose with no claim row is named PROSE-UNCLAIMED, never silently graded', r1.findings.proseUnclaimed.length === 1);
+  const r1 = pairByLabel(MD, CANDS, [
+    { unit: 'a', section: 'S', claim: 'alpha widget shipped tuesday' },
+  ]);
+  t(
+    'prose with no claim row is named PROSE-UNCLAIMED, never silently graded',
+    r1.findings.proseUnclaimed.length === 1
+  );
 
   t(
     'normLabel absorbs the 08-10/08-19 convention drift: "Dashboard / Equities" == "Dashboard/Equities"',
@@ -2818,25 +3409,48 @@ function selftest(): number {
     'normLabel absorbs a trailing parenthetical: "Intro Summary" == "Intro Summary (payoff)"',
     normLabel('Intro Summary') === normLabel('Intro Summary (payoff)')
   );
-  t('normLabel does NOT collapse two genuinely different sections', normLabel('Dashboard/Crypto') !== normLabel('Dashboard/Equities'));
+  t(
+    'normLabel does NOT collapse two genuinely different sections',
+    normLabel('Dashboard/Crypto') !== normLabel('Dashboard/Equities')
+  );
 
   // ── RULING 2: ranked flags ────────────────────────────────────────────────
   const RANKED =
     'U1: 3 | AK: x402 (STANDALONE, BLOCKING); jargon-y phrase (CARRYABLE, MINOR) | REF: "it" → UNKNOWN (BLOCKING)';
-  t('flagStats counts every item across both passes', flagStats(RANKED).total === 3);
-  t('flagStats splits BLOCKING from MINOR', flagStats(RANKED).blocking === 2 && flagStats(RANKED).minor === 1);
-  t('flagStats reports per-unit', flagStats(RANKED + '\nU2: 1 | AK: — | REF: —').perUnit === 1.5);
-  t('an empty pass contributes no items', flagStats('U1: 0 | AK: — | REF: —').total === 0);
+  t(
+    'flagStats counts every item across both passes',
+    flagStats(RANKED).total === 3
+  );
+  t(
+    'flagStats splits BLOCKING from MINOR',
+    flagStats(RANKED).blocking === 2 && flagStats(RANKED).minor === 1
+  );
+  t(
+    'flagStats reports per-unit',
+    flagStats(RANKED + '\nU2: 1 | AK: — | REF: —').perUnit === 1.5
+  );
+  t(
+    'an empty pass contributes no items',
+    flagStats('U1: 0 | AK: — | REF: —').total === 0
+  );
   t(
     'an UNRANKED item is counted and named, never quietly binned as minor',
     flagStats('U1: 1 | AK: x402 (STANDALONE) | REF: —').unranked === 1
   );
   t(
     'a pre-v3 transcript is NOT reported as zero flags — that is the permissive error',
-    flagStats(V2).preV3 === 1 && flagLine(flagStats(V2)).includes('NOT COMPUTABLE')
+    flagStats(V2).preV3 === 1 &&
+      flagLine(flagStats(V2)).includes('NOT COMPUTABLE')
   );
-  t('a ranked transcript does report a rate', flagLine(flagStats(RANKED)).includes('/unit'));
-  t('v4 template ranks: BLOCKING and MINOR both defined', /BLOCKING/.test(ASSUMED_KNOWLEDGE_TEMPLATE) && /MINOR/.test(ASSUMED_KNOWLEDGE_TEMPLATE));
+  t(
+    'a ranked transcript does report a rate',
+    flagLine(flagStats(RANKED)).includes('/unit')
+  );
+  t(
+    'v4 template ranks: BLOCKING and MINOR both defined',
+    /BLOCKING/.test(ASSUMED_KNOWLEDGE_TEMPLATE) &&
+      /MINOR/.test(ASSUMED_KNOWLEDGE_TEMPLATE)
+  );
   t(
     'v4 template makes an unresolved referent BLOCKING by definition',
     /referent you had to guess at is BLOCKING/i.test(ASSUMED_KNOWLEDGE_TEMPLATE)
@@ -2846,7 +3460,10 @@ function selftest(): number {
     /Most items should be MINOR/i.test(ASSUMED_KNOWLEDGE_TEMPLATE)
   );
 
-  t('surfaceRoster reports an unprepared surface as prepared:false, never as green', surfaceRoster(false, 0, () => null).prepared === false);
+  t(
+    'surfaceRoster reports an unprepared surface as prepared:false, never as green',
+    surfaceRoster(false, 0, () => null).prepared === false
+  );
   t(
     'surfaceRoster enumerates ALL THREE legs even when nothing ran — the roster is fixed, not derived',
     surfaceRoster(true, 25, () => null).legs.length === 3 &&
@@ -2869,7 +3486,8 @@ function selftest(): number {
 // process.exit(2) in the importer. That made the exported arithmetic untestable from outside the
 // file and, worse, made this module unsafe for any other script to depend on. The guard is a
 // no-op for every real caller: `npx tsx scripts/transmission-readback.ts <cmd>` still matches.
-const INVOKED_DIRECTLY = !!process.argv[1] && process.argv[1].includes('transmission-readback');
+const INVOKED_DIRECTLY =
+  !!process.argv[1] && process.argv[1].includes('transmission-readback');
 const rawArgs = process.argv.slice(2);
 const flags = rawArgs.filter(x => x.startsWith('--'));
 const prod = flags.find(x => x.startsWith('--product='))?.split('=')[1] ?? '';
@@ -2878,71 +3496,83 @@ const positional = rawArgs.filter(x => !x.startsWith('--'));
 const cmd = rawArgs[0]?.startsWith('--') ? rawArgs[0] : positional[0];
 const a = positional[1];
 const b = positional[2];
-if (INVOKED_DIRECTLY) switch (cmd) {
-  case '--selftest':
-    process.exit(selftest());
-  case 'prepare':
-    if (!a || !b) die('usage: prepare <light.md> <claims.json>');
-    cmdPrepare(a, b);
-    break;
-  case 'check':
-    if (!a) die('usage: check <DATE>');
-    cmdCheck(a);
-    break;
-  case 'tabulate':
-    if (!a) die('usage: tabulate <DATE>');
-    cmdTabulate(a);
-    break;
-  case 'calibration': {
-    // The weekly one-liner (item 6c) + the thrash guard (item 6d). Emitting n=0 is a valid receipt.
-    const rowsAll: Record<string, unknown>[] = fs.existsSync(LEDGER)
-      ? JSON.parse(fs.readFileSync(LEDGER, 'utf-8'))
-      : [];
-    const prod = PRODUCT_SUFFIX.replace('-', '') || 'light';
-    const mine = rowsAll.filter(r => (r['product'] ?? 'light') === prod);
-    console.log(sowhatAgreement(mine as { owner_mark?: unknown; sowhat_grades?: unknown }[]).line);
-    const perNight = Object.entries(
-      mine.reduce<Record<string, number>>((acc, r) => {
-        if (r['final'] === 'REDRAFTED' || r['cycle']) acc[String(r['date'])] = (acc[String(r['date'])] ?? 0) + 1;
-        return acc;
-      }, {})
-    ).map(([date, rewrites]) => ({ date, rewrites }));
-    console.log(sowhatThrash(perNight).line);
-    process.exit(0);
-    break;
+if (INVOKED_DIRECTLY)
+  switch (cmd) {
+    case '--selftest':
+      process.exit(selftest());
+    case 'prepare':
+      if (!a || !b) die('usage: prepare <light.md> <claims.json>');
+      cmdPrepare(a, b);
+      break;
+    case 'check':
+      if (!a) die('usage: check <DATE>');
+      cmdCheck(a);
+      break;
+    case 'tabulate':
+      if (!a) die('usage: tabulate <DATE>');
+      cmdTabulate(a);
+      break;
+    case 'calibration': {
+      // The weekly one-liner (item 6c) + the thrash guard (item 6d). Emitting n=0 is a valid receipt.
+      const rowsAll: Record<string, unknown>[] = fs.existsSync(LEDGER)
+        ? JSON.parse(fs.readFileSync(LEDGER, 'utf-8'))
+        : [];
+      const prod = PRODUCT_SUFFIX.replace('-', '') || 'light';
+      const mine = rowsAll.filter(r => (r['product'] ?? 'light') === prod);
+      console.log(
+        sowhatAgreement(
+          mine as { owner_mark?: unknown; sowhat_grades?: unknown }[]
+        ).line
+      );
+      const perNight = Object.entries(
+        mine.reduce<Record<string, number>>((acc, r) => {
+          if (r['final'] === 'REDRAFTED' || r['cycle'])
+            acc[String(r['date'])] = (acc[String(r['date'])] ?? 0) + 1;
+          return acc;
+        }, {})
+      ).map(([date, rewrites]) => ({ date, rewrites }));
+      console.log(sowhatThrash(perNight).line);
+      process.exit(0);
+      break;
+    }
+    case 'assemble':
+      if (!a) die('usage: assemble <DATE>');
+      cmdAssemble(a);
+      break;
+    case 'dirty':
+      if (!a || !b)
+        die('usage: dirty <DATE> <published.md> [--mark] [--product=full]');
+      process.exit(cmdDirty(a, b, flags.includes('--mark')));
+    // eslint-disable-next-line no-fallthrough
+    case 'sowhat':
+      if (!a)
+        die(
+          'usage: sowhat <DATE> [--product=full]   — ensemble of 3 graders + actuation ladder'
+        );
+      process.exit(cmdSowhat(a));
+    case 'panel':
+      if (!a)
+        die(
+          'usage: panel <DATE>   — roster for BOTH surfaces; exit 1 on any RED-LEG'
+        );
+      process.exit(printPanel(a) === 0 ? 0 : 1);
+    case 'akcheck':
+      if (!a) die('usage: akcheck <DATE>');
+      process.exit(cmdAkCheck(a));
+    // eslint-disable-next-line no-fallthrough
+    case 'ledger':
+      if (!a) die('usage: ledger <DATE>');
+      cmdLedger(a);
+      break;
+    default:
+      console.log(
+        'transmission-readback.ts — mechanical half of the read-back loop. Never calls a model.'
+      );
+      console.log(
+        '  prepare <light.md> <claims.json> | check <DATE> | panel <DATE> | sowhat <DATE> | calibration | tabulate <DATE> | assemble <DATE> | ledger <DATE> | dirty <DATE> <published.md> [--mark] | akcheck <DATE> | --selftest'
+      );
+      console.log(
+        '  --product=full routes state to .readback/<DATE>-full/ so the full brief and the light never collide.'
+      );
+      process.exit(2);
   }
-  case 'assemble':
-    if (!a) die('usage: assemble <DATE>');
-    cmdAssemble(a);
-    break;
-  case 'dirty':
-    if (!a || !b)
-      die('usage: dirty <DATE> <published.md> [--mark] [--product=full]');
-    process.exit(cmdDirty(a, b, flags.includes('--mark')));
-  // eslint-disable-next-line no-fallthrough
-  case 'sowhat':
-    if (!a) die('usage: sowhat <DATE> [--product=full]   — ensemble of 3 graders + actuation ladder');
-    process.exit(cmdSowhat(a));
-  case 'panel':
-    if (!a) die('usage: panel <DATE>   — roster for BOTH surfaces; exit 1 on any RED-LEG');
-    process.exit(printPanel(a) === 0 ? 0 : 1);
-  case 'akcheck':
-    if (!a) die('usage: akcheck <DATE>');
-    process.exit(cmdAkCheck(a));
-  // eslint-disable-next-line no-fallthrough
-  case 'ledger':
-    if (!a) die('usage: ledger <DATE>');
-    cmdLedger(a);
-    break;
-  default:
-    console.log(
-      'transmission-readback.ts — mechanical half of the read-back loop. Never calls a model.'
-    );
-    console.log(
-      '  prepare <light.md> <claims.json> | check <DATE> | panel <DATE> | sowhat <DATE> | calibration | tabulate <DATE> | assemble <DATE> | ledger <DATE> | dirty <DATE> <published.md> [--mark] | akcheck <DATE> | --selftest'
-    );
-    console.log(
-      '  --product=full routes state to .readback/<DATE>-full/ so the full brief and the light never collide.'
-    );
-    process.exit(2);
-}

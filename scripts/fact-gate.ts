@@ -1592,9 +1592,10 @@ export function issuerCausalClaims(
     const bullet = bulletAround(stripped, idx);
     if (!ISSUER_FRAME_RE.test(bullet)) continue;
     // The company is the bullet's first capitalised token run — its grammatical subject.
-    const company = (/\*\*\s*([A-Z][A-Za-z.&'’-]{2,}(?:\s+[A-Z][A-Za-z.&'’-]+){0,2})/.exec(
-      bullet
-    ) ?? /\b([A-Z][A-Za-z.&'’-]{2,})\b/.exec(bullet))?.[1];
+    const company =
+      (/\*\*\s*([A-Z][A-Za-z.&'’-]{2,}(?:\s+[A-Z][A-Za-z.&'’-]+){0,2})/.exec(
+        bullet
+      ) ?? /\b([A-Z][A-Za-z.&'’-]{2,})\b/.exec(bullet))?.[1];
     if (!company) continue;
     const key = `source-conclusion:${srcSlug(company)}-${srcSlug(metric[0])}`;
     if (seen.has(key)) continue;
@@ -1808,9 +1809,9 @@ export function regulatoryVacuumLeg(
     // receipt that does not contain the sentence the Critic actually indicted.
     const verbs = [
       ...new Set(
-        [
-          ...window.matchAll(new RegExp(REG_CONSEQUENCE_RE.source, 'gi')),
-        ].map(v => v[0].trim().toLowerCase())
+        [...window.matchAll(new RegExp(REG_CONSEQUENCE_RE.source, 'gi'))].map(
+          v => v[0].trim().toLowerCase()
+        )
       ),
     ];
     if (!verbs.length) continue; // an exemption stated as a fact, with no mechanism on it, is not this class
@@ -2284,12 +2285,16 @@ export function settleObservationRail(
       continue;
     }
     // ET = UTC-4 during the Aug session (EDT). Comparing in minutes-past-midnight ET.
-    const etMin = (d.getUTCHours() * 60 + d.getUTCMinutes() - 240 + 1440) % 1440;
+    const etMin =
+      (d.getUTCHours() * 60 + d.getUTCMinutes() - 240 + 1440) % 1440;
     const etDate = new Date(d.getTime() - 240 * 60000)
       .toISOString()
       .slice(0, 10);
 
-    if (sessionDate && (etDate < sessionDate || (etDate === sessionDate && etMin < settleMin))) {
+    if (
+      sessionDate &&
+      (etDate < sessionDate || (etDate === sessionDate && etMin < settleMin))
+    ) {
       const hh = String(Math.floor(etMin / 60)).padStart(2, '0');
       const mm = String(etMin % 60).padStart(2, '0');
       const sh = String(Math.floor(settleMin / 60)).padStart(2, '0');
@@ -2407,7 +2412,9 @@ function continuouslyTradedMatchers(): { id: string; re: RegExp }[] {
   try {
     const p = path.join(process.cwd(), 'system', 'entity-bindings.json');
     const j = JSON.parse(fs.readFileSync(p, 'utf8'));
-    const rows = Array.isArray(j?.continuouslyTraded) ? j.continuouslyTraded : null;
+    const rows = Array.isArray(j?.continuouslyTraded)
+      ? j.continuouslyTraded
+      : null;
     if (!rows || !rows.length) return fallback;
     const out: { id: string; re: RegExp }[] = [];
     for (const r of rows) {
@@ -2438,7 +2445,10 @@ function dashboardBlocks(brief: string): { label: string; text: string }[] {
   for (const part of parts) {
     const nl = part.indexOf('\n');
     if (nl < 0) continue;
-    out.push({ label: part.slice(0, nl).trim(), text: part.slice(nl + 1).trim() });
+    out.push({
+      label: part.slice(0, nl).trim(),
+      text: part.slice(nl + 1).trim(),
+    });
   }
   return out;
 }
@@ -2558,8 +2568,18 @@ const DAY_BIND_AFTER = 45; // "closed Saturday's session…" — 7 chars, inside
 /** How far back an EXPLICIT calendar date may sit and still be the session this brief reports. */
 const SESSION_CAL_LOOKBACK_DAYS = 10;
 const SESSION_CAL_MONTHS = [
-  'january', 'february', 'march', 'april', 'may', 'june',
-  'july', 'august', 'september', 'october', 'november', 'december',
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
 ];
 const SESSION_DAY_TOKEN_RE = new RegExp(
   [
@@ -2587,7 +2607,10 @@ function sessionDayWeekday(
   token: string,
   briefDate: string | null
 ): { wd: number; resolved: string } | null {
-  const t = token.trim().toLowerCase().replace(/['’]s$/, '');
+  const t = token
+    .trim()
+    .toLowerCase()
+    .replace(/['’]s$/, '');
   const wdIdx = WEEKDAYS.indexOf(t);
   if (wdIdx >= 0) return { wd: wdIdx, resolved: WEEKDAYS[wdIdx]! };
   const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -2598,8 +2621,12 @@ function sessionDayWeekday(
   }
   let day: number | null = null;
   let mon: number | null = null;
-  const dm = t.match(new RegExp(`^(\\d{1,2})\\s+(${SESSION_CAL_MONTHS.join('|')})$`));
-  const md = t.match(new RegExp(`^(${SESSION_CAL_MONTHS.join('|')})\\s+(\\d{1,2})$`));
+  const dm = t.match(
+    new RegExp(`^(\\d{1,2})\\s+(${SESSION_CAL_MONTHS.join('|')})$`)
+  );
+  const md = t.match(
+    new RegExp(`^(${SESSION_CAL_MONTHS.join('|')})\\s+(\\d{1,2})$`)
+  );
   if (dm) {
     day = Number(dm[1]);
     mon = SESSION_CAL_MONTHS.indexOf(dm[2]!);
@@ -2633,7 +2660,8 @@ function sessionCalendarLeg(
   briefDate: string | null,
   requireResolved: boolean
 ): { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] {
-  const out: { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] = [];
+  const out: { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] =
+    [];
   if (briefDate && briefDate < SESSION_CALENDAR_EFFECTIVE_FROM) return out;
   const continuous = continuouslyTradedMatchers();
   const prose = stripComments(brief)
@@ -2645,9 +2673,7 @@ function sessionCalendarLeg(
   // terminators, so splitting on punctuation alone welds a Dashboard sub-heading onto the tail of
   // the paragraph above it — which both muddies the quoted receipt and lets an instrument on one
   // line bind to a verb on the next.
-  for (const s of prose
-    .split(/\n+/)
-    .flatMap(l => l.split(/(?<=[.!?])\s+/))) {
+  for (const s of prose.split(/\n+/).flatMap(l => l.split(/(?<=[.!?])\s+/))) {
     if (!SESSION_TRADED_RE.test(s)) continue;
     if (!SESSION_CAL_MAGNITUDE_RE.test(s)) continue;
     const g = new RegExp(SESSION_CALENDAR_VERB_RE.source, 'gi');
@@ -2681,7 +2707,9 @@ function sessionCalendarLeg(
         if (start < vStart - DAY_BIND_BEFORE) continue;
         if (start > vEnd + DAY_BIND_AFTER) break;
         const dist =
-          start >= vEnd ? start - vEnd : Math.max(0, vStart - (start + dm[0].length));
+          start >= vEnd
+            ? start - vEnd
+            : Math.max(0, vStart - (start + dm[0].length));
         if (!best || dist < best.dist) best = { token: dm[0], dist };
       }
       if (!best) continue; // no named day is no claim about a calendar
@@ -2728,7 +2756,8 @@ export function checkObservationKind(
   briefDate: string | null,
   requireResolved: boolean
 ): { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] {
-  const out: { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] = [];
+  const out: { check: string; severity: 'FAIL' | 'FLAG'; message: string }[] =
+    [];
   // IMP-213 runs FIRST and on its own date shield: it is the inverse question (a session-traded
   // instrument given a day its venue does not hold) and must not be gated behind IMP-205's
   // Dashboard scoping or its 08-21 effective date.
@@ -2762,7 +2791,10 @@ export function checkObservationKind(
       const g = new RegExp(SESSION_VERB_RE.source, 'gi');
       let vm: RegExpExecArray | null;
       while ((vm = g.exec(s)) !== null) {
-        const before = s.slice(Math.max(0, vm.index - PROXIMITY_CHARS), vm.index);
+        const before = s.slice(
+          Math.max(0, vm.index - PROXIMITY_CHARS),
+          vm.index
+        );
         if (!named.some(n => n.re.test(before))) continue; // gold closes; bitcoin does not
         const v = vm[0].replace(/\s+/g, ' ').trim();
         if (!verbs.includes(v)) verbs.push(v);
@@ -3231,9 +3263,16 @@ const SERIES_SECTION_RE =
 // --require-resolved regression fixtures predate this leg and cannot be re-published.
 const SERIES_LEG_EFFECTIVE = '2026-08-20';
 
-export function seriesExtremumClaims(body: string, briefDate: string | null): Claim[] {
+export function seriesExtremumClaims(
+  body: string,
+  briefDate: string | null
+): Claim[] {
   const claims: Claim[] = [];
-  if (!briefDate || !/^\d{4}-\d{2}-\d{2}$/.test(briefDate) || briefDate < SERIES_LEG_EFFECTIVE) {
+  if (
+    !briefDate ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(briefDate) ||
+    briefDate < SERIES_LEG_EFFECTIVE
+  ) {
     return claims;
   }
   const stripped = stripComments(body);
@@ -4121,7 +4160,8 @@ export function compositionUnits(bullet: string): CompositionUnit[] {
     residualIdx = i;
     break;
   }
-  if (!component || residualPct == null || !Number.isFinite(residualPct)) return [];
+  if (!component || residualPct == null || !Number.isFinite(residualPct))
+    return [];
 
   const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const stem = component.toLowerCase().replace(/(?:ies|es|s)$/, '');
@@ -4271,9 +4311,21 @@ const DASH_VERB_RE =
 // One entry per instrument the Dashboard actually prices. `pct: true` means the instrument's
 // LEVEL is quoted as a percentage (a yield), so a percent token near it is a level, not a change.
 const DASH_INSTRUMENTS: { key: string; re: RegExp; pct: boolean }[] = [
-  { key: 'thirty-year Treasury yield', re: /\b(?:thirty|30)[-\s]year\s+(?:treasury|bond|yield|us treasury)/i, pct: true },
-  { key: 'ten-year Treasury yield', re: /\b(?:ten|10)[-\s]year\s+(?:treasury|note|yield|us treasury)/i, pct: true },
-  { key: 'two-year Treasury yield', re: /\b(?:two|2)[-\s]year\s+(?:treasury|note|yield)/i, pct: true },
+  {
+    key: 'thirty-year Treasury yield',
+    re: /\b(?:thirty|30)[-\s]year\s+(?:treasury|bond|yield|us treasury)/i,
+    pct: true,
+  },
+  {
+    key: 'ten-year Treasury yield',
+    re: /\b(?:ten|10)[-\s]year\s+(?:treasury|note|yield|us treasury)/i,
+    pct: true,
+  },
+  {
+    key: 'two-year Treasury yield',
+    re: /\b(?:two|2)[-\s]year\s+(?:treasury|note|yield)/i,
+    pct: true,
+  },
   { key: 'gold', re: /\bgold\b/i, pct: false },
   { key: 'silver', re: /\bsilver\b/i, pct: false },
   { key: 'WTI', re: /\bWTI\b/i, pct: false },
@@ -4925,8 +4977,16 @@ const CONTRADICTION_MARKER_RE =
 /** `$47.9k` → 47900, `$55,000` → 55000, `$371,500` → 371500, `$1.8 billion` → 1.8e9. */
 function derivedMoneyValues(text: string): Array<{ v: number; raw: string }> {
   const MUL: Record<string, number> = {
-    k: 1e3, thousand: 1e3, m: 1e6, mn: 1e6, million: 1e6,
-    bn: 1e9, b: 1e9, billion: 1e9, tn: 1e12, trillion: 1e12,
+    k: 1e3,
+    thousand: 1e3,
+    m: 1e6,
+    mn: 1e6,
+    million: 1e6,
+    bn: 1e9,
+    b: 1e9,
+    billion: 1e9,
+    tn: 1e12,
+    trillion: 1e12,
   };
   const out: Array<{ v: number; raw: string }> = [];
   for (const m of text.matchAll(
@@ -4984,10 +5044,13 @@ export const SETTLE_GRACE_MIN = 60;
 export const SETTLED_VERB_RE =
   /\b(closed|finished|ended|settled|ran to|rose[^.]{0,60}\bon (?:Monday|Tuesday|Wednesday|Thursday|Friday)|fell[^.]{0,60}\bon (?:Monday|Tuesday|Wednesday|Thursday|Friday)|gained[^.]{0,60}\bon (?:Monday|Tuesday|Wednesday|Thursday|Friday)|lost[^.]{0,60}\bon (?:Monday|Tuesday|Wednesday|Thursday|Friday))\b/i;
 /** An hour-stamped mark declares its own vintage and is exactly what the rule asks for. */
-export const HOUR_STAMP_RE = /\b(?:at\s+)?\d{1,2}:\d{2}\s*(?:a\.?m\.?|p\.?m\.?|ET|EDT|EST)\b/i;
-export const NUMERIC_MOVE_RE = /(\d+(?:\.\d+)?\s*percent|\d+(?:\.\d+)?%|\$\s?\d[\d,]*(?:\.\d+)?)/i;
+export const HOUR_STAMP_RE =
+  /\b(?:at\s+)?\d{1,2}:\d{2}\s*(?:a\.?m\.?|p\.?m\.?|ET|EDT|EST)\b/i;
+export const NUMERIC_MOVE_RE =
+  /(\d+(?:\.\d+)?\s*percent|\d+(?:\.\d+)?%|\$\s?\d[\d,]*(?:\.\d+)?)/i;
 /** Intraday self-labels: a bullet that says it is a live/provisional mark is not asserting a close. */
-export const INTRADAY_LABEL_RE = /\b(intraday|post-?market|pre-?market|overnight|as of \d|live price|provisional)\b/i;
+export const INTRADAY_LABEL_RE =
+  /\b(intraday|post-?market|pre-?market|overnight|as of \d|live price|provisional)\b/i;
 /**
  * "Closed" is not only a market word. MEASURED on the real briefs: the first cut flagged
  * *"Copper, the London crypto custodian ... closed a $200 million round"* — a financing close, not a
@@ -5010,7 +5073,12 @@ export const MARKET_CONTEXT_RE =
  * A row counts only when `resolved` is true. An unresolved close row is a claim that was LOOKED FOR
  * and not found — which is the opposite of an exemption.
  */
-export interface RecordedClose { key: string; pct: number | null; value: number | null; names: string[] }
+export interface RecordedClose {
+  key: string;
+  pct: number | null;
+  value: number | null;
+  names: string[];
+}
 
 export function loadRecordedCloses(truthPath: string): Set<string> {
   const out = new Set<string>();
@@ -5044,7 +5112,17 @@ export function loadRecordedCloses(truthPath: string): Set<string> {
  */
 export function recordedCloses(truthPath: string): RecordedClose[] {
   if (!fs.existsSync(truthPath)) return [];
-  let doc: { claims?: Record<string, { resolved?: boolean; magnitudePct?: number | null; value?: number | null; names?: string[] }> };
+  let doc: {
+    claims?: Record<
+      string,
+      {
+        resolved?: boolean;
+        magnitudePct?: number | null;
+        value?: number | null;
+        names?: string[];
+      }
+    >;
+  };
   try {
     doc = JSON.parse(fs.readFileSync(truthPath, 'utf8'));
   } catch {
@@ -5067,10 +5145,19 @@ export function recordedCloses(truthPath: string): RecordedClose[] {
 export const CLOSE_PCT_TOLERANCE = 0.15; // percentage points — a rounding difference, not a rewrite
 
 /** The recorded close a sentence is about, if any. */
-export function closeFor(sentence: string, closes: RecordedClose[]): RecordedClose | null {
+export function closeFor(
+  sentence: string,
+  closes: RecordedClose[]
+): RecordedClose | null {
   for (const c of closes)
     for (const n of c.names)
-      if (new RegExp(`\\b${n.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`, 'i').test(sentence)) return c;
+      if (
+        new RegExp(
+          `\\b${n.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`,
+          'i'
+        ).test(sentence)
+      )
+        return c;
   return null;
 }
 
@@ -5082,11 +5169,20 @@ export function agreesWithClose(sentence: string, c: RecordedClose): boolean {
     if (Math.abs(Number(m[1]) - target) <= CLOSE_PCT_TOLERANCE) return true;
   if (c.value !== null)
     for (const m of sentence.matchAll(/\$\s?([\d,]+(?:\.\d+)?)/g))
-      if (Math.abs(Number(m[1]!.replace(/,/g, '')) - c.value) <= Math.max(0.02, c.value * 0.001)) return true;
+      if (
+        Math.abs(Number(m[1]!.replace(/,/g, '')) - c.value) <=
+        Math.max(0.02, c.value * 0.001)
+      )
+        return true;
   return false;
 }
 
-export interface SettledCloseFinding { sentence: string; verb: string; value: string; recorded?: string }
+export interface SettledCloseFinding {
+  sentence: string;
+  verb: string;
+  value: string;
+  recorded?: string;
+}
 
 /**
  * Sentences that bind a settled-session verb to a number, in a file written after the session had
@@ -5108,9 +5204,9 @@ export function settledCloseFindings(
     if (!v) continue;
     const n = NUMERIC_MOVE_RE.exec(sentence);
     if (!n) continue;
-    if (HOUR_STAMP_RE.test(sentence)) continue;      // declares its own vintage
-    if (INTRADAY_LABEL_RE.test(sentence)) continue;  // says it is not a close
-    if (FINANCING_RE.test(sentence)) continue;       // a financing close, not a session close
+    if (HOUR_STAMP_RE.test(sentence)) continue; // declares its own vintage
+    if (INTRADAY_LABEL_RE.test(sentence)) continue; // says it is not a close
+    if (FINANCING_RE.test(sentence)) continue; // a financing close, not a session close
     // A statement about a PAST period is not a claim about yesterday's session. Measured false
     // positives this removes: "traded to a 49 percent discount in December 2022 and closed it",
     // "up 82.68 percent over the year", "unit prices fell from $32 in 1961".
@@ -5135,7 +5231,10 @@ export function settledCloseFindings(
       // When a close IS on record and the sentence disagrees with it, say what it disagrees with.
       // "asserts a vintage nobody verified" is a worry; "quotes 21 percent, settled close 22.60"
       // is a defect someone can fix in one edit.
-      recorded: rc && rc.pct !== null ? `${rc.key} settled ${rc.pct > 0 ? '+' : ''}${rc.pct}%` : undefined,
+      recorded:
+        rc && rc.pct !== null
+          ? `${rc.key} settled ${rc.pct > 0 ? '+' : ''}${rc.pct}%`
+          : undefined,
     });
   }
   return out;
@@ -5200,7 +5299,12 @@ export function loadPredrafts(
 ): Array<[string, string]> {
   if (!briefDate) return [];
   const out: Array<[string, string]> = [];
-  for (const suffix of ['cc-predraft', 'take-draft', 'signal-draft', 'discovery-draft']) {
+  for (const suffix of [
+    'cc-predraft',
+    'take-draft',
+    'signal-draft',
+    'discovery-draft',
+  ]) {
     for (const dir of [
       path.dirname(briefPath),
       path.join(path.dirname(briefPath), '..', 'daily-briefs'),
@@ -5208,7 +5312,10 @@ export function loadPredrafts(
     ]) {
       const p = path.join(dir, `${briefDate}-${suffix}.md`);
       if (fs.existsSync(p)) {
-        out.push([suffix.replace(/-.*/, '').toUpperCase(), fs.readFileSync(p, 'utf8')]);
+        out.push([
+          suffix.replace(/-.*/, '').toUpperCase(),
+          fs.readFileSync(p, 'utf8'),
+        ]);
         break;
       }
     }
@@ -5953,7 +6060,11 @@ function selftest(): number {
     (aug17Statutes.length === 1 && aug17Statutes[0]!.key === 'statute:sb53');
   // (e) THE CONTRACT CLOSES: the morning's truth row (bill text URL + the statute's own words)
   //     resolves it. Without a row it rides --require-resolved into the Morning Truth Gate.
-  const aug17Truth = path.join(process.cwd(), 'daily-briefs', '2026-08-17-truth.json');
+  const aug17Truth = path.join(
+    process.cwd(),
+    'daily-briefs',
+    '2026-08-17-truth.json'
+  );
   const okStatResolves =
     !fs.existsSync(aug17Truth) ||
     (() => {
@@ -5961,7 +6072,9 @@ function selftest(): number {
         claims?: Record<string, { resolved?: boolean; source?: string }>;
       };
       const row = t.claims?.['statute:sb53'];
-      return !!row && row.resolved === true && /https?:\/\//.test(row.source ?? '');
+      return (
+        !!row && row.resolved === true && /https?:\/\//.test(row.source ?? '')
+      );
     })();
   // (f) THE FLOP GATE IS A THRESHOLD TOO — a coverage test with no currency in it.
   const okStatFlop =
@@ -6250,33 +6363,36 @@ function selftest(): number {
 
   // --- IMP-161 (08-11 Critic mandate #2): dated-event weekday. THE ACCEPTANCE IS ON THE REAL v2,
   //     both directions, because the fixture version of this bug is the one that already passed. ---
-  const aug11v2 = path.join(
-    process.cwd(),
-    'daily-briefs',
-    '2026-08-11-v2.md'
-  );
+  const aug11v2 = path.join(process.cwd(), 'daily-briefs', '2026-08-11-v2.md');
   const dew = (s: string) =>
     datedEventWeekdayFindings(s, '2026-08-11').map(f => f.message);
   // FIRE — the exact sentence that shipped false.
-  const okDewFire = dew(
-    '- **Delaware told Verisk on Monday it may not walk away from a $2.35 billion acquisition.** Chancery judge Bonnie David found the termination invalid.'
-  ).length === 1;
+  const okDewFire =
+    dew(
+      '- **Delaware told Verisk on Monday it may not walk away from a $2.35 billion acquisition.** Chancery judge Bonnie David found the termination invalid.'
+    ).length === 1;
   // SILENT — forward markers. A computed future date is not an event claim; a gate that flags
   // them is noise, and noise is how a gate's output stops being read.
   const okDewSilentFwd =
-    dew('Watch Sunday, when the memorandum covering the current arrangement lapses on Sunday.')
-      .length === 0 &&
-    dew('It is a domestic audience or the actual answer, and by Sunday you will know which.')
-      .length === 0;
+    dew(
+      'Watch Sunday, when the memorandum covering the current arrangement lapses on Sunday.'
+    ).length === 0 &&
+    dew(
+      'It is a domestic audience or the actual answer, and by Sunday you will know which.'
+    ).length === 0;
   // SILENT — market data. The brief names weekdays constantly for prices; none are dateline claims.
   const okDewSilentMkt =
-    dew('The S&P finished Monday flat against Friday\'s record close.').length === 0 &&
-    dew('The index closed a fifth of a percentage point higher on Monday.').length === 0 &&
+    dew("The S&P finished Monday flat against Friday's record close.")
+      .length === 0 &&
+    dew('The index closed a fifth of a percentage point higher on Monday.')
+      .length === 0 &&
     dew("Monday's brief counted the same six.").length === 0;
   // REAL FILE, FIRE: the shipped v2 must produce a row naming Verisk. This is the receipt that
   // distinguishes this check from the one the mandate asked for — corporate-event-date emits
   // ZERO rows on this sentence and always would have.
-  const aug11src = fs.existsSync(aug11v2) ? fs.readFileSync(aug11v2, 'utf8') : '';
+  const aug11src = fs.existsSync(aug11v2)
+    ? fs.readFileSync(aug11v2, 'utf8')
+    : '';
   const okDewRealFire =
     !aug11src ||
     datedEventWeekdayFindings(aug11src, '2026-08-11').some(f =>
@@ -6300,9 +6416,10 @@ function selftest(): number {
     sec(
       'The personal savings rate ended June at 2.7 percent, near the lowest in a series beginning in 1947.'
     ).length === 1;
-  const okSeriesNamesAnchor = sec(
-    'The personal savings rate ended June at 2.7 percent, near the lowest in a series beginning in 1947.'
-  )[0]?.asset.includes('1947') === true;
+  const okSeriesNamesAnchor =
+    sec(
+      'The personal savings rate ended June at 2.7 percent, near the lowest in a series beginning in 1947.'
+    )[0]?.asset.includes('1947') === true;
   // SILENT — an event-recurrence claim with a NAMED, DATED comparable, and it was verified TRUE.
   // A gate that punishes the one historical claim tonight that was done correctly teaches the
   // Writer to stop doing it right.
@@ -6318,7 +6435,8 @@ function selftest(): number {
   // SILENT — the COMPLIANT REPAIR. A bounded horizon is what the mandate asks the Writer to write
   // instead ("a four-year low is a four-year low and says so"), so it must never fire.
   const okSeriesSilentBounded =
-    sec('The personal savings rate ended June at 2.7 percent, a four-year low.').length === 0 &&
+    sec('The personal savings rate ended June at 2.7 percent, a four-year low.')
+      .length === 0 &&
     sec(
       'The personal savings rate ended June at 2.7 percent, against 4.6 percent a year earlier.'
     ).length === 0;
@@ -6334,7 +6452,11 @@ function selftest(): number {
     const c = sec(
       'The personal savings rate ended June at 2.7 percent, near the lowest in a series beginning in 1947.'
     )[0];
-    return c?.tier === 'critical' && c?.status === 'UNVERIFIED' && c.key.startsWith('series:');
+    return (
+      c?.tier === 'critical' &&
+      c?.status === 'UNVERIFIED' &&
+      c.key.startsWith('series:')
+    );
   })();
 
   // --- IMP-083: segment-metric attribution. FIRE on AMD's compound "data-center GPU revenue, $X",
@@ -6502,20 +6624,28 @@ function selftest(): number {
   // Both directions, on REAL artifacts and on the two synthetic receipts the deferred row named.
   const aug12v2 = path.join(process.cwd(), 'daily-briefs/2026-08-12-v2.md');
   const attrReal = fs.existsSync(aug12v2)
-    ? attributedSuperlativeClaims(fs.readFileSync(aug12v2, 'utf8'), '2026-08-12')
+    ? attributedSuperlativeClaims(
+        fs.readFileSync(aug12v2, 'utf8'),
+        '2026-08-12'
+      )
     : [];
   // FIRE leg 1 — the real C&C-1 sentence is extracted as a CRITICAL claim.
   const okAttrRealFire =
     !fs.existsSync(aug12v2) ||
     attrReal.some(
-      c => c.tier === 'critical' && /acquirer|photon[- ]counting|independent supplier/i.test(c.sentence)
+      c =>
+        c.tier === 'critical' &&
+        /acquirer|photon[- ]counting|independent supplier/i.test(c.sentence)
     );
   // …and it is UNRESOLVED against the real truth file, so --require-resolved blocks it.
   const attrCC1 = attrReal.find(c => /independent supplier/i.test(c.sentence));
   const realTruth12 = (() => {
     try {
       return JSON.parse(
-        fs.readFileSync(path.join(process.cwd(), 'daily-briefs/2026-08-12-truth.json'), 'utf8')
+        fs.readFileSync(
+          path.join(process.cwd(), 'daily-briefs/2026-08-12-truth.json'),
+          'utf8'
+        )
       );
     } catch {
       return null;
@@ -6575,7 +6705,8 @@ function selftest(): number {
       attributedSuperlativeFidelity(c, {
         [c[0]!.key]: {
           resolved: true,
-          quotation: "one of the world's only credible, commercially ready independent suppliers",
+          quotation:
+            "one of the world's only credible, commercially ready independent suppliers",
         },
       }).length === 0
     );
@@ -6607,11 +6738,17 @@ function selftest(): number {
   const pub12 = path.join(process.cwd(), 'content/daily-updates/2026-08-12.md');
   const okAttrNoNeverFp = (() => {
     if (!fs.existsSync(pub12)) return true;
-    const cl = attributedSuperlativeClaims(fs.readFileSync(pub12, 'utf8'), '2026-08-12');
+    const cl = attributedSuperlativeClaims(
+      fs.readFileSync(pub12, 'utf8'),
+      '2026-08-12'
+    );
     let truthPub: any = null;
     try {
       truthPub = JSON.parse(
-        fs.readFileSync(path.join(process.cwd(), 'daily-briefs/2026-08-12-truth.json'), 'utf8')
+        fs.readFileSync(
+          path.join(process.cwd(), 'daily-briefs/2026-08-12-truth.json'),
+          'utf8'
+        )
       );
     } catch {
       return true;
@@ -6623,7 +6760,11 @@ function selftest(): number {
   const attrRates = ['2026-08-09', '2026-08-10', '2026-08-11', '2026-08-12']
     .map(d => path.join(process.cwd(), `daily-briefs/${d}-v2.md`))
     .filter(f => fs.existsSync(f))
-    .map(f => attributedSuperlativeClaims(fs.readFileSync(f, 'utf8'), '2026-08-12').length);
+    .map(
+      f =>
+        attributedSuperlativeClaims(fs.readFileSync(f, 'utf8'), '2026-08-12')
+          .length
+    );
   const okAttrNoStorm = attrRates.length === 0 || Math.max(...attrRates) <= 3;
 
   // NO-RETRO leg — the rule binds from 2026-08-12 forward; the archive cannot be condemned by it.
@@ -6658,7 +6799,10 @@ function selftest(): number {
   const realTruth13 = (() => {
     try {
       return JSON.parse(
-        fs.readFileSync(path.join(process.cwd(), 'daily-briefs/2026-08-13-truth.json'), 'utf8')
+        fs.readFileSync(
+          path.join(process.cwd(), 'daily-briefs/2026-08-13-truth.json'),
+          'utf8'
+        )
       );
     } catch {
       return null;
@@ -6673,15 +6817,19 @@ function selftest(): number {
   const okIssuerFireCoreWeave =
     !fs.existsSync(aug12v2) ||
     issuerCausalClaims(fs.readFileSync(aug12v2, 'utf8'), '2026-08-12').some(
-      c => /coreweave/i.test(c.key) || /guidance for one cost line/i.test(c.sentence)
+      c =>
+        /coreweave/i.test(c.key) ||
+        /guidance for one cost line/i.test(c.sentence)
     );
   // SILENT leg 1 — tonight's Wild Card Timema bullet. A named STUDY, correctly carrying the
   // source's own leading alternative, ALREADY covered by IMP-143. A duplicate row is a storm.
   const okIssuerSilentTimema =
-    !fs.existsSync(aug13v2) || !issuer13.some(c => /Wild Card/i.test(c.section));
+    !fs.existsSync(aug13v2) ||
+    !issuer13.some(c => /Wild Card/i.test(c.section));
   // SILENT leg 2 — tonight's Geo-2. Figures from reporting: no issuer, no reported-metric claim.
   const okIssuerSilentGeo =
-    !fs.existsSync(aug13v2) || !issuer13.some(c => /Geopolitic/i.test(c.section));
+    !fs.existsSync(aug13v2) ||
+    !issuer13.some(c => /Geopolitic/i.test(c.section));
   // NO-STORM leg — the mandate's ceiling is ≤2 new rows per brief. Measured with the date gate
   // LIFTED across the real 08-04…08-13 window, so the silence is a property of the trigger and not
   // an artifact of EFFECTIVE_FROM: max observed 2, mean 0.6.
@@ -6699,7 +6847,9 @@ function selftest(): number {
   ]
     .map(d => path.join(process.cwd(), `daily-briefs/${d}-v2.md`))
     .filter(f => fs.existsSync(f))
-    .map(f => issuerCausalClaims(fs.readFileSync(f, 'utf8'), '2026-08-13').length);
+    .map(
+      f => issuerCausalClaims(fs.readFileSync(f, 'utf8'), '2026-08-13').length
+    );
   const okIssuerNoStorm =
     issuerRates.length === 0 || Math.max(...issuerRates) <= 2;
   // SILENT leg 3 — a STUDY with a causal verb and a metric-shaped noun is not an issuer claim.
@@ -6714,7 +6864,6 @@ function selftest(): number {
       '## Companies & Crypto\n\nCircle reported revenue of $701 million, and that alone ate a 151 percent rise in volume.',
       '2026-07-13'
     ).length === 0;
-
 
   // ---------------- IMP-180 — THE CITATION-LOCATOR RAIL (2026-08-16 mandate #2) ----------------
   // Every leg below runs against REAL FILES ON DISK, not fixtures: the defect is a chapter number
@@ -6749,7 +6898,9 @@ function selftest(): number {
       },
       '2026-08-16',
       false
-    ).some(f => f.check === 'citation-locator-mismatch' && f.severity === 'FAIL');
+    ).some(
+      f => f.check === 'citation-locator-mismatch' && f.severity === 'FAIL'
+    );
   // SILENT: a resolved row that AGREES with the shipped locator.
   const okLocAgrees =
     loc0816 === null ||
@@ -6789,7 +6940,8 @@ function selftest(): number {
     attributionLocators(
       'The Fed published a 40-page review; see page 12 for the dissent.\n'
     ).length === 0 &&
-    attributionLocators('— Marcus Aurelius, Meditations, book 4\n').length === 1;
+    attributionLocators('— Marcus Aurelius, Meditations, book 4\n').length ===
+      1;
 
   console.log(
     `  [IMP-180] FIRE on the REAL 2026-08-16 v2 ("An Actor Prepares, chapter 10", no quote-locator row): ${okLocFire ? '✓' : '✗'}`
@@ -7476,8 +7628,14 @@ function selftest(): number {
   );
   const dfcNoisy: string[] = [];
   for (const d of [
-    '2026-08-17', '2026-08-16', '2026-08-15', '2026-08-14', '2026-08-13',
-    '2026-08-12', '2026-08-11', '2026-08-10',
+    '2026-08-17',
+    '2026-08-16',
+    '2026-08-15',
+    '2026-08-14',
+    '2026-08-13',
+    '2026-08-12',
+    '2026-08-11',
+    '2026-08-10',
   ]) {
     const r = dfcOn(d);
     if (r && r.length) dfcNoisy.push(`${d}:${r.length}`);
@@ -7515,8 +7673,14 @@ function selftest(): number {
   );
   const dlsNoisy: string[] = [];
   for (const d of [
-    '2026-08-18', '2026-08-17', '2026-08-15', '2026-08-14',
-    '2026-08-13', '2026-08-12', '2026-08-11', '2026-08-10',
+    '2026-08-18',
+    '2026-08-17',
+    '2026-08-15',
+    '2026-08-14',
+    '2026-08-13',
+    '2026-08-12',
+    '2026-08-11',
+    '2026-08-10',
   ]) {
     const r = dlsOn(`content/daily-updates/${d}.md`, d);
     if (r.length) dlsNoisy.push(`${d}:${r.length}`);
@@ -7558,7 +7722,8 @@ function selftest(): number {
   // the SAME PAGE as the defect. These are the only silence tests that mean anything: the
   // Dashboard demonstrably knows how to do this, twice, on the page where it got it wrong.
   const okObsSilentSamePage =
-    okFindings.filter(f => /"Equities"|"Commodities/.test(f.message)).length === 0;
+    okFindings.filter(f => /"Equities"|"Commodities/.test(f.message)).length ===
+    0;
   console.log(
     `  [IMP-205] SILENT on the same page's Equities (4 closes) and Commodities & Rates (2 settles): ${okObsSilentSamePage ? '✓' : '✗'}`
   );
@@ -7566,8 +7731,12 @@ function selftest(): number {
   // crypto entry says "traded near $64,170 … on the session".
   const p0819 = path.join(process.cwd(), 'content/daily-updates/2026-08-19.md');
   const okObsSilent0819 = fs.existsSync(p0819)
-    ? checkObservationKind(fs.readFileSync(p0819, 'utf8'), null, '2026-08-21', true)
-        .length === 0
+    ? checkObservationKind(
+        fs.readFileSync(p0819, 'utf8'),
+        null,
+        '2026-08-21',
+        true
+      ).length === 0
     : false;
   console.log(
     `  [IMP-205] SILENT on the published 2026-08-19 Dashboard, judged IN FORCE (not merely exempt): ${okObsSilent0819 ? '✓' : '✗'}`
@@ -7606,7 +7775,9 @@ function selftest(): number {
     if (checkObservationKind(b, null, '2026-08-21', true).length)
       obsHits.push(f.slice(0, 10));
   }
-  const obsUnexpected = obsHits.filter(d => !OBS_KNOWN_TRUE_POSITIVES.includes(d));
+  const obsUnexpected = obsHits.filter(
+    d => !OBS_KNOWN_TRUE_POSITIVES.includes(d)
+  );
   const obsMissing = OBS_KNOWN_TRUE_POSITIVES.filter(d => !obsHits.includes(d));
   const okObsNoStorm = obsUnexpected.length === 0 && obsMissing.length === 0;
   console.log(
@@ -7680,7 +7851,9 @@ function selftest(): number {
   const scGold = scOn(SC_GOLD);
   const okScGold =
     scGold.length === 1 &&
-    /"closed" is bound to a session-traded instrument/.test(scGold[0]!.message) &&
+    /"closed" is bound to a session-traded instrument/.test(
+      scGold[0]!.message
+    ) &&
     /which is a Saturday/.test(scGold[0]!.message);
   console.log(
     `  [IMP-213] …and on the sentence alone as a frozen fixture, naming both the verb binding and the day: ${okScGold ? '✓' : '✗'}`
@@ -7762,8 +7935,9 @@ function selftest(): number {
     scOn(
       "- **Brent closed above $100 for the first time since August 2022 — and the IEA's historic 400M barrel reserve release did nothing.**"
     ).length === 0 &&
-    scOn('*If gold closes above $4,700 on Saturday it confirms the breakout at $4,680.60.*')
-      .length === 0;
+    scOn(
+      '*If gold closes above $4,700 on Saturday it confirms the breakout at $4,680.60.*'
+    ).length === 0;
   console.log(
     `  [IMP-213] REGRESSION PIN: SILENT on 2026-03-13's "for the first time since August 2022" (the build that windowed the string before matching read it as "August 2", a Sunday) and on forward chart talk ("if gold closes above"): ${okScHistorical ? '✓' : '✗'}`
   );
@@ -7800,7 +7974,9 @@ function selftest(): number {
   // 1. FIRE on the real AI&T-2 bytes — exemption clause bound to a consequence verb, no row.
   const rvPubPath = path.join(root, 'content/daily-updates/2026-08-24.md');
   const rvDraftPath = path.join(root, 'daily-briefs/2026-08-24-v1.5.md');
-  const rvPub = fs.existsSync(rvPubPath) ? fs.readFileSync(rvPubPath, 'utf8') : '';
+  const rvPub = fs.existsSync(rvPubPath)
+    ? fs.readFileSync(rvPubPath, 'utf8')
+    : '';
   const rvDraft = fs.existsSync(rvDraftPath)
     ? fs.readFileSync(rvDraftPath, 'utf8')
     : '';
@@ -7810,7 +7986,9 @@ function selftest(): number {
     rvPubHits.length === 1 &&
     rvDraftHits.length === 1 &&
     rvPubHits[0]!.severity === 'FAIL' &&
-    /regulator-successor:federal-trade-commission/.test(rvPubHits[0]!.message) &&
+    /regulator-successor:federal-trade-commission/.test(
+      rvPubHits[0]!.message
+    ) &&
     /"because" \+ "is why"/.test(rvPubHits[0]!.message) &&
     /airlines are exempt from Federal Trade Commission/.test(
       rvPubHits[0]!.message
@@ -8023,9 +8201,11 @@ function selftest(): number {
     `  [ESC-018] SILENT the moment ONE price: row exists — starvation, not emptiness, is what it reports: ${okStarveSilent ? '✓' : '✗'}`
   );
   // And it must not condemn the pre-rail archive (IMP-125).
-  const okStarveNoRetro = !settleObservationRail({ claims: {} }, '2026-07-01', false).some(
-    f => /GATE STARVED/.test(f.message)
-  );
+  const okStarveNoRetro = !settleObservationRail(
+    { claims: {} },
+    '2026-07-01',
+    false
+  ).some(f => /GATE STARVED/.test(f.message));
   console.log(
     `  [ESC-018] NO RETRO: silent before SETTLE_RAIL_EFFECTIVE_FROM: ${okStarveNoRetro ? '✓' : '✗'}`
   );
@@ -8162,14 +8342,23 @@ function selftest(): number {
   const scFindings = sc28 ? settledCloseFindings(sc28, 231) : [];
   const okR3Fire =
     !sc28 ||
-    (scFindings.some(f => /finished 5\.8 percent off its high/i.test(f.sentence)) &&
-      scFindings.some(f => /rose about 21 percent on Thursday/i.test(f.sentence)));
+    (scFindings.some(f =>
+      /finished 5\.8 percent off its high/i.test(f.sentence)
+    ) &&
+      scFindings.some(f =>
+        /rose about 21 percent on Thursday/i.test(f.sentence)
+      ));
   // Before the settle + grace, nothing fires — an intraday brief is allowed intraday marks.
-  const okR3Grace = !sc28 || settledCloseFindings(sc28, SETTLE_GRACE_MIN).length === 0;
+  const okR3Grace =
+    !sc28 || settledCloseFindings(sc28, SETTLE_GRACE_MIN).length === 0;
   // An hour-stamped mark declares its own vintage and is exactly the remedy the rule asks for.
   const okR3HourStamp =
-    settledCloseFindings('Micron finished 5.8 percent off its high at 10:43 ET.', 231).length === 0 &&
-    settledCloseFindings('Micron finished 5.8 percent off its high.', 231).length === 1;
+    settledCloseFindings(
+      'Micron finished 5.8 percent off its high at 10:43 ET.',
+      231
+    ).length === 0 &&
+    settledCloseFindings('Micron finished 5.8 percent off its high.', 231)
+      .length === 1;
   // A FINANCING close is not a session close (the Copper false positive, from the real bytes).
   const okR3Financing =
     settledCloseFindings(
@@ -8185,10 +8374,15 @@ function selftest(): number {
   // THE EXEMPTION, wired and waiting: a ticker whose close WAS recorded is not guessing.
   const okR3Resolved =
     settledCloseFindings('CRM closed up 22.60 percent.', 231).length === 1 &&
-    settledCloseFindings('CRM closed up 22.60 percent.', 231, new Set(['CRM'])).length === 0;
+    settledCloseFindings('CRM closed up 22.60 percent.', 231, new Set(['CRM']))
+      .length === 0;
   // ── C2: THE NUMERIC DISCRIMINATOR, on the real truth rows ──────────────────────────────────
-  const c2Closes = recordedCloses(path.join(root, 'daily-briefs/2026-08-28-truth.json'));
-  const okC2Load = c2Closes.length === 4 && c2Closes.some(c => c.key === 'CRM' && c.pct === 22.6);
+  const c2Closes = recordedCloses(
+    path.join(root, 'daily-briefs/2026-08-28-truth.json')
+  );
+  const okC2Load =
+    c2Closes.length === 4 &&
+    c2Closes.some(c => c.key === 'CRM' && c.pct === 22.6);
   const crm = c2Closes.find(c => c.key === 'CRM')!;
   const mu = c2Closes.find(c => c.key === 'MU')!;
   // A sentence quoting the recorded close is CORRECT USAGE and must fall out.
@@ -8199,16 +8393,28 @@ function selftest(): number {
   // recorded INSTRUMENT would have exempted the Salesforce defect itself.
   const okC2NotInstrumentLevel =
     !!closeFor('Salesforce rose about 21 percent on Thursday.', c2Closes) &&
-    settledCloseFindings('Salesforce rose about 21 percent on Thursday.', 231, new Set(), c2Closes).length === 1;
+    settledCloseFindings(
+      'Salesforce rose about 21 percent on Thursday.',
+      231,
+      new Set(),
+      c2Closes
+    ).length === 1;
   // …and the finding NAMES what it contradicts.
   const okC2Names =
-    settledCloseFindings('Salesforce rose about 21 percent on Thursday.', 231, new Set(), c2Closes)[0]?.recorded ===
-    'CRM settled +22.6%';
+    settledCloseFindings(
+      'Salesforce rose about 21 percent on Thursday.',
+      231,
+      new Set(),
+      c2Closes
+    )[0]?.recorded === 'CRM settled +22.6%';
   // Company name, not ticker — the prose never says "MU".
-  const okC2ByName = !!closeFor('Micron finished 5.8 percent off its high.', c2Closes) && mu.names.includes('Micron');
+  const okC2ByName =
+    !!closeFor('Micron finished 5.8 percent off its high.', c2Closes) &&
+    mu.names.includes('Micron');
   // An UNRESOLVED close row is a close that was looked for and NOT found — never an exemption.
   const okC2Unresolved =
-    recordedCloses(path.join(root, 'daily-briefs/2026-08-27-truth.json')).length === 0;
+    recordedCloses(path.join(root, 'daily-briefs/2026-08-27-truth.json'))
+      .length === 0;
 
   const ok =
     okCrMath &&
@@ -8631,7 +8837,8 @@ function main() {
   // deleted hedge or an added scope is a hard finding. No row → the --require-resolved rail blocks
   // it at the Morning Truth Gate exactly like any other unresolved CRITICAL claim.
   const attrSuperlatives = attributedSuperlativeClaims(body, briefDate);
-  for (const e of attrSuperlatives) if (truth?.claims?.[e.key]) e.status = 'PASS';
+  for (const e of attrSuperlatives)
+    if (truth?.claims?.[e.key]) e.status = 'PASS';
   findings.push(
     ...attributedSuperlativeFidelity(
       attrSuperlatives,
@@ -8784,7 +8991,10 @@ function main() {
   // page. derivedPercentageFindings sees a bullet contradicting ITSELF; this sees a bullet made
   // consistent by deletion — the failure that stays invisible precisely because it tidied up.
   findings.push(
-    ...derivedFigureContradictionFindings(body, loadPredrafts(briefPath, briefDate))
+    ...derivedFigureContradictionFindings(
+      body,
+      loadPredrafts(briefPath, briefDate)
+    )
   );
 
   // 4j. Dashboard level recency (IMP-196, 08-19 Critic mandate #1): a precise level repeated from

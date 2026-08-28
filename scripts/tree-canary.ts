@@ -17,12 +17,27 @@
  */
 import { spawnSync } from 'child_process';
 
-export interface TreeState { dirty: string[]; ok: boolean; error?: string }
+export interface TreeState {
+  dirty: string[];
+  ok: boolean;
+  error?: string;
+}
 
 export function treeState(cwd = process.cwd()): TreeState {
-  const r = spawnSync('git', ['status', '--porcelain'], { cwd, encoding: 'utf-8' });
-  if (r.status !== 0) return { dirty: [], ok: false, error: (r.stderr || 'git failed').trim().slice(0, 200) };
-  const dirty = (r.stdout || '').split('\n').map(l => l.trimEnd()).filter(Boolean);
+  const r = spawnSync('git', ['status', '--porcelain'], {
+    cwd,
+    encoding: 'utf-8',
+  });
+  if (r.status !== 0)
+    return {
+      dirty: [],
+      ok: false,
+      error: (r.stderr || 'git failed').trim().slice(0, 200),
+    };
+  const dirty = (r.stdout || '')
+    .split('\n')
+    .map(l => l.trimEnd())
+    .filter(Boolean);
   return { dirty, ok: true };
 }
 
@@ -34,7 +49,10 @@ export function treeReport(s: TreeState, task: string, iso: string): string {
   const head = `TREE — 🔴 DIRTY: ${s.dirty.length} uncommitted path(s)`;
   return (
     `${head}\n` +
-    s.dirty.slice(0, 40).map(l => `    ${l}`).join('\n') +
+    s.dirty
+      .slice(0, 40)
+      .map(l => `    ${l}`)
+      .join('\n') +
     (s.dirty.length > 40 ? `\n    … ${s.dirty.length - 40} more` : '') +
     `\n  ALARM EMAIL REQUIRED — this script cannot send mail (transport is deliberately independent\n` +
     `  of the workspace mount). Send now:\n` +
@@ -47,24 +65,51 @@ export function treeReport(s: TreeState, task: string, iso: string): string {
 
 function main(): void {
   const argv = process.argv.slice(2);
-  const task = (argv.find(a => a.startsWith('--task=')) ?? '--task=unknown').slice(7);
+  const task = (
+    argv.find(a => a.startsWith('--task=')) ?? '--task=unknown'
+  ).slice(7);
   const iso = new Date().toISOString();
 
   if (argv.includes('--selftest')) {
-    let pass = 0, fail = 0;
-    const t = (n: string, ok: boolean) => { ok ? pass++ : fail++; console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${n}`); };
-    t('[tree] a CLEAN tree reports clean and says so in one line',
-      treeReport({ dirty: [], ok: true }, 'x', iso) === 'TREE — CLEAN (git status --porcelain empty)');
-    const dirty = treeReport({ dirty: [' M a.ts', '?? b.ts'], ok: true }, 'brief-morning', iso);
-    t('[tree] a DIRTY tree names the count, lists the paths, and prints the alarm email',
-      /TREE — 🔴 DIRTY: 2 uncommitted path\(s\)/.test(dirty) && dirty.includes(' M a.ts') && dirty.includes('cosmictrex11@gmail.com'));
-    t('[tree] the alarm subject carries the task and the timestamp, so a board line identifies its own run',
-      dirty.includes('dirty tree at brief-morning canary'));
-    t('[tree] an UNREADABLE tree is 🔴, never silently clean — an unread tree is not a clean one',
-      /UNREADABLE/.test(treeReport({ dirty: [], ok: false, error: 'not a git repo' }, 'x', iso)));
-    t('[tree] N/A STATE: git failing produces ok:false rather than an empty-and-therefore-clean result',
-      treeState('/nonexistent-path-for-selftest').ok === false);
-    console.log(`\n${fail ? '❌' : '✅'} tree-canary --selftest: ${pass}/${pass + fail} assertions passed.`);
+    let pass = 0,
+      fail = 0;
+    const t = (n: string, ok: boolean) => {
+      ok ? pass++ : fail++;
+      console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${n}`);
+    };
+    t(
+      '[tree] a CLEAN tree reports clean and says so in one line',
+      treeReport({ dirty: [], ok: true }, 'x', iso) ===
+        'TREE — CLEAN (git status --porcelain empty)'
+    );
+    const dirty = treeReport(
+      { dirty: [' M a.ts', '?? b.ts'], ok: true },
+      'brief-morning',
+      iso
+    );
+    t(
+      '[tree] a DIRTY tree names the count, lists the paths, and prints the alarm email',
+      /TREE — 🔴 DIRTY: 2 uncommitted path\(s\)/.test(dirty) &&
+        dirty.includes(' M a.ts') &&
+        dirty.includes('cosmictrex11@gmail.com')
+    );
+    t(
+      '[tree] the alarm subject carries the task and the timestamp, so a board line identifies its own run',
+      dirty.includes('dirty tree at brief-morning canary')
+    );
+    t(
+      '[tree] an UNREADABLE tree is 🔴, never silently clean — an unread tree is not a clean one',
+      /UNREADABLE/.test(
+        treeReport({ dirty: [], ok: false, error: 'not a git repo' }, 'x', iso)
+      )
+    );
+    t(
+      '[tree] N/A STATE: git failing produces ok:false rather than an empty-and-therefore-clean result',
+      treeState('/nonexistent-path-for-selftest').ok === false
+    );
+    console.log(
+      `\n${fail ? '❌' : '✅'} tree-canary --selftest: ${pass}/${pass + fail} assertions passed.`
+    );
     process.exit(fail ? 1 : 0);
   }
 

@@ -132,11 +132,12 @@ export function parseWorldFirstRows(body: string): WfRow[] {
   const region = body.slice(start, end === -1 ? body.length : end);
   for (const line of region.split('\n')) {
     if (!/WORLD-FIRST:/i.test(line)) continue;
-    const worldFirst = [...line.matchAll(/WORLD-FIRST:\s*(\d{4}-\d{2}-\d{2})/gi)].map(
-      m => m[1]!
-    );
+    const worldFirst = [
+      ...line.matchAll(/WORLD-FIRST:\s*(\d{4}-\d{2}-\d{2})/gi),
+    ].map(m => m[1]!);
     if (!worldFirst.length) continue;
-    const cls = line.match(/CLASSIFICATION:\s*([A-Z]+)/i)?.[1]?.toUpperCase() ?? '';
+    const cls =
+      line.match(/CLASSIFICATION:\s*([A-Z]+)/i)?.[1]?.toUpperCase() ?? '';
     const srcSeg = line.slice(line.search(/\bSOURCE:/i));
     const evIdx = srcSeg.search(/\bEVIDENCE:/i);
     const sourcePart = evIdx === -1 ? srcSeg : srcSeg.slice(0, evIdx);
@@ -145,8 +146,12 @@ export function parseWorldFirstRows(body: string): WfRow[] {
       label: line.replace(/^-\s*/, '').split('|')[0]!.trim(),
       worldFirst,
       classification: cls,
-      sourceDates: [...sourcePart.matchAll(/(\d{4}-\d{2}-\d{2})/g)].map(m => m[1]!),
-      evidenceDates: [...evidencePart.matchAll(/(\d{4}-\d{2}-\d{2})/g)].map(m => m[1]!),
+      sourceDates: [...sourcePart.matchAll(/(\d{4}-\d{2}-\d{2})/g)].map(
+        m => m[1]!
+      ),
+      evidenceDates: [...evidencePart.matchAll(/(\d{4}-\d{2}-\d{2})/g)].map(
+        m => m[1]!
+      ),
       raw: line,
     });
   }
@@ -156,7 +161,9 @@ export function parseWorldFirstRows(body: string): WfRow[] {
 const DAY = 86400000;
 const dayDiff = (a: string, b: string): number =>
   Math.abs(
-    (new Date(`${a}T00:00:00Z`).getTime() - new Date(`${b}T00:00:00Z`).getTime()) / DAY
+    (new Date(`${a}T00:00:00Z`).getTime() -
+      new Date(`${b}T00:00:00Z`).getTime()) /
+      DAY
   );
 
 // THE MANDATE'S LITERAL SPEC IS INERT ON ITS OWN NAMED CASE, AND WAS REBUILT ON THAT EVIDENCE.
@@ -200,9 +207,32 @@ const DOC_SUBJECT_RE =
 const BYLINED_TITLE_RE =
   /\b([A-Z][a-z]+(?:\s+[A-Z][a-z'’]+){1,3}),\s*[“"]([^”"]{10,140})[”"]/g;
 const WF_STOP = new Set([
-  'the', 'and', 'its', 'a', 'an', 'of', 'for', 'on', 'in', 'to', 'with', 'vs',
-  'august', 'september', 'july', 'october', 'november', 'december', 'january',
-  'february', 'march', 'april', 'may', 'june', '2026', '2025',
+  'the',
+  'and',
+  'its',
+  'a',
+  'an',
+  'of',
+  'for',
+  'on',
+  'in',
+  'to',
+  'with',
+  'vs',
+  'august',
+  'september',
+  'july',
+  'october',
+  'november',
+  'december',
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  '2026',
+  '2025',
 ]);
 const contentWords = (s: string): Set<string> =>
   new Set(
@@ -218,7 +248,10 @@ const contentWords = (s: string): Set<string> =>
  *      rather than through a bylined write-up titled after it; or
  * (ii) CLASSIFICATION: UPDATED **and** ≥1 dated development inside 48h of BRIEF_DATE.
  */
-export function worldFirstAttestation(rows: WfRow[], briefDate: string): string[] {
+export function worldFirstAttestation(
+  rows: WfRow[],
+  briefDate: string
+): string[] {
   const failures: string[] = [];
   for (const r of rows) {
     const devs = [...r.sourceDates, ...r.evidenceDates].filter(
@@ -256,7 +289,12 @@ export function worldFirstAttestation(rows: WfRow[], briefDate: string): string[
     // The document's own name appearing OUTSIDE every bylined title = a direct citation.
     const outside = sourcePart.split(/[“"][^”"]{10,140}[”"]/).join(' ');
     const docNoun = r.label.match(DOC_SUBJECT_RE)![0]!.toLowerCase();
-    if (new RegExp(`\\b${docNoun}\\b`, 'i').test(outside.replace(bylinedSpan, ' '))) continue;
+    if (
+      new RegExp(`\\b${docNoun}\\b`, 'i').test(
+        outside.replace(bylinedSpan, ' ')
+      )
+    )
+      continue;
 
     for (const wf of r.worldFirst) {
       failures.push(
@@ -298,7 +336,7 @@ function selftest(): number {
   // The mandate specified three cases and two directions. All three are real rows on one page.
   assert(
     named('Anthropic'),
-    "[IMP-198] AI&T-1 FAILS — WORLD-FIRST 2026-08-18 for a report that published 08-14; sole source is an 08-18 review; CLASSIFICATION: NEW with no development named"
+    '[IMP-198] AI&T-1 FAILS — WORLD-FIRST 2026-08-18 for a report that published 08-14; sole source is an 08-18 review; CLASSIFICATION: NEW with no development named'
   );
   assert(
     !named('Keysight'),
@@ -341,9 +379,14 @@ function selftest(): number {
     const nvda =
       '**Nvidia said its backlog passed two trillion dollars.** The backlog is the number that matters because Nvidia books the backlog before revenue, and the backlog converts on a lag.\n';
     const k = storyKey(nvda);
-    assert(k.entity === 'nvidia' && k.mechanism === 'backlog', `[item5b] the key is entity+mechanism, both read from the unit — got ${k.key}`);
     assert(
-      storyKey('**The factory drew its boundary around the supplier.** A factory that treats its supplier as external takes a price rise as a shock.').entity === '',
+      k.entity === 'nvidia' && k.mechanism === 'backlog',
+      `[item5b] the key is entity+mechanism, both read from the unit — got ${k.key}`
+    );
+    assert(
+      storyKey(
+        '**The factory drew its boundary around the supplier.** A factory that treats its supplier as external takes a price rise as a shock.'
+      ).entity === '',
       '[item5b] a sentence-initial capital is grammar, not a name — a unit with no proper noun yields no entity and is never keyed'
     );
     const hist = [
@@ -360,17 +403,29 @@ function selftest(): number {
       '[item5b] SILENT at 2 of 5 — the threshold is a real threshold, not a synonym for "seen before"'
     );
     assert(
-      storyFlags([nvda.replace('**', '<!-- story-new: backlog converted to revenue -->\n**')], hist, '2026-08-27').length === 0,
+      storyFlags(
+        [
+          nvda.replace(
+            '**',
+            '<!-- story-new: backlog converted to revenue -->\n**'
+          ),
+        ],
+        hist,
+        '2026-08-27'
+      ).length === 0,
       '[item5b] a declared NEW INCREMENT is never flagged — a running story that is actually moving is not punished for continuing'
     );
     assert(
-      storyFlags([], hist, '2026-08-27').length === 0 && storyFlags([nvda], [], '2026-08-27').length === 0,
+      storyFlags([], hist, '2026-08-27').length === 0 &&
+        storyFlags([nvda], [], '2026-08-27').length === 0,
       '[item5b] N/A STATE: no units, or no history at all, produces no flags — an empty ledger is unmeasured, not clean'
     );
     total += 6;
   }
 
-  console.log(`\nnovelty-gate selftest — ${total - fails}/${total} assertions passed`);
+  console.log(
+    `\nnovelty-gate selftest — ${total - fails}/${total} assertions passed`
+  );
   return fails ? 1 : 0;
 }
 
@@ -381,11 +436,21 @@ function main() {
   // ── --stories: the STORY COOLDOWN pass (work order 2026-08-28 item 5b). ADVISORY, exit 0 ALWAYS.
   if (args.includes('--stories')) {
     const f = args.find(a => /\.md$/.test(a));
-    if (!f) { console.error('usage: novelty-gate --stories <brief.md> [--date YYYY-MM-DD] [--update]'); process.exit(2); }
+    if (!f) {
+      console.error(
+        'usage: novelty-gate --stories <brief.md> [--date YYYY-MM-DD] [--update]'
+      );
+      process.exit(2);
+    }
     const di = args.indexOf('--date');
-    const date = di > -1 && args[di + 1] ? args[di + 1]! : (/(\d{4}-\d{2}-\d{2})/.exec(path.basename(f)) ?? [, 'undated'])[1]!;
+    const date =
+      di > -1 && args[di + 1]
+        ? args[di + 1]!
+        : (/(\d{4}-\d{2}-\d{2})/.exec(path.basename(f)) ?? [, 'undated'])[1]!;
     const flags = runStoryCooldown(f, date, args.includes('--update'));
-    console.log(`STORY COOLDOWN ${date} — window ${STORY_WINDOW} day(s), threshold ${STORY_THRESHOLD} · ADVISORY, never blocks`);
+    console.log(
+      `STORY COOLDOWN ${date} — window ${STORY_WINDOW} day(s), threshold ${STORY_THRESHOLD} · ADVISORY, never blocks`
+    );
     if (!flags.length)
       console.log(
         '  ➖ no story ran the window without a new increment.\n' +
@@ -397,9 +462,13 @@ function main() {
           '     not unmeasured. Advisory; selection-judge grades the flags.'
       );
     for (const fl of flags)
-      console.log(`  🟡 STORY-COOLDOWN: ${fl.key} — ${fl.days} of the last ${fl.window} day(s), no <!-- story-new: … --> marker\n     ${fl.unit}…`);
+      console.log(
+        `  🟡 STORY-COOLDOWN: ${fl.key} — ${fl.days} of the last ${fl.window} day(s), no <!-- story-new: … --> marker\n     ${fl.unit}…`
+      );
     if (flags.length)
-      console.log(`\n  Declare a genuine development with <!-- story-new: what changed --> inside the unit.\n  Advisory until it earns blocking through catches; the weekly selection-judge grades these flags.`);
+      console.log(
+        `\n  Declare a genuine development with <!-- story-new: what changed --> inside the unit.\n  Advisory until it earns blocking through catches; the weekly selection-judge grades these flags.`
+      );
     process.exit(0);
   }
   const briefArg = args.find(a => !a.startsWith('--'));
@@ -568,17 +637,25 @@ export const STORY_THRESHOLD = 3;
 // recur even when the story does. Fixed by stopping those classes and by matching on the entity
 // plus ANY of its top mechanism tokens rather than one exact pair.
 const STORY_STOP = new Set(
-  ('the a an and or but of to in on for with is are was were be been it its this that as at by from not no than then so if into over under up down out about what which who whom whose when where why how more most other some such only own same too very can will just should now their there here they them his her him she he you your our we us i me my one two three first second next last year years day days week weeks month months time percent point points ' +
+  (
+    'the a an and or but of to in on for with is are was were be been it its this that as at by from not no than then so if into over under up down out about what which who whom whose when where why how more most other some such only own same too very can will just should now their there here they them his her him she he you your our we us i me my one two three first second next last year years day days week weeks month months time percent point points ' +
     // measured noise: nationalities and demonyms read as entities, months and section words too
     'american americans america chinese china european europe japanese japan german british russian indian korean ' +
     'january february march april may june july august september october november december ' +
     'close dashboard take signal discovery wildcard headlines practice model models explore brief today tomorrow yesterday ' +
     'market markets price prices number numbers report reports company companies business against because without again ' +
     'through before after under between during still while where after'
-  ).split(' ').filter(Boolean)
+  )
+    .split(' ')
+    .filter(Boolean)
 );
 
-export function storyKey(unit: string): { entity: string; mechanism: string; mechanisms: string[]; key: string } {
+export function storyKey(unit: string): {
+  entity: string;
+  mechanism: string;
+  mechanisms: string[];
+  key: string;
+} {
   const body = unit.replace(/<!--[\s\S]*?-->/g, ' ');
   const proper = new Map<string, number>();
   // Skip the first word of each sentence — a capital there is grammar, not a name.
@@ -597,7 +674,9 @@ export function storyKey(unit: string): { entity: string; mechanism: string; mec
     nouns.set(w, (nouns.get(w) ?? 0) + 1);
   }
   const top = (m: Map<string, number>) =>
-    [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? '';
+    [...m.entries()].sort(
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+    )[0]?.[0] ?? '';
   const entity = top(proper);
   const mechanisms = [...nouns.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
@@ -607,9 +686,15 @@ export function storyKey(unit: string): { entity: string; mechanism: string; mec
   return { entity, mechanism, mechanisms, key: `${entity}|${mechanism}` };
 }
 
-export const hasNewIncrement = (unit: string): boolean => /<!--\s*story-new:/i.test(unit);
+export const hasNewIncrement = (unit: string): boolean =>
+  /<!--\s*story-new:/i.test(unit);
 
-export interface StoryFlag { key: string; days: number; window: number; unit: string }
+export interface StoryFlag {
+  key: string;
+  days: number;
+  window: number;
+  unit: string;
+}
 
 /** Keys that ran on >= THRESHOLD of the last WINDOW recorded days, with no new-increment marker. */
 export function storyFlags(
@@ -638,7 +723,12 @@ export function storyFlags(
         })
       ).length + 1;
     if (days >= STORY_THRESHOLD)
-      out.push({ key, days, window: Math.min(STORY_WINDOW, prior.length + 1), unit: u.slice(0, 90).replace(/\s+/g, ' ') });
+      out.push({
+        key,
+        days,
+        window: Math.min(STORY_WINDOW, prior.length + 1),
+        unit: u.slice(0, 90).replace(/\s+/g, ' '),
+      });
   }
   return out;
 }
@@ -666,17 +756,22 @@ export function storyFlags(
 export const STORY_THEMES: Record<string, RegExp> = {
   oil: /\b(crude|brent|wti|barrel|refinery|diesel|heating oil|gasoline|opec)\b/i,
   tariff: /\b(tariff|tariffs|duty|duties|section 23[12]|section 338)\b/i,
-  rates: /\b(yield|yields|basis points|treasury|ten-year|thirty-year|rate cut|buyback)\b/i,
-  aicapex: /\b(data ?cent(er|re)|capex|gpu|accelerator|backlog|buildout|inference)\b/i,
+  rates:
+    /\b(yield|yields|basis points|treasury|ten-year|thirty-year|rate cut|buyback)\b/i,
+  aicapex:
+    /\b(data ?cent(er|re)|capex|gpu|accelerator|backlog|buildout|inference)\b/i,
   chips: /\b(semiconductor|chip|chips|foundry|wafer)\b/i,
   crypto: /\b(bitcoin|ether|ethereum|stablecoin|token|on-chain|custodian)\b/i,
-  sanctions: /\b(sanction|sanctions|designated|designation|export control|entity list)\b/i,
+  sanctions:
+    /\b(sanction|sanctions|designated|designation|export control|entity list)\b/i,
   guidance: /\b(guidance|outlook|arr|gross margin|full-year)\b/i,
   power: /\b(grid|electricity|turbine|megawatt|capacity market|pjm|nuclear)\b/i,
 };
 
 export function themesOf(text: string): string[] {
-  return Object.entries(STORY_THEMES).filter(([, rx]) => rx.test(text)).map(([t]) => t);
+  return Object.entries(STORY_THEMES)
+    .filter(([, rx]) => rx.test(text))
+    .map(([t]) => t);
 }
 
 /** entity×theme keys for one claim. Entity-less keys are dropped — see the note above. */
@@ -686,13 +781,27 @@ export function claimKeys(claimText: string): string[] {
   return themesOf(claimText).map(t => `${entity}|${t}`);
 }
 
-export interface ClaimRow { unit: string; claim: string }
+export interface ClaimRow {
+  unit: string;
+  claim: string;
+}
 
-export function readClaims(root: string, date: string, product = ''): ClaimRow[] {
-  const p = path.join(root, '.readback', date + (product ? `-${product}` : ''), 'claims.json');
+export function readClaims(
+  root: string,
+  date: string,
+  product = ''
+): ClaimRow[] {
+  const p = path.join(
+    root,
+    '.readback',
+    date + (product ? `-${product}` : ''),
+    'claims.json'
+  );
   if (!fs.existsSync(p)) return [];
   try {
-    return (JSON.parse(fs.readFileSync(p, 'utf-8')) as ClaimRow[]).filter(c => c && c.claim);
+    return (JSON.parse(fs.readFileSync(p, 'utf-8')) as ClaimRow[]).filter(
+      c => c && c.claim
+    );
   } catch {
     return [];
   }
@@ -707,10 +816,16 @@ export function runStoryCooldown(
 ): StoryFlag[] {
   const claims = readClaims(root, date, product);
   const lp = path.join(root, STORY_LEDGER);
-  const led: { _doc?: string; history: { date: string; keys: string[] }[] } = fs.existsSync(lp)
-    ? JSON.parse(fs.readFileSync(lp, 'utf-8'))
-    : { _doc: 'STORY COOLDOWN LEDGER — entity×theme keys per night, read from claims.json. Advisory.', history: [] };
-  const prior = led.history.filter(h => h.date !== date).slice(-(STORY_WINDOW - 1));
+  const led: { _doc?: string; history: { date: string; keys: string[] }[] } =
+    fs.existsSync(lp)
+      ? JSON.parse(fs.readFileSync(lp, 'utf-8'))
+      : {
+          _doc: 'STORY COOLDOWN LEDGER — entity×theme keys per night, read from claims.json. Advisory.',
+          history: [],
+        };
+  const prior = led.history
+    .filter(h => h.date !== date)
+    .slice(-(STORY_WINDOW - 1));
   const flags: StoryFlag[] = [];
   const seen = new Set<string>();
   for (const c of claims) {
@@ -720,7 +835,12 @@ export function runStoryCooldown(
       seen.add(key);
       const days = prior.filter(h => h.keys.includes(key)).length + 1;
       if (days >= STORY_THRESHOLD)
-        flags.push({ key, days, window: Math.min(STORY_WINDOW, prior.length + 1), unit: `${c.unit}: ${c.claim.slice(0, 80)}` });
+        flags.push({
+          key,
+          days,
+          window: Math.min(STORY_WINDOW, prior.length + 1),
+          unit: `${c.unit}: ${c.claim.slice(0, 80)}`,
+        });
     }
   }
   if (update) {
@@ -728,8 +848,13 @@ export function runStoryCooldown(
     led.history = [...led.history.filter(h => h.date !== date), { date, keys }]
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(-60);
-    led._doc = 'STORY COOLDOWN LEDGER — entity×theme keys per night, read from .readback/{DATE}/claims.json (C3, 2026-08-28). Entity-less keys are dropped: the Markets Minute and dashboard recur by design.';
-    try { fs.writeFileSync(lp, JSON.stringify(led, null, 2)); } catch { /* read-only */ }
+    led._doc =
+      'STORY COOLDOWN LEDGER — entity×theme keys per night, read from .readback/{DATE}/claims.json (C3, 2026-08-28). Entity-less keys are dropped: the Markets Minute and dashboard recur by design.';
+    try {
+      fs.writeFileSync(lp, JSON.stringify(led, null, 2));
+    } catch {
+      /* read-only */
+    }
   }
   return flags;
 }
@@ -737,5 +862,6 @@ export function runStoryCooldown(
 // Direct-invocation guard (added 2026-08-19 — IMP-198, mirroring fact-gate/ceiling-lint): the
 // module must be importable so `worldFirstAttestation` can be exercised without a usage banner.
 const invokedDirectly =
-  !!process.argv[1] && path.resolve(process.argv[1]).endsWith('novelty-gate.ts');
+  !!process.argv[1] &&
+  path.resolve(process.argv[1]).endsWith('novelty-gate.ts');
 if (invokedDirectly) main();

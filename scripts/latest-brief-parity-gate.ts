@@ -55,7 +55,10 @@ export interface ParityFinding {
 
 /** The strict resolver — what getAllBriefDates() answers. */
 export function strictLatest(files: string[]): string | null {
-  const d = files.filter(f => DATE_MD.test(f)).sort().reverse();
+  const d = files
+    .filter(f => DATE_MD.test(f))
+    .sort()
+    .reverse();
   return d[0] ? d[0]!.replace('.md', '') : null;
 }
 
@@ -138,11 +141,14 @@ function selftest(): number {
   // README.md is the sharp case: 'R' (0x52) sorts ABOVE '2' (0x32), so it wins outright.
   const withReadme = [...real, 'README.md'];
   t(
-    looseLatest(withReadme) === 'README' && strictLatest(withReadme) === strictLatest(real),
+    looseLatest(withReadme) === 'README' &&
+      strictLatest(withReadme) === strictLatest(real),
     'THE DIVERGENCE IS REAL: with a README.md present the loose filter resolves to "README" while the strict filter is unmoved — uppercase sorts above digits'
   );
   t(
-    checkParity(withReadme).some(f => f.check === 'latest-brief-resolver-divergence'),
+    checkParity(withReadme).some(
+      f => f.check === 'latest-brief-resolver-divergence'
+    ),
     'FIRES: a stray README.md in content/daily-updates is caught as a resolver divergence'
   );
   // MEASURED, NOT ASSUMED: a "-old.md" suffix sorts BELOW "2026-08-15.md" ('-' 0x2D < '.' 0x2E), so
@@ -185,7 +191,7 @@ function selftest(): number {
   // ── The 08-15 shape, reconstructed: today's edition exists but the route resolves elsewhere. ──
   t(
     checkParity(['2026-07-04.md', '2026-08-15.md'], '2026-08-15').length === 0,
-    'SILENT: today\'s edition present AND newest — the healthy case'
+    "SILENT: today's edition present AND newest — the healthy case"
   );
   t(
     checkParity(['2026-07-04.md'], '2026-08-15').length === 0,
@@ -199,7 +205,9 @@ function selftest(): number {
     `SILENT on the live tree for ${today} (either today's edition is the newest, or there is none)`
   );
 
-  console.log(`\nlatest-brief-parity-gate selftest — ${11 - fails}/11 assertions passed`);
+  console.log(
+    `\nlatest-brief-parity-gate selftest — ${11 - fails}/11 assertions passed`
+  );
   if (fails) {
     console.error('✗ SELFTEST FAILED');
     return 1;
@@ -215,12 +223,16 @@ function main(): number {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
   if (!fs.existsSync(CONTENT_DIR)) {
-    console.error(`latest-brief-parity-gate — content dir not found: ${CONTENT_DIR}`);
+    console.error(
+      `latest-brief-parity-gate — content dir not found: ${CONTENT_DIR}`
+    );
     return 2;
   }
   const di = args.indexOf('--date');
   const today =
-    di > -1 && args[di + 1] ? args[di + 1]! : new Date().toISOString().slice(0, 10);
+    di > -1 && args[di + 1]
+      ? args[di + 1]!
+      : new Date().toISOString().slice(0, 10);
   const files = fs.readdirSync(CONTENT_DIR);
   const findings = checkParity(files, today);
 
@@ -241,4 +253,5 @@ function main(): number {
   return 0;
 }
 
-if (/latest-brief-parity-gate\.ts$/.test(process.argv[1] ?? '')) process.exit(main());
+if (/latest-brief-parity-gate\.ts$/.test(process.argv[1] ?? ''))
+  process.exit(main());

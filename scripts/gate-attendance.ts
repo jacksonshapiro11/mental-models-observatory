@@ -34,7 +34,13 @@ const DB = (root: string) => path.join(root, 'daily-briefs');
 export const boardPath = (root: string, date: string) =>
   path.join(DB(root), `${date}-pipeline-status.md`);
 
-export interface ManifestRow { gate: string; tasks: string[]; wired?: boolean; note?: string; stamp?: string[] }
+export interface ManifestRow {
+  gate: string;
+  tasks: string[];
+  wired?: boolean;
+  note?: string;
+  stamp?: string[];
+}
 export interface Manifest {
   _effective_from?: string;
   classes: Record<string, ManifestRow[]>;
@@ -50,12 +56,22 @@ export function loadManifest(root: string): Manifest {
 export function lineTask(raw: string): string | null {
   const f = raw.split('|');
   if (f.length < 2) return null;
-  if (!/^\s*\[?\s*\d{4}-\d{2}-\d{2}T[\d:]+(?:Z|[+-]\d{2}:?\d{2})?\s*\]?\s*$/.test(f[0]!)) return null;
+  if (
+    !/^\s*\[?\s*\d{4}-\d{2}-\d{2}T[\d:]+(?:Z|[+-]\d{2}:?\d{2})?\s*\]?\s*$/.test(
+      f[0]!
+    )
+  )
+    return null;
   return f[1]!.trim() || null;
 }
 
 export interface GateFinding {
-  cls: string; gate: string; expected: string[]; wired: boolean; note?: string; line: string;
+  cls: string;
+  gate: string;
+  expected: string[];
+  wired: boolean;
+  note?: string;
+  line: string;
 }
 
 /**
@@ -67,11 +83,17 @@ export interface GateFinding {
  * those differ: it is stamped by three tasks on a board and invoked by no body on disk. That is
  * what `wired: false` records, and why a stamped-but-unwired gate is reported RED anyway.
  */
-export function sweep(root: string, date: string): { findings: GateFinding[]; unwired: GateFinding[]; checked: number } {
+export function sweep(
+  root: string,
+  date: string
+): { findings: GateFinding[]; unwired: GateFinding[]; checked: number } {
   const man = loadManifest(root);
   const bp = boardPath(root, date);
-  const lines = fs.existsSync(bp) ? fs.readFileSync(bp, 'utf-8').split('\n') : [];
-  const findings: GateFinding[] = [], unwired: GateFinding[] = [];
+  const lines = fs.existsSync(bp)
+    ? fs.readFileSync(bp, 'utf-8').split('\n')
+    : [];
+  const findings: GateFinding[] = [],
+    unwired: GateFinding[] = [];
   let checked = 0;
   for (const [cls, rows] of Object.entries(man.classes)) {
     for (const r of rows) {
@@ -83,28 +105,60 @@ export function sweep(root: string, date: string): { findings: GateFinding[]; un
         // The board's own vocabulary, not the filename. See `_stamp_note` in the manifest.
         return [r.gate, ...(r.stamp ?? [])].some(a => payload.includes(a));
       });
-      const base = { cls, gate: r.gate, expected: r.tasks, wired: r.wired !== false, note: r.note };
+      const base = {
+        cls,
+        gate: r.gate,
+        expected: r.tasks,
+        wired: r.wired !== false,
+        note: r.note,
+      };
       if (!stamped)
-        findings.push({ ...base, line: `MISSING-GATE: ${r.gate} (${cls}) — no exit stamp from ${r.tasks.join(' or ')} on ${date}` });
+        findings.push({
+          ...base,
+          line: `MISSING-GATE: ${r.gate} (${cls}) — no exit stamp from ${r.tasks.join(' or ')} on ${date}`,
+        });
       else if (r.wired === false)
-        unwired.push({ ...base, line: `STAMPED-BUT-UNWIRED: ${r.gate} (${cls}) — the board says it ran; no body invokes it` });
+        unwired.push({
+          ...base,
+          line: `STAMPED-BUT-UNWIRED: ${r.gate} (${cls}) — the board says it ran; no body invokes it`,
+        });
     }
   }
   return { findings, unwired, checked };
 }
 
 /** Gates on disk that the manifest neither rosters nor retires. */
-export function orphans(root: string): { orphans: string[]; rostered: string[]; retired: string[]; onDisk: string[] } {
+export function orphans(root: string): {
+  orphans: string[];
+  rostered: string[];
+  retired: string[];
+  onDisk: string[];
+} {
   const man = loadManifest(root);
   const onDisk = fs
     .readdirSync(path.join(root, 'scripts'))
     .filter(f => /gate.*\.ts$/.test(f) && !/\.bak|scratch/.test(f))
     .map(f => f.replace(/\.ts$/, ''))
     .sort();
-  const rostered = [...new Set(Object.values(man.classes).flat().map(r => r.gate))].sort();
+  const rostered = [
+    ...new Set(
+      Object.values(man.classes)
+        .flat()
+        .map(r => r.gate)
+    ),
+  ].sort();
   const retired = Object.keys(man.retired).sort();
-  const known = new Set([...rostered, ...retired, ...(man.unrostered_unretired?.gates ?? [])]);
-  return { orphans: onDisk.filter(g => !known.has(g)), rostered, retired, onDisk };
+  const known = new Set([
+    ...rostered,
+    ...retired,
+    ...(man.unrostered_unretired?.gates ?? []),
+  ]);
+  return {
+    orphans: onDisk.filter(g => !known.has(g)),
+    rostered,
+    retired,
+    onDisk,
+  };
 }
 
 // ---------- selftest ----------
@@ -113,14 +167,23 @@ function main(): void {
   const argv = process.argv.slice(2);
 
   if (argv.includes('--selftest')) {
-    let pass = 0, fail = 0;
+    let pass = 0,
+      fail = 0;
     const t = (name: string, ok: boolean) => {
       ok ? pass++ : fail++;
       console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${name}`);
     };
     const man = loadManifest(root);
-    t('[manifest] loads and carries all four artifact classes', ['draft', 'v2', 'light', 'publish'].every(k => k in man.classes));
-    t('[manifest] every rostered row names at least one task that must stamp it', Object.values(man.classes).flat().every(r => r.tasks.length > 0));
+    t(
+      '[manifest] loads and carries all four artifact classes',
+      ['draft', 'v2', 'light', 'publish'].every(k => k in man.classes)
+    );
+    t(
+      '[manifest] every rostered row names at least one task that must stamp it',
+      Object.values(man.classes)
+        .flat()
+        .every(r => r.tasks.length > 0)
+    );
 
     // SILENT on the green night it was seeded from — anything else means the seed is wrong.
     const green = sweep(root, '2026-08-27');
@@ -136,7 +199,8 @@ function main(): void {
     );
     t(
       `[sweep] and the only missing row is one the manifest already declares unwired — novelty-gate on the light surface, which item 5 connects (${green.findings.map(f => f.gate + '/' + f.cls).join(', ') || 'none'})`,
-      green.findings.every(f => !f.wired) && green.findings.some(f => f.gate === 'novelty-gate' && f.cls === 'light')
+      green.findings.every(f => !f.wired) &&
+        green.findings.some(f => f.gate === 'novelty-gate' && f.cls === 'light')
     );
     // 🔴 …and NOT silent about the gate that is stamped by nobody's code.
     t(
@@ -151,7 +215,9 @@ function main(): void {
     );
     t(
       '[sweep] the emitted line matches the mandated shape: "MISSING-GATE: {gate} ({class}) — no exit stamp from {tasks} on {date}"',
-      /^MISSING-GATE: [a-z0-9-]+ \([a-z0-9]+\) — no exit stamp from .+ on \d{4}-\d{2}-\d{2}$/.test(empty.findings[0]!.line)
+      /^MISSING-GATE: [a-z0-9-]+ \([a-z0-9]+\) — no exit stamp from .+ on \d{4}-\d{2}-\d{2}$/.test(
+        empty.findings[0]!.line
+      )
     );
     // A stamp only counts from an EXPECTED task — a narration by anyone else is not attendance.
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-att-'));
@@ -178,23 +244,32 @@ function main(): void {
     fs.mkdirSync(path.join(tmp2, 'scripts'), { recursive: true });
     fs.mkdirSync(path.join(tmp2, 'system'), { recursive: true });
     fs.copyFileSync(path.join(root, MANIFEST), path.join(tmp2, MANIFEST));
-    fs.writeFileSync(path.join(tmp2, 'scripts', 'brand-new-gate.ts'), '// born disconnected\n');
+    fs.writeFileSync(
+      path.join(tmp2, 'scripts', 'brand-new-gate.ts'),
+      '// born disconnected\n'
+    );
     t(
       '[orphan] FIRES on a gate that is neither rostered nor retired — a new gate cannot be born connected to nothing',
       orphans(tmp2).orphans.includes('brand-new-gate')
     );
 
-    console.log(`\n${fail ? '❌' : '✅'} gate-attendance --selftest: ${pass}/${pass + fail} assertions passed.`);
+    console.log(
+      `\n${fail ? '❌' : '✅'} gate-attendance --selftest: ${pass}/${pass + fail} assertions passed.`
+    );
     process.exit(fail ? 1 : 0);
   }
 
   if (argv.includes('--orphans')) {
     const o = orphans(root);
-    console.log(`gate-attendance --orphans · ${o.onDisk.length} gate script(s) on disk · ${o.rostered.length} rostered · ${o.retired.length} retired`);
+    console.log(
+      `gate-attendance --orphans · ${o.onDisk.length} gate script(s) on disk · ${o.rostered.length} rostered · ${o.retired.length} retired`
+    );
     const man2 = loadManifest(root);
     const backlog = man2.unrostered_unretired?.gates ?? [];
     if (!o.orphans.length) {
-      console.log('✅ NO ORPHANS — every gate on disk is rostered, retired, or explicitly backlogged.');
+      console.log(
+        '✅ NO ORPHANS — every gate on disk is rostered, retired, or explicitly backlogged.'
+      );
       // Said out loud, because "no orphans" is otherwise bought with a list nobody reads.
       console.log(
         `\n🟡 BUT THE BACKLOG IS THE REAL NUMBER: ${backlog.length} gate(s) exist, are NOT retired, and belong to NO artifact class.\n` +
@@ -202,10 +277,14 @@ function main(): void {
           `   ${backlog.join(', ')}\n` +
           `   Each needs a class or a retirement reason. Until then each one runs on no night.`
       );
-    }
-    else {
-      for (const g of o.orphans) console.log(`ORPHAN-GATE: scripts/${g}.ts — in no artifact class and not retired`);
-      console.log(`\n🔴 ${o.orphans.length} orphan(s). A gate that belongs to no artifact class runs on no night.`);
+    } else {
+      for (const g of o.orphans)
+        console.log(
+          `ORPHAN-GATE: scripts/${g}.ts — in no artifact class and not retired`
+        );
+      console.log(
+        `\n🔴 ${o.orphans.length} orphan(s). A gate that belongs to no artifact class runs on no night.`
+      );
     }
     process.exit(argv.includes('--red') && o.orphans.length ? 1 : 0);
   }
@@ -213,25 +292,35 @@ function main(): void {
   const date = argv.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a));
   if (!date) {
     console.log('gate-attendance.ts — the gate wiring roll call.');
-    console.log('  gate-attendance <DATE> [--red] | --orphans [--red] | --selftest');
+    console.log(
+      '  gate-attendance <DATE> [--red] | --orphans [--red] | --selftest'
+    );
     process.exit(2);
   }
   const s = sweep(root, date);
-  console.log(`gate-attendance ${date} — ${s.checked} rostered gate-row(s) across ${Object.keys(loadManifest(root).classes).length} artifact classes`);
-  console.log(`   stamped ${s.checked - s.findings.length} · MISSING ${s.findings.length} · STAMPED-BUT-UNWIRED ${s.unwired.length}`);
+  console.log(
+    `gate-attendance ${date} — ${s.checked} rostered gate-row(s) across ${Object.keys(loadManifest(root).classes).length} artifact classes`
+  );
+  console.log(
+    `   stamped ${s.checked - s.findings.length} · MISSING ${s.findings.length} · STAMPED-BUT-UNWIRED ${s.unwired.length}`
+  );
   for (const f of s.findings) console.log(f.line);
   for (const u of s.unwired) {
     console.log(u.line);
     if (u.note) console.log(`   ${u.note}`);
   }
   if (!s.findings.length && !s.unwired.length)
-    console.log('\n✅ FULL GATE ATTENDANCE — every rostered gate left a stamp, and every stamp has a body behind it.');
+    console.log(
+      '\n✅ FULL GATE ATTENDANCE — every rostered gate left a stamp, and every stamp has a body behind it.'
+    );
   else
     console.log(
       `\n🔴 RED for the next morning's summary. A rostered gate with no stamp did not run; a stamp with no\n` +
         `   body behind it is worse — the board reported a gate that is connected to nothing.`
     );
-  process.exit(argv.includes('--red') && (s.findings.length || s.unwired.length) ? 1 : 0);
+  process.exit(
+    argv.includes('--red') && (s.findings.length || s.unwired.length) ? 1 : 0
+  );
 }
 
 if (process.argv[1] && process.argv[1].includes('gate-attendance')) main();

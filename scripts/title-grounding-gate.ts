@@ -83,7 +83,8 @@ function selftest(): number {
   );
   // Power words and sentence-initial function words must never count as entities.
   say(
-    ungroundedTitleTokens('Nobody Saw What Crashes Next', brief0808).length === 0,
+    ungroundedTitleTokens('Nobody Saw What Crashes Next', brief0808).length ===
+      0,
     'silent on prompt power-words with no entity'
   );
 
@@ -96,7 +97,7 @@ function selftest(): number {
     const m = f.match(/^(\d{4}-\d{2}-\d{2})\.md$/);
     if (!m || m[1]! < '2026-07-07') continue;
     const raw = fs.readFileSync(path.join(CONTENT_DIR, f), 'utf8');
-    const titleLine = raw.split('\n').find((l) => l.startsWith('### '));
+    const titleLine = raw.split('\n').find(l => l.startsWith('### '));
     if (!titleLine) continue;
     checked++;
     const un = ungroundedTitleTokens(titleLine.replace(/^###\s+/, ''), raw);
@@ -124,7 +125,7 @@ function checkEpisodes(): number {
     path.join(process.cwd(), 'public/episodes.json'),
     path.join(process.cwd(), 'data/episodes.json'),
   ];
-  const file = candidates.find((p) => fs.existsSync(p));
+  const file = candidates.find(p => fs.existsSync(p));
   if (!file) {
     console.log(
       'ℹ️  no local episodes.json (metadata lives in blob storage) — ' +

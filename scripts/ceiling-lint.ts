@@ -436,12 +436,79 @@ const MAGNITUDE_RE =
  *  Sentence-initial words and a stoplist of connectives are excluded so ordinary prose does not
  *  read as a roll-call of names. */
 const INSTANCE_STOP = new Set([
-  'The','A','An','But','And','So','That','This','These','Those','It','Its','His','Her','Their',
-  'He','She','They','We','You','I','In','On','At','By','For','From','With','As','If','When',
-  'What','Which','Who','No','Not','Every','Each','One','Two','Three','Four','Five','Both',
-  'Investment','Grade','Because','After','Before','While','Since','Until','Though','Although',
-  'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','January','February',
-  'March','April','May','June','July','August','September','October','November','December',
+  'The',
+  'A',
+  'An',
+  'But',
+  'And',
+  'So',
+  'That',
+  'This',
+  'These',
+  'Those',
+  'It',
+  'Its',
+  'His',
+  'Her',
+  'Their',
+  'He',
+  'She',
+  'They',
+  'We',
+  'You',
+  'I',
+  'In',
+  'On',
+  'At',
+  'By',
+  'For',
+  'From',
+  'With',
+  'As',
+  'If',
+  'When',
+  'What',
+  'Which',
+  'Who',
+  'No',
+  'Not',
+  'Every',
+  'Each',
+  'One',
+  'Two',
+  'Three',
+  'Four',
+  'Five',
+  'Both',
+  'Investment',
+  'Grade',
+  'Because',
+  'After',
+  'Before',
+  'While',
+  'Since',
+  'Until',
+  'Though',
+  'Although',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ]);
 export function instanceNames(sentence: string): string[] {
   const out = new Set<string>();
@@ -459,7 +526,10 @@ export function instanceNames(sentence: string): string[] {
 }
 
 /** Split a bullet into its bolded LEAD sentence and the body that follows it. */
-export function leadAndBody(bulletText: string): { lead: string; body: string } {
+export function leadAndBody(bulletText: string): {
+  lead: string;
+  body: string;
+} {
   const m = bulletText.match(/^\*\*([\s\S]*?)\*\*\s*([\s\S]*)$/);
   if (!m) return { lead: bulletText, body: '' };
   return { lead: m[1]!.trim(), body: m[2]!.trim() };
@@ -695,7 +765,9 @@ export function checkInternalRatio(bullets: Bullet[]): Flag[] {
     // printed magnitude IS that fraction of another, which is the only claim arithmetic can audit.
     // This is the difference between a check and a flag generator, and it takes the false-positive
     // count over those nine nights from 22 to 0 while keeping the mandated 08-18 FIRE.
-    for (const pm of text.matchAll(/(\d+(?:\.\d+)?)\s*(?:percent|%)\s+of\b/gi)) {
+    for (const pm of text.matchAll(
+      /(\d+(?:\.\d+)?)\s*(?:percent|%)\s+of\b/gi
+    )) {
       const pct = parseFloat(pm[1]!);
       const at = pm.index ?? 0;
       if (!isFinite(pct) || pct <= 0 || pct >= 100) continue;
@@ -921,7 +993,8 @@ export function checkCausalNegative(
     const after = reader.slice(at, Math.min(reader.length, at + 160));
     if (CAUSAL_NEG_FORWARD_RE.test(`${m[0]} ${after}`)) continue; // forecast, not an explanation
     if (!MOVE_RE.test(before)) continue; // no move to explain: nothing is being asserted about a cause
-    if (RULED_OUT_RE.test(before) || RULED_OUT_RE.test(after.slice(0, 80))) continue; // named exclusion
+    if (RULED_OUT_RE.test(before) || RULED_OUT_RE.test(after.slice(0, 80)))
+      continue; // named exclusion
     flags.push({
       check: 'causal-negative',
       where: sectionAt(at),
@@ -1029,7 +1102,12 @@ export function parseStalenessLedger(brief: string): LedgerRow[] {
       .split(/;| and (?=https?:|@|[A-Z])/)
       .map(x => x.trim())
       .filter(x => x.length > 3).length;
-    rows.push({ subject, sources, raw: t, uncontested: ATTRIB_UNCONTESTED_RE.test(t) });
+    rows.push({
+      subject,
+      sources,
+      raw: t,
+      uncontested: ATTRIB_UNCONTESTED_RE.test(t),
+    });
   }
   return rows;
 }
@@ -1038,7 +1116,13 @@ export function parseStalenessLedger(brief: string): LedgerRow[] {
 function subjectTokens(subject: string): string[] {
   return subject
     .split(/[^A-Za-z0-9]+/)
-    .filter(w => w.length >= 4 && !/^(?:the|and|for|from|with|over|into|this|that|than|report|policy|principle)$/i.test(w))
+    .filter(
+      w =>
+        w.length >= 4 &&
+        !/^(?:the|and|for|from|with|over|into|this|that|than|report|policy|principle)$/i.test(
+          w
+        )
+    )
     .map(w => w.toLowerCase());
 }
 
@@ -1054,8 +1138,16 @@ function readerBullets(brief: string): { section: string; text: string }[] {
   };
   for (const line of reader.split('\n')) {
     const h = line.match(/^#{1,3}\s*▸?\s*(.+)$/);
-    if (h) { flush(); section = h[1]!.trim(); continue; }
-    if (/^\s*-\s+\*\*/.test(line)) { flush(); cur = [line.trim()]; continue; }
+    if (h) {
+      flush();
+      section = h[1]!.trim();
+      continue;
+    }
+    if (/^\s*-\s+\*\*/.test(line)) {
+      flush();
+      cur = [line.trim()];
+      continue;
+    }
     if (cur.length && line.trim()) cur.push(line.trim());
     else if (cur.length) flush();
   }
@@ -1075,7 +1167,10 @@ export function checkContestedAttribution(brief: string): Flag[] {
     let hit: RegExpExecArray | null = null;
     let m2: RegExpExecArray | null;
     while ((m2 = global.exec(b.text)) !== null) {
-      const win = b.text.slice(Math.max(0, m2.index - 48), m2.index + m2[0].length + 48);
+      const win = b.text.slice(
+        Math.max(0, m2.index - 48),
+        m2.index + m2[0].length + 48
+      );
       if (ATTRIB_FALSE_FRIEND_RE.test(win)) continue;
       hit = m2;
       break;
@@ -1094,11 +1189,14 @@ export function checkContestedAttribution(brief: string): Flag[] {
       const hits = subjectTokens(row.subject).filter(tk =>
         b.text.toLowerCase().includes(tk)
       ).length;
-      if (hits > bestHits) { bestHits = hits; best = row; }
+      if (hits > bestHits) {
+        bestHits = hits;
+        best = row;
+      }
     }
     if (!best || bestHits < 2) continue;
-    if (best.sources < 2) continue;            // one account: no divergence to disclose
-    if (best.uncontested) continue;            // escape (a)
+    if (best.sources < 2) continue; // one account: no divergence to disclose
+    if (best.uncontested) continue; // escape (a)
     if (RIVAL_READING_RE.test(b.text)) continue; // escape (b)
     if (OPERATIVE_QUOTE_RE.test(b.text)) continue; // escape (c)
 
@@ -1299,7 +1397,8 @@ const BASE_MARKER_RE =
 
 // The base is a LEVEL, so magnitude suffixes are excluded — `$5.4 billion` is a deal price and
 // `$8B` is a fund size; neither is a per-unit base, and `$8B` would otherwise parse as 8.
-const BASE_MONEY_RE = /\$\s?([\d,]+(?:\.\d+)?)(?!\s*(?:billion|bn|million|trillion|tn|[BbMmKk]\b))/g;
+const BASE_MONEY_RE =
+  /\$\s?([\d,]+(?:\.\d+)?)(?!\s*(?:billion|bn|million|trillion|tn|[BbMmKk]\b))/g;
 const RATE_RE = /(\d+(?:\.\d+)?)\s*(?:percent\b|%)/gi;
 
 // THE ESCAPE, and it is the behaviour this gate is buying: the reader-facing sentence NAMES THE
@@ -1318,7 +1417,8 @@ const CONVENTION_NAMED_RE = new RegExp(
 // Rounding tolerance. $7,000 × 1.2% = $84 exactly and $7,000 × 2.1% = $147 exactly, so this is
 // pure slack for a writer who rounds: 3% relative (or $1, whichever is larger). The two real
 // defects miss by 50% ($126 vs $84) and 11% ($413 vs $371).
-const RATE_BASE_TOL = (expected: number) => Math.max(1, 0.03 * Math.abs(expected));
+const RATE_BASE_TOL = (expected: number) =>
+  Math.max(1, 0.03 * Math.abs(expected));
 
 const parseAmt = (s: string): number => parseFloat(s.replace(/,/g, ''));
 
@@ -1344,8 +1444,17 @@ function rateBaseUnits(brief: string): { section: string; text: string }[] {
   };
   for (const line of reader.split('\n')) {
     const h = line.match(/^#{1,3}\s*▸?\s*(.+)$/);
-    if (h) { flushBullet(); flushProse(); section = h[1]!.trim(); continue; }
-    if (/^\s*-\s+\*\*/.test(line)) { flushBullet(); bullet = [line.trim()]; continue; }
+    if (h) {
+      flushBullet();
+      flushProse();
+      section = h[1]!.trim();
+      continue;
+    }
+    if (/^\s*-\s+\*\*/.test(line)) {
+      flushBullet();
+      bullet = [line.trim()];
+      continue;
+    }
     if (bullet.length) {
       if (line.trim()) bullet.push(line.trim());
       else flushBullet();
@@ -1371,9 +1480,15 @@ export function checkRateBaseConsistency(
     BASE_MONEY_RE.lastIndex = 0;
     let bm: RegExpExecArray | null;
     while ((bm = BASE_MONEY_RE.exec(u.text)) !== null) {
-      const tail = u.text.slice(bm.index + bm[0].length, bm.index + bm[0].length + 24);
+      const tail = u.text.slice(
+        bm.index + bm[0].length,
+        bm.index + bm[0].length + 24
+      );
       if (/^\s*(?:per\s+\w+|a\s+head|each|apiece)/i.test(tail)) continue; // that is a charge, not a base
-      const win = u.text.slice(Math.max(0, bm.index - 110), bm.index + bm[0].length + 110);
+      const win = u.text.slice(
+        Math.max(0, bm.index - 110),
+        bm.index + bm[0].length + 110
+      );
       if (BASE_MARKER_RE.test(win)) bases.push(parseAmt(bm[1]!));
     }
     if (!bases.length) continue; // no declared assessment base: nothing is claiming to produce anything
@@ -1382,7 +1497,8 @@ export function checkRateBaseConsistency(
     const unitRates: number[] = [];
     RATE_RE.lastIndex = 0;
     let ur: RegExpExecArray | null;
-    while ((ur = RATE_RE.exec(u.text)) !== null) unitRates.push(parseAmt(ur[1]!));
+    while ((ur = RATE_RE.exec(u.text)) !== null)
+      unitRates.push(parseAmt(ur[1]!));
 
     const sents = u.text.split(/(?<=[.!?])\s+/);
     for (let i = 0; i < sents.length; i++) {
@@ -1407,7 +1523,8 @@ export function checkRateBaseConsistency(
             if (!t) continue;
             RATE_RE.lastIndex = 0;
             let am: RegExpExecArray | null;
-            while ((am = RATE_RE.exec(t)) !== null) rates.push(parseAmt(am[1]!));
+            while ((am = RATE_RE.exec(t)) !== null)
+              rates.push(parseAmt(am[1]!));
           }
         }
         if (!rates.length) continue; // a charge with no rate beside it asserts no derivation
@@ -1422,7 +1539,8 @@ export function checkRateBaseConsistency(
         for (const b of bases)
           for (const r of rates) {
             const expected = (b * r) / 100;
-            if (Math.abs(expected - charge) <= RATE_BASE_TOL(expected)) reconciles = true;
+            if (Math.abs(expected - charge) <= RATE_BASE_TOL(expected))
+              reconciles = true;
           }
         if (reconciles) continue;
         if (CONVENTION_NAMED_RE.test(s)) continue; // the escape: the sentence says which quantity this is
@@ -1433,7 +1551,10 @@ export function checkRateBaseConsistency(
         const implied = (charge / base) * 100;
         let diagnosis = '';
         const alt = unitRates.find(
-          r => !rates.includes(r) && Math.abs((base * r) / 100 - charge) <= RATE_BASE_TOL((base * r) / 100)
+          r =>
+            !rates.includes(r) &&
+            Math.abs((base * r) / 100 - charge) <=
+              RATE_BASE_TOL((base * r) / 100)
         );
         if (alt !== undefined) {
           diagnosis =
@@ -1447,7 +1568,8 @@ export function checkRateBaseConsistency(
           let pair: [number, number] | null = null;
           for (const a of unitRates)
             for (const b2 of unitRates)
-              if (b2 > a && Math.abs(b2 - a - need) <= 0.05 && !pair) pair = [a, b2];
+              if (b2 > a && Math.abs(b2 - a - need) <= 0.05 && !pair)
+                pair = [a, b2];
           diagnosis =
             `$${charge.toLocaleString()} is ${implied.toFixed(2)} percent × $${base.toLocaleString()}, not ` +
             `${stated} percent × $${base.toLocaleString()} (= $${((base * stated) / 100).toLocaleString()})` +
@@ -1488,8 +1610,13 @@ export function checkRateBaseConsistency(
 // selftest asserts the read succeeded, so it cannot go stale again on the next leg.
 const LINT_CHECK_IDS: string[] = (() => {
   try {
-    const src = fs.readFileSync(path.join(process.cwd(), 'scripts/ceiling-lint.ts'), 'utf8');
-    return [...new Set([...src.matchAll(/check: '([a-z-]+)'/g)].map(m => m[1]!))].sort();
+    const src = fs.readFileSync(
+      path.join(process.cwd(), 'scripts/ceiling-lint.ts'),
+      'utf8'
+    );
+    return [
+      ...new Set([...src.matchAll(/check: '([a-z-]+)'/g)].map(m => m[1]!)),
+    ].sort();
   } catch {
     return [];
   }
@@ -1687,9 +1814,10 @@ function selftest(): number {
   assert(
     !fs.existsSync(cs13) ||
       cs13f.some(
-        f => f.check === 'comparator-selection' && /AI\s*&\s*Tech/i.test(f.where)
+        f =>
+          f.check === 'comparator-selection' && /AI\s*&\s*Tech/i.test(f.where)
       ),
-    "[IMP-168] comparator-selection FIRES on the real 08-13 AI&T-2 (Gemma 4 the extreme of a 3-row table, Qwen absent from the body)"
+    '[IMP-168] comparator-selection FIRES on the real 08-13 AI&T-2 (Gemma 4 the extreme of a 3-row table, Qwen absent from the body)'
   );
   assert(
     !fs.existsSync(cs13) ||
@@ -1700,18 +1828,21 @@ function selftest(): number {
   );
   assert(
     !fs.existsSync(cs13) || !cs13f.some(f => /Geopolitic/i.test(f.where)),
-    "[IMP-168] SILENT on 08-13 Geo-2 — the 80-to-1 is two INDEPENDENTLY sourced figures, and the CSIS \"759 to 827\" PRINTS its range"
+    '[IMP-168] SILENT on 08-13 Geo-2 — the 80-to-1 is two INDEPENDENTLY sourced figures, and the CSIS "759 to 827" PRINTS its range'
   );
   assert(
     !fs.existsSync(cs13) ||
       !cs13f.some(f => /Companies\s*&\s*Crypto/i.test(f.where)),
-    '[IMP-168] SILENT on 08-13 C&C-2 194 turns — a ratio of two of the SAME issuer\'s figures, no third party, no selection'
+    "[IMP-168] SILENT on 08-13 C&C-2 194 turns — a ratio of two of the SAME issuer's figures, no third party, no selection"
   );
   assert(
     !fs.existsSync(cs13) ||
       checkComparatorSelection(
         fs.readFileSync(cs13, 'utf8'),
-        new Set(['comparator-set:muse-glimmer-kv-cache', 'source-range:hu-community-species'])
+        new Set([
+          'comparator-set:muse-glimmer-kv-cache',
+          'source-range:hu-community-species',
+        ])
       ).length === 0,
     '[IMP-168] SILENT once the comparator-set / source-range rows exist — it is an EMISSION contract, not a table reader'
   );
@@ -1739,7 +1870,9 @@ function selftest(): number {
     '[IMP-168] a DATE is not a printed range — the bare-year false-positive class (CARRY row 35) cannot come back'
   );
   assert(
-    printsRange('CSIS counts 759 to 827 PAC-3 MSE rounds against 2,330 pre-war.'),
+    printsRange(
+      'CSIS counts 759 to 827 PAC-3 MSE rounds against 2,330 pre-war.'
+    ),
     '[IMP-168] ...and a REAL low-to-high pair still reads as a printed range'
   );
 
@@ -1855,7 +1988,6 @@ function selftest(): number {
     );
   }
 
-
   // ── IMP-181 (08-16 Critic mandate #3, RC2): a lead may not be broader than its evidence ──
   // The mandate's own acceptance list, every leg measured on real v2 files.
   const sig16 = path.join(process.cwd(), 'daily-briefs/2026-08-16-v2.md');
@@ -1960,7 +2092,9 @@ function selftest(): number {
         /650 million/.test(f18[0]!.message) &&
         /38\.9/.test(f18[0]!.message),
       '[IMP-192] FIRES on the REAL 08-18 C&C-3 — "$650 million" + "$253 million" + "near 43 percent" shipped together; 253/650 = 38.9. No external source is needed to know all three cannot be true, and every gate exited 0' +
-        (f18.length !== 1 ? ` (got ${f18.length}: ${f18.map(f => f.message.slice(0, 70)).join(' | ')})` : '')
+        (f18.length !== 1
+          ? ` (got ${f18.length}: ${f18.map(f => f.message.slice(0, 70)).join(' | ')})`
+          : '')
     );
     assert(
       !f18.some(f => /six cents|1\.8 billion|\$30 billion/.test(f.message)),
@@ -1971,15 +2105,28 @@ function selftest(): number {
   }
   assert(
     checkInternalRatio([
-      { section: 'The Signal', text: '**A lead.** Revenue grew 90%+ quarter-on-quarter with no paired magnitudes at all.' },
+      {
+        section: 'The Signal',
+        text: '**A lead.** Revenue grew 90%+ quarter-on-quarter with no paired magnitudes at all.',
+      },
     ] as any).length === 0,
-    '[IMP-192] SILENT on a bare percentage with no paired currency magnitudes (the mandate\'s Signal-1 case)'
+    "[IMP-192] SILENT on a bare percentage with no paired currency magnitudes (the mandate's Signal-1 case)"
   );
   {
     const noisy: string[] = [];
     for (const d of [
-      '2026-08-17', '2026-08-16', '2026-08-15', '2026-08-14', '2026-08-13', '2026-08-12',
-      '2026-08-11', '2026-08-10', '2026-08-09', '2026-08-08', '2026-08-07', '2026-08-06',
+      '2026-08-17',
+      '2026-08-16',
+      '2026-08-15',
+      '2026-08-14',
+      '2026-08-13',
+      '2026-08-12',
+      '2026-08-11',
+      '2026-08-10',
+      '2026-08-09',
+      '2026-08-08',
+      '2026-08-07',
+      '2026-08-06',
     ]) {
       const bs = irBullets(d);
       if (!bs) continue;
@@ -2067,7 +2214,7 @@ function selftest(): number {
       checkContestedAttribution(
         defectGeo.replace(
           'Anwar Ibrahim made the shift',
-          'Two readings are live and both are in print. Malay Mail reads the answer as being about Malaysia\'s own territory. Anwar Ibrahim made the shift'
+          "Two readings are live and both are in print. Malay Mail reads the answer as being about Malaysia's own territory. Anwar Ibrahim made the shift"
         )
       ).length === 0,
       '[IMP-203] SILENT once the bullet names the rival reading — escape (b), the compliant repair'
@@ -2075,7 +2222,10 @@ function selftest(): number {
     // SILENT — escape (a): the author checked both readings and attested it in the ledger row.
     assert(
       checkContestedAttribution(
-        defectGeo.replace(/(- Malaysia One China[^\n]*)/, '$1 | ATTRIBUTION: UNCONTESTED — both sources read it the same way')
+        defectGeo.replace(
+          /(- Malaysia One China[^\n]*)/,
+          '$1 | ATTRIBUTION: UNCONTESTED — both sources read it the same way'
+        )
       ).length <= 1,
       '[IMP-203] the ATTRIBUTION: UNCONTESTED attestation is read from the ledger row'
     );
@@ -2126,7 +2276,7 @@ function selftest(): number {
     );
     assert(
       invFire.filter(f => f.where === 'Markets & Macro').length === 0,
-      "[IMP-206] SILENT on 08-21 M&M-3 — THE COMPLIANT TWIN: a single-sourced inverting extremum that DISCLOSES itself (\"on Liz Ann Sonders' reading … that is her count\")"
+      '[IMP-206] SILENT on 08-21 M&M-3 — THE COMPLIANT TWIN: a single-sourced inverting extremum that DISCLOSES itself ("on Liz Ann Sonders\' reading … that is her count")'
     );
     // The escape is the behaviour this gate is buying — prove it clears, or the gate is a phrase ban.
     const invDefect =
@@ -2170,22 +2320,28 @@ function selftest(): number {
     //     on both sides, no fixtures. ---
     const v15_0822 = read('daily-briefs/2026-08-22-v1.5.md');
     const pub_0822 = read('content/daily-updates/2026-08-22.md');
-    const rbFire = v15_0822 ? checkRateBaseConsistency(v15_0822, '2026-08-22') : [];
+    const rbFire = v15_0822
+      ? checkRateBaseConsistency(v15_0822, '2026-08-22')
+      : [];
     assert(
       rbFire.length === 2 && rbFire.every(f => /Signal/i.test(f.where)),
       `[IMP-209] FIRES on the REAL 08-22 v1.5 Signal — "1.2 percent credit reduction … came to $126 per employee" against the $7,000 base stated two sentences earlier, AND the identical convention error at "5.3 percent … $413 a head"${rbFire.length !== 2 ? ` (got ${rbFire.length}: ${rbFire.map(f => f.where).join(', ')})` : ''}`
     );
     assert(
       rbFire.some(f => /\$126/.test(f.message) && /1\.8|1\.80/.test(f.message)),
-      "[IMP-209] the flag NAMES the convention the brief used — $126 is 1.80 percent × $7,000 (total FUTA), not 1.2 percent × $7,000 (= $84)"
+      '[IMP-209] the flag NAMES the convention the brief used — $126 is 1.80 percent × $7,000 (total FUTA), not 1.2 percent × $7,000 (= $84)'
     );
     // The mandate's honest resolution, proved on the bytes: `0.6` is stated NOWHERE in this brief
     // (grep -c "0.6" → 0), so the offset is DERIVED from the unit's own reconciling pair —
     // "The 1.5 percent … takes the effective rate to 2.1 percent". If this assertion ever fails,
     // the diagnosis has fallen back to a bare miss and the fix stops being one word long.
     assert(
-      rbFire.some(f => /1\.5 percent "takes the effective rate to" 2\.1 percent/.test(f.message)),
-      '[IMP-209] the DERIVED offset lands — the check reads the 0.6-point add-on back off the unit\'s own 1.5→2.1 pair, because the brief never states 0.6 anywhere'
+      rbFire.some(f =>
+        /1\.5 percent "takes the effective rate to" 2\.1 percent/.test(
+          f.message
+        )
+      ),
+      "[IMP-209] the DERIVED offset lands — the check reads the 0.6-point add-on back off the unit's own 1.5→2.1 pair, because the brief never states 0.6 anywhere"
     );
     // ⭐ THE SILENCE THAT MATTERS: the correct sentence is in the SAME PARAGRAPH, against the SAME
     // base, and differs only in that its arithmetic closes. A check that cannot tell them apart is
@@ -2212,13 +2368,15 @@ function selftest(): number {
     );
     // SILENT on the PUBLISHED REPAIR — the strongest pairing available, same bullet, same night.
     assert(
-      pub_0822 != null && checkRateBaseConsistency(pub_0822, '2026-08-22').length === 0,
+      pub_0822 != null &&
+        checkRateBaseConsistency(pub_0822, '2026-08-22').length === 0,
       `[IMP-209] SILENT on the PUBLISHED 08-22 — the repair deleted the dollar figures and prints the rate and the base only${pub_0822 ? ` (got ${checkRateBaseConsistency(pub_0822, '2026-08-22').length})` : ''}`
     );
     // NO RETROACTIVE CONDEMNATION (IMP-125). The SAME firing bytes, dated one day before the rule
     // ships, are silent. Measured on the file that actually fires, so the boundary is real.
     assert(
-      v15_0822 != null && checkRateBaseConsistency(v15_0822, '2026-08-21').length === 0,
+      v15_0822 != null &&
+        checkRateBaseConsistency(v15_0822, '2026-08-21').length === 0,
       '[IMP-209] NO RETRO — the same firing 08-22 v1.5 bytes dated 2026-08-21 produce 0 flags (RATE_BASE_EFFECTIVE_FROM = 2026-08-22)'
     );
     // THE ESCAPE, proved to clear, or the gate is a phrase ban: name the convention in the reader's
@@ -2255,7 +2413,8 @@ function selftest(): number {
     // The success line now counts itself. If this ever reads 0 the source scan broke and the line
     // would print a lie in the shape of a pass.
     assert(
-      LINT_CHECK_IDS.length >= 18 && LINT_CHECK_IDS.includes('rate-base-consistency'),
+      LINT_CHECK_IDS.length >= 18 &&
+        LINT_CHECK_IDS.includes('rate-base-consistency'),
       `[IMP-209] the selftest success line COUNTS ITSELF — ${LINT_CHECK_IDS.length} distinct check ids read off the source, incl. rate-base-consistency (the old line hard-coded "10" and had drifted seven behind)`
     );
   }
@@ -2359,5 +2518,6 @@ function main() {
 // Direct-invocation guard (added 2026-08-13 — IMP-168, mirroring fact-gate/assembly-gate): the
 // module must be importable so `checkComparatorSelection` can be exercised without a usage banner.
 const invokedDirectly =
-  !!process.argv[1] && path.resolve(process.argv[1]).endsWith('ceiling-lint.ts');
+  !!process.argv[1] &&
+  path.resolve(process.argv[1]).endsWith('ceiling-lint.ts');
 if (invokedDirectly) main();

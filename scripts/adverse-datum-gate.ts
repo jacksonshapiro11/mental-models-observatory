@@ -325,7 +325,8 @@ export function seriesDirectionContradiction(
       }
     }
 
-    const prior = series && series.length > 1 ? series[series.length - 2] : undefined;
+    const prior =
+      series && series.length > 1 ? series[series.length - 2] : undefined;
 
     if (!prior) {
       findings.push({
@@ -446,8 +447,7 @@ export function artifactConclusionRail(body: string): AdverseFinding[] {
 // 2027 and 2029 in the depreciation table three sentences earlier. KNOWN LIMIT: a one-date ordering
 // sentence can still invert. That residual is what the truth-row leg below is for, and it is
 // recorded here rather than hidden.
-const SEQ_VERB =
-  String.raw`(?:end|ends|ended|expire|expires|expired|begin|begins|began|start|starts|started|commence|commences|commenced|lapse|lapses|lapsed|mature|matures|matured|close|closes|closed|open|opens|opened|run\s+off|runs\s+off|run\s+out|runs\s+out|deliver|delivers|delivered|deploy|deploys|deployed|land|lands|landed|arrive|arrives|arrived|tax|taxed|apply|applies|applied|due|effective|sign|signs|signed|signing|vote|votes|voted|take\s+effect|takes\s+effect)`;
+const SEQ_VERB = String.raw`(?:end|ends|ended|expire|expires|expired|begin|begins|began|start|starts|started|commence|commences|commenced|lapse|lapses|lapsed|mature|matures|matured|close|closes|closed|open|opens|opened|run\s+off|runs\s+off|run\s+out|runs\s+out|deliver|delivers|delivered|deploy|deploys|deployed|land|lands|landed|arrive|arrives|arrived|tax|taxed|apply|applies|applied|due|effective|sign|signs|signed|signing|vote|votes|voted|take\s+effect|takes\s+effect)`;
 
 /** An ORDERING claim: a schedule verb, then before/after/until/by the time, then a second schedule verb. */
 const SEQ_CLAIM_RE = new RegExp(
@@ -477,7 +477,8 @@ export function scheduleSequenceContradiction(
   // rows carrying a resolvable date. Absent rows never block — the rail degrades to advisory.
   const recorded: string[] = [];
   for (const [key, row] of Object.entries(truthClaims ?? {})) {
-    if (!/^(?:scheduled-event|schedule|delivery|lease|maturity):/i.test(key)) continue;
+    if (!/^(?:scheduled-event|schedule|delivery|lease|maturity):/i.test(key))
+      continue;
     const v = String((row as { value?: unknown })?.value ?? '');
     if (DATE_TOKEN_RE.test(v)) recorded.push(`${key}=${v}`);
   }
@@ -694,10 +695,8 @@ function selftest(): number {
     );
     if (fs.existsSync(pub_0814)) {
       t(
-        seriesDirectionContradiction(
-          fs.readFileSync(pub_0814, 'utf8'),
-          claims
-        ).length === 0,
+        seriesDirectionContradiction(fs.readFileSync(pub_0814, 'utf8'), claims)
+          .length === 0,
         'ESCAPE HATCH WORKS: the PUBLISHED 08-14 M&M-1 prints "down from 5.5 percent in June" and takes no finding — the leg rewards the second point'
       );
     }
@@ -710,7 +709,11 @@ function selftest(): number {
         seriesDirectionContradiction(takeBullet, claims).length === 0,
         'SILENT on the 08-14 Take — it prints BOTH endpoints of the hold series in the sentence'
       );
-    else t(true, '(08-14 Take two-endpoint bullet not located — assertion skipped)');
+    else
+      t(
+        true,
+        '(08-14 Take two-endpoint bullet not located — assertion skipped)'
+      );
     t(
       seriesDirectionContradiction(
         '- **A level.** Producer prices ran 4.7 percent over the year and the level remains elevated.',
@@ -737,8 +740,12 @@ function selftest(): number {
   if (fs.existsSync(v2_0815)) {
     const b0815 = fs.readFileSync(v2_0815, 'utf8');
     const mm1 = bullets(b0815).find(b => /sitting on a calendar/i.test(b));
-    const mm2b = bullets(b0815).find(b => /Robin Brooks made the measurement/i.test(b));
-    const geo1 = bullets(b0815).find(b => /Scott Shelton reads as a risk premium/i.test(b));
+    const mm2b = bullets(b0815).find(b =>
+      /Robin Brooks made the measurement/i.test(b)
+    );
+    const geo1 = bullets(b0815).find(b =>
+      /Scott Shelton reads as a risk premium/i.test(b)
+    );
 
     t(
       !!mm1 && artifactConclusionRail(mm1).length === 1,
@@ -778,7 +785,8 @@ function selftest(): number {
         /depreciation schedule ends before the lease begins/i.test(b)
       );
       t(
-        !!cc3_defect && scheduleSequenceContradiction(cc3_defect, {}).length === 1,
+        !!cc3_defect &&
+          scheduleSequenceContradiction(cc3_defect, {}).length === 1,
         'FIRES: 08-15 v1.5 C&C-3 — "the depreciation schedule ends before the lease begins" prints no date in the ordering sentence → 1 finding'
       );
       t(
@@ -790,24 +798,35 @@ function selftest(): number {
       // BULLET-SCOPED WOULD HAVE PASSED THE DEFECT. This is the assertion that proves the design
       // choice: the same bullet prints 2026, 2027 and 2029 in its depreciation table.
       t(
-        !!cc3_defect && /\b2029\b/.test(cc3_defect!) && /\b2027\b/.test(cc3_defect!),
+        !!cc3_defect &&
+          /\b2029\b/.test(cc3_defect!) &&
+          /\b2027\b/.test(cc3_defect!),
         'SCOPE PROOF: the defective bullet DOES print 2027 and 2029 elsewhere — a bullet-scoped date count would have exited 0 on the shipped inversion'
       );
     } else {
       for (let i = 0; i < 3; i++)
-        t(false, 'SELFTEST FAIL — missing 2026-08-15-v1.5.md fixture for the schedule-sequence leg');
+        t(
+          false,
+          'SELFTEST FAIL — missing 2026-08-15-v1.5.md fixture for the schedule-sequence leg'
+        );
     }
 
     const cc3_repaired = bullets(b0815).find(b =>
       /lease begins in December 2027, before the depreciation ends/i.test(b)
     );
     t(
-      !!cc3_repaired && scheduleSequenceContradiction(cc3_repaired, {}).length === 0,
+      !!cc3_repaired &&
+        scheduleSequenceContradiction(cc3_repaired, {}).length === 0,
       'SILENT on the REPAIR: v2 C&C-3 dates the ordering sentence ("December 2027") — the rail rewards the date, and the morning fix is not re-condemned'
     );
-    const geo2 = bullets(b0815).find(b => /Finished imports are taxed 21 days after signing/i.test(b));
+    const geo2 = bullets(b0815).find(b =>
+      /Finished imports are taxed 21 days after signing/i.test(b)
+    );
     t(
-      !!geo2 && SEQ_CLAIM_RE.test('Finished imports are taxed 21 days after signing, which is 3 September.'),
+      !!geo2 &&
+        SEQ_CLAIM_RE.test(
+          'Finished imports are taxed 21 days after signing, which is 3 September.'
+        ),
       'NON-VACUOUS NEGATIVE, PART 1: 08-15 Geo-2 genuinely CONTAINS an ordering claim ("taxed 21 days after signing")'
     );
     t(
@@ -842,7 +861,10 @@ function selftest(): number {
     );
   } else {
     for (let i = 0; i < 12; i++)
-      t(false, 'SELFTEST FAIL — missing 2026-08-15-v2.md fixture for the 08-15 mandate legs');
+      t(
+        false,
+        'SELFTEST FAIL — missing 2026-08-15-v2.md fixture for the 08-15 mandate legs'
+      );
   }
 
   const total = 37;

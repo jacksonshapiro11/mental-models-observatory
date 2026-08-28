@@ -27,20 +27,35 @@ import { spawnSync } from 'child_process';
 export const PROD_RUNNER = ['node', ['--experimental-strip-types']] as const;
 export const PER_SCRIPT_TIMEOUT_MS = 60_000;
 
-export interface SweepRow { script: string; prod: number; tsx: number | null; divergent: boolean; suspect: string[] }
+export interface SweepRow {
+  script: string;
+  prod: number;
+  tsx: number | null;
+  divergent: boolean;
+  suspect: string[];
+}
 
 /** Scripts that accept --selftest. Discovered, never hardcoded — a new one is rostered by existing. */
 export function rosteredSelftests(root: string): string[] {
   const dir = path.join(root, 'scripts');
   if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    // Dotfiles are scratch, not instruments — the first live run rostered a leftover
-    // `.vi_head_test` and reported it as a failing pipeline selftest. A roster that picks up
-    // debris reports debris.
-    .filter(f => f.endsWith('.ts') && !f.startsWith('.') && !/\.bak|scratch|_probe|_crdbg|_loctest|_sbchk/.test(f))
-    .filter(f => fs.readFileSync(path.join(dir, f), 'utf-8').includes('--selftest'))
-    .sort();
+  return (
+    fs
+      .readdirSync(dir)
+      // Dotfiles are scratch, not instruments — the first live run rostered a leftover
+      // `.vi_head_test` and reported it as a failing pipeline selftest. A roster that picks up
+      // debris reports debris.
+      .filter(
+        f =>
+          f.endsWith('.ts') &&
+          !f.startsWith('.') &&
+          !/\.bak|scratch|_probe|_crdbg|_loctest|_sbchk/.test(f)
+      )
+      .filter(f =>
+        fs.readFileSync(path.join(dir, f), 'utf-8').includes('--selftest')
+      )
+      .sort()
+  );
 }
 
 /**
@@ -89,11 +104,19 @@ export function fixtureSuspect(root: string, script: string): string[] {
 }
 
 function run(cmd: string, args: string[], root: string): number {
-  const r = spawnSync(cmd, args, { cwd: root, encoding: 'utf-8', timeout: PER_SCRIPT_TIMEOUT_MS });
+  const r = spawnSync(cmd, args, {
+    cwd: root,
+    encoding: 'utf-8',
+    timeout: PER_SCRIPT_TIMEOUT_MS,
+  });
   return r.status ?? 1;
 }
 
-export function sweepOne(root: string, script: string, alsoTsx: boolean): SweepRow {
+export function sweepOne(
+  root: string,
+  script: string,
+  alsoTsx: boolean
+): SweepRow {
   const p = path.join('scripts', script);
   const prod = run(PROD_RUNNER[0], [...PROD_RUNNER[1], p, '--selftest'], root);
   const tsx = alsoTsx ? run('npx', ['tsx', p, '--selftest'], root) : null;
@@ -111,44 +134,91 @@ function main(): void {
   const root = process.cwd();
 
   if (argv.includes('--selftest')) {
-    let pass = 0, fail = 0;
-    const t = (n: string, ok: boolean) => { ok ? pass++ : fail++; console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${n}`); };
+    let pass = 0,
+      fail = 0;
+    const t = (n: string, ok: boolean) => {
+      ok ? pass++ : fail++;
+      console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${n}`);
+    };
     const roster = rosteredSelftests(root);
-    t(`[roster] discovers the selftests by reading the scripts, never from a list — ${roster.length} found`, roster.length >= 40);
-    t('[roster] and it rosters itself, so this leg cannot exempt itself from its own rule', roster.includes('selftest-sweep.ts'));
-    t('[runner] the production runner is node --experimental-strip-types, not tsx',
-      PROD_RUNNER[0] === 'node' && PROD_RUNNER[1].includes('--experimental-strip-types'));
+    t(
+      `[roster] discovers the selftests by reading the scripts, never from a list — ${roster.length} found`,
+      roster.length >= 40
+    );
+    t(
+      '[roster] and it rosters itself, so this leg cannot exempt itself from its own rule',
+      roster.includes('selftest-sweep.ts')
+    );
+    t(
+      '[runner] the production runner is node --experimental-strip-types, not tsx',
+      PROD_RUNNER[0] === 'node' &&
+        PROD_RUNNER[1].includes('--experimental-strip-types')
+    );
     // The divergence classifier is the whole instrument — assert it on its truth table.
-    const mk = (prod: number, tsx: number | null) => ({ script: 'x', prod, tsx, divergent: tsx === 0 && prod !== 0 });
-    t('[divergence] green-under-tsx + red-under-production is DIVERGENT — the case that made every prior report false',
-      mk(1, 0).divergent);
-    t('[divergence] red under both is a real failure, not a divergence', !mk(1, 1).divergent);
+    const mk = (prod: number, tsx: number | null) => ({
+      script: 'x',
+      prod,
+      tsx,
+      divergent: tsx === 0 && prod !== 0,
+    });
+    t(
+      '[divergence] green-under-tsx + red-under-production is DIVERGENT — the case that made every prior report false',
+      mk(1, 0).divergent
+    );
+    t(
+      '[divergence] red under both is a real failure, not a divergence',
+      !mk(1, 1).divergent
+    );
     t('[divergence] green under both is neither', !mk(0, 0).divergent);
-    t('[divergence] and a run with no tsx comparison never claims divergence it did not measure', !mk(1, null).divergent);
+    t(
+      '[divergence] and a run with no tsx comparison never claims divergence it did not measure',
+      !mk(1, null).divergent
+    );
     // FIXTURE-SUSPECT, both directions, on this repo's real scripts.
-    t('[suspect] flags a selftest that reads daily-briefs/ — the shape behind 7 of this house\u2019s defects',
-      fixtureSuspect(root, 'declaration-binding-gate.ts').length > 0);
-    t('[suspect] and does NOT flag one whose selftest touches no live-world path',
-      fixtureSuspect(root, 'cadence.ts').length === 0);
-    t('[suspect] prose mentioning daily-briefs/ in a comment is not code and is not flagged',
-      fixtureSuspect(root, 'tree-canary.ts').length === 0);
-    t('[suspect] the region scanned starts at --selftest, so production code paths are out of scope',
-      selftestRegion('const x = "daily-briefs/a"\n// --selftest\nconst y = 1\n').includes('const y') &&
-        !selftestRegion('const x = "daily-briefs/a"\n// --selftest\nconst y = 1\n').includes('const x'));
-    console.log(`\n${fail ? '❌' : '✅'} selftest-sweep --selftest: ${pass}/${pass + fail} assertions passed.`);
+    t(
+      '[suspect] flags a selftest that reads daily-briefs/ — the shape behind 7 of this house\u2019s defects',
+      fixtureSuspect(root, 'declaration-binding-gate.ts').length > 0
+    );
+    t(
+      '[suspect] and does NOT flag one whose selftest touches no live-world path',
+      fixtureSuspect(root, 'cadence.ts').length === 0
+    );
+    t(
+      '[suspect] prose mentioning daily-briefs/ in a comment is not code and is not flagged',
+      fixtureSuspect(root, 'tree-canary.ts').length === 0
+    );
+    t(
+      '[suspect] the region scanned starts at --selftest, so production code paths are out of scope',
+      selftestRegion(
+        'const x = "daily-briefs/a"\n// --selftest\nconst y = 1\n'
+      ).includes('const y') &&
+        !selftestRegion(
+          'const x = "daily-briefs/a"\n// --selftest\nconst y = 1\n'
+        ).includes('const x')
+    );
+    console.log(
+      `\n${fail ? '❌' : '✅'} selftest-sweep --selftest: ${pass}/${pass + fail} assertions passed.`
+    );
     process.exit(fail ? 1 : 0);
   }
 
   const alsoTsx = !argv.includes('--no-compare');
   const roster = rosteredSelftests(root).filter(s => s !== 'selftest-sweep.ts');
-  console.log(`selftest-sweep — ${roster.length} rostered selftest(s) under ${PROD_RUNNER[0]} ${PROD_RUNNER[1].join(' ')}${alsoTsx ? ' (comparing against tsx)' : ''}`);
+  console.log(
+    `selftest-sweep — ${roster.length} rostered selftest(s) under ${PROD_RUNNER[0]} ${PROD_RUNNER[1].join(' ')}${alsoTsx ? ' (comparing against tsx)' : ''}`
+  );
   const rows = roster.map(s => sweepOne(root, s, alsoTsx));
   const bad = rows.filter(r => r.prod !== 0);
   const div = rows.filter(r => r.divergent);
   for (const r of bad)
-    console.log(`  ${r.divergent ? '🔴 DIVERGENT' : '❌ FAILING  '} ${r.script}  prod=${r.prod}${r.tsx === null ? '' : ` tsx=${r.tsx}`}`);
+    console.log(
+      `  ${r.divergent ? '🔴 DIVERGENT' : '❌ FAILING  '} ${r.script}  prod=${r.prod}${r.tsx === null ? '' : ` tsx=${r.tsx}`}`
+    );
   const suspects = rows.filter(r => r.suspect.length);
-  if (!bad.length) console.log('✅ every rostered selftest exits 0 under the production runner.');
+  if (!bad.length)
+    console.log(
+      '✅ every rostered selftest exits 0 under the production runner.'
+    );
   else {
     console.log(
       `\n🔴 ${bad.length} non-zero of ${rows.length}${div.length ? `, of which ${div.length} DIVERGENT` : ''}.`
@@ -163,7 +233,9 @@ function main(): void {
   if (suspects.length) {
     console.log(
       `\n🟡 FIXTURE-SUSPECT — ${suspects.length} of ${rows.length} selftest(s) reference the live world:\n` +
-        suspects.map(r => `     ${r.script.padEnd(32)} ${r.suspect.join(' · ')}`).join('\n') +
+        suspects
+          .map(r => `     ${r.script.padEnd(32)} ${r.suspect.join(' · ')}`)
+          .join('\n') +
         `\n   NOT a failure, and several of these are the strongest test available — a regression pin\n` +
         `   against real bytes beats a fixture that flatters itself. The question to ask of each:\n` +
         `   is it pinned to a NAMED SET, or to a COUNT, a DATE, or a file housekeeping may remove?\n` +

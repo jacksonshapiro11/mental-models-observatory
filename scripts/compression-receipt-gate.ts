@@ -73,7 +73,7 @@ export const NO_LOSS_RE =
   /\b(?:zero|no|0)\s+(?:units?\s+cut\s+whole|units?\s+cut|conclusions?\s+(?:removed|lost|cut|dropped))\b|\bnothing\s+(?:was\s+)?(?:removed|lost|cut)\b/i;
 
 export function assertsNoLoss(v2raw: string): string | null {
-  for (const c of (v2raw.match(/<!--[\s\S]*?-->/g) ?? [])) {
+  for (const c of v2raw.match(/<!--[\s\S]*?-->/g) ?? []) {
     if (NO_LOSS_RE.test(c)) return c;
   }
   return NO_LOSS_RE.test(v2raw) ? v2raw : null;
@@ -99,10 +99,64 @@ export function sentences(body: string): string[] {
 }
 
 const CONTENT_STOP = new Set([
-  'the','a','an','and','or','but','of','to','in','on','at','by','for','from','with','as','is',
-  'was','were','are','be','been','that','this','it','its','which','than','then','so','not','no',
-  'their','there','they','you','we','he','she','his','her','has','have','had','will','would',
-  'can','could','more','most','less','least','about','into','over','under','after','before',
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'but',
+  'of',
+  'to',
+  'in',
+  'on',
+  'at',
+  'by',
+  'for',
+  'from',
+  'with',
+  'as',
+  'is',
+  'was',
+  'were',
+  'are',
+  'be',
+  'been',
+  'that',
+  'this',
+  'it',
+  'its',
+  'which',
+  'than',
+  'then',
+  'so',
+  'not',
+  'no',
+  'their',
+  'there',
+  'they',
+  'you',
+  'we',
+  'he',
+  'she',
+  'his',
+  'her',
+  'has',
+  'have',
+  'had',
+  'will',
+  'would',
+  'can',
+  'could',
+  'more',
+  'most',
+  'less',
+  'least',
+  'about',
+  'into',
+  'over',
+  'under',
+  'after',
+  'before',
 ]);
 const words = (s: string): string[] =>
   norm(s)
@@ -148,10 +202,56 @@ const DENOM_RE =
 const MECHANISM_RE =
   /\b(?:where|because|so that|which means|meaning that|multiplies|compounds?|compounded|rather than adds|the mechanism|works by)\b/i;
 const NAME_STOP = new Set([
-  'The','A','An','But','And','So','That','This','It','In','On','At','By','For','From','With','As',
-  'If','When','What','Which','Who','No','Not','Every','Each','One','Two','Three','Four','Five',
-  'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','January','February',
-  'March','April','May','June','July','August','September','October','November','December',
+  'The',
+  'A',
+  'An',
+  'But',
+  'And',
+  'So',
+  'That',
+  'This',
+  'It',
+  'In',
+  'On',
+  'At',
+  'By',
+  'For',
+  'From',
+  'With',
+  'As',
+  'If',
+  'When',
+  'What',
+  'Which',
+  'Who',
+  'No',
+  'Not',
+  'Every',
+  'Each',
+  'One',
+  'Two',
+  'Three',
+  'Four',
+  'Five',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ]);
 function properTokens(s: string): string[] {
   const out = new Set<string>();
@@ -210,7 +310,8 @@ export function lostDenominators(v15body: string, v2body: string): Finding[] {
 // A conjunct dropped from a counted noun phrase changes what the number counts. Under length
 // pressure that is the cheapest-looking cut on the page and the only one that can turn a true
 // sentence false without touching a digit.
-const CARDINAL_WORD = 'two|three|four|five|six|seven|eight|nine|ten|eleven|twelve';
+const CARDINAL_WORD =
+  'two|three|four|five|six|seven|eight|nine|ten|eleven|twelve';
 /** "four labs and institutes", "three banks or insurers" — a cardinal governing a coordination. */
 const COUNTED_CONJUNCT_RE = new RegExp(
   String.raw`\b(${CARDINAL_WORD}|\d{1,3})\s+((?:[a-z]{3,}\s+){0,2}[a-z]{3,})\s+(?:and|or)\s+([a-z]{3,})\b`,
@@ -235,7 +336,7 @@ export function cardinalConjunctCuts(
       bestScore = 0;
     for (let i = 0; i < v2sets.length; i++) {
       const kept = ws.filter(w => v2sets[i]!.has(w)).length / ws.length;
-      if (kept > bestScore) (bestScore = kept), (best = i);
+      if (kept > bestScore) ((bestScore = kept), (best = i));
     }
     if (best < 0 || bestScore < 0.55) continue;
     const survivor = v2sents[best]!;
@@ -342,7 +443,12 @@ export function classify(removed: string[], v2body: string): Finding[] {
     }
     // (d) AN ATTRIBUTED SOURCE that vanished — not a FAIL, a question for the morning.
     const gone = properTokens(s).filter(t => !survivesInV2(t));
-    if (gone.length && /\b(?:said|says|told|according to|wrote|found|reported|estimates?|comments?|papers?|study|survey)\b/i.test(s)) {
+    if (
+      gone.length &&
+      /\b(?:said|says|told|according to|wrote|found|reported|estimates?|comments?|papers?|study|survey)\b/i.test(
+        s
+      )
+    ) {
       out.push({
         kind: 'UNRESOLVED-FACT',
         klass: 'attributed-source-removed',
@@ -392,11 +498,9 @@ export function suppressEnumerated(
 //   UNCHECKABLE a clause with no literal in it ("every unit conclusion") — counted and named, never
 //               silently credited; an unfalsifiable clause is the failure mode, not an excuse
 //   present     found
-const PROTECTED_RE =
-  /PROTECTED AND VERIFIED PRESENT IN v2\s*:([^\n]*)/i;
+const PROTECTED_RE = /PROTECTED AND VERIFIED PRESENT IN v2\s*:([^\n]*)/i;
 /** A figure we hold to the letter: currency, decimals, comma-thousands, percents, multipliers. */
-const FIGURE_RE =
-  /^[$£€]?\d[\d,]*(?:\.\d+)?(?:x|%|bn|m|k)?$/i;
+const FIGURE_RE = /^[$£€]?\d[\d,]*(?:\.\d+)?(?:x|%|bn|m|k)?$/i;
 const MONTHS =
   'january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec';
 const DATEISH_RE = new RegExp(`\\d{1,2}[\\d/]*\\s+(?:${MONTHS})`, 'i');
@@ -471,13 +575,21 @@ export function protectedClaims(v2raw: string): ProtectedClaim[] {
         // An INTERNAL UNIT ID is an address, not content. The receipt attributes each protected
         // conclusion to its unit ("M&M-1's …", "AI&T-3's …", "Geo-2's …") and those ids appear
         // nowhere in reader-facing prose by design, so a naive read reported three of them absent.
-        .replace(/^\s*(?:[A-Z][A-Za-z&]{0,6}-\d+|Signal \d+|Take|Dashboard)(?:'s)?\s*/, '')
+        .replace(
+          /^\s*(?:[A-Z][A-Za-z&]{0,6}-\d+|Signal \d+|Take|Dashboard)(?:'s)?\s*/,
+          ''
+        )
         .trim();
       if (!tok || !/\d/.test(tok)) continue;
       // Compound figures ("3.95x/1.74x", "68%/$3.8bn") are asserted as a unit but survive as
       // parts — accept either, so the gate never manufactures a red over a slash.
-      const parts = tok.split('/').map(p => p.trim()).filter(Boolean);
-      const isFigure = FIGURE_RE.test(tok) || (parts.length > 1 && parts.every(p => FIGURE_RE.test(p)));
+      const parts = tok
+        .split('/')
+        .map(p => p.trim())
+        .filter(Boolean);
+      const isFigure =
+        FIGURE_RE.test(tok) ||
+        (parts.length > 1 && parts.every(p => FIGURE_RE.test(p)));
       if (isFigure) {
         push(
           tok,
@@ -489,7 +601,10 @@ export function protectedClaims(v2raw: string): ProtectedClaim[] {
         // number and the month's first three letters together, not the receipt's exact spelling.
         const day = tok.match(/\d{1,2}/)?.[0] ?? '';
         const mon = tok.match(new RegExp(MONTHS, 'i'))?.[0]?.slice(0, 3) ?? '';
-        const near = new RegExp(`\\b${day}\\b[^.]{0,30}?${mon}|${mon}[^.]{0,30}?\\b${day}\\b`, 'i');
+        const near = new RegExp(
+          `\\b${day}\\b[^.]{0,30}?${mon}|${mon}[^.]{0,30}?\\b${day}\\b`,
+          'i'
+        );
         push(tok, true, near.test(body));
       } else {
         // A DESCRIPTION IS NOT A LITERAL, AND THIS GATE DOES NOT ADJUDICATE DESCRIPTIONS.
@@ -534,7 +649,10 @@ export function checkProtectedList(v2raw: string): Finding[] {
     out.push({
       kind: 'WARN',
       klass: 'protection-claim-unexecutable',
-      sentence: unchecked.map(c => c.literal).join(' | ').slice(0, 200),
+      sentence: unchecked
+        .map(c => c.literal)
+        .join(' | ')
+        .slice(0, 200),
       message:
         `${unchecked.length} of ${claims.length} protection claims carry no literal to check ` +
         `(no quote, no figure, no date), so nothing in them can be executed against the file — ` +
@@ -589,7 +707,9 @@ function selftest(): number {
   // ── CHECK P (IMP-186) — the 08-17 mandate's acceptance list, on the real receipt. ──
   const p2 = read('daily-briefs/2026-08-17-v2.md');
   if (p2) {
-    const pf = checkProtectedList(p2).filter(f => f.klass === 'protection-claim-false');
+    const pf = checkProtectedList(p2).filter(
+      f => f.klass === 'protection-claim-false'
+    );
     const lits = pf.map(f => f.sentence).sort();
     // DIRECTION 1 — FIRES on exactly the two the Critic found by hand, and on nothing else. The
     // "nothing else" half is load-bearing: the first cut of this check reported SEVEN, five of them
@@ -602,7 +722,9 @@ function selftest(): number {
     // restore the string to the body, or stop certifying it. Either closes the claim honestly.
     const struck = p2.replace('7,785.76; ', '').replace('$17.5m; ', '');
     assert(
-      checkProtectedList(struck).filter(f => f.klass === 'protection-claim-false').length === 0,
+      checkProtectedList(struck).filter(
+        f => f.klass === 'protection-claim-false'
+      ).length === 0,
       '[IMP-186] SILENT once those two literals are struck from the PROTECTED list'
     );
     // DIRECTION 2b — restored to the BODY, the gate goes silent too.
@@ -611,19 +733,26 @@ function selftest(): number {
       '\nEquities: the S&P 500 closed at 7,785.76 on Friday; the fund marked $17.5m.\n\n## '
     );
     assert(
-      checkProtectedList(restored).filter(f => f.klass === 'protection-claim-false').length === 0,
+      checkProtectedList(restored).filter(
+        f => f.klass === 'protection-claim-false'
+      ).length === 0,
       '[IMP-186] SILENT once those two literals are restored to the reader-facing body'
     );
     // A figure in longhand is the SAME figure — the calibration that took this from 7 findings to 2.
     assert(
-      figureVariants('$635m').some(v => 'roughly $635 million of launch capital'.includes(v)) &&
-        figureVariants('68%').some(v => 'deposits fell 68 percent to'.includes(v)) &&
+      figureVariants('$635m').some(v =>
+        'roughly $635 million of launch capital'.includes(v)
+      ) &&
+        figureVariants('68%').some(v =>
+          'deposits fell 68 percent to'.includes(v)
+        ) &&
         figureVariants('3.95x').some(v => 'is 3.95 times deposits'.includes(v)),
       '[IMP-186] a compact figure is satisfied by its longhand ($635m ↔ $635 million, 68% ↔ 68 percent, 3.95x ↔ 3.95 times)'
     );
     // …but a short bare core is NOT enough on its own, or the check goes silent on real absences.
     assert(
-      !figureVariants('68%').includes('68') && figureVariants('7,785.76').includes('7,785.76'),
+      !figureVariants('68%').includes('68') &&
+        figureVariants('7,785.76').includes('7,785.76'),
       '[IMP-186] a 2-digit core never matches bare (would hit on every page); a distinctive one may'
     );
     // A comma inside a number is not a separator — the bug that reported "785.76".
@@ -633,7 +762,9 @@ function selftest(): number {
       '[IMP-186] "7,785.76" is one literal, not "7" and "785.76"'
     );
     // Prose and paraphrase are UNCHECKABLE — named and counted, never credited as kept.
-    const unex = checkProtectedList(p2).find(f => f.klass === 'protection-claim-unexecutable');
+    const unex = checkProtectedList(p2).find(
+      f => f.klass === 'protection-claim-unexecutable'
+    );
     assert(
       !!unex && /5 of 28/.test(unex.message),
       `[IMP-186] the unexecutable clauses are counted, not credited (got: ${unex?.message.slice(0, 40) ?? 'none'})`
@@ -643,11 +774,15 @@ function selftest(): number {
     const noNoLoss = p2.replace(NO_LOSS_RE, 'compressed 9,334 to 7,879 words');
     assert(
       assertsNoLoss(noNoLoss) === null &&
-        checkProtectedList(noNoLoss).filter(f => f.kind === 'FAIL').length === 2,
+        checkProtectedList(noNoLoss).filter(f => f.kind === 'FAIL').length ===
+          2,
       '[IMP-186] CHECK P still bites when the v2 makes NO no-loss claim at all'
     );
   } else {
-    assert(false, '[IMP-186] 2026-08-17-v2.md must be on disk — CHECK P is asserted against it');
+    assert(
+      false,
+      '[IMP-186] 2026-08-17-v2.md must be on disk — CHECK P is asserted against it'
+    );
   }
 
   // ── IMP-187 — the 08-17 mandate #2 conjunct leg, on the real ait_1 diff. ──
@@ -758,8 +893,9 @@ function selftest(): number {
     '[IMP-182] a bare word-count receipt asserts a count, not a preservation — out of scope'
   );
   assert(
-    assertsNoLoss('<!-- ZERO units cut whole and zero conclusions removed -->') !==
-      null,
+    assertsNoLoss(
+      '<!-- ZERO units cut whole and zero conclusions removed -->'
+    ) !== null,
     '[IMP-182] "zero conclusions removed" IS the assertion this gate grades'
   );
   assert(

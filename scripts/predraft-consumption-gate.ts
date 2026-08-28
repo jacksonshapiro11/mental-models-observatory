@@ -567,7 +567,8 @@ export function checkConditionalAdmission(
   receiptExtra = ''
 ): Finding[] {
   const findings: Finding[] = [];
-  const satisfied = SATISFIED_RE.test(shipped) || SATISFIED_RE.test(receiptExtra);
+  const satisfied =
+    SATISFIED_RE.test(shipped) || SATISFIED_RE.test(receiptExtra);
   const receiptText = `${shipped}\n${receiptExtra}`;
   const shippedBody = stripComments(shipped);
   const shippedNums = numericLiterals(shippedBody);
@@ -606,12 +607,19 @@ export function checkConditionalAdmission(
       // mandate named. The Event line carries the entities (Robinhood, Ethena, USDe). Broader
       // anchors intersect more freely, so the shipped threshold rises to 3 to compensate.
       const ev = /^.*\*\*Event:\*\*(.*)$/im.exec(cand.text)?.[1] ?? '';
-      const a = [...new Set([...anchors(cand.headline), ...anchors(ev.slice(0, 600))])];
+      const a = [
+        ...new Set([...anchors(cand.headline), ...anchors(ev.slice(0, 600))]),
+      ];
       // A candidate with no usable anchors cannot be proven to have shipped; silence is the only
       // honest answer there, and it is the same anchor-thinness posture as the consumption check.
       if (a.length < 2) continue;
       if (intersect(a, shippedBody).length < 3) continue; // candidate did not ship — condition moot
-      if (satisfied && new RegExp(esc(m[1]!.trim().split(/\s+/)[0] ?? ''), 'i').test(receiptText))
+      if (
+        satisfied &&
+        new RegExp(esc(m[1]!.trim().split(/\s+/)[0] ?? ''), 'i').test(
+          receiptText
+        )
+      )
         continue;
       if (satisfied) continue;
       findings.push({
@@ -773,9 +781,13 @@ function buildComponents(dir: string, date: string): Component[] {
         // places a cc-predraft is structurally obliged to name real entities. Verified both
         // directions on 2026-08-09: PASS on the true v1, FAIL on the planted bypass.
         const fields = [
-          ...stripComments(d).matchAll(/^\s*\*\*(?:Source|Event)\s*:?\*\*\s*(.+)$/gim),
+          ...stripComments(d).matchAll(
+            /^\s*\*\*(?:Source|Event)\s*:?\*\*\s*(.+)$/gim
+          ),
         ].map(m => m[1]!);
-        return fields.length ? [...new Set(fields.flatMap(f => anchors(f)))] : fromHeads;
+        return fields.length
+          ? [...new Set(fields.flatMap(f => anchors(f)))]
+          : fromHeads;
       },
       sectionOf: v1 =>
         extractSection(v1, /^##\s+Companies\s*&\s*Crypto/i, /^##\s|^#\s*▸/),
@@ -1057,7 +1069,9 @@ function run(
   // whether its red lines were OBEYED. Different question, different failure, same inputs.
   const drafts: Array<[string, string]> = comps
     .filter(c => c.draftPath)
-    .map(c => [c.name, fs.readFileSync(c.draftPath!, 'utf8')] as [string, string]);
+    .map(
+      c => [c.name, fs.readFileSync(c.draftPath!, 'utf8')] as [string, string]
+    );
   const manifestPath = path.join(dir, `${date}-predraft-manifest.md`);
   const manifest = fs.existsSync(manifestPath)
     ? fs.readFileSync(manifestPath, 'utf8')
@@ -1452,7 +1466,9 @@ function selftest(): number {
     if (!comps.length) return null;
     const manifestP = path.join(dir, `${date}-predraft-manifest.md`);
     return checkConditionalAdmission(
-      comps.map(c => [c.name, fs.readFileSync(c.draftPath!, 'utf8')] as [string, string]),
+      comps.map(
+        c => [c.name, fs.readFileSync(c.draftPath!, 'utf8')] as [string, string]
+      ),
       fs.readFileSync(v2, 'utf8'),
       fs.existsSync(manifestP) ? fs.readFileSync(manifestP, 'utf8') : ''
     );
@@ -1462,7 +1478,11 @@ function selftest(): number {
   if (a18) {
     assert(
       'CONDITIONAL-ADMISSION FIRES leg 1 on REAL 08-18 C&C — the pre-draft wrote 🔴 FIGURE CONFLICT / DO NOT PRINT BOTH and $650M + $253M + 43% all shipped in C&C-3, with no PREDRAFT-CONDITION-SATISFIED receipt. The gate exited 0 on this on the night',
-      a18.some(f => /FORBIDDEN CONJUNCTION SHIPPED/.test(f.message) && f.component === 'C&C'),
+      a18.some(
+        f =>
+          /FORBIDDEN CONJUNCTION SHIPPED/.test(f.message) &&
+          f.component === 'C&C'
+      ),
       JSON.stringify(a18.map(f => f.message.slice(0, 60)))
     );
     assert(
@@ -1476,20 +1496,35 @@ function selftest(): number {
     assert(
       'CONDITIONAL-ADMISSION SILENT once the brief emits a PREDRAFT-CONDITION-SATISFIED receipt (the escape hatch works)',
       checkConditionalAdmission(
-        comps18.map(c => [c.name, fs.readFileSync(c.draftPath!, 'utf8')] as [string, string]),
-        v2_18 + '\n<!-- PREDRAFT-CONDITION-SATISFIED: DefiLlama 2026-08-17 series — USDe $253M / chain $650M read on one date. -->\n'
+        comps18.map(
+          c =>
+            [c.name, fs.readFileSync(c.draftPath!, 'utf8')] as [string, string]
+        ),
+        v2_18 +
+          '\n<!-- PREDRAFT-CONDITION-SATISFIED: DefiLlama 2026-08-17 series — USDe $253M / chain $650M read on one date. -->\n'
       ).length === 0,
       ''
     );
   } else {
-    assert('CONDITIONAL-ADMISSION: 08-18 fixtures present', false, 'fixture missing');
+    assert(
+      'CONDITIONAL-ADMISSION: 08-18 fixtures present',
+      false,
+      'fixture missing'
+    );
   }
 
   // FALSE-POSITIVE FLOOR. Six consecutive healthy nights, each carrying ordinary narrow "do not
   // print" instructions (a gold level, a $43B deal size, a name off a release). Every one of them
   // false-FAILED the first build of this check; if any fires again, the trigger set has drifted
   // back to condemning normal editorial caution and the gate must not ship.
-  for (const d of ['2026-08-17', '2026-08-16', '2026-08-15', '2026-08-14', '2026-08-13', '2026-08-12']) {
+  for (const d of [
+    '2026-08-17',
+    '2026-08-16',
+    '2026-08-15',
+    '2026-08-14',
+    '2026-08-13',
+    '2026-08-12',
+  ]) {
     const r = admitOn(d);
     if (r === null) continue;
     assert(

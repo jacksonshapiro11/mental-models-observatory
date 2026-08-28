@@ -41,9 +41,7 @@ function getModelBySlug(slug: string) {
 // rotation landed on queue index 16 was structurally unpublishable. A slug that resolves to a
 // real MODEL is a valid model identifier regardless of a colliding domain; only pure-domain
 // slugs (e.g. `information-theory-media-ecology`, the July 5 receipt) stay banned.
-const MODEL_SLUGS = new Set(
-  (READWISE_MODELS as any[]).map((m: any) => m.slug)
-);
+const MODEL_SLUGS = new Set((READWISE_MODELS as any[]).map((m: any) => m.slug));
 const DOMAIN_SLUGS = new Set(
   (READWISE_DOMAINS as any[])
     .map((d: any) => d.slug)
@@ -547,21 +545,41 @@ function checkSelfReportConsistency(raw: string, body: string): Failure[] {
   const mCandC = sectionBullets('## Companies & Crypto');
   const mWords = body.split(/\s+/).filter(Boolean).length;
 
-  const mismatch = (what: string, claimed: number, measured: number, how: string) =>
+  const mismatch = (
+    what: string,
+    claimed: number,
+    measured: number,
+    how: string
+  ) =>
     out.push({
       check: 'selfreport-consistency',
       message: `🔴 THE BRIEF'S SELF-REPORT DESCRIBES A DIFFERENT DOCUMENT — ${what}: the block claims ${claimed.toLocaleString()}, measured on disk ${measured.toLocaleString()}. ${how} RECEIPT (08-11): Gate 16 cut C&C-3 (GSR/DAO treasuries) WHOLE and nothing rewrote the block, which still read "9 Six bullets / 3 C&C / ~5,900 words" over a document with 8 / 2 / 5,443 — under a heading that says "MEASURED ON DISK RATHER THAN CLAIMED". A self-report that is authored instead of transcribed is the 08-04 gate-selfreport failure in a new file, and every downstream consumer reads it as a measurement. Fix the BLOCK to match the document (or restore what the cut removed) — never the other way round.`,
     });
 
   if (cSix && mSix > 0 && parseInt(cSix[1]!, 10) !== mSix)
-    mismatch('Six bullet count', parseInt(cSix[1]!, 10), mSix, 'Counted as bold-led bullets across Markets & Macro, Companies & Crypto, AI & Tech and Geopolitics.');
+    mismatch(
+      'Six bullet count',
+      parseInt(cSix[1]!, 10),
+      mSix,
+      'Counted as bold-led bullets across Markets & Macro, Companies & Crypto, AI & Tech and Geopolitics.'
+    );
   if (cDist && mSix > 0) {
     const n = cDist[1]!.trim().split(/\s+/).length;
     if (n !== mSix)
-      mismatch('per-bullet word distribution length', n, mSix, 'The distribution lists one number per shipped bullet; a cut bullet must lose its number.');
+      mismatch(
+        'per-bullet word distribution length',
+        n,
+        mSix,
+        'The distribution lists one number per shipped bullet; a cut bullet must lose its number.'
+      );
   }
   if (cCandC && mCandC > 0 && parseInt(cCandC[1]!, 10) !== mCandC)
-    mismatch('Companies & Crypto bullet count', parseInt(cCandC[1]!, 10), mCandC, 'Counted as bold-led bullets inside the C&C section.');
+    mismatch(
+      'Companies & Crypto bullet count',
+      parseInt(cCandC[1]!, 10),
+      mCandC,
+      'Counted as bold-led bullets inside the C&C section.'
+    );
   if (cWords) {
     const claimed = parseInt(cWords[1]!.replace(/,/g, ''), 10);
     if (claimed > 0 && Math.abs(claimed - mWords) / mWords > 0.05)
@@ -618,9 +636,9 @@ function checkSelfReportConsistency(raw: string, body: string): Failure[] {
         ...(subject.match(/\b[A-Z]{2,6}\b/g) ?? []),
         ...(subject.slice(1).match(/\b[A-Z][A-Za-z0-9-]{2,}\b/g) ?? []),
       ].filter(t => !STOP.test(t));
-      const weak = (subject.match(/\b[A-Za-z][A-Za-z0-9-]{5,}\b/g) ?? []).filter(
-        t => !STOP.test(t)
-      );
+      const weak = (
+        subject.match(/\b[A-Za-z][A-Za-z0-9-]{5,}\b/g) ?? []
+      ).filter(t => !STOP.test(t));
       // Within the entry's own section, ANY token match means the unit shipped. Total absence of
       // every distinctive term inside its own section is the only signal strong enough to act on.
       const tokens = [...strong, ...weak];
@@ -4129,8 +4147,10 @@ function selftestValidator(): number {
     const runSRC = (p: string): number => {
       if (!fs.existsSync(p)) return -1;
       const rawF = fs.readFileSync(p, 'utf8');
-      return checkSelfReportConsistency(rawF, rawF.replace(/<!--[\s\S]*?-->/g, ''))
-        .length;
+      return checkSelfReportConsistency(
+        rawF,
+        rawF.replace(/<!--[\s\S]*?-->/g, '')
+      ).length;
     };
     const fire = runSRC(path.join(db, '2026-08-11-v2.md'));
     t(
@@ -4185,7 +4205,8 @@ function selftestValidator(): number {
 
     // Synthetic: one unit at 185, the rest compliant. The failure being caught is a STAGE that
     // stopped measuring, not a sentence that ran eight words long.
-    const w = (n: number) => Array.from({ length: n }, (_, i) => `w${i}`).join(' ');
+    const w = (n: number) =>
+      Array.from({ length: n }, (_, i) => `w${i}`).join(' ');
     const oneOver =
       `# ▸ THE SIX\n\n## Markets & Macro\n\n${w(185)}\n\n${w(170)}\n\n` +
       `## Companies & Crypto\n\n${w(175)}\n\n${w(160)}\n\n` +

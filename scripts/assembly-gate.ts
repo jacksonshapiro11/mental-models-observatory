@@ -99,7 +99,8 @@ function checkPayoffClass(qg: string): string[] {
 // file, so on a night whose QG log has no own emission it would read a history line as tonight's
 // class and condemn a clean brief. 2026-08-12 is exactly that file. Own-emission discrimination is
 // therefore the load-bearing part of this leg, not a nicety.
-const PAYOFF_HISTORY_PREFIX_RE = /(?:\b\d{2}-\d{2}\b|\b\d{4}-\d{2}-\d{2}\b)\s*:\s*$/;
+const PAYOFF_HISTORY_PREFIX_RE =
+  /(?:\b\d{2}-\d{2}\b|\b\d{4}-\d{2}-\d{2}\b)\s*:\s*$/;
 
 const classOf = (s: string): string | null =>
   /MECHANISM/i.test(s)
@@ -118,9 +119,17 @@ export function qgOwnPayoffClass(qg: string): string | null {
     const idx = line.search(/PAYOFF CLASS:/i);
     if (idx === -1) continue;
     // Strip markdown noise from the prefix, then reject a `MM-DD:` / `YYYY-MM-DD:` history stamp.
-    const prefix = line.slice(0, idx).replace(/[`*_>\s-]+$/g, '').trimEnd();
+    const prefix = line
+      .slice(0, idx)
+      .replace(/[`*_>\s-]+$/g, '')
+      .trimEnd();
     if (PAYOFF_HISTORY_PREFIX_RE.test(prefix + ':')) continue;
-    if (/^\s*(?:\d{2}-\d{2}|\d{4}-\d{2}-\d{2})\s*:/.test(line.replace(/^[\s`*_>-]+/, ''))) continue;
+    if (
+      /^\s*(?:\d{2}-\d{2}|\d{4}-\d{2}-\d{2})\s*:/.test(
+        line.replace(/^[\s`*_>-]+/, '')
+      )
+    )
+      continue;
     const cls = classOf(line.slice(idx));
     if (cls) return cls;
   }
@@ -128,7 +137,9 @@ export function qgOwnPayoffClass(qg: string): string | null {
 }
 
 /** Payoff-class assertions made by the BRIEF itself, in payoff-class contexts only. */
-export function briefPayoffClassAssertions(brief: string): Array<{ line: number; cls: string; text: string }> {
+export function briefPayoffClassAssertions(
+  brief: string
+): Array<{ line: number; cls: string; text: string }> {
   const out: Array<{ line: number; cls: string; text: string }> = [];
   const lines = brief.split('\n');
   for (let i = 0; i < lines.length; i++) {
@@ -136,14 +147,24 @@ export function briefPayoffClassAssertions(brief: string): Array<{ line: number;
     // Scoped, per the mandate: `payoff class <CLASS>` or `Tonight is a <CLASS>`. A bare mention of
     // the word MECHANISM in prose is not a class assertion.
     const m =
-      /payoff\s+class[^A-Za-z]{0,4}(MECHANISM|TENSION|THEME|INVENTORY)\b/i.exec(l) ??
+      /payoff\s+class[^A-Za-z]{0,4}(MECHANISM|TENSION|THEME|INVENTORY)\b/i.exec(
+        l
+      ) ??
       /\bTonight\s+is\s+an?\s+(MECHANISM|TENSION|THEME|INVENTORY)\b/i.exec(l);
-    if (m) out.push({ line: i + 1, cls: m[1]!.toUpperCase(), text: l.trim().slice(0, 180) });
+    if (m)
+      out.push({
+        line: i + 1,
+        cls: m[1]!.toUpperCase(),
+        text: l.trim().slice(0, 180),
+      });
   }
   return out;
 }
 
-export function checkPayoffClassConsistency(brief: string, qg: string): string[] {
+export function checkPayoffClassConsistency(
+  brief: string,
+  qg: string
+): string[] {
   const own = qgOwnPayoffClass(qg);
   if (!own) return []; // nothing authoritative to compare against — validate-brief owns presence
   const out: string[] = [];
@@ -184,7 +205,10 @@ export function checkPayoffRotation(
   if (!chain.every(c => c.cls === chain[0]!.cls)) return null;
   return (
     `PAYOFF DEVICE UNROTATED — three consecutive payoff classes are ${chain[0]!.cls} ` +
-    `(${chain.map(c => `${c.d}=${c.cls}`).reverse().join(' · ')}). The rotation rule exists because a reader who ` +
+    `(${chain
+      .map(c => `${c.d}=${c.cls}`)
+      .reverse()
+      .join(' · ')}). The rotation rule exists because a reader who ` +
     `meets the same closing device three mornings running stops reading it as a conclusion. Draft the intro to a ` +
     `different class, or state in the QG log why this one earned a third run.`
   );
@@ -360,7 +384,9 @@ function truthScopeTerms(truthPath: string): Set<string> {
     const j = JSON.parse(fs.readFileSync(truthPath, 'utf8'));
     for (const k of Object.keys(j?.claims ?? {})) {
       const m = /^(?:payoff-scope|headline):(.+)$/.exec(k);
-      if (m) for (const t of m[1].split(/[^a-z0-9]+/i)) if (t) out.add(t.toLowerCase());
+      if (m)
+        for (const t of m[1].split(/[^a-z0-9]+/i))
+          if (t) out.add(t.toLowerCase());
     }
   } catch {
     /* no truth file → every intro term is unbound, which is the correct default */
@@ -462,7 +488,8 @@ function entitiesOf(sentence: string): string[] {
     const w = tok.replace(/^[^A-Za-z0-9$]+|[^A-Za-z0-9.]+$/g, '');
     if (w.length < 2) return;
     const bare = w.replace(/[.'’]s$/, '').replace(/\.$/, '');
-    if (SCOPE_STOP.has(bare.toLowerCase()) || TERM_STOP.has(bare.toLowerCase())) return;
+    if (SCOPE_STOP.has(bare.toLowerCase()) || TERM_STOP.has(bare.toLowerCase()))
+      return;
     const startsSentence = i === 0 || /[.!?:]$/.test(toks[i - 1] ?? '');
     const isCap = /^[A-Z]/.test(bare) && /[a-z]/.test(bare);
     const isAcronym = /^[A-Z][A-Z0-9.]{1,}$/.test(bare);
@@ -553,7 +580,9 @@ export function checkTitlePayoffDemotion(brief: string): string[] {
     const abstract = pool.filter(s => entitiesOf(s).length === 0);
     return abstract.length
       ? abstract[abstract.length - 1]!
-      : (watchIdx > 0 ? (sents[watchIdx - 1] ?? null) : null);
+      : watchIdx > 0
+        ? (sents[watchIdx - 1] ?? null)
+        : null;
   })();
   if (!concl) return [];
 
@@ -572,7 +601,7 @@ export function checkTitlePayoffDemotion(brief: string): string[] {
   return [
     `DAILY TITLE vs PAYOFF DEMOTION — the title "${title}" shares no content term with the payoff ` +
       `conclusion ("${concl.slice(0, 120)}…") while the intro explicitly demotes its own opening ` +
-      `story ("${dem[0]}")${pointsAtLead ? ', and the title\'s terms DO appear in that demoted opening sentence' : ''}. ` +
+      `story ("${dem[0]}")${pointsAtLead ? ", and the title's terms DO appear in that demoted opening sentence" : ''}. ` +
       `The title is the podcast episode name and the reader's first impression; the conclusion is ` +
       `what the brief actually decided. Pointing them in opposite directions is not a coincidence — ` +
       `the QG's FRESH-FRAME SCAN now deliberately cedes the day's loudest story, and the title step ` +
@@ -664,14 +693,16 @@ export function checkWatchBinding(brief: string): string[] {
   // ubiquitous entity contributes almost nothing to the choice of unit.
   const df = new Map<string, number>();
   for (const e of ents) df.set(e, units.filter(u => u.text.includes(e)).length);
-  let best: { id: string; text: string; hits: number; score: number } | null = null;
+  let best: { id: string; text: string; hits: number; score: number } | null =
+    null;
   const candidates: Array<{ id: string; text: string }> = [];
   for (const u of units) {
     const matched = ents.filter(e => u.text.includes(e));
     if (!matched.length) continue;
     candidates.push(u);
     const score = matched.reduce((s, e) => s + 1 / (df.get(e) || 1), 0);
-    if (!best || score > best.score) best = { ...u, hits: matched.length, score };
+    if (!best || score > best.score)
+      best = { ...u, hits: matched.length, score };
   }
   if (!best) return []; // watch resolves to no body unit — PAYOFF SCOPE UNBOUND owns that failure
   // LEG B — ANY candidate, not merely the best-scored one. A watch legitimately lands in more than
@@ -680,7 +711,8 @@ export function checkWatchBinding(brief: string): string[] {
   // subject also sits in M&M-1; demanding the binding come from the top-scored unit alone flagged
   // a payoff that night's Critic passed. Only when NO resolved unit speaks the conclusion's
   // language is the watch genuinely orphaned.
-  if (candidates.some(u => [...contentTerms(u.text)].some(t => cTerms.has(t)))) return [];
+  if (candidates.some(u => [...contentTerms(u.text)].some(t => cTerms.has(t))))
+    return [];
   return [
     `WATCH ORPHANED FROM PAYOFF CLASS — the watch line resolves ${best.id} (${best.hits} of ` +
       `${ents.length} watch entit${ents.length === 1 ? 'y' : 'ies'} matched: ${ents.slice(0, 4).join(', ')}), ` +
@@ -803,9 +835,17 @@ export function qgPayoffEmissions(qg: string): PayoffEmission[] {
     if (idx === -1) continue;
     // Same history-line discrimination as `qgOwnPayoffClass` — 08-12's only PAYOFF CLASS lines are a
     // quoted 08-11/10/09 block and reading one as tonight's class condemns a clean brief (IMP-176).
-    const prefix = line.slice(0, idx).replace(/[`*_>\s-]+$/g, '').trimEnd();
+    const prefix = line
+      .slice(0, idx)
+      .replace(/[`*_>\s-]+$/g, '')
+      .trimEnd();
     if (PAYOFF_HISTORY_PREFIX_RE.test(prefix + ':')) continue;
-    if (/^\s*(?:\d{2}-\d{2}|\d{4}-\d{2}-\d{2})\s*:/.test(line.replace(/^[\s`*_>-]+/, ''))) continue;
+    if (
+      /^\s*(?:\d{2}-\d{2}|\d{4}-\d{2}-\d{2})\s*:/.test(
+        line.replace(/^[\s`*_>-]+/, '')
+      )
+    )
+      continue;
     // An emission wraps (08-05, 08-09, 08-16 all do). Join continuations, stop at the next labelled line.
     const buf = [line];
     for (let j = i + 1; j < lines.length && buf.length < 4; j++) {
@@ -841,10 +881,15 @@ function registryActors(): RegExp[] {
   const res: RegExp[] = [];
   try {
     const j = JSON.parse(
-      fs.readFileSync(path.join(process.cwd(), 'system', 'entity-bindings.json'), 'utf8')
+      fs.readFileSync(
+        path.join(process.cwd(), 'system', 'entity-bindings.json'),
+        'utf8'
+      )
     );
-    for (const b of j?.bindings ?? []) if (b?.correctRe) res.push(new RegExp(b.correctRe, 'i'));
-    for (const c of j?.continuouslyTraded ?? []) if (c?.key) res.push(new RegExp(c.key, 'i'));
+    for (const b of j?.bindings ?? [])
+      if (b?.correctRe) res.push(new RegExp(b.correctRe, 'i'));
+    for (const c of j?.continuouslyTraded ?? [])
+      if (c?.key) res.push(new RegExp(c.key, 'i'));
   } catch {
     /* registry unreadable → capitalisation only */
   }
@@ -883,7 +928,8 @@ export function causeActors(cause: string): string[] {
     const w = tok.replace(/^[^A-Za-z0-9$]+|[^A-Za-z0-9.]+$/g, '');
     const bare = w.replace(/[.'’]s$/, '').replace(/\.$/, '');
     if (bare.length < 2) continue;
-    if (SCOPE_STOP.has(bare.toLowerCase()) || TERM_STOP.has(bare.toLowerCase())) continue;
+    if (SCOPE_STOP.has(bare.toLowerCase()) || TERM_STOP.has(bare.toLowerCase()))
+      continue;
     const isCap = /^[A-Z]/.test(bare) && /[a-z]/.test(bare);
     const isAcronym = /^[A-Z][A-Z0-9.]{1,}$/.test(bare);
     if (isCap || isAcronym) out.add(bare);
@@ -940,7 +986,10 @@ const SELECTION_RE = /\bSELECTED\b|✅\s*SELECT|→\s*SELECT|\bPROMOTED?\b/i;
  *  match the emitted class field (≥2 shared terms — a real link between sweep and emission, not a
  *  guess). If neither resolves, return null and stay SILENT: an advisory gate that cannot say WHICH
  *  candidate was selected has no business saying it was selected wrongly. */
-function selectedCandidate(block: string, ems: PayoffEmission[]): string | null {
+function selectedCandidate(
+  block: string,
+  ems: PayoffEmission[]
+): string | null {
   const chunks = candidateChunks(block);
   if (!chunks.length) return null;
   const marked = chunks.filter(c => SELECTION_RE.test(c));
@@ -974,7 +1023,11 @@ function sectionSentences(brief: string): SectionSentence[] {
     if (!text) return;
     const sents = sentencesOf(text.replace(/[*_`]/g, ''));
     sents.forEach((s, i) =>
-      out.push({ section, sentence: s, closesParagraph: i === sents.length - 1 })
+      out.push({
+        section,
+        sentence: s,
+        closesParagraph: i === sents.length - 1,
+      })
     );
   };
   for (const line of bodyAfterIntro(brief).split('\n')) {
@@ -1024,11 +1077,20 @@ export function checkPayoffMechanismEarned(
 
   // ── LEG A — THE RELABEL. A same-night THEME/INVENTORY followed by a re-emitted MECHANISM/TENSION
   //    whose `cause=` names no actor anywhere in its subject clause.
-  const labelIdx = ems.findIndex(e => e.cls === 'THEME' || e.cls === 'INVENTORY');
-  const upIdx = ems.findIndex(
-    e => (e.cls === 'MECHANISM' || e.cls === 'TENSION') && e.field === 'cause' && !!e.value
+  const labelIdx = ems.findIndex(
+    e => e.cls === 'THEME' || e.cls === 'INVENTORY'
   );
-  if (labelIdx !== -1 && upIdx > labelIdx && !CAUSE_AGENT_ATTESTATION.test(qg + brief)) {
+  const upIdx = ems.findIndex(
+    e =>
+      (e.cls === 'MECHANISM' || e.cls === 'TENSION') &&
+      e.field === 'cause' &&
+      !!e.value
+  );
+  if (
+    labelIdx !== -1 &&
+    upIdx > labelIdx &&
+    !CAUSE_AGENT_ATTESTATION.test(qg + brief)
+  ) {
     const label = ems[labelIdx]!;
     const up = ems[upIdx]!;
     if (!causeActors(up.value!).length) {
@@ -1072,7 +1134,7 @@ export function checkPayoffMechanismEarned(
             hits
               .map(
                 h =>
-                  `"${h.sentence.slice(0, 90)}${h.sentence.length > 90 ? '…' : ''}" (${h.section}${h.closesParagraph ? ', its paragraph\'s closing sentence' : ''})`
+                  `"${h.sentence.slice(0, 90)}${h.sentence.length > 90 ? '…' : ''}" (${h.section}${h.closesParagraph ? ", its paragraph's closing sentence" : ''})`
               )
               .join(' · ') +
             `. The payoff is the conclusion the reader arrives at ABOVE the sections; a frame that is ` +
@@ -1217,12 +1279,14 @@ export function checkWatchCauseBinding(
   let cause: string | null = mech?.value ?? null;
   let causeSrc = mech ? `QG PAYOFF CLASS line ${mech.line}` : '';
   if (!cause) {
-    if (!/PAYOFF\s+EXECUTION:[^\n]*class\s*=\s*MECHANISM\b/i.test(qg)) return []; // TENSION / THEME /
+    if (!/PAYOFF\s+EXECUTION:[^\n]*class\s*=\s*MECHANISM\b/i.test(qg))
+      return []; // TENSION / THEME /
     // parallel-tracks: no single cause to bind to (the mandate's silent classes)
     const rot = /PAYOFF\s+ROTATION:[^\n]*today\s*=\s*'([^']+)'/i.exec(qg);
     if (!rot) return [];
     cause = rot[1]!.replace(/\s+/g, ' ').trim();
-    causeSrc = 'QG PAYOFF ROTATION (executed class=MECHANISM, no emitted cause= field)';
+    causeSrc =
+      'QG PAYOFF ROTATION (executed class=MECHANISM, no emitted cause= field)';
   }
   // THE SPAN IS THE QG'S LAST DECLARED `sections=`, whichever class carried it — never the union of
   // every emission. MEASURED, both ways: on 08-23 the union sweeps in Geo-1 from the superseded THEME
@@ -1232,7 +1296,8 @@ export function checkWatchCauseBinding(
   // the QG's final statement of where the payoff lives, and it is the field the primary path already
   // reads. Floor across 2026-08-01..23: 3 of 23 nights, and they are exactly the three
   // `ceiling-trend.json` records as `payoff: fail` (08-18, 08-22, 08-23).
-  const span: string[] = [...ems].reverse().find(e => e.sections.length)?.sections ?? [];
+  const span: string[] =
+    [...ems].reverse().find(e => e.sections.length)?.sections ?? [];
 
   // ── 2. THE WATCH.
   const stripped = brief.replace(/<!--[\s\S]*?-->/g, ' ');
@@ -1244,7 +1309,8 @@ export function checkWatchCauseBinding(
   // ── 3. LEG A — CAUSAL OBJECT. Does the watch speak any of the cause's own objects?
   const objects = causalObjects(cause);
   const shared = [...contentTerms(watch)].filter(t => objects.has(t));
-  for (const e of entitiesOf(watch)) if (objects.has(e.toLowerCase())) shared.push(e);
+  for (const e of entitiesOf(watch))
+    if (objects.has(e.toLowerCase())) shared.push(e);
   if (shared.length) return [];
 
   // ── 4. LEG B — DECLARED SPAN. Does the watch resolve inside the sections the cause claims?
@@ -1401,14 +1467,21 @@ const TRAILING = [
 
 // IMP-210 acceptance runs entirely against real bytes: the two QG logs the mandate names, the
 // published brief, and every quality-gate log from 2026-08-01 onward.
-const QG_22 = path.join(process.cwd(), 'daily-briefs/2026-08-22-quality-gate-log.md');
+const QG_22 = path.join(
+  process.cwd(),
+  'daily-briefs/2026-08-22-quality-gate-log.md'
+);
 const PUB_22 = path.join(process.cwd(), 'content/daily-updates/2026-08-22.md');
-const QG_19 = path.join(process.cwd(), 'daily-briefs/2026-08-19-quality-gate-log.md');
+const QG_19 = path.join(
+  process.cwd(),
+  'daily-briefs/2026-08-19-quality-gate-log.md'
+);
 const PUB_19 = path.join(process.cwd(), 'content/daily-updates/2026-08-19.md');
 const SHIPPED_CAUSE_22 =
   'the adjustment is landing on the layer that carries the asset, not the asset';
 // The mandate's compliant control, verbatim from the mandate.
-const COMPLIANT_CAUSE = "the Treasury's buyback announcement repriced term premium";
+const COMPLIANT_CAUSE =
+  "the Treasury's buyback announcement repriced term premium";
 
 // The real 2026-08-20 header, verbatim from `content/daily-updates/2026-08-20.md` — the published
 // bytes, not a reconstruction. IMP-204's acceptance runs against this.
@@ -1467,7 +1540,11 @@ function selftest(): number {
         const p = path.join(process.cwd(), 'daily-briefs/2026-08-18-v2.md');
         if (!fs.existsSync(p)) return true;
         const out = checkWatchBinding(fs.readFileSync(p, 'utf8'));
-        return out.length === 1 && /WATCH ORPHANED FROM PAYOFF CLASS/.test(out[0]!) && /M&M-1/.test(out[0]!);
+        return (
+          out.length === 1 &&
+          /WATCH ORPHANED FROM PAYOFF CLASS/.test(out[0]!) &&
+          /M&M-1/.test(out[0]!)
+        );
       },
     ],
     [
@@ -1488,7 +1565,8 @@ function selftest(): number {
         const b = fs.readFileSync(p, 'utf8');
         return (
           checkWatchBinding(
-            b + '\n<!-- WATCH-BINDING: M&M-1 — the retail block prices what a shopper pays to switch stores. -->\n'
+            b +
+              '\n<!-- WATCH-BINDING: M&M-1 — the retail block prices what a shopper pays to switch stores. -->\n'
           ).length > 0
         );
       },
@@ -1506,15 +1584,24 @@ function selftest(): number {
       'own-emission: the 08-15 QG log reads MECHANISM (its own emitted line)',
       true,
       () => {
-        const p = path.join(process.cwd(), 'daily-briefs/2026-08-15-quality-gate-log.md');
-        return !fs.existsSync(p) || qgOwnPayoffClass(fs.readFileSync(p, 'utf8')) === 'MECHANISM';
+        const p = path.join(
+          process.cwd(),
+          'daily-briefs/2026-08-15-quality-gate-log.md'
+        );
+        return (
+          !fs.existsSync(p) ||
+          qgOwnPayoffClass(fs.readFileSync(p, 'utf8')) === 'MECHANISM'
+        );
       },
     ],
     [
-      'HISTORY-LINE DISCRIMINATION: the 08-12 QG log has NO own emission — its only PAYOFF CLASS lines are a quoted 08-11/10/09 history block, and reading one as tonight\'s class would condemn a clean brief',
+      "HISTORY-LINE DISCRIMINATION: the 08-12 QG log has NO own emission — its only PAYOFF CLASS lines are a quoted 08-11/10/09 history block, and reading one as tonight's class would condemn a clean brief",
       true,
       () => {
-        const p = path.join(process.cwd(), 'daily-briefs/2026-08-12-quality-gate-log.md');
+        const p = path.join(
+          process.cwd(),
+          'daily-briefs/2026-08-12-quality-gate-log.md'
+        );
         if (!fs.existsSync(p)) return true;
         const qg = fs.readFileSync(p, 'utf8');
         // The naive first-match parser DOES find a class here — that is the trap being closed.
@@ -1522,11 +1609,14 @@ function selftest(): number {
       },
     ],
     [
-      'FIRES: the real 2026-08-15-v2 asserts TENSION twice against the QG\'s emitted MECHANISM → 2 findings',
+      "FIRES: the real 2026-08-15-v2 asserts TENSION twice against the QG's emitted MECHANISM → 2 findings",
       true,
       () => {
         const b = path.join(process.cwd(), 'daily-briefs/2026-08-15-v2.md');
-        const q = path.join(process.cwd(), 'daily-briefs/2026-08-15-quality-gate-log.md');
+        const q = path.join(
+          process.cwd(),
+          'daily-briefs/2026-08-15-quality-gate-log.md'
+        );
         if (!fs.existsSync(b) || !fs.existsSync(q)) return true;
         return (
           checkPayoffClassConsistency(
@@ -1541,13 +1631,18 @@ function selftest(): number {
       false,
       () => {
         const b = path.join(process.cwd(), 'daily-briefs/2026-08-12-v2.md');
-        const q = path.join(process.cwd(), 'daily-briefs/2026-08-12-quality-gate-log.md');
+        const q = path.join(
+          process.cwd(),
+          'daily-briefs/2026-08-12-quality-gate-log.md'
+        );
         if (!fs.existsSync(b) || !fs.existsSync(q)) return false;
         const brief = fs.readFileSync(b, 'utf8');
         // Non-vacuous: the 08-12 brief genuinely DOES assert a payoff class.
-        if (!briefPayoffClassAssertions(brief).some(a => a.cls === 'TENSION')) return true;
+        if (!briefPayoffClassAssertions(brief).some(a => a.cls === 'TENSION'))
+          return true;
         return (
-          checkPayoffClassConsistency(brief, fs.readFileSync(q, 'utf8')).length > 0
+          checkPayoffClassConsistency(brief, fs.readFileSync(q, 'utf8'))
+            .length > 0
         );
       },
     ],
@@ -1556,7 +1651,10 @@ function selftest(): number {
       true,
       () =>
         checkPayoffRotation('2026-08-15', d => {
-          const p = path.join(process.cwd(), `daily-briefs/${d}-quality-gate-log.md`);
+          const p = path.join(
+            process.cwd(),
+            `daily-briefs/${d}-quality-gate-log.md`
+          );
           return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
         }) !== null,
     ],
@@ -1567,7 +1665,10 @@ function selftest(): number {
       false,
       () =>
         checkPayoffRotation('2026-08-06', d => {
-          const p = path.join(process.cwd(), `daily-briefs/${d}-quality-gate-log.md`);
+          const p = path.join(
+            process.cwd(),
+            `daily-briefs/${d}-quality-gate-log.md`
+          );
           return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
         }) !== null,
     ],
@@ -1589,7 +1690,9 @@ function selftest(): number {
           const p = path.join(dir, `${d}-quality-gate-log.md`);
           return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
         };
-        const fires = dates.filter(d => checkPayoffRotation(d, read) !== null).length;
+        const fires = dates.filter(
+          d => checkPayoffRotation(d, read) !== null
+        ).length;
         return fires / dates.length > 0.25; // expected SILENT => ratio must stay at or below 25%
       },
     ],
@@ -1599,24 +1702,33 @@ function selftest(): number {
       true,
       () =>
         !fs.existsSync(REAL13) ||
-        checkPayoffScope(fs.readFileSync(REAL13, 'utf8'), '2026-08-13', new Set())
-          .some(m => /PAYOFF SCOPE UNBOUND/.test(m) && /\bGulf\b/.test(m)),
+        checkPayoffScope(
+          fs.readFileSync(REAL13, 'utf8'),
+          '2026-08-13',
+          new Set()
+        ).some(m => /PAYOFF SCOPE UNBOUND/.test(m) && /\bGulf\b/.test(m)),
     ],
     [
       'payoff-scope FIRES on the unbound Daily Title numeral ("Two Chokepoints" vs a body naming three)',
       true,
       () =>
         !fs.existsSync(REAL13) ||
-        checkPayoffScope(fs.readFileSync(REAL13, 'utf8'), '2026-08-13', new Set())
-          .some(m => /DAILY TITLE NUMERAL UNBOUND/.test(m)),
+        checkPayoffScope(
+          fs.readFileSync(REAL13, 'utf8'),
+          '2026-08-13',
+          new Set()
+        ).some(m => /DAILY TITLE NUMERAL UNBOUND/.test(m)),
     ],
     [
       'payoff-scope SILENT on Patriot/Ukraine/Washington/September — four clean negatives from the SAME intro',
       false,
       () =>
         fs.existsSync(REAL13) &&
-        checkPayoffScope(fs.readFileSync(REAL13, 'utf8'), '2026-08-13', new Set())
-          .some(m => /\b(Patriot|Ukraine|Washington|September)\b/.test(m)),
+        checkPayoffScope(
+          fs.readFileSync(REAL13, 'utf8'),
+          '2026-08-13',
+          new Set()
+        ).some(m => /\b(Patriot|Ukraine|Washington|September)\b/.test(m)),
     ],
     [
       'payoff-scope SILENT on the trailing three intros (08-12, 08-11, 08-10 — all payoffs graded pass)',
@@ -1624,8 +1736,11 @@ function selftest(): number {
       () =>
         TRAILING.filter(f => fs.existsSync(f)).some(
           f =>
-            checkPayoffScope(fs.readFileSync(f, 'utf8'), '2026-08-13', new Set())
-              .length > 0
+            checkPayoffScope(
+              fs.readFileSync(f, 'utf8'),
+              '2026-08-13',
+              new Set()
+            ).length > 0
         ),
     ],
     [
@@ -1644,8 +1759,11 @@ function selftest(): number {
       false,
       () =>
         !fs.existsSync(REAL13) ||
-        checkPayoffScope(fs.readFileSync(REAL13, 'utf8'), '2026-08-12', new Set())
-          .length > 0,
+        checkPayoffScope(
+          fs.readFileSync(REAL13, 'utf8'),
+          '2026-08-12',
+          new Set()
+        ).length > 0,
     ],
     // --- IMP-204 (08-20 mandate #3): TITLE / PAYOFF DEMOTION INTERLOCK. Built on the REAL 08-20
     //     header, intro and title, which is the only night this construction occurs in the whole
@@ -1679,7 +1797,10 @@ function selftest(): number {
       false,
       () =>
         checkTitlePayoffDemotion(
-          AUG20_HEADER.replace('### At Least Four Billion', '### The Delivered Watt')
+          AUG20_HEADER.replace(
+            '### At Least Four Billion',
+            '### The Delivered Watt'
+          )
         ).length > 0,
     ],
     [
@@ -1688,11 +1809,16 @@ function selftest(): number {
       () =>
         fs
           .readdirSync(path.join(process.cwd(), 'content/daily-updates'))
-          .filter(x => /^2026-0[78]-\d\d\.md$/.test(x) && !x.startsWith('2026-08-20'))
+          .filter(
+            x => /^2026-0[78]-\d\d\.md$/.test(x) && !x.startsWith('2026-08-20')
+          )
           .some(
             f =>
               checkTitlePayoffDemotion(
-                fs.readFileSync(path.join(process.cwd(), 'content/daily-updates', f), 'utf8')
+                fs.readFileSync(
+                  path.join(process.cwd(), 'content/daily-updates', f),
+                  'utf8'
+                )
               ).length > 0
           ),
     ],
@@ -1700,7 +1826,10 @@ function selftest(): number {
       '[IMP-204] FIRES on the REAL PUBLISHED content/daily-updates/2026-08-20.md — the reader-facing bytes, the strongest form of this receipt',
       true,
       () => {
-        const p = path.join(process.cwd(), 'content/daily-updates/2026-08-20.md');
+        const p = path.join(
+          process.cwd(),
+          'content/daily-updates/2026-08-20.md'
+        );
         return fs.existsSync(p)
           ? checkTitlePayoffDemotion(fs.readFileSync(p, 'utf8')).length > 0
           : true;
@@ -1714,8 +1843,13 @@ function selftest(): number {
       () => {
         if (!fs.existsSync(QG_22)) return true;
         const a = qgPayoffEmissions(fs.readFileSync(QG_22, 'utf8'));
-        const q12 = path.join(process.cwd(), 'daily-briefs/2026-08-12-quality-gate-log.md');
-        const b = fs.existsSync(q12) ? qgPayoffEmissions(fs.readFileSync(q12, 'utf8')) : [];
+        const q12 = path.join(
+          process.cwd(),
+          'daily-briefs/2026-08-12-quality-gate-log.md'
+        );
+        const b = fs.existsSync(q12)
+          ? qgPayoffEmissions(fs.readFileSync(q12, 'utf8'))
+          : [];
         return (
           a.length === 2 &&
           a[0]!.cls === 'THEME' &&
@@ -1740,15 +1874,16 @@ function selftest(): number {
         ).some(m => /RELABEL, NOT A CAUSE/.test(m)),
     ],
     [
-      "[IMP-210] AGENT DISCRIMINATION, unit level: the mandate's compliant cause (\"the Treasury's buyback announcement repriced term premium\") resolves an actor — Treasury — and the shipped one resolves none. Structural, not lexical: the subject clause is cut at the closed-class boundary `that`, leaving \"the adjustment is landing on the layer\"",
+      '[IMP-210] AGENT DISCRIMINATION, unit level: the mandate\'s compliant cause ("the Treasury\'s buyback announcement repriced term premium") resolves an actor — Treasury — and the shipped one resolves none. Structural, not lexical: the subject clause is cut at the closed-class boundary `that`, leaving "the adjustment is landing on the layer"',
       true,
       () =>
         causeActors(COMPLIANT_CAUSE).some(a => /Treasury/i.test(a)) &&
         causeActors(SHIPPED_CAUSE_22).length === 0 &&
-        causeSubjectClause(SHIPPED_CAUSE_22) === 'the adjustment is landing on the layer',
+        causeSubjectClause(SHIPPED_CAUSE_22) ===
+          'the adjustment is landing on the layer',
     ],
     [
-      "[IMP-210] LEG A SILENT on a compliant agent-bearing cause — the REAL published v2's own sentence (\"the Treasury's announced buyback of longer-dated debt repriced term premium\") spliced into the REAL 08-22 log in place of the shipped one. The gate must condemn the relabel, not the reclassification",
+      '[IMP-210] LEG A SILENT on a compliant agent-bearing cause — the REAL published v2\'s own sentence ("the Treasury\'s announced buyback of longer-dated debt repriced term premium") spliced into the REAL 08-22 log in place of the shipped one. The gate must condemn the relabel, not the reclassification',
       false,
       () => {
         if (!fs.existsSync(QG_22) || !fs.existsSync(PUB_22)) return false;
@@ -1760,7 +1895,10 @@ function selftest(): number {
         if (!compliant) return true; // the receipt sentence is gone from the published bytes — fail loudly
         return checkPayoffMechanismEarned(
           pub,
-          fs.readFileSync(QG_22, 'utf8').split(SHIPPED_CAUSE_22).join(compliant[0]),
+          fs
+            .readFileSync(QG_22, 'utf8')
+            .split(SHIPPED_CAUSE_22)
+            .join(compliant[0]),
           '2026-08-22'
         ).some(m => /RELABEL, NOT A CAUSE/.test(m));
       },
@@ -1791,9 +1929,14 @@ function selftest(): number {
         const brief = fs.readFileSync(PUB_19, 'utf8');
         if (!qgPayoffEmissions(qg).length) return true; // vacuous negative → fail loudly
         const sents = sectionSentences(brief);
-        const sweepQuotesBody = [...payoffSweepBlock(qg).matchAll(QUOTED_SPAN_RE)].some(m => {
+        const sweepQuotesBody = [
+          ...payoffSweepBlock(qg).matchAll(QUOTED_SPAN_RE),
+        ].some(m => {
           const q = normQuote(m[1]!);
-          return q.split(' ').length >= 6 && sents.some(s => normQuote(s.sentence).includes(q));
+          return (
+            q.split(' ').length >= 6 &&
+            sents.some(s => normQuote(s.sentence).includes(q))
+          );
         });
         if (!sweepQuotesBody) return true; // vacuous negative → fail loudly
         return checkPayoffMechanismEarned(brief, qg, null).length > 0;
@@ -1820,7 +1963,13 @@ function selftest(): number {
           fs.readFileSync(QG_22, 'utf8') +
           '\n`PAYOFF-CAUSE-AGENT: the Treasury — its announced buyback of longer-dated debt repriced term premium.`\n' +
           '`PAYOFF-FRAME-INDEPENDENCE: the intro names the one cause under all three cross-asset prints; no section names it.`\n';
-        return checkPayoffMechanismEarned(fs.readFileSync(PUB_22, 'utf8'), qg, '2026-08-22').length > 0;
+        return (
+          checkPayoffMechanismEarned(
+            fs.readFileSync(PUB_22, 'utf8'),
+            qg,
+            '2026-08-22'
+          ).length > 0
+        );
       },
     ],
     [
@@ -1832,12 +1981,14 @@ function selftest(): number {
         const qg = fs.readFileSync(QG_22, 'utf8');
         const a = checkPayoffMechanismEarned(
           brief,
-          qg + '\n`PAYOFF-CAUSE-AGENT: the Treasury — the buyback repriced term premium.`\n',
+          qg +
+            '\n`PAYOFF-CAUSE-AGENT: the Treasury — the buyback repriced term premium.`\n',
           '2026-08-22'
         );
         const b = checkPayoffMechanismEarned(
           brief,
-          qg + '\n`PAYOFF-FRAME-INDEPENDENCE: the intro concludes above the sections.`\n',
+          qg +
+            '\n`PAYOFF-FRAME-INDEPENDENCE: the intro concludes above the sections.`\n',
           '2026-08-22'
         );
         return (
@@ -1869,7 +2020,10 @@ function selftest(): number {
           return (
             checkPayoffMechanismEarned(
               fs.readFileSync(bp, 'utf8'),
-              fs.readFileSync(path.join(dir, `${d}-quality-gate-log.md`), 'utf8'),
+              fs.readFileSync(
+                path.join(dir, `${d}-quality-gate-log.md`),
+                'utf8'
+              ),
               null
             ).length > 0
           );
@@ -1911,17 +2065,23 @@ function selftest(): number {
       },
     ],
     [
-      '[IMP-212] SILENT on THE REPAIR — the identical 08-23 bytes with the watch swapped to the brief\'s own DOE-count sentence, the fix the Critic named. It shares no literal term with "Iran\'s closure of the Strait of Hormuz" either, so a term-overlap-only check would punish it; it is silent because it resolves M&M-3, one of the cause\'s OWN declared sections. THE REPAIR MUST NEVER BE PUNISHED — a gate that flags the fix teaches the Writer to route around it',
+      "[IMP-212] SILENT on THE REPAIR — the identical 08-23 bytes with the watch swapped to the brief's own DOE-count sentence, the fix the Critic named. It shares no literal term with \"Iran's closure of the Strait of Hormuz\" either, so a term-overlap-only check would punish it; it is silent because it resolves M&M-3, one of the cause's OWN declared sections. THE REPAIR MUST NEVER BE PUNISHED — a gate that flags the fix teaches the Writer to route around it",
       false,
       () =>
-        checkWatchCauseBinding(aug23Brief(AUG23_WATCH_DOE), AUG23_QG, '2026-08-23')
-          .length > 0,
+        checkWatchCauseBinding(
+          aug23Brief(AUG23_WATCH_DOE),
+          AUG23_QG,
+          '2026-08-23'
+        ).length > 0,
     ],
     [
       "[IMP-212] SILENT on the REAL 2026-08-21 payoff — `ceiling-trend.json` records must_read_computed: true, a_top: 4, the window's ONE awarded Must-Read. Its watch (\"so watch whether the thirty-year holds below its 5.33 percent high of 18 August until then\") resolves M&M-1, inside the cause's declared span [Intro, M&M-1, Geo-1, Geo-2]. A gate that condemns the week's best brief is the IMP-200/201 false-alarm class",
       false,
       () => {
-        const b = path.join(process.cwd(), 'content/daily-updates/2026-08-21.md');
+        const b = path.join(
+          process.cwd(),
+          'content/daily-updates/2026-08-21.md'
+        );
         const q = path.join(
           process.cwd(),
           'daily-briefs/2026-08-21-quality-gate-log.md'
@@ -1987,7 +2147,8 @@ function selftest(): number {
       true,
       () => {
         const out = checkWatchCauseBinding(
-          aug23Brief(AUG23_WATCH_SHIPPED) + '\nPAYOFF-WATCH-BINDING: the dollar\n',
+          aug23Brief(AUG23_WATCH_SHIPPED) +
+            '\nPAYOFF-WATCH-BINDING: the dollar\n',
           AUG23_QG,
           '2026-08-23'
         );
@@ -2141,5 +2302,6 @@ function main() {
 // `main()` ran unconditionally, so this module could not be imported and `checkPayoffScope`
 // could not be exercised from a sibling test without a usage banner and process.exit(2).
 const invokedDirectly =
-  !!process.argv[1] && path.resolve(process.argv[1]).endsWith('assembly-gate.ts');
+  !!process.argv[1] &&
+  path.resolve(process.argv[1]).endsWith('assembly-gate.ts');
 if (invokedDirectly) main();

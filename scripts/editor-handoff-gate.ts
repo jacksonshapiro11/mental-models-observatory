@@ -205,7 +205,9 @@ const statusLines = (root: string, date: string): string[] => {
 export function lineTask(raw: string): string | null {
   const fields = raw.split('|');
   if (fields.length < 2) return null;
-  if (!/^\s*\d{4}-\d{2}-\d{2}T[\d:]+(?:Z|[+-]\d{2}:?\d{2})?\s*$/.test(fields[0]!))
+  if (
+    !/^\s*\d{4}-\d{2}-\d{2}T[\d:]+(?:Z|[+-]\d{2}:?\d{2})?\s*$/.test(fields[0]!)
+  )
     return null;
   return fields[1]!.trim();
 }
@@ -679,12 +681,15 @@ export function selfHealBranchOf(
   sched: SchedulerLiveness,
   violations: Violation[]
 ): SelfHealBranch {
-  if (violations.some(x => x.check === 'self-heal-over-live-editor')) return 'live-canary';
-  if (violations.some(x => x.check === 'self-heal-over-editor-artifact')) return 'live-artifact';
+  if (violations.some(x => x.check === 'self-heal-over-live-editor'))
+    return 'live-canary';
+  if (violations.some(x => x.check === 'self-heal-over-editor-artifact'))
+    return 'live-artifact';
   if (sched.state === 'UNKNOWN') return 'unknown';
   if (sched.state === 'NEVER-FIRED') return 'never';
   const lines = editorLines(root, date);
-  if (lines.some(l => l.kind === 'SUCCESS' || l.kind === 'FAIL')) return 'terminated';
+  if (lines.some(l => l.kind === 'SUCCESS' || l.kind === 'FAIL'))
+    return 'terminated';
   return 'empty-body';
 }
 export function selfHealDecision(
@@ -771,7 +776,12 @@ export interface NonProductionAudit {
   sched: SchedulerLiveness;
   live: Liveness;
   violations: Violation[];
-  verdict: 'NON-PRODUCTION' | 'PRODUCED' | 'IN-FLIGHT' | 'NOT-FIRED' | 'UNKNOWN';
+  verdict:
+    | 'NON-PRODUCTION'
+    | 'PRODUCED'
+    | 'IN-FLIGHT'
+    | 'NOT-FIRED'
+    | 'UNKNOWN';
 }
 export function auditNonProduction(
   root: string,
@@ -1114,7 +1124,10 @@ export function auditHandoff(root: string, date: string): Violation[] {
 export function readerBody(text: string): string {
   const fence = text.indexOf('<!-- ====');
   const head = fence >= 0 ? text.slice(0, fence) : text;
-  return head.replace(/<!--[\s\S]*?-->/g, '').replace(/\s+/g, ' ').trim();
+  return head
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function readerBodyOf(file: string): string | null {
@@ -1141,8 +1154,14 @@ function readerBodyOf(file: string): string | null {
  * reads its block, so this list cannot rot into decoration.
  */
 export const PROTECTED_BLOCKS: { name: string; consumer: string }[] = [
-  { name: 'WRITER DECLARATIONS', consumer: 'scripts/declaration-binding-gate.ts' },
-  { name: 'VALIDATION REPORT', consumer: 'scripts/declaration-binding-gate.ts' },
+  {
+    name: 'WRITER DECLARATIONS',
+    consumer: 'scripts/declaration-binding-gate.ts',
+  },
+  {
+    name: 'VALIDATION REPORT',
+    consumer: 'scripts/declaration-binding-gate.ts',
+  },
   { name: 'STALENESS LEDGER', consumer: 'scripts/validate-brief.ts' },
   { name: 'COUNTER-CASE', consumer: 'scripts/validate-brief.ts' },
   { name: 'take-move', consumer: 'scripts/validate-brief.ts' },
@@ -1150,10 +1169,22 @@ export const PROTECTED_BLOCKS: { name: string; consumer: string }[] = [
 ];
 
 /** Protected blocks present in v1.5 and fewer (or absent) in v2. Names only — the verdict is count. */
-export function droppedProtectedBlocks(v15Text: string, v2Text: string): string[] {
+export function droppedProtectedBlocks(
+  v15Text: string,
+  v2Text: string
+): string[] {
   const count = (text: string, name: string) =>
-    (text.match(new RegExp('<!--\\s*' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length;
-  return PROTECTED_BLOCKS.filter(b => count(v2Text, b.name) < count(v15Text, b.name)).map(b => b.name);
+    (
+      text.match(
+        new RegExp(
+          '<!--\\s*' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+          'gi'
+        )
+      ) || []
+    ).length;
+  return PROTECTED_BLOCKS.filter(
+    b => count(v2Text, b.name) < count(v15Text, b.name)
+  ).map(b => b.name);
 }
 
 /**
@@ -1329,19 +1360,17 @@ export function auditPromotion(root: string, date: string): Violation[] {
   } catch {
     /* stat/read race — existence already decided the verdict */
   }
-  out.push(
-    {
-      check: identical ? 'ORPHANED-SCRATCH' : 'STALE-SCRATCH',
-      message:
-        `PROMOTION AUDIT FAILED — ${date}-v2.working.md STILL EXISTS beside a promoted ${date}-v2.md ` +
-        `(${bytes} byte(s), ${identical ? 'byte-identical to v2' : 'NOT identical to v2'}). ` +
-        `Brief_Editor rule 6 requires DELETION on promotion; the size and the contents are a diagnosis, ` +
-        `not the verdict — ${identical ? 'ORPHANED-SCRATCH: the promotion copied instead of moving, so the husk is a leftover' : 'STALE-SCRATCH: a mid-pass snapshot survived, so a later reader can grade a document that never shipped'}. ` +
-        `FIX: delete it and write the WORKING FILE DELETED receipt to ${date}-editor-log.md. ` +
-        `Do not add a size or similarity condition to this check — that is exactly how IMP-141 and IMP-149 ` +
-        `each went blind on the next night's shape.`,
-    }
-  );
+  out.push({
+    check: identical ? 'ORPHANED-SCRATCH' : 'STALE-SCRATCH',
+    message:
+      `PROMOTION AUDIT FAILED — ${date}-v2.working.md STILL EXISTS beside a promoted ${date}-v2.md ` +
+      `(${bytes} byte(s), ${identical ? 'byte-identical to v2' : 'NOT identical to v2'}). ` +
+      `Brief_Editor rule 6 requires DELETION on promotion; the size and the contents are a diagnosis, ` +
+      `not the verdict — ${identical ? 'ORPHANED-SCRATCH: the promotion copied instead of moving, so the husk is a leftover' : 'STALE-SCRATCH: a mid-pass snapshot survived, so a later reader can grade a document that never shipped'}. ` +
+      `FIX: delete it and write the WORKING FILE DELETED receipt to ${date}-editor-log.md. ` +
+      `Do not add a size or similarity condition to this check — that is exactly how IMP-141 and IMP-149 ` +
+      `each went blind on the next night's shape.`,
+  });
   return out;
 }
 
@@ -1364,7 +1393,10 @@ export function auditPromotion(root: string, date: string): Violation[] {
  * no later reader can grade a document that never shipped — without pretending a delete happened.
  * Retired husks are visible on disk on purpose; they are evidence, not litter.
  */
-export function finalize(root: string, date: string): { code: number; lines: string[] } {
+export function finalize(
+  root: string,
+  date: string
+): { code: number; lines: string[] } {
   const lines: string[] = [];
   const db = DB(root);
   const v2 = path.join(db, `${date}-v2.md`);
@@ -1374,12 +1406,16 @@ export function finalize(root: string, date: string): { code: number; lines: str
   // 1. v2 must exist and be a plausible brief. Finalizing an absent or husk v2 would write a
   //    receipt for a pass that did not happen — the exact laundering this file exists to prevent.
   if (!fs.existsSync(v2)) {
-    lines.push(`   ✗ NO-V2 — ${date}-v2.md is not on disk. There is nothing to finalize. If the Editor is still running, this is correct: wait. If it died, use --can-self-heal.`);
+    lines.push(
+      `   ✗ NO-V2 — ${date}-v2.md is not on disk. There is nothing to finalize. If the Editor is still running, this is correct: wait. If it died, use --can-self-heal.`
+    );
     return { code: 1, lines };
   }
   const v2Bytes = fs.statSync(v2).size;
   if (v2Bytes < MIN_PLAUSIBLE_BRIEF_BYTES) {
-    lines.push(`   ✗ HUSK-V2 — ${date}-v2.md is ${v2Bytes} bytes, under the ${MIN_PLAUSIBLE_BRIEF_BYTES}-byte plausibility floor. Do not finalize a husk.`);
+    lines.push(
+      `   ✗ HUSK-V2 — ${date}-v2.md is ${v2Bytes} bytes, under the ${MIN_PLAUSIBLE_BRIEF_BYTES}-byte plausibility floor. Do not finalize a husk.`
+    );
     return { code: 1, lines };
   }
   lines.push(`   ✓ v2 present — ${date}-v2.md, ${v2Bytes} bytes`);
@@ -1389,28 +1425,40 @@ export function finalize(root: string, date: string): { code: number; lines: str
     const wb = fs.statSync(working).size;
     try {
       fs.unlinkSync(working);
-      lines.push(`   ✓ WORKING FILE DELETED — ${date}-v2.working.md (${wb} bytes) unlinked`);
+      lines.push(
+        `   ✓ WORKING FILE DELETED — ${date}-v2.working.md (${wb} bytes) unlinked`
+      );
     } catch {
       const retired = `${working}.retired-${Date.now()}`;
       try {
         fs.renameSync(working, retired);
-        lines.push(`   ✓ WORKING FILE RETIRED — ${date}-v2.working.md (${wb} bytes) → ${path.basename(retired)} (unlink is EPERM on this mount; rename is not)`);
+        lines.push(
+          `   ✓ WORKING FILE RETIRED — ${date}-v2.working.md (${wb} bytes) → ${path.basename(retired)} (unlink is EPERM on this mount; rename is not)`
+        );
       } catch (e: any) {
-        lines.push(`   ✗ CANNOT-RETIRE-WORKING — neither unlink nor rename succeeded on ${date}-v2.working.md: ${e?.message ?? e}`);
+        lines.push(
+          `   ✗ CANNOT-RETIRE-WORKING — neither unlink nor rename succeeded on ${date}-v2.working.md: ${e?.message ?? e}`
+        );
         return { code: 1, lines };
       }
     }
   } else {
-    lines.push(`   ✓ no working file beside the promoted v2 (Brief_Editor rule 6 satisfied)`);
+    lines.push(
+      `   ✓ no working file beside the promoted v2 (Brief_Editor rule 6 satisfied)`
+    );
   }
 
   // 3. The editor log must exist and say something.
   const logBytes = fs.existsSync(log) ? fs.statSync(log).size : -1;
   if (logBytes <= 0) {
-    lines.push(`   ✗ MISSING-EDITOR-LOG — ${date}-editor-log.md is ${logBytes < 0 ? 'NOT ON DISK' : 'EMPTY'}. Write the pass record (gates run, edits made, Gate 16 ledger) and re-run --finalize. This is the whole of mandate #2: a stage that ships without a receipt is indistinguishable from a stage that died.`);
+    lines.push(
+      `   ✗ MISSING-EDITOR-LOG — ${date}-editor-log.md is ${logBytes < 0 ? 'NOT ON DISK' : 'EMPTY'}. Write the pass record (gates run, edits made, Gate 16 ledger) and re-run --finalize. This is the whole of mandate #2: a stage that ships without a receipt is indistinguishable from a stage that died.`
+    );
     return { code: 1, lines };
   }
-  lines.push(`   ✓ editor log present — ${date}-editor-log.md, ${logBytes} bytes`);
+  lines.push(
+    `   ✓ editor log present — ${date}-editor-log.md, ${logBytes} bytes`
+  );
 
   // 4. THE CUT ORDER (2026-08-12 Critic mandate #1, RC4). A night that ends with a majority of Six
   //    units past their hard ceiling ended with compressible words on the table. If the Editor
@@ -1429,15 +1477,23 @@ export function finalize(root: string, date: string): { code: number; lines: str
       );
       return { code: 1, lines };
     }
-    lines.push(`   ✓ LENGTH-OVERRIDE declared in the editor log against a ${breach.over}/${breach.units} breach (${breach.surplus} words recoverable) — the trade is on the record`);
+    lines.push(
+      `   ✓ LENGTH-OVERRIDE declared in the editor log against a ${breach.over}/${breach.units} breach (${breach.surplus} words recoverable) — the trade is on the record`
+    );
   } else {
-    lines.push(`   ✓ six-unit-hard-breach clear — ${breach.over} of ${breach.units} core units over hard (${breach.distribution})`);
+    lines.push(
+      `   ✓ six-unit-hard-breach clear — ${breach.over} of ${breach.units} core units over hard (${breach.distribution})`
+    );
   }
 
   lines.push('');
   lines.push('   PASTE THIS BLOCK INTO THE EDITOR LOG AND THE STATUS LINE:');
-  lines.push(`   MECHANICAL GATE OUTPUT — editor-handoff-gate --finalize ${date} EXIT=0`);
-  lines.push(`     v2 ${v2Bytes} B · working file retired · editor-log ${logBytes} B · six-unit-hard-breach ${breach.over}/${breach.units} over, ${breach.surplus} recoverable${breach.breach ? ' (LENGTH-OVERRIDE declared)' : ''}`);
+  lines.push(
+    `   MECHANICAL GATE OUTPUT — editor-handoff-gate --finalize ${date} EXIT=0`
+  );
+  lines.push(
+    `     v2 ${v2Bytes} B · working file retired · editor-log ${logBytes} B · six-unit-hard-breach ${breach.over}/${breach.units} over, ${breach.surplus} recoverable${breach.breach ? ' (LENGTH-OVERRIDE declared)' : ''}`
+  );
   return { code: 0, lines };
 }
 
@@ -1662,7 +1718,8 @@ function selftest(): number {
   //     the foreign lines must be EXCLUDED, and the genuine ones must still be SELECTED.
   const board0817 = statusLines(root, '2026-08-17');
   const foreignQg = board0817.filter(
-    l => /brief-quality-gate/i.test(l) && !ownedBy(l, /^(brief-)?quality-gate$/i)
+    l =>
+      /brief-quality-gate/i.test(l) && !ownedBy(l, /^(brief-)?quality-gate$/i)
   );
   const foreignEd = board0817.filter(
     l => /brief-editor/i.test(l) && !ownedBy(l, /^brief-editor$/i)
@@ -1688,7 +1745,9 @@ function selftest(): number {
   // (d) The MEASUREMENT leg: 08-17's QG ran 22:42:15Z → 00:09:14Z = 86.98 min. The contaminated
   //     selector reported 105.2 (the critic's 00:27:29Z line) and red-failed nine ledger rows.
   const qg0817 = qgLines(root, '2026-08-17');
-  const c0817 = qg0817.filter(l => l.kind === 'CANARY' && l.ts).map(l => l.ts!.getTime());
+  const c0817 = qg0817
+    .filter(l => l.kind === 'CANARY' && l.ts)
+    .map(l => l.ts!.getTime());
   const t0817 = qg0817
     .filter(l => (l.kind === 'SUCCESS' || l.kind === 'FAIL') && l.ts)
     .map(l => l.ts!.getTime());
@@ -1789,7 +1848,10 @@ function selftest(): number {
   const twin = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-twin-'));
   fs.mkdirSync(path.join(twin, 'daily-briefs'), { recursive: true });
   const twinBody = PLAUSIBLE_BODY;
-  fs.writeFileSync(path.join(twin, 'daily-briefs', '2026-08-09-v2.md'), twinBody);
+  fs.writeFileSync(
+    path.join(twin, 'daily-briefs', '2026-08-09-v2.md'),
+    twinBody
+  );
   fs.writeFileSync(
     path.join(twin, 'daily-briefs', '2026-08-09-v2.working.md'),
     twinBody
@@ -1846,7 +1908,8 @@ function selftest(): number {
   //     FIRST, the counterfactual that makes the leg mean something: with the canary GONE the board
   //     and the disk carry NOTHING, so the OLD gate — the one with no scheduler input — says ALLOWED.
   //     That is the 08-22 false permit, reproduced on tonight's state.
-  const okOldGateWouldPermit = canSelfHeal(R0823, '2026-08-23', NOW0823).length === 0;
+  const okOldGateWouldPermit =
+    canSelfHeal(R0823, '2026-08-23', NOW0823).length === 0;
   const d0823 = selfHealDecision(R0823, '2026-08-23', {
     reading: READ0823,
     now: NOW0823,
@@ -1884,7 +1947,10 @@ function selftest(): number {
   const R0823selfheal = frozenBoard(
     '2026-08-23',
     FROZEN_0823_QG +
-      FROZEN_0823_CRITIC_CANARY.replace('| brief-editor |', '| brief-editor-selfheal |')
+      FROZEN_0823_CRITIC_CANARY.replace(
+        '| brief-editor |',
+        '| brief-editor-selfheal |'
+      )
   );
   const okSelfhealCanaryInvisible =
     editorLines(R0823selfheal, '2026-08-23').length === 0 &&
@@ -2010,14 +2076,17 @@ function selftest(): number {
   //     the CLI turns null into a usage error (exit 2).
   const okParser =
     parseSchedulerLastRun('NEVER')?.never === true &&
-    parseSchedulerLastRun('2026-08-22T23:20:17.192Z')?.lastRunAt?.toISOString() ===
-      '2026-08-22T23:20:17.192Z' &&
-    parseSchedulerLastRun('2026-08-22T19:04:55-04:00')?.lastRunAt instanceof Date &&
+    parseSchedulerLastRun(
+      '2026-08-22T23:20:17.192Z'
+    )?.lastRunAt?.toISOString() === '2026-08-22T23:20:17.192Z' &&
+    parseSchedulerLastRun('2026-08-22T19:04:55-04:00')?.lastRunAt instanceof
+      Date &&
     parseSchedulerLastRun('yesterday') === null &&
     parseSchedulerLastRun('') === null;
   //     …and an ABSENT scheduler-state directory yields NO reading (⇒ UNKNOWN), never a default.
   const okStateDirAbsentIsUnknown =
-    readSchedulerStateDir(path.join(os.tmpdir(), 'ehg-no-such-dir-216')) === null;
+    readSchedulerStateDir(path.join(os.tmpdir(), 'ehg-no-such-dir-216')) ===
+    null;
 
   // (g) THE TWO DOCUMENTS MUST AGREE — the second half of the mandate, mechanically. A prose-only
   //     rule is unenforced, and this pair ordering incompatible first actions is what made a
@@ -2149,12 +2218,8 @@ function selftest(): number {
     a21post.exitCode === 0;
   //     …and the two v2 files those legs describe are REALLY on disk. Corroboration, deliberately
   //     NOT the assertion: if the archive is ever cleaned the frozen legs above still bind.
-  const realV2_0820 = fs.existsSync(
-    path.join(DB(root), '2026-08-20-v2.md')
-  );
-  const realV2_0821 = fs.existsSync(
-    path.join(DB(root), '2026-08-21-v2.md')
-  );
+  const realV2_0820 = fs.existsSync(path.join(DB(root), '2026-08-20-v2.md'));
+  const realV2_0821 = fs.existsSync(path.join(DB(root), '2026-08-21-v2.md'));
   const realV2_0823 = fs.existsSync(path.join(DB(root), '2026-08-23-v2.md'));
   const realV2_0824 = fs.existsSync(path.join(DB(root), '2026-08-24-v2.md'));
   const okRealV2Split = !realV2_0823 && !realV2_0824;
@@ -2295,15 +2360,33 @@ function selftest(): number {
   for (const d of [NP20, NP21, NP22, NP24, staged])
     fs.rmSync(d, { recursive: true, force: true });
 
-  for (const d of [R0823, R0823poison, R0823selfheal, R0821, R0822, RliveCanary, bandRoot])
+  for (const d of [
+    R0823,
+    R0823poison,
+    R0823selfheal,
+    R0821,
+    R0822,
+    RliveCanary,
+    bandRoot,
+  ])
     fs.rmSync(d, { recursive: true, force: true });
 
-  for (const d of [alive, dead, early, held, ceiling, husk, full, huskEarly, twin])
+  for (const d of [
+    alive,
+    dead,
+    early,
+    held,
+    ceiling,
+    husk,
+    full,
+    huskEarly,
+    twin,
+  ])
     fs.rmSync(d, { recursive: true, force: true });
 
   const rows: [string, boolean][] = [
     [
-      'IMP-216 with the Critic\'s canary REMOVED, tonight\'s board carries NO evidence — the OLD gate says ALLOWED (the 08-22 false permit, reproduced)',
+      "IMP-216 with the Critic's canary REMOVED, tonight's board carries NO evidence — the OLD gate says ALLOWED (the 08-22 false permit, reproduced)",
       okOldGateWouldPermit,
     ],
     [
@@ -2331,7 +2414,7 @@ function selftest(): number {
       okAllowed0821,
     ],
     [
-      'IMP-216 …and by the record\'s own wording — a lastRunAt PREDATING this cycle\'s QG terminal is NEVER-FIRED',
+      "IMP-216 …and by the record's own wording — a lastRunAt PREDATING this cycle's QG terminal is NEVER-FIRED",
       okAllowed0821Prior,
     ],
     [
@@ -2371,7 +2454,7 @@ function selftest(): number {
       okNP22,
     ],
     [
-      'IMP-216 --audit-nonproduction FIRES on 2026-08-23 (fired 23:20:17.192Z, T+39) on the board with the Critic\'s fabricated canary REMOVED — exit 1',
+      "IMP-216 --audit-nonproduction FIRES on 2026-08-23 (fired 23:20:17.192Z, T+39) on the board with the Critic's fabricated canary REMOVED — exit 1",
       okNP23,
     ],
     [
@@ -2383,7 +2466,7 @@ function selftest(): number {
       okNP20,
     ],
     [
-      'IMP-216 --audit-nonproduction SILENT on 2026-08-21 (scheduler NEVER fired, both before and after the Critic\'s self-heal) — a slot that never STARTED is pipeline-slot-attendance\'s alarm (IMP-207), not this one',
+      "IMP-216 --audit-nonproduction SILENT on 2026-08-21 (scheduler NEVER fired, both before and after the Critic's self-heal) — a slot that never STARTED is pipeline-slot-attendance's alarm (IMP-207), not this one",
       okNP21,
     ],
     [
@@ -2407,7 +2490,7 @@ function selftest(): number {
       okUntouchedStagedAbsent,
     ],
     [
-      'IMP-216 …and ONE CHARACTER of real editorial work makes it promotable again — identity, never similarity (IMP-149\'s reason: a light-edit night is still a live Editor)',
+      "IMP-216 …and ONE CHARACTER of real editorial work makes it promotable again — identity, never similarity (IMP-149's reason: a light-edit night is still a live Editor)",
       okOneCharIsPromotable,
     ],
     [
@@ -2600,7 +2683,9 @@ function selftest(): number {
   const RULE6 = new Set(['ORPHANED-SCRATCH', 'STALE-SCRATCH']);
   const okPromoSilentClean =
     cleanNights.length > 0 &&
-    cleanNights.every(d => auditPromotion(root, d).every(v => !RULE6.has(v.check)));
+    cleanNights.every(d =>
+      auditPromotion(root, d).every(v => !RULE6.has(v.check))
+    );
   // SILENT mid-pass: a working file with NO v2 yet is a live Editor, never a failed promotion.
   const liveRoot = fixture('promo-live', {
     canaryMinAgo: 10,
@@ -2633,9 +2718,12 @@ function selftest(): number {
   );
 
   // ── IMP-222 · BODIES, NOT BYTES (08-25 mandate #3a) — every leg on REAL published bytes ───────
-  const RD = (f: string) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : null);
-  const real = (d: string, kind: string) => RD(path.join(DB(root), `${d}-${kind}.md`));
-  const bodyEq = (a: string | null, b: string | null) => a !== null && b !== null && readerBody(a) === readerBody(b);
+  const RD = (f: string) =>
+    fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : null;
+  const real = (d: string, kind: string) =>
+    RD(path.join(DB(root), `${d}-${kind}.md`));
+  const bodyEq = (a: string | null, b: string | null) =>
+    a !== null && b !== null && readerBody(a) === readerBody(b);
 
   // 🔴 HERMETIC (B1, 2026-08-28) — 6TH LIVE-WORLD INSTANCE, AND THIS ONE BROKE BY BEING TIDY.
   //
@@ -2664,7 +2752,8 @@ function selftest(): number {
   rows.push(
     [
       `IMP-222 the staged file is NOT byte-identical to v1.5 (${FIXTURE_STAGE.length} B vs ${FIXTURE_V15.length} B) — else the leg below proves nothing`,
-      FIXTURE_STAGE !== FIXTURE_V15 && FIXTURE_STAGE.length !== FIXTURE_V15.length,
+      FIXTURE_STAGE !== FIXTURE_V15 &&
+        FIXTURE_STAGE.length !== FIXTURE_V15.length,
     ],
     [
       'IMP-222 …and IS reader-body-identical to it — ZERO editorial work, which byte-identity read as DIVERGED (the 45-min-floor hole). Real 08-25 receipt: 40,546 B vs 80,509 B, bodies 40,465 chars each',
@@ -2673,7 +2762,9 @@ function selftest(): number {
     [
       'IMP-222 the fixture is faithful: stripping the comment blocks is the ONLY difference, so the leg tests the mechanism and not a coincidence',
       FIXTURE_V15.startsWith(FIXTURE_READER) &&
-        FIXTURE_V15.slice(FIXTURE_READER.length).replace(/<!--[\s\S]*?-->/g, '').trim() === '',
+        FIXTURE_V15.slice(FIXTURE_READER.length)
+          .replace(/<!--[\s\S]*?-->/g, '')
+          .trim() === '',
     ],
     [
       'IMP-222 REGRESSION PIN: 08-20/21/22, three nights with real Editor passes, ALL read as EDITED — a gate that calls a real pass "absent" can stop a brief',
@@ -2695,7 +2786,10 @@ function selftest(): number {
     ],
     [
       'IMP-222 comment blocks are not the brief: identical bodies with different comments still read UNEDITED',
-      bodyEq('# b\ntext\n<!-- ==== A ==== -->\nx', '# b\ntext\n<!-- ==== B ==== -->\ny'),
+      bodyEq(
+        '# b\ntext\n<!-- ==== A ==== -->\nx',
+        '# b\ntext\n<!-- ==== B ==== -->\ny'
+      ),
     ]
   );
 
@@ -2710,7 +2804,8 @@ function selftest(): number {
     [
       'IMP-222 SILENT on 08-20/21/22, whose v2s are real passes',
       ['2026-08-20', '2026-08-21', '2026-08-22'].every(
-        d => !auditPromotion(root, d).some(v => v.check === 'UNEDITED-PROMOTION')
+        d =>
+          !auditPromotion(root, d).some(v => v.check === 'UNEDITED-PROMOTION')
       ),
     ],
     [
@@ -2719,26 +2814,38 @@ function selftest(): number {
         .readdirSync(DB(root))
         .map(f => f.match(/^(\d{4}-\d{2}-\d{2})-v2\.md$/)?.[1])
         .filter((d): d is string => !!d && d < EDITORIAL_WORK_EFFECTIVE_FROM)
-        .every(d =>
-          !auditPromotion(root, d).some(
-            v => v.check === 'UNEDITED-PROMOTION' || v.check === 'DROPPED-WORKLIST-BLOCK'
-          )
+        .every(
+          d =>
+            !auditPromotion(root, d).some(
+              v =>
+                v.check === 'UNEDITED-PROMOTION' ||
+                v.check === 'DROPPED-WORKLIST-BLOCK'
+            )
         ),
     ],
     [
-      'IMP-222 droppedProtectedBlocks FIRES when a v2 drops the worklist blocks its v1.5 carried, naming WRITER DECLARATIONS and VALIDATION REPORT — the Morning Truth Gate\'s own worklist (real 08-25 receipt: 7 blocks in v1.5, 0 in v2)',
+      "IMP-222 droppedProtectedBlocks FIRES when a v2 drops the worklist blocks its v1.5 carried, naming WRITER DECLARATIONS and VALIDATION REPORT — the Morning Truth Gate's own worklist (real 08-25 receipt: 7 blocks in v1.5, 0 in v2)",
       (() => {
         // HERMETIC (B1): built from PROTECTED_BLOCKS itself, so it cannot drift from the roster it
         // guards — and it no longer holds a 2026-08-25 file hostage to stay green.
-        const v15 = PROTECTED_BLOCKS.map(b => `<!-- ${b.name}\n  content\n-->`).join('\n') + '\n# body\n';
+        const v15 =
+          PROTECTED_BLOCKS.map(b => `<!-- ${b.name}\n  content\n-->`).join(
+            '\n'
+          ) + '\n# body\n';
         const dr = droppedProtectedBlocks(v15, '# body\n');
-        return dr.includes('WRITER DECLARATIONS') && dr.includes('VALIDATION REPORT') && dr.length === PROTECTED_BLOCKS.length;
+        return (
+          dr.includes('WRITER DECLARATIONS') &&
+          dr.includes('VALIDATION REPORT') &&
+          dr.length === PROTECTED_BLOCKS.length
+        );
       })(),
     ],
     [
-      'IMP-222 …and is SILENT on 08-20/21/22, which retain their blocks — the mandate\'s own both-directions receipt',
+      "IMP-222 …and is SILENT on 08-20/21/22, which retain their blocks — the mandate's own both-directions receipt",
       ['2026-08-20', '2026-08-21', '2026-08-22'].every(
-        d => droppedProtectedBlocks(real(d, 'v1.5') ?? '', real(d, 'v2') ?? '').length === 0
+        d =>
+          droppedProtectedBlocks(real(d, 'v1.5') ?? '', real(d, 'v2') ?? '')
+            .length === 0
       ),
     ],
     [
@@ -2750,7 +2857,10 @@ function selftest(): number {
     ],
     [
       'IMP-222 a v2 that ADDS blocks is never accused — the Editor may write, it may only not silently discard',
-      droppedProtectedBlocks('<!-- COUNTER-CASE -->', '<!-- COUNTER-CASE -->\n<!-- MODEL-LOCKED -->').length === 0,
+      droppedProtectedBlocks(
+        '<!-- COUNTER-CASE -->',
+        '<!-- COUNTER-CASE -->\n<!-- MODEL-LOCKED -->'
+      ).length === 0,
     ]
   );
 
@@ -2763,7 +2873,8 @@ function selftest(): number {
   const upTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-up-'));
   const upBriefs = path.join(upTmp, 'daily-briefs');
   fs.mkdirSync(upBriefs, { recursive: true });
-  const UP_BODY = '# Tuesday, January 6, 2026\n\nThe same brief.\n<!-- ==== WRITER DECLARATIONS ==== -->\nkept\n';
+  const UP_BODY =
+    '# Tuesday, January 6, 2026\n\nThe same brief.\n<!-- ==== WRITER DECLARATIONS ==== -->\nkept\n';
   fs.writeFileSync(path.join(upBriefs, '2026-01-06-v1.5.md'), UP_BODY);
   fs.writeFileSync(path.join(upBriefs, '2026-01-06-v2.md'), UP_BODY);
   const fireNoLog = uneditedPromotion(upTmp, '2026-01-06');
@@ -2778,17 +2889,30 @@ function selftest(): number {
   );
   const silentHonest = uneditedPromotion(upTmp, '2026-01-06');
   fs.writeFileSync(path.join(upBriefs, '2026-01-07-v1.5.md'), UP_BODY);
-  fs.writeFileSync(path.join(upBriefs, '2026-01-07-v2.md'), UP_BODY.replace('same brief', 'edited brief'));
+  fs.writeFileSync(
+    path.join(upBriefs, '2026-01-07-v2.md'),
+    UP_BODY.replace('same brief', 'edited brief')
+  );
   const silentEdited = uneditedPromotion(upTmp, '2026-01-07');
   fs.rmSync(upTmp, { recursive: true, force: true });
 
-  const hcSnap = path.join(root, 'system', 'task-bodies-snapshot', 'pipeline-health-check', 'SKILL.md');
-  const hcSnapTxt = fs.existsSync(hcSnap) ? fs.readFileSync(hcSnap, 'utf8') : '';
+  const hcSnap = path.join(
+    root,
+    'system',
+    'task-bodies-snapshot',
+    'pipeline-health-check',
+    'SKILL.md'
+  );
+  const hcSnapTxt = fs.existsSync(hcSnap)
+    ? fs.readFileSync(hcSnap, 'utf8')
+    : '';
 
   rows.push(
     [
       'ESC-020 --unedited-promotion FIRES on the REAL 2026-08-26 v2 — md5-identical to v1.5, no editor log',
-      uneditedPromotion(root, '2026-08-26').some(v => v.check === 'UNEDITED-PROMOTION'),
+      uneditedPromotion(root, '2026-08-26').some(
+        v => v.check === 'UNEDITED-PROMOTION'
+      ),
     ],
     [
       'ESC-020 SILENT on 2026-08-19 — pre-08-20 night, real editor log, bodies differ (held-out healthy)',
@@ -2824,7 +2948,9 @@ function selftest(): number {
     [
       'ESC-020 self-heal-critic / SELF-HEAL is NOT the honest stamp — hasHonestSelfhealStamp rejects both',
       !hasHonestSelfhealStamp('EDITOR VERSION: self-heal-critic-2026-08-25') &&
-        !hasHonestSelfhealStamp('# Editor Log — 2026-08-21 (SELF-HEAL, Critic-invoked)') &&
+        !hasHonestSelfhealStamp(
+          '# Editor Log — 2026-08-21 (SELF-HEAL, Critic-invoked)'
+        ) &&
         hasHonestSelfhealStamp('v2-SELFHEAL (unedited promotion)'),
     ],
     [
@@ -2865,23 +2991,38 @@ function selftest(): number {
         const r = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-label-'));
         fs.mkdirSync(path.join(r, 'daily-briefs'), { recursive: true });
         const D2 = '2026-08-27';
-        fs.writeFileSync(path.join(r, 'daily-briefs', `${D2}-v1.5.md`), '# brief\nbody\n');
-        fs.writeFileSync(path.join(r, 'daily-briefs', `${D2}-v2.md`), '# brief\nbody\n');
+        fs.writeFileSync(
+          path.join(r, 'daily-briefs', `${D2}-v1.5.md`),
+          '# brief\nbody\n'
+        );
+        fs.writeFileSync(
+          path.join(r, 'daily-briefs', `${D2}-v2.md`),
+          '# brief\nbody\n'
+        );
         const board = path.join(r, 'daily-briefs', `${D2}-pipeline-status.md`);
-        fs.writeFileSync(board, `2026-08-26T23:45:00Z | brief-light | out.md | SUCCESS | built\n`);
+        fs.writeFileSync(
+          board,
+          `2026-08-26T23:45:00Z | brief-light | out.md | SUCCESS | built\n`
+        );
         const before = auditDownstreamLabel(r, D2).length;
-        fs.writeFileSync(board, `2026-08-26T23:45:00Z | brief-light | out.md | SUCCESS | built · ${DOWNSTREAM_LABEL}\n`);
+        fs.writeFileSync(
+          board,
+          `2026-08-26T23:45:00Z | brief-light | out.md | SUCCESS | built · ${DOWNSTREAM_LABEL}\n`
+        );
         const after = auditDownstreamLabel(r, D2).length;
         return before === 1 && after === 0;
       })(),
     ],
     [
-      'IMP-224 a stage that NEVER REPORTED is not accused here — an absent slot is pipeline-slot-attendance\'s finding; one fact, one alarm',
+      "IMP-224 a stage that NEVER REPORTED is not accused here — an absent slot is pipeline-slot-attendance's finding; one fact, one alarm",
       (() => {
         const r = fs.mkdtempSync(path.join(os.tmpdir(), 'ehg-label2-'));
         fs.mkdirSync(path.join(r, 'daily-briefs'), { recursive: true });
         const D2 = '2026-08-27';
-        fs.writeFileSync(path.join(r, 'daily-briefs', `${D2}-v1.5.md`), '# brief\nbody\n');
+        fs.writeFileSync(
+          path.join(r, 'daily-briefs', `${D2}-v1.5.md`),
+          '# brief\nbody\n'
+        );
         fs.writeFileSync(
           path.join(r, 'daily-briefs', `${D2}-pipeline-status.md`),
           `2026-08-26T23:45:00Z | brief-light | CANARY | WRITE-OK\n`
@@ -2899,7 +3040,8 @@ function selftest(): number {
     fs.mkdirSync(path.join(F, 'daily-briefs'), { recursive: true });
     const db = path.join(F, 'daily-briefs');
     const W = (n: string, b: string) => fs.writeFileSync(path.join(db, n), b);
-    const w = (n: number) => Array.from({ length: n }, (_, i) => `w${i}`).join(' ');
+    const w = (n: number) =>
+      Array.from({ length: n }, (_, i) => `w${i}`).join(' ');
     const brief = (words: number) =>
       `# ▸ THE SIX\n\n## Markets & Macro\n\n${w(words)}\n\n${w(words)}\n\n` +
       `## Companies & Crypto\n\n${w(words)}\n\n${w(words)}\n\n` +
@@ -2909,11 +3051,15 @@ function selftest(): number {
     // (a) the 08-12 shape: promoted v2, orphaned scratch, NO editor log.
     W('2026-08-12-v2.md', brief(170));
     W('2026-08-12-v2.working.md', brief(170));
-    const a = auditPromotion(F, '2026-08-12').map(v => v.check).sort();
+    const a = auditPromotion(F, '2026-08-12')
+      .map(v => v.check)
+      .sort();
     const finA = finalize(F, '2026-08-12');
     rows.push([
       'IMP-164 --audit-promotion FIRES on MISSING-EDITOR-LOG *and* ORPHANED-SCRATCH together (the real 08-12 shape)',
-      a.length === 2 && a.includes('MISSING-EDITOR-LOG') && a.includes('ORPHANED-SCRATCH'),
+      a.length === 2 &&
+        a.includes('MISSING-EDITOR-LOG') &&
+        a.includes('ORPHANED-SCRATCH'),
     ]);
     rows.push([
       'IMP-164 --finalize REFUSES a night with no editor log (exit 1) after retiring the husk',
@@ -2929,7 +3075,8 @@ function selftest(): number {
     const finB = finalize(F, '2026-08-12');
     rows.push([
       'IMP-164 --finalize PASSES the moment the working file is gone and a non-empty editor log exists',
-      finB.code === 0 && finB.lines.some(l => l.includes('MECHANICAL GATE OUTPUT')),
+      finB.code === 0 &&
+        finB.lines.some(l => l.includes('MECHANICAL GATE OUTPUT')),
     ]);
     rows.push([
       'IMP-164 --finalize is IDEMPOTENT (a second run still exits 0)',
@@ -2946,9 +3093,13 @@ function selftest(): number {
     const finC = finalize(F, '2026-08-13');
     rows.push([
       'IMP-164/163 --finalize REFUSES to close a night with 8/8 units over hard and no LENGTH-OVERRIDE',
-      finC.code === 1 && finC.lines.some(l => l.includes('SIX-UNIT-HARD-BREACH')),
+      finC.code === 1 &&
+        finC.lines.some(l => l.includes('SIX-UNIT-HARD-BREACH')),
     ]);
-    fs.appendFileSync(path.join(db, '2026-08-13-editor-log.md'), 'LENGTH-OVERRIDE: needed 194, surplus 240, cut whole anyway because X.\n');
+    fs.appendFileSync(
+      path.join(db, '2026-08-13-editor-log.md'),
+      'LENGTH-OVERRIDE: needed 194, surplus 240, cut whole anyway because X.\n'
+    );
     rows.push([
       'IMP-164/163 …and ALLOWS it once LENGTH-OVERRIDE puts the arithmetic on the record',
       finalize(F, '2026-08-13').code === 0,
@@ -3001,7 +3152,11 @@ function selftest(): number {
  * MISREPRESENTED as edited.
  */
 export const DOWNSTREAM_LABEL = 'INPUT: v1.5 — NO EDITOR PASS';
-export const DOWNSTREAM_STAGES = ['brief-light', 'brief-email', 'brief-morning'];
+export const DOWNSTREAM_STAGES = [
+  'brief-light',
+  'brief-email',
+  'brief-morning',
+];
 export const DOWNSTREAM_LABEL_EFFECTIVE_FROM = '2026-08-27';
 
 /** Was there an Editor pass at all? v2 absent, or v2 present with a reader body identical to v1.5. */
@@ -3028,7 +3183,9 @@ export function auditDownstreamLabel(
     // Only a stage that CLAIMED to have produced something owes a label. A stage that never ran is
     // slot attendance's finding, not this one — one fact, one alarm.
     const own = lines.filter(l => (l.split('|')[1] || '').trim() === stage);
-    const terminal = own.filter(l => !/^CANARY/i.test((l.split('|')[2] || '').trim()));
+    const terminal = own.filter(
+      l => !/^CANARY/i.test((l.split('|')[2] || '').trim())
+    );
     if (!terminal.length) continue;
     if (terminal.some(l => l.includes(DOWNSTREAM_LABEL))) continue;
     out.push({
@@ -3053,10 +3210,16 @@ export function auditDownstreamLabel(
  * ten green improvements behind one red Editor. Exit 1 means the WORLD is out of contract; the
  * ledger carries it as a `world:` leg, which prints every morning and never reds the registry.
  */
-export function scanPromotions(root: string, days: number, today = new Date()): { date: string; v: Violation[] }[] {
+export function scanPromotions(
+  root: string,
+  days: number,
+  today = new Date()
+): { date: string; v: Violation[] }[] {
   const out: { date: string; v: Violation[] }[] = [];
   for (let i = 1; i <= days; i++) {
-    const d = new Date(today.getTime() - (i - 1) * 86400000).toISOString().slice(0, 10);
+    const d = new Date(today.getTime() - (i - 1) * 86400000)
+      .toISOString()
+      .slice(0, 10);
     if (!fs.existsSync(path.join(DB(root), `${d}-v2.md`))) continue;
     const v = auditPromotion(root, d);
     if (v.length) out.push({ date: d, v });
@@ -3074,9 +3237,16 @@ function main() {
   if (spI >= 0) {
     const n = Number(argv[spI + 1]) || 7;
     const hits = scanPromotions(root, n);
-    console.log(`editor-handoff-gate --scan-promotions ${n} — ${hits.length} night(s) out of contract`);
-    for (const h of hits) for (const v of h.v) console.log(`   ✗ ${h.date} ${v.check}: ${v.message.slice(0, 220)}`);
-    if (!hits.length) console.log('   ✅ every promoted v2 in the window carries its editor log, its worklist blocks, and real editorial work.');
+    console.log(
+      `editor-handoff-gate --scan-promotions ${n} — ${hits.length} night(s) out of contract`
+    );
+    for (const h of hits)
+      for (const v of h.v)
+        console.log(`   ✗ ${h.date} ${v.check}: ${v.message.slice(0, 220)}`);
+    if (!hits.length)
+      console.log(
+        '   ✅ every promoted v2 in the window carries its editor log, its worklist blocks, and real editorial work.'
+      );
     process.exit(hits.length ? 1 : 0);
   }
 
@@ -3084,7 +3254,9 @@ function main() {
   if (upI >= 0) {
     const date = argv[upI + 1];
     if (!date || date.startsWith('--')) {
-      console.error('usage: editor-handoff-gate.ts --unedited-promotion <DATE> [--strict]');
+      console.error(
+        'usage: editor-handoff-gate.ts --unedited-promotion <DATE> [--strict]'
+      );
       process.exit(2);
     }
     const strict = argv.includes('--strict');
@@ -3093,15 +3265,21 @@ function main() {
       `editor-handoff-gate --unedited-promotion ${date}${strict ? ' --strict' : ' (warn-only)'}`
     );
     if (!v.length) {
-      console.log(`   ✅ ${date} — v2 is edited, or honestly stamped v2-SELFHEAL.`);
+      console.log(
+        `   ✅ ${date} — v2 is edited, or honestly stamped v2-SELFHEAL.`
+      );
       process.exit(0);
     }
     for (const x of v) console.log(`   ✗ ${x.message}`);
     if (strict) {
-      console.log('\n❌ UNEDITED-PROMOTION (strict) — exit 1. The daily canary treats this as RED.');
+      console.log(
+        '\n❌ UNEDITED-PROMOTION (strict) — exit 1. The daily canary treats this as RED.'
+      );
       process.exit(1);
     }
-    console.log('\n⚠️  UNEDITED-PROMOTION (warn-only) — exit 0. Morning path never blocks the brief.');
+    console.log(
+      '\n⚠️  UNEDITED-PROMOTION (warn-only) — exit 0. Morning path never blocks the brief.'
+    );
     process.exit(0);
   }
 
@@ -3197,7 +3375,9 @@ function main() {
       process.exit(0);
     }
     for (const x of v) console.log(`   ✗ ${x.check}: ${x.message}`);
-    console.log(`\n   LABEL, NOT BLOCK — this never stops a brief (Constitution I). It stops a brief being called edited when it was not.`);
+    console.log(
+      `\n   LABEL, NOT BLOCK — this never stops a brief (Constitution I). It stops a brief being called edited when it was not.`
+    );
     process.exit(1);
   }
 
@@ -3234,7 +3414,7 @@ function main() {
     }
     console.log(
       a.verdict === 'NOT-FIRED'
-        ? '\n✅ NOT THIS GATE\'S ALARM — the slot did not fire this cycle. A slot that never started is `pipeline-slot-attendance` (IMP-207), not non-production. Check that report.'
+        ? "\n✅ NOT THIS GATE'S ALARM — the slot did not fire this cycle. A slot that never started is `pipeline-slot-attendance` (IMP-207), not non-production. Check that report."
         : a.verdict === 'IN-FLIGHT'
           ? `\n✅ IN FLIGHT — fired and silent INSIDE the ${EDITOR_FIRE_BAND_MIN_MIN}–${EDITOR_FIRE_BAND_MAX_MIN} min band. Silence here is a delay, not a death. Re-poll past T+${EDITOR_FIRE_BAND_MAX_MIN}.`
           : '\n✅ THE EDITOR PRODUCED — it left a trace (board line and/or artifact). The artifact guards own the rest.'
@@ -3324,11 +3504,16 @@ function main() {
         `❓ ${VERDICT_TOKEN.UNKNOWN} — THE GATE REFUSES TO ANSWER. Nothing on the board or the disk distinguishes "never fired" from "fired and produced nothing", and no scheduler reading was supplied. 2026-08-22: this exact state returned EXIT 0 "SELF-HEAL ALLOWED" over a live Editor. Re-run with --scheduler-lastrun <ISO|NEVER>. **UNKNOWN IS NOT ALLOWED.**`
       );
     else console.log(`\n❌ ${d.violations.length} violation(s).`);
-    console.log(`\nVERDICT: ${d.token} (exit ${d.exitCode}) branch=${d.branch}`);
+    console.log(
+      `\nVERDICT: ${d.token} (exit ${d.exitCode}) branch=${d.branch}`
+    );
     process.exit(d.exitCode);
   }
 
-  const v = mode === '--can-promote' ? canPromote(root, date) : auditHandoff(root, date);
+  const v =
+    mode === '--can-promote'
+      ? canPromote(root, date)
+      : auditHandoff(root, date);
 
   console.log(`editor-handoff-gate ${mode} ${date}`);
   if (!v.length) {

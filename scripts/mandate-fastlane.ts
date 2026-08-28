@@ -22,7 +22,14 @@ import * as path from 'path';
 import * as os from 'os';
 
 export const CRITICAL_RC = 2; // RC1-RC2 are the top ranks the Critic uses; RC3+ are lower
-export interface Mandate { n: number; title: string; rc: number | null; critical: boolean; recurring: boolean; recurrenceNote?: string }
+export interface Mandate {
+  n: number;
+  title: string;
+  rc: number | null;
+  critical: boolean;
+  recurring: boolean;
+  recurrenceNote?: string;
+}
 
 /** Parse the `## MUST BE BETTER TOMORROW` block. Its `### N. TITLE — RC{n}.` shape is the contract. */
 export function parseMandates(md: string): Mandate[] {
@@ -37,7 +44,10 @@ export function parseMandates(md: string): Mandate[] {
     const rcM = title.match(/\bRC(\d+)\b/);
     const rc = rcM ? Number(rcM[1]) : null;
     // "RECURRING", "AGAIN", "N CONSECUTIVE NIGHTS", "STILL" — a repeat states itself in this system.
-    const rec = /\b(RECURRING|RECURS|AGAIN|CONSECUTIVE NIGHTS|SECOND NIGHT|STILL (?:OPEN|UNFIXED|NOT))\b/i.exec(title);
+    const rec =
+      /\b(RECURRING|RECURS|AGAIN|CONSECUTIVE NIGHTS|SECOND NIGHT|STILL (?:OPEN|UNFIXED|NOT))\b/i.exec(
+        title
+      );
     out.push({
       n: Number(m[1]),
       title,
@@ -68,27 +78,41 @@ export function converted(ledgerMd: string, date: string): boolean {
     if (!line.trim().startsWith('|')) continue;
     const cells = line.split('|').map(c => c.trim());
     if (cells.some(c => c === date)) return true;
-    if (cells.some(c => new RegExp(`^${short} Critic mandate`, 'i').test(c))) return true;
+    if (cells.some(c => new RegExp(`^${short} Critic mandate`, 'i').test(c)))
+      return true;
   }
   return false;
 }
 
-export interface FastLaneResult { date: string; mandates: Mandate[]; unconvertedCritical: Mandate[]; recurring: Mandate[]; carry: string[]; email: string | null }
+export interface FastLaneResult {
+  date: string;
+  mandates: Mandate[];
+  unconvertedCritical: Mandate[];
+  recurring: Mandate[];
+  carry: string[];
+  email: string | null;
+}
 
 export function fastLane(root: string, date: string): FastLaneResult {
   const cf = path.join(root, 'daily-briefs', `${date}-critic.md`);
-  const mandates = fs.existsSync(cf) ? parseMandates(fs.readFileSync(cf, 'utf-8')) : [];
+  const mandates = fs.existsSync(cf)
+    ? parseMandates(fs.readFileSync(cf, 'utf-8'))
+    : [];
   const lp = path.join(root, 'system/Improvement_Ledger.md');
   const ledger = fs.existsSync(lp) ? fs.readFileSync(lp, 'utf-8') : '';
   const isConverted = converted(ledger, date);
-  const unconvertedCritical = isConverted ? [] : mandates.filter(m => m.critical);
+  const unconvertedCritical = isConverted
+    ? []
+    : mandates.filter(m => m.critical);
   const recurring = mandates.filter(m => m.recurring);
   const carry = [
     ...unconvertedCritical.map(
-      m => `- **FAST-LANE ${date} · 🔴 CRITICAL MANDATE #${m.n} UNCONVERTED** — ${m.title.slice(0, 150)} · no ledger row cites ${date}. Conversion waits for Saturday; naming it does not.`
+      m =>
+        `- **FAST-LANE ${date} · 🔴 CRITICAL MANDATE #${m.n} UNCONVERTED** — ${m.title.slice(0, 150)} · no ledger row cites ${date}. Conversion waits for Saturday; naming it does not.`
     ),
     ...recurring.map(
-      m => `- **FAST-LANE ${date} · 🚨 EMERGENCY — MANDATE #${m.n} RECURS** (${m.recurrenceNote}) — ${m.title.slice(0, 150)} · a repeat is evidence the first one was never RECEIVED, not merely unfinished.`
+      m =>
+        `- **FAST-LANE ${date} · 🚨 EMERGENCY — MANDATE #${m.n} RECURS** (${m.recurrenceNote}) — ${m.title.slice(0, 150)} · a repeat is evidence the first one was never RECEIVED, not merely unfinished.`
     ),
   ];
   const email =
@@ -106,18 +130,34 @@ function main(): void {
   const root = process.cwd();
 
   if (argv.includes('--selftest')) {
-    let pass = 0, fail = 0;
-    const t = (n: string, ok: boolean) => { ok ? pass++ : fail++; console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${n}`); };
+    let pass = 0,
+      fail = 0;
+    const t = (n: string, ok: boolean) => {
+      ok ? pass++ : fail++;
+      console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${n}`);
+    };
 
-    const m27 = parseMandates(fs.readFileSync(path.join(root, 'daily-briefs/2026-08-27-critic.md'), 'utf-8'));
-    t(`[parse] the 08-27 Critic's MUST BE BETTER block parses to its 3 mandates — ${m27.length}`, m27.length === 3);
-    t('[parse] and each carries its RC rank off the heading', m27.every(m => m.rc !== null));
+    const m27 = parseMandates(
+      fs.readFileSync(
+        path.join(root, 'daily-briefs/2026-08-27-critic.md'),
+        'utf-8'
+      )
+    );
+    t(
+      `[parse] the 08-27 Critic's MUST BE BETTER block parses to its 3 mandates — ${m27.length}`,
+      m27.length === 3
+    );
+    t(
+      '[parse] and each carries its RC rank off the heading',
+      m27.every(m => m.rc !== null)
+    );
     // MEASURED, not assumed: the 08-27 block is RC2 / RC2 / RC5. All three are UNCOVERED — no
     // ledger row cites 08-27 — but only two are CRITICAL, and that distinction is the whole design:
     // the fast lane exists to break the SILENCE on the urgent ones, not to move Saturday.
     t(
       `[parse] 08-27 is RC2/RC2/RC5 — 2 critical, 1 not, all three uncovered (${m27.map(m => '#' + m.n + ':RC' + m.rc).join(' ')})`,
-      m27.filter(m => m.critical).length === 2 && m27.some(m => m.rc === 5 && !m.critical)
+      m27.filter(m => m.critical).length === 2 &&
+        m27.some(m => m.rc === 5 && !m.critical)
     );
     t(
       '[parse] and the RC5 one is NOT promoted to the fast lane — a lane that carries everything is Saturday with extra steps',
@@ -125,52 +165,106 @@ function main(): void {
     );
 
     // 🔴 THE RECURRENCE W4 EXPECTS. 08-28 mandate #1 says so in its own heading.
-    const m28 = parseMandates(fs.readFileSync(path.join(root, 'daily-briefs/2026-08-28-critic.md'), 'utf-8'));
+    const m28 = parseMandates(
+      fs.readFileSync(
+        path.join(root, 'daily-briefs/2026-08-28-critic.md'),
+        'utf-8'
+      )
+    );
     const rec = m28.filter(m => m.recurring);
-    t(`[W4] the 08-28 state carries EXACTLY ONE recurrence, and it is mandate #1 — ${rec.map(r => '#' + r.n).join(', ') || 'none'}`,
-      rec.length === 1 && rec[0]!.n === 1);
-    t('[W4] and the recurrence is the intraday-for-close defect — the one E-INTRADAY-FOR-CLOSE-01 names',
-      /INTRADAY MARKS WEARING SESSION VERBS/i.test(rec[0]!.title));
+    t(
+      `[W4] the 08-28 state carries EXACTLY ONE recurrence, and it is mandate #1 — ${rec.map(r => '#' + r.n).join(', ') || 'none'}`,
+      rec.length === 1 && rec[0]!.n === 1
+    );
+    t(
+      '[W4] and the recurrence is the intraday-for-close defect — the one E-INTRADAY-FOR-CLOSE-01 names',
+      /INTRADAY MARKS WEARING SESSION VERBS/i.test(rec[0]!.title)
+    );
 
     const fl = fastLane(root, '2026-08-28');
-    t('[W4] the leg FIRES on the 08-28 state', fl.carry.length > 0 && !!fl.email);
-    t('[W4] its email is addressed and says EMERGENCY for the recurrence', /cosmictrex11@gmail.com/.test(fl.email!) && /EMERGENCY/.test(fl.email!));
-    t('[W4] and the CARRY line says WHY a repeat outranks an unfinished one — it was never received',
-      fl.carry.some(c => /never RECEIVED/.test(c)));
+    t(
+      '[W4] the leg FIRES on the 08-28 state',
+      fl.carry.length > 0 && !!fl.email
+    );
+    t(
+      '[W4] its email is addressed and says EMERGENCY for the recurrence',
+      /cosmictrex11@gmail.com/.test(fl.email!) && /EMERGENCY/.test(fl.email!)
+    );
+    t(
+      '[W4] and the CARRY line says WHY a repeat outranks an unfinished one — it was never received',
+      fl.carry.some(c => /never RECEIVED/.test(c))
+    );
 
     // SILENT on clean: a critic with no mandates, and one whose date the ledger already cites.
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'fastlane-'));
     fs.mkdirSync(path.join(tmp, 'daily-briefs'), { recursive: true });
     fs.mkdirSync(path.join(tmp, 'system'), { recursive: true });
-    fs.writeFileSync(path.join(tmp, 'daily-briefs', '2026-01-01-critic.md'), '## VERDICT\nfine\n');
-    fs.writeFileSync(path.join(tmp, 'system/Improvement_Ledger.md'), '| IMP-1 | nothing |\n');
-    t('[W4] SILENT on a Critic with no MUST BE BETTER block at all', fastLane(tmp, '2026-01-01').carry.length === 0);
+    fs.writeFileSync(
+      path.join(tmp, 'daily-briefs', '2026-01-01-critic.md'),
+      '## VERDICT\nfine\n'
+    );
+    fs.writeFileSync(
+      path.join(tmp, 'system/Improvement_Ledger.md'),
+      '| IMP-1 | nothing |\n'
+    );
+    t(
+      '[W4] SILENT on a Critic with no MUST BE BETTER block at all',
+      fastLane(tmp, '2026-01-01').carry.length === 0
+    );
     fs.writeFileSync(
       path.join(tmp, 'daily-briefs', '2026-01-02-critic.md'),
       '## MUST BE BETTER TOMORROW\n\n### 1. A THING WENT WRONG — RC2.\n\nbody\n'
     );
-    t('[W4] FIRES when a critical mandate has no ledger row citing its date', fastLane(tmp, '2026-01-02').unconvertedCritical.length === 1);
-    fs.writeFileSync(path.join(tmp, 'system/Improvement_Ledger.md'), '| IMP-2 | 2026-01-02 | converted |\n');
-    t('[W4] and goes SILENT once the ledger cites that date — the lane is about silence, not about the work being finished',
-      fastLane(tmp, '2026-01-02').carry.length === 0);
+    t(
+      '[W4] FIRES when a critical mandate has no ledger row citing its date',
+      fastLane(tmp, '2026-01-02').unconvertedCritical.length === 1
+    );
+    fs.writeFileSync(
+      path.join(tmp, 'system/Improvement_Ledger.md'),
+      '| IMP-2 | 2026-01-02 | converted |\n'
+    );
+    t(
+      '[W4] and goes SILENT once the ledger cites that date — the lane is about silence, not about the work being finished',
+      fastLane(tmp, '2026-01-02').carry.length === 0
+    );
     fs.writeFileSync(
       path.join(tmp, 'daily-briefs', '2026-01-03-critic.md'),
       '## MUST BE BETTER TOMORROW\n\n### 1. A THING WENT WRONG WITH NO RANK.\n\nbody\n'
     );
-    t('[W4] an UNRANKED mandate is treated as CRITICAL — defaulting it downward is how the quiet ones stay quiet',
-      parseMandates(fs.readFileSync(path.join(tmp, 'daily-briefs', '2026-01-03-critic.md'), 'utf-8'))[0]!.critical);
+    t(
+      '[W4] an UNRANKED mandate is treated as CRITICAL — defaulting it downward is how the quiet ones stay quiet',
+      parseMandates(
+        fs.readFileSync(
+          path.join(tmp, 'daily-briefs', '2026-01-03-critic.md'),
+          'utf-8'
+        )
+      )[0]!.critical
+    );
 
-    console.log(`\n${fail ? '❌' : '✅'} mandate-fastlane --selftest: ${pass}/${pass + fail} assertions passed.`);
+    console.log(
+      `\n${fail ? '❌' : '✅'} mandate-fastlane --selftest: ${pass}/${pass + fail} assertions passed.`
+    );
     process.exit(fail ? 1 : 0);
   }
 
-  const date = argv.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a)) ?? new Date().toISOString().slice(0, 10);
+  const date =
+    argv.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a)) ??
+    new Date().toISOString().slice(0, 10);
   const r = fastLane(root, date);
-  console.log(`mandate-fastlane ${date} — ${r.mandates.length} mandate(s), ${r.unconvertedCritical.length} unconverted CRITICAL, ${r.recurring.length} RECURRING`);
-  if (!r.carry.length) { console.log('✅ nothing owed a same-morning line — conversion may wait for Saturday.'); process.exit(0); }
+  console.log(
+    `mandate-fastlane ${date} — ${r.mandates.length} mandate(s), ${r.unconvertedCritical.length} unconverted CRITICAL, ${r.recurring.length} RECURRING`
+  );
+  if (!r.carry.length) {
+    console.log(
+      '✅ nothing owed a same-morning line — conversion may wait for Saturday.'
+    );
+    process.exit(0);
+  }
   for (const c of r.carry) console.log(c);
   console.log(`\n📧 SEND NOW:\n${r.email}`);
-  console.log(`\n   Append the CARRY line(s) to system/CARRY.md this morning. Conversion still waits for Saturday; silence never does.`);
+  console.log(
+    `\n   Append the CARRY line(s) to system/CARRY.md this morning. Conversion still waits for Saturday; silence never does.`
+  );
   process.exit(argv.includes('--red') ? 1 : 0);
 }
 

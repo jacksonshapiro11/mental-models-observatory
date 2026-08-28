@@ -61,13 +61,19 @@ export const CRITICAL_STARVE_DAYS = 2;
 export type NoCheckVerdict = 'exempt' | 'warn' | 'STARVED' | 'FUSE-BLOWN';
 
 /** The acceptance gate's verdict for a row carrying no mechanical check. Pure, so it is testable. */
-export function noCheckVerdict(sev: string, closed: boolean, age: number, budget = CRITICAL_STARVE_DAYS): NoCheckVerdict {
+export function noCheckVerdict(
+  sev: string,
+  closed: boolean,
+  age: number,
+  budget = CRITICAL_STARVE_DAYS
+): NoCheckVerdict {
   if (closed) return 'exempt';
   // 🔴 CADENCE-AWARE (W3, 2026-08-28). The budget is no longer "2 days" by assumption — it is the
   // budget of the COMPONENT THAT WOULD CLEAR THE ROW, read from system/slot-cadence.json. A row
   // that only a weekly component can clear is not starved for existing between its runs.
   if (/^Critical$/i.test(sev.trim())) return age >= budget ? 'STARVED' : 'warn';
-  if (/^High$/i.test(sev.trim())) return age >= AGE_FUSE_DAYS ? 'FUSE-BLOWN' : 'warn';
+  if (/^High$/i.test(sev.trim()))
+    return age >= AGE_FUSE_DAYS ? 'FUSE-BLOWN' : 'warn';
   return 'exempt';
 }
 
@@ -462,7 +468,11 @@ function runLeg(leg: string, id: string): string | null {
   // blocking behaviour is lost; what is gained is that a RED once again means exactly one thing.
   if (leg.startsWith('world:')) {
     const cmd = leg.slice('world:'.length).trim();
-    const res = spawnSync(cmd, { shell: true, encoding: 'utf8', timeout: 120000 });
+    const res = spawnSync(cmd, {
+      shell: true,
+      encoding: 'utf8',
+      timeout: 120000,
+    });
     if (res.status !== 0) {
       return (
         `${WORLD_MARK}${id}: WORLD-STATE OUT OF CONTRACT (exit ${res.status}): ${cmd}\n      ` +
@@ -501,7 +511,11 @@ function executeCheck(check: string, id: string): string[] {
   return fails;
 }
 
-export interface DroppedRed { date: string; phrase: string; how: string }
+export interface DroppedRed {
+  date: string;
+  phrase: string;
+  how: string;
+}
 
 /** Defect-shaped 🔴 declarations on the trailing N boards with no CARRY/ledger reference. */
 export function detectDroppedReds(
@@ -518,7 +532,11 @@ export function detectDroppedReds(
     .sort()
     .slice(-boards);
   const hay = ['system/CARRY.md', 'system/Improvement_Ledger.md']
-    .map(f => (fs.existsSync(path.join(root, f)) ? fs.readFileSync(path.join(root, f), 'utf8') : ''))
+    .map(f =>
+      fs.existsSync(path.join(root, f))
+        ? fs.readFileSync(path.join(root, f), 'utf8')
+        : ''
+    )
     .join('\n')
     .toUpperCase();
   const cooc = (keys: string[]): boolean => {
@@ -536,14 +554,18 @@ export function detectDroppedReds(
       if (!dm || RESOLVED.test(phrase)) continue;
       const ids = phrase.match(ID);
       if (ids) {
-        if (!ids.every(i => hay.includes(i))) out.push({ date, phrase, how: `ID ${ids.join(',')}` });
+        if (!ids.every(i => hay.includes(i)))
+          out.push({ date, phrase, how: `ID ${ids.join(',')}` });
         continue;
       }
       const noun = dm[0];
-      const others = (phrase.match(/[A-Z0-9'\-]{4,}/g) ?? []).filter(w => !noun.includes(w));
+      const others = (phrase.match(/[A-Z0-9'\-]{4,}/g) ?? []).filter(
+        w => !noun.includes(w)
+      );
       others.sort((a, b) => b.length - a.length);
       const keys = [noun, ...others.slice(0, 1)];
-      if (!cooc(keys)) out.push({ date, phrase, how: `co-occur ${keys.join('+')}` });
+      if (!cooc(keys))
+        out.push({ date, phrase, how: `co-occur ${keys.join('+')}` });
     }
   }
   return out;
@@ -579,7 +601,9 @@ export function detectDroppedReds(
 export const VERIFY_WINDOW_SECONDS = 240;
 
 function main(): number {
-  process.stdout.write(`VERIFY-IMPROVEMENTS STARTED ${new Date().toISOString()}\n`);
+  process.stdout.write(
+    `VERIFY-IMPROVEMENTS STARTED ${new Date().toISOString()}\n`
+  );
   const argIdx = process.argv.indexOf('--ledger');
   const ledgerPath =
     argIdx > -1 && process.argv[argIdx + 1]
@@ -622,7 +646,8 @@ function main(): number {
       const verdict = noCheckVerdict(r.sev, closed, age);
       if (verdict !== 'exempt') {
         const msg = `${r.id} [${r.sev}] has NO mechanical check (age ${age}d): "${r.summary.slice(0, 80)}" — convert to a code gate or close WONT-FIX-VIA-PROSE`;
-        if (verdict === 'STARVED') starved.push({ id: r.id, age, summary: r.summary.slice(0, 60) });
+        if (verdict === 'STARVED')
+          starved.push({ id: r.id, age, summary: r.summary.slice(0, 60) });
         else if (verdict === 'FUSE-BLOWN')
           fails.push(msg + ` — ${AGE_FUSE_DAYS}d fuse blown, this now BLOCKS`);
         else warns.push(msg);
@@ -677,7 +702,9 @@ function main(): number {
       //  six Critical mandates sat undischarged. An unreadable mandate block now FAILS: the
       //  Critic is REQUIRED to emit three (Brief_Critic Phase 6 item 15), so zero is never a
       //  legitimate reading of a healthy report.
-      const hasHeading = /^#{1,6}\s*MUST BE BETTER TOMORROW\s*$/im.test(criticMd);
+      const hasHeading = /^#{1,6}\s*MUST BE BETTER TOMORROW\s*$/im.test(
+        criticMd
+      );
       covLines.push(`    ${criticDate}: 0 parsed — UNREADABLE MANDATE BLOCK`);
       fails.push(
         `MANDATE BLOCK UNREADABLE in daily-briefs/${criticDate}-critic.md — ${
@@ -736,23 +763,36 @@ function main(): number {
   // scripts/*gate*.ts that the manifest neither rosters, retires, nor explicitly backlogs is an
   // ORPHAN. Warn-level — it must never fail a night over a file that was just created.
   try {
-    const gm = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'system/gate-manifest.json'), 'utf8'));
+    const gm = JSON.parse(
+      fs.readFileSync(
+        path.join(process.cwd(), 'system/gate-manifest.json'),
+        'utf8'
+      )
+    );
     const onDisk = fs
       .readdirSync(path.join(process.cwd(), 'scripts'))
       .filter((f: string) => /gate.*\.ts$/.test(f) && !/\.bak|scratch/.test(f))
       .map((f: string) => f.replace(/\.ts$/, ''));
     const known = new Set<string>([
-      ...Object.values(gm.classes as Record<string, { gate: string }[]>).flat().map(r => r.gate),
+      ...Object.values(gm.classes as Record<string, { gate: string }[]>)
+        .flat()
+        .map(r => r.gate),
       ...Object.keys(gm.retired ?? {}),
       ...((gm.unrostered_unretired?.gates ?? []) as string[]),
     ]);
     const orph = onDisk.filter((g: string) => !known.has(g));
     for (const g of orph)
-      warns.push(`ORPHAN-GATE: scripts/${g}.ts is in no artifact class and not retired — a gate that belongs to no class runs on no night. Add it to system/gate-manifest.json or record why it is retired.`);
+      warns.push(
+        `ORPHAN-GATE: scripts/${g}.ts is in no artifact class and not retired — a gate that belongs to no class runs on no night. Add it to system/gate-manifest.json or record why it is retired.`
+      );
     if (!orph.length)
-      console.log(`  ✓ gate wiring: ${onDisk.length} gate script(s), 0 orphan(s) — every one rostered, retired or backlogged (system/gate-manifest.json)`);
+      console.log(
+        `  ✓ gate wiring: ${onDisk.length} gate script(s), 0 orphan(s) — every one rostered, retired or backlogged (system/gate-manifest.json)`
+      );
   } catch (e) {
-    warns.push(`gate-manifest unreadable — the orphan leg did NOT run: ${(e as Error).message}. An unread manifest is not a clean one.`);
+    warns.push(
+      `gate-manifest unreadable — the orphan leg did NOT run: ${(e as Error).message}. An unread manifest is not a clean one.`
+    );
   }
 
   // ── 🔴 DROP DETECTOR (work order 2026-08-28, item 8) ────────────────────────────────────────
@@ -772,12 +812,18 @@ function main(): number {
   // ledger row — the exact false green this leg exists to refuse).
   // Over the trailing 7 boards this yields 4 findings, not 40. Warn-level.
   try {
-    const DEFECT = /\b(BUG|DEFECT|BROKEN|REGRESSION|LEAKED|LEAKS|LEAK|NEVER FIRED|NOT DONE|NON-?PRODUCTION|MISFIRE|UNAUTHORI[SZ]ED|DID NOT RUN|FAILED TO)\b/;
+    const DEFECT =
+      /\b(BUG|DEFECT|BROKEN|REGRESSION|LEAKED|LEAKS|LEAK|NEVER FIRED|NOT DONE|NON-?PRODUCTION|MISFIRE|UNAUTHORI[SZ]ED|DID NOT RUN|FAILED TO)\b/;
     const RESOLVED = /\b(RESOLVED|CLOSED|FIXED|CORRECTED|CLEARED|PASSED|WIN)\b/;
     const dropFindings = detectDroppedReds(process.cwd(), 7, DEFECT, RESOLVED);
     for (const d of dropFindings)
-      warns.push(`DROPPED-RED: ${d.date} declared "${d.phrase}" and no CARRY or ledger row references it (${d.how}). A defect declared and not carried is a defect that disappears.`);
-    if (!dropFindings.length) console.log('  ✓ drop detector: every defect-shaped 🔴 on the last 7 boards is carried');
+      warns.push(
+        `DROPPED-RED: ${d.date} declared "${d.phrase}" and no CARRY or ledger row references it (${d.how}). A defect declared and not carried is a defect that disappears.`
+      );
+    if (!dropFindings.length)
+      console.log(
+        '  ✓ drop detector: every defect-shaped 🔴 on the last 7 boards is carried'
+      );
   } catch (e) {
     warns.push(`drop detector did NOT run: ${(e as Error).message}`);
   }
@@ -1070,7 +1116,11 @@ function selftest(): number {
     // pure prose about the defect. v1 read summary only and called this UNCOVERED, reddening the
     // registry on a night the Critic certified 3/3 LANDED.
     const inSource = (id: string, source: string): Row => ({
-      ...mkRow(id, 'THE PAYOFF WATCH RESOLVED A DIFFERENT BULLET.', '2026-08-18'),
+      ...mkRow(
+        id,
+        'THE PAYOFF WATCH RESOLVED A DIFFERENT BULLET.',
+        '2026-08-18'
+      ),
       source,
     });
     const sourceCell = mandateCoverage(
@@ -1097,7 +1147,7 @@ function selftest(): number {
     );
     t2(
       sourceWrongDay.uncovered.length === 1,
-      "[IMP-195] …but a `source` citing a DIFFERENT day does not cover it (no laundering)"
+      '[IMP-195] …but a `source` citing a DIFFERENT day does not cover it (no laundering)'
     );
 
     // NEGATIVE 2: a row with no citation in EITHER cell is still UNCOVERED. This is the 08-07 #2
@@ -1136,7 +1186,7 @@ function selftest(): number {
       elapsed === '2026-08-07',
       `[IMP-142] the graded cycle is the last ELAPSED one, not today's (got ${elapsed})`
     );
-    
+
     // ── IMP-212: THE HEADING-FORM REGRESSION, ON REAL BYTES, IN BOTH DIRECTIONS ──────────────
     // FIRES: the 08-24 and 08-25 critics use `### N.` — the form that returned [] and let six
     // Critical mandates through with the registry green. These two legs are the whole point.
@@ -1161,9 +1211,11 @@ function selftest(): number {
     // the drifted form matched: a bare numbered list.
     t2(
       JSON.stringify(
-        parseMandates('## MUST BE BETTER TOMORROW\n1. a — RC2 — fix\n2. b — RC3 — fix\n3. c — RC5 — fix\n')
+        parseMandates(
+          '## MUST BE BETTER TOMORROW\n1. a — RC2 — fix\n2. b — RC3 — fix\n3. c — RC5 — fix\n'
+        )
       ) === '[1,2,3]',
-      "[IMP-212] the BARE `N.` form specified by Brief_Critic.md Phase 6 item 15 parses too"
+      '[IMP-212] the BARE `N.` form specified by Brief_Critic.md Phase 6 item 15 parses too'
     );
     // NEGATIVE 1 — the section terminator still terminates. Widening the mandate match must not
     // swallow the rest of the report: an UNNUMBERED heading after the block still ends it.
@@ -1180,14 +1232,18 @@ function selftest(): number {
     // forever. Contiguous run from 1, stop at the first gap.
     t2(
       JSON.stringify(
-        parseMandates('## MUST BE BETTER TOMORROW\n### 1. a\n### 2. b\n### 3. c\n\n9. see rule 9 above\n')
+        parseMandates(
+          '## MUST BE BETTER TOMORROW\n### 1. a\n### 2. b\n### 3. c\n\n9. see rule 9 above\n'
+        )
       ) === '[1,2,3]',
       '[IMP-212] a stray `9.` in prose does NOT become mandate #9 (contiguous-run clamp)'
     );
     // NEGATIVE 3 — indented sub-lists are body text, not mandates.
     t2(
       JSON.stringify(
-        parseMandates('## MUST BE BETTER TOMORROW\n### 1. a\n   1. sub-step\n   2. sub-step\n')
+        parseMandates(
+          '## MUST BE BETTER TOMORROW\n### 1. a\n   1. sub-step\n   2. sub-step\n'
+        )
       ) === '[1]',
       '[IMP-212] an INDENTED numbered sub-list inside a mandate body is not a mandate (column-0 anchor)'
     );
@@ -1247,15 +1303,29 @@ function selftest(): number {
     const ledger = path.join(process.cwd(), 'system', 'Improvement_Ledger.md');
     if (fs.existsSync(ledger)) {
       const rows = parseLedger(fs.readFileSync(ledger, 'utf8'));
-      const named = ['IMP-215', 'IMP-216', 'IMP-217', 'IMP-218', 'IMP-219', 'IMP-220', 'ESC-020'];
+      const named = [
+        'IMP-215',
+        'IMP-216',
+        'IMP-217',
+        'IMP-218',
+        'IMP-219',
+        'IMP-220',
+        'ESC-020',
+      ];
       const dayAge = (rowDate: string, asOf: string) =>
         Math.floor(
-          (new Date(asOf + 'T00:00:00Z').getTime() - new Date(rowDate + 'T00:00:00Z').getTime()) / 86400000
+          (new Date(asOf + 'T00:00:00Z').getTime() -
+            new Date(rowDate + 'T00:00:00Z').getTime()) /
+            86400000
         );
       const verdictsOn = (asOf: string) =>
         rows
-          .filter(r => named.includes(r.id) && (r.check === 'none' || r.check === ''))
-          .map(r => noCheckVerdict(r.sev, isClosed(r.behavior), dayAge(r.date, asOf)));
+          .filter(
+            r => named.includes(r.id) && (r.check === 'none' || r.check === '')
+          )
+          .map(r =>
+            noCheckVerdict(r.sev, isClosed(r.behavior), dayAge(r.date, asOf))
+          );
       const on26 = verdictsOn('2026-08-26');
       const on27 = verdictsOn('2026-08-27');
       t2(
@@ -1263,7 +1333,9 @@ function selftest(): number {
         `[IMP-223] the seven 2026-08-25 Critical rows are NOT starved on 08-26, the day after they were logged (${on26.length} matched)`
       );
       t2(
-        on27.length === on26.length && on27.length > 0 && on27.every(v => v === 'STARVED'),
+        on27.length === on26.length &&
+          on27.length > 0 &&
+          on27.every(v => v === 'STARVED'),
         `[IMP-223] …and ALL of them are STARVED on 08-27 — the mandate's own acceptance, on the real ledger (${on27.filter(v => v === 'STARVED').length}/${on27.length})`
       );
       // 🔴 WENT HERMETIC (R1a, 2026-08-29). This asserted that NO Critical row is starved "as of
@@ -1276,16 +1348,58 @@ function selftest(): number {
       // MONITOR — the STARVED-BACKLOG line in main(), reported once with its size and roster. What
       // belongs in a selftest is the MECHANISM, on a fixture that cannot drift.
       const starveFixture = [
-        { sev: 'Critical', closed: false, age: 0, want: 'warn' as NoCheckVerdict },
-        { sev: 'Critical', closed: false, age: CRITICAL_STARVE_DAYS - 1, want: 'warn' as NoCheckVerdict },
-        { sev: 'Critical', closed: false, age: CRITICAL_STARVE_DAYS, want: 'STARVED' as NoCheckVerdict },
-        { sev: 'Critical', closed: false, age: 400, want: 'STARVED' as NoCheckVerdict },
-        { sev: 'Critical', closed: true, age: 400, want: 'exempt' as NoCheckVerdict },
-        { sev: 'High', closed: false, age: AGE_FUSE_DAYS - 1, want: 'warn' as NoCheckVerdict },
-        { sev: 'High', closed: false, age: AGE_FUSE_DAYS, want: 'FUSE-BLOWN' as NoCheckVerdict },
-        { sev: 'Medium', closed: false, age: 400, want: 'exempt' as NoCheckVerdict },
+        {
+          sev: 'Critical',
+          closed: false,
+          age: 0,
+          want: 'warn' as NoCheckVerdict,
+        },
+        {
+          sev: 'Critical',
+          closed: false,
+          age: CRITICAL_STARVE_DAYS - 1,
+          want: 'warn' as NoCheckVerdict,
+        },
+        {
+          sev: 'Critical',
+          closed: false,
+          age: CRITICAL_STARVE_DAYS,
+          want: 'STARVED' as NoCheckVerdict,
+        },
+        {
+          sev: 'Critical',
+          closed: false,
+          age: 400,
+          want: 'STARVED' as NoCheckVerdict,
+        },
+        {
+          sev: 'Critical',
+          closed: true,
+          age: 400,
+          want: 'exempt' as NoCheckVerdict,
+        },
+        {
+          sev: 'High',
+          closed: false,
+          age: AGE_FUSE_DAYS - 1,
+          want: 'warn' as NoCheckVerdict,
+        },
+        {
+          sev: 'High',
+          closed: false,
+          age: AGE_FUSE_DAYS,
+          want: 'FUSE-BLOWN' as NoCheckVerdict,
+        },
+        {
+          sev: 'Medium',
+          closed: false,
+          age: 400,
+          want: 'exempt' as NoCheckVerdict,
+        },
       ];
-      const bad = starveFixture.filter(f => noCheckVerdict(f.sev, f.closed, f.age) !== f.want);
+      const bad = starveFixture.filter(
+        f => noCheckVerdict(f.sev, f.closed, f.age) !== f.want
+      );
       t2(
         bad.length === 0,
         `[IMP-223] the starvation MECHANISM holds on a fixture that cannot drift — every boundary in both directions, ${starveFixture.length} cases (a selftest asserting today's backlog is a clock, not a test)`
@@ -1297,7 +1411,9 @@ function selftest(): number {
         { id: 'IMP-B', sev: 'Critical', age: 4 },
         { id: 'IMP-C', sev: 'Critical', age: 2 },
       ];
-      const starvedIds = redBacklog.filter(r => noCheckVerdict(r.sev, false, r.age) === 'STARVED').map(r => r.id);
+      const starvedIds = redBacklog
+        .filter(r => noCheckVerdict(r.sev, false, r.age) === 'STARVED')
+        .map(r => r.id);
       t2(
         starvedIds.length === 3,
         `[IMP-223] …and on a RED backlog the mechanism still classifies every row (${starvedIds.join(', ')}) — the selftest is green while the registry is red, which is the whole point of separating them`
@@ -1340,8 +1456,7 @@ function selftest(): number {
       'ZZ-TEST'
     );
     t2(
-      compound.length === 1 &&
-        compound.every(f => f.startsWith(WORLD_MARK)),
+      compound.length === 1 && compound.every(f => f.startsWith(WORLD_MARK)),
       '[IMP-211] a compound of (passing code leg + failing world leg) produces NO hard failure — the row stays verified and the record still gets its warning'
     );
     routingAssertions += 5;
@@ -1349,7 +1464,8 @@ function selftest(): number {
 
   // ── DROP DETECTOR (work order 2026-08-28, item 8) ──────────────────────────────────────────
   {
-    const DEFECT = /\b(BUG|DEFECT|BROKEN|REGRESSION|LEAKED|LEAKS|LEAK|NEVER FIRED|NOT DONE|NON-?PRODUCTION|MISFIRE|UNAUTHORI[SZ]ED|DID NOT RUN|FAILED TO)\b/;
+    const DEFECT =
+      /\b(BUG|DEFECT|BROKEN|REGRESSION|LEAKED|LEAKS|LEAK|NEVER FIRED|NOT DONE|NON-?PRODUCTION|MISFIRE|UNAUTHORI[SZ]ED|DID NOT RUN|FAILED TO)\b/;
     const RESOLVED = /\b(RESOLVED|CLOSED|FIXED|CORRECTED|CLEARED|PASSED|WIN)\b/;
     const found = detectDroppedReds(process.cwd(), 7, DEFECT, RESOLVED);
     // THE NAMED CASE, HERMETICALLY. The first version of this assertion read the LIVE tree and
@@ -1366,7 +1482,10 @@ function selftest(): number {
       path.join(tmpSeg, 'daily-briefs', '2026-08-27-pipeline-status.md'),
       '2026-08-27T00:00:00Z | brief-light | x.md | SUCCESS | (3) 🔴 SEGMENTER BUG: prepare appended the trailing DECLARATIONS blocks to the last unit\n'
     );
-    fs.writeFileSync(path.join(tmpSeg, 'system', 'CARRY.md'), '# nothing carried\n');
+    fs.writeFileSync(
+      path.join(tmpSeg, 'system', 'CARRY.md'),
+      '# nothing carried\n'
+    );
     const segHit = detectDroppedReds(tmpSeg, 7, DEFECT, RESOLVED);
     t2(
       segHit.some(f => /SEGMENTER BUG/.test(f.phrase)),
@@ -1378,7 +1497,9 @@ function selftest(): number {
       '- L-0828-4 · CLOSED — THE SEGMENTER TRAILING-COMMENT BUG was declared and is now carried. BUG fixed by clamping the last unit.\n'
     );
     t2(
-      !detectDroppedReds(tmpSeg, 7, DEFECT, RESOLVED).some(f => /SEGMENTER BUG/.test(f.phrase)),
+      !detectDroppedReds(tmpSeg, 7, DEFECT, RESOLVED).some(f =>
+        /SEGMENTER BUG/.test(f.phrase)
+      ),
       '[ITEM8] and it goes SILENT once a CARRY row references it — a drop detector that keeps firing after the drop is closed is noise'
     );
     // …and it must not be catching it by flagging everything.
@@ -1428,6 +1549,8 @@ function selftest(): number {
 if (process.argv[1] && process.argv[1].includes('verify-improvements')) {
   const code = process.argv.includes('--selftest') ? selftest() : main();
   // Only reached when the run FINISHED. A killed run never prints this, which is the whole point.
-  process.stdout.write(`VERIFY-IMPROVEMENTS END ${new Date().toISOString()} exit=${code}\n`);
+  process.stdout.write(
+    `VERIFY-IMPROVEMENTS END ${new Date().toISOString()} exit=${code}\n`
+  );
   process.exit(code);
 }

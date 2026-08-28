@@ -158,13 +158,24 @@ const boardPath = (root: string, date: string) =>
 // different timestamp forms — `…Z`, `…-04:00` and `…-0400`. Everything below normalises to a real
 // instant and formats back to ET, so a run from a UTC sandbox and a run from Jackson's laptop agree.
 
-interface ETParts { y: number; m: number; d: number; H: number; M: number; S: number }
+interface ETParts {
+  y: number;
+  m: number;
+  d: number;
+  H: number;
+  M: number;
+  S: number;
+}
 
 const ET_FMT = new Intl.DateTimeFormat('en-US', {
   timeZone: 'America/New_York',
   hourCycle: 'h23',
-  year: 'numeric', month: '2-digit', day: '2-digit',
-  hour: '2-digit', minute: '2-digit', second: '2-digit',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
 });
 
 export function etParts(d: Date): ETParts {
@@ -172,8 +183,12 @@ export function etParts(d: Date): ETParts {
   for (const part of ET_FMT.formatToParts(d))
     if (part.type !== 'literal') p[part.type] = part.value;
   return {
-    y: +p.year!, m: +p.month!, d: +p.day!,
-    H: +p.hour!, M: +p.minute!, S: +p.second!,
+    y: +p.year!,
+    m: +p.month!,
+    d: +p.day!,
+    H: +p.hour!,
+    M: +p.minute!,
+    S: +p.second!,
   };
 }
 
@@ -201,7 +216,11 @@ export function fmtET(d: Date): string {
 
 /** BRIEF_DATE − 1 day: evening tasks run the NIGHT BEFORE the reading date (Controller L52). */
 export function eveningDateOf(briefDate: string): string {
-  const [y, m, d] = briefDate.split('-').map(Number) as [number, number, number];
+  const [y, m, d] = briefDate.split('-').map(Number) as [
+    number,
+    number,
+    number,
+  ];
   const t = new Date(Date.UTC(y, m - 1, d) - 86400000);
   return t.toISOString().slice(0, 10);
 }
@@ -222,9 +241,9 @@ export function parseTs(raw: string): Date | null {
 
 export interface Slot {
   task: string;
-  hh: number;      // 24h ET
+  hh: number; // 24h ET
   mm: number;
-  clock: string;   // as printed in the table, e.g. "6:55 PM"
+  clock: string; // as printed in the table, e.g. "6:55 PM"
   /** derived minutes after 14:00 ET on BRIEF_DATE-1; NaN when falling back to the table */
   offsetMin?: number;
 }
@@ -261,7 +280,12 @@ export function eveningSlots(docRoot: string): Slot[] {
     const task = m[4]!;
     if (seen.has(task)) continue;
     seen.add(task);
-    out.push({ task, hh, mm: +m[2]!, clock: `${m[1]}:${m[2]} ${m[3]!.toUpperCase()}` });
+    out.push({
+      task,
+      hh,
+      mm: +m[2]!,
+      clock: `${m[1]}:${m[2]} ${m[3]!.toUpperCase()}`,
+    });
   }
   return out.sort((a, b) => a.hh * 60 + a.mm - (b.hh * 60 + b.mm));
 }
@@ -331,8 +355,10 @@ export const SELFHEAL_RE = /\bSELF[- ]?HEAL(ED|ING)?\b/i;
  */
 const ABSENCE_DECL_RE =
   /\b(never fired|never ran|never started|left NO trace|left no trace|did not fire|did ?n[o']t run|no trace on this board)\b/i;
-const HEALER_MARKER_RE = /\b[a-z-]+-invoked\b|\bon behalf of\b|\bin place of\b|\bcovering for\b/i;
-const TASK_NAME_RE = /\b(brief-[a-z0-9-]+|take-draft|cc-predraft|signal-discovery-draft)\b/g;
+const HEALER_MARKER_RE =
+  /\b[a-z-]+-invoked\b|\bon behalf of\b|\bin place of\b|\bcovering for\b/i;
+const TASK_NAME_RE =
+  /\b(brief-[a-z0-9-]+|take-draft|cc-predraft|signal-discovery-draft)\b/g;
 
 /** The slot an absence declaration is ABOUT: the last task named in the 70 chars before it. */
 export function absenceSubject(raw: string): string | null {
@@ -363,13 +389,13 @@ export function absenceSubject(raw: string): string | null {
 export const RETRACTION_RE = /\bCANARY[- ]?RETRACTION\b/i;
 
 export function selfHealedTask(raw: string): string | null {
-  if (RETRACTION_RE.test(raw)) return null;  // a retraction is not coverage — IMP-214
+  if (RETRACTION_RE.test(raw)) return null; // a retraction is not coverage — IMP-214
   if (!SELFHEAL_RE.test(raw)) return null;
   const t = boardLineTask(raw);
   if (!t) return null;
-  if (absenceSubject(raw) === t) return t;   // (a) it says so, about itself
-  if (HEALER_MARKER_RE.test(raw)) return t;  // (b) it names someone else as the author
-  return null;                               // narration by a task that ran — not coverage
+  if (absenceSubject(raw) === t) return t; // (a) it says so, about itself
+  if (HEALER_MARKER_RE.test(raw)) return t; // (b) it names someone else as the author
+  return null; // narration by a task that ran — not coverage
 }
 
 /**
@@ -383,7 +409,8 @@ export function selfHealedTask(raw: string): string | null {
  * Widened HERE and not in editor-handoff-gate: that parser is another instrument's, mid-flight,
  * with its own semantics. The shared-parser gap is carried, not silently patched under it.
  */
-const BOARD_TS_RE = /^\s*\[?\s*\d{4}-\d{2}-\d{2}T[\d:]+(?:Z|[+-]\d{2}:?\d{2})?\s*\]?\s*$/;
+const BOARD_TS_RE =
+  /^\s*\[?\s*\d{4}-\d{2}-\d{2}T[\d:]+(?:Z|[+-]\d{2}:?\d{2})?\s*\]?\s*$/;
 export function boardLineTask(raw: string): string | null {
   const direct = lineTask(raw);
   if (direct) return direct;
@@ -403,18 +430,29 @@ export function boardLineTask(raw: string): string | null {
  * brief-morning, 08-17 brief-quality-gate — both plainly ran), leaving 4, all true: three
  * brief-draft non-fires in June and 2026-08-21 brief-editor, which BOTH instruments name.
  */
-export function absenceTestimony(file: string, asOf?: Date): Map<string, string> {
+export function absenceTestimony(
+  file: string,
+  asOf?: Date
+): Map<string, string> {
   const out = new Map<string, string>();
   if (!fs.existsSync(file)) return out;
-  const rows = fs.readFileSync(file, 'utf8').split('\n').filter(l => boardLineTask(l));
+  const rows = fs
+    .readFileSync(file, 'utf8')
+    .split('\n')
+    .filter(l => boardLineTask(l));
   const visible = asOf
-    ? rows.filter(l => { const ts = parseTs(l); return !ts || ts.getTime() <= asOf.getTime(); })
+    ? rows.filter(l => {
+        const ts = parseTs(l);
+        return !ts || ts.getTime() <= asOf.getTime();
+      })
     : rows;
   for (const l of visible) {
     const accused = absenceSubject(l);
     if (!accused) continue;
     if (boardLineTask(l) === accused && !SELFHEAL_RE.test(l)) continue; // a slot reporting on itself
-    const clean = visible.some(x => boardLineTask(x) === accused && !SELFHEAL_RE.test(x));
+    const clean = visible.some(
+      x => boardLineTask(x) === accused && !SELFHEAL_RE.test(x)
+    );
     if (clean) continue; // contradicted: the accused wrote a line of its own
     if (!out.has(accused)) out.set(accused, l.slice(0, 160));
   }
@@ -428,19 +466,35 @@ export function absenceTestimony(file: string, asOf?: Date): Map<string, string>
  * blindness ships with a denominator instead of a memory of one.
  */
 export function selfHealBlindness(root: string): {
-  token: number; coverage: number; blind: number; blindSole: number; boards: number;
+  token: number;
+  coverage: number;
+  blind: number;
+  blindSole: number;
+  boards: number;
 } {
   const dir = DB(root);
   const boards = fs.existsSync(dir)
-    ? fs.readdirSync(dir).filter(f => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(f)).sort()
+    ? fs
+        .readdirSync(dir)
+        .filter(f => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(f))
+        .sort()
     : [];
-  let token = 0, coverage = 0, blind = 0, blindSole = 0;
+  let token = 0,
+    coverage = 0,
+    blind = 0,
+    blindSole = 0;
   for (const b of boards) {
-    const rows = fs.readFileSync(path.join(dir, b), 'utf8').split('\n').filter(l => boardLineTask(l));
+    const rows = fs
+      .readFileSync(path.join(dir, b), 'utf8')
+      .split('\n')
+      .filter(l => boardLineTask(l));
     for (const l of rows) {
       if (!SELFHEAL_RE.test(l)) continue;
       token++;
-      if (selfHealedTask(l)) { coverage++; continue; }
+      if (selfHealedTask(l)) {
+        coverage++;
+        continue;
+      }
       blind++;
       const t = boardLineTask(l)!;
       if (!rows.some(x => boardLineTask(x) === t && x !== l)) blindSole++;
@@ -494,7 +548,9 @@ export const BOARD_WINDOW_MIN = 1440;
 
 export function shiftDate(date: string, days: number): string {
   const [y, m, d] = date.split('-').map(Number) as [number, number, number];
-  return new Date(Date.UTC(y, m - 1, d) + days * 86400000).toISOString().slice(0, 10);
+  return new Date(Date.UTC(y, m - 1, d) + days * 86400000)
+    .toISOString()
+    .slice(0, 10);
 }
 
 export function siblingWindowAttendance(
@@ -513,7 +569,7 @@ export function siblingWindowAttendance(
       const t = boardLineTask(raw);
       if (!t) continue;
       const ts = parseTs(raw);
-      if (!ts) continue;                                   // no instant, no rescue
+      if (!ts) continue; // no instant, no rescue
       if (ts.getTime() < lo || ts.getTime() >= hi) continue; // outside THIS board's cycle
       if (asOf && ts.getTime() > asOf.getTime()) continue;
       if (RETRACTION_RE.test(raw) || selfHealedTask(raw)) continue; // coverage is not attendance
@@ -529,7 +585,7 @@ export function boardAttendance(
 ): { attended: Set<string>; selfHealed: Map<string, string> } {
   const attended = new Set<string>();
   const selfHealed = new Map<string, string>();
-  const retracted = new Set<string>();  // IMP-214
+  const retracted = new Set<string>(); // IMP-214
   if (!fs.existsSync(file)) return { attended, selfHealed };
   for (const raw of fs.readFileSync(file, 'utf8').split('\n')) {
     const t = boardLineTask(raw);
@@ -555,16 +611,23 @@ export function boardAttendance(
   }
   // A slot with BOTH a self-heal line and a genuine line of its own really did run: the self-heal
   // is then a second opinion, not a cover. Attendance wins; the coverage note is dropped.
-  for (const k of [...selfHealed.keys()]) if (attended.has(k)) selfHealed.delete(k);
+  for (const k of [...selfHealed.keys()])
+    if (attended.has(k)) selfHealed.delete(k);
   // IMP-214: a retracted canary is withdrawn. Only a slot whose ONLY evidence was the retracted
   // line loses attendance — a slot that also wrote a genuine line of its own really did run.
   for (const r of retracted) {
     const own = fs.existsSync(file)
-      ? fs.readFileSync(file, 'utf8').split('\n').some(l => {
-          if (RETRACTION_RE.test(l) || boardLineTask(l) !== r) return false;
-          if (asOf) { const ts = parseTs(l); if (ts && ts.getTime() > asOf.getTime()) return false; }
-          return !selfHealedTask(l);
-        })
+      ? fs
+          .readFileSync(file, 'utf8')
+          .split('\n')
+          .some(l => {
+            if (RETRACTION_RE.test(l) || boardLineTask(l) !== r) return false;
+            if (asOf) {
+              const ts = parseTs(l);
+              if (ts && ts.getTime() > asOf.getTime()) return false;
+            }
+            return !selfHealedTask(l);
+          })
       : false;
     if (!own) attended.delete(r);
   }
@@ -576,7 +639,10 @@ export function boardAttendance(
  * this is what keeps `brief-validate-mechanical` / `brief-feedback-2` / `brief-feedback-3` — 0/20 —
  * out of the roll call without hardcoding a suppression list that could quietly go stale.
  */
-export function observedTasks(root: string, boards = OBSERVATION_BOARDS): Set<string> {
+export function observedTasks(
+  root: string,
+  boards = OBSERVATION_BOARDS
+): Set<string> {
   const dir = DB(root);
   if (!fs.existsSync(dir)) return new Set();
   const files = fs
@@ -585,7 +651,8 @@ export function observedTasks(root: string, boards = OBSERVATION_BOARDS): Set<st
     .sort()
     .slice(-boards);
   const out = new Set<string>();
-  for (const f of files) for (const t of boardTasks(path.join(dir, f))) out.add(t);
+  for (const f of files)
+    for (const t of boardTasks(path.join(dir, f))) out.add(t);
   return out;
 }
 
@@ -605,7 +672,8 @@ export interface Unterminated {
   windowMin: number;
   ageMin: number;
   /** reference-period record, so the reader can judge whether this is news or this task's norm */
-  refClosed: number; refTotal: number;
+  refClosed: number;
+  refTotal: number;
   line: string;
 }
 /**
@@ -628,13 +696,13 @@ export interface RollCall {
   eveningDate: string;
   now: Date;
   rostered: Slot[];
-  dropped: string[];     // documented in the table, never observed on a real board
+  dropped: string[]; // documented in the table, never observed on a real board
   notYetDue: string[];
   attended: string[];
   absent: Absentee[];
-  exempt: boolean;       // date predates EFFECTIVE_FROM — the pre-canary archive
-  selfHealed: Map<string, string>;  // slot -> the line another task wrote in its name
-  testimony: Map<string, string>;   // slot -> a line declaring it never fired
+  exempt: boolean; // date predates EFFECTIVE_FROM — the pre-canary archive
+  selfHealed: Map<string, string>; // slot -> the line another task wrote in its name
+  testimony: Map<string, string>; // slot -> a line declaring it never fired
   /** WARN-LEVEL. Canary present, no terminal line, past the task's derived window. */
   unterminated: Unterminated[];
   /** Rostered slots whose window could not be derived — NAMED, never defaulted. */
@@ -664,8 +732,8 @@ export interface RollCall {
 export const FIRED_GRACE_MIN = 10;
 
 export function rollCall(opts: {
-  docRoot: string;          // repo root holding system/Pipeline_Controller.md + the archive
-  boardRoot?: string;       // repo root holding the board under test (defaults to docRoot)
+  docRoot: string; // repo root holding system/Pipeline_Controller.md + the archive
+  boardRoot?: string; // repo root holding the board under test (defaults to docRoot)
   date: string;
   now?: Date;
   /** Reconstruct the board as it stood at `now` (see boardTasks). Set by `--now`; never by default. */
@@ -732,12 +800,22 @@ export function rollCall(opts: {
         .sort((a, b) => a.canaryP95 - b.canaryP95)
         .map(w => {
           const abs = (PIPELINE_DAY_START_MIN + w.canaryP95) % 1440;
-          return { task: w.task, hh: Math.floor(abs / 60), mm: abs % 60, clock: fmtClock(abs), offsetMin: w.canaryP95 };
+          return {
+            task: w.task,
+            hh: Math.floor(abs / 60),
+            mm: abs % 60,
+            clock: fmtClock(abs),
+            offsetMin: w.canaryP95,
+          };
         })
     : documented.map(d => ({ ...d, offsetMin: NaN }));
   // Named, never defaulted: rostered-by-observation but with too few canaries to derive a window.
-  const windowless = [...windows.values()].filter(w => !w.canaryComputable).map(w => w.task);
-  const dropped = documented.filter(d => !rostered.some(r => r.task === d.task)).map(d => d.task);
+  const windowless = [...windows.values()]
+    .filter(w => !w.canaryComputable)
+    .map(w => w.task);
+  const dropped = documented
+    .filter(d => !rostered.some(r => r.task === d.task))
+    .map(d => d.task);
 
   const bp = boardPath(boardRoot, opts.date);
   const att = boardAttendance(bp, opts.replay ? now : undefined);
@@ -745,7 +823,12 @@ export function rollCall(opts: {
   const ownCanaries = boardOwnCanaries(bp, opts.replay ? now : undefined);
   // IMP-218: the same cycle, written to a sibling board. Computed once, consulted only for slots
   // this board does not already account for.
-  const sibling = siblingWindowAttendance(boardRoot, opts.date, dayStart, opts.replay ? now : undefined);
+  const sibling = siblingWindowAttendance(
+    boardRoot,
+    opts.date,
+    dayStart,
+    opts.replay ? now : undefined
+  );
   // The second, independent absence path — a line written ABOUT the slot by anybody. It can only
   // ADD absences (its contradiction guard already spares any slot with a clean line of its own),
   // so a convention change on one path cannot make the roll call quieter than it should be.
@@ -767,13 +850,16 @@ export function rollCall(opts: {
     // weekly on 08-26; every checker with "daily" written into it began reporting a healthy
     // component dead. A component that is not due today cannot be absent today.
     if (!isDue(s.task, eveningDate, cadenceRoster)) {
-      notDueByCadence.push(`${s.task}(${cadenceFor(s.task, cadenceRoster).cadence})`);
+      notDueByCadence.push(
+        `${s.task}(${cadenceFor(s.task, cadenceRoster).cadence})`
+      );
       continue;
     }
     const deadline = new Date(
       (Number.isNaN(s.offsetMin)
         ? etWallClock(eveningDate, s.hh, s.mm).getTime()
-        : dayStart.getTime() + s.offsetMin * 60000) + GRACE_MIN * 60000
+        : dayStart.getTime() + s.offsetMin * 60000) +
+        GRACE_MIN * 60000
     );
     if (present.has(s.task)) {
       attended.push(s.task);
@@ -822,10 +908,10 @@ export function rollCall(opts: {
   if (!exempt && opts.schedulerLastRun) {
     for (const [task, firedAt] of opts.schedulerLastRun) {
       if (+firedAt < +dayStart || +firedAt > +now) continue; // fired in some other cycle
-      if (ownCanaries.has(task)) continue;                    // STEP-0 canary — it spoke
-      if (sibling.get(task)) continue;                        // it spoke on a sibling (IMP-218)
+      if (ownCanaries.has(task)) continue; // STEP-0 canary — it spoke
+      if (sibling.get(task)) continue; // it spoke on a sibling (IMP-218)
       const tPlusMin = (+now - +firedAt) / 60000;
-      if (tPlusMin < FIRED_GRACE_MIN) continue;               // still inside the grace to canary
+      if (tPlusMin < FIRED_GRACE_MIN) continue; // still inside the grace to canary
       firedAndSilent.push({
         task,
         firedAt,
@@ -882,13 +968,35 @@ export function rollCall(opts: {
       const ageMin = (now.getTime() - ep.stillOpen.getTime()) / 60000;
       if (ageMin < w.latP95 + GRACE_MIN) continue;
       unterminated.push({
-        task: s2.task, canaryAt: ep.stillOpen, windowMin: w.latP95, ageMin,
-        refClosed: w.refClosed, refTotal: w.refTotal,
+        task: s2.task,
+        canaryAt: ep.stillOpen,
+        windowMin: w.latP95,
+        ageMin,
+        refClosed: w.refClosed,
+        refTotal: w.refTotal,
         line: `UNTERMINATED: ${s2.task} — canary ${fmtET(ep.stillOpen)}, no terminal line ${ageMin.toFixed(0)} min later (p95 window ${w.latP95.toFixed(0)} min, n=${w.latN}; reference period ${w.refClosed}/${w.refTotal})`,
       });
     }
   }
-  return { date: opts.date, eveningDate, now, rostered, dropped, notYetDue, attended, absent, exempt, selfHealed: att.selfHealed, testimony, unterminated, windowless, crossBoard, firedAndSilent, emptyBody, notDueByCadence };
+  return {
+    date: opts.date,
+    eveningDate,
+    now,
+    rostered,
+    dropped,
+    notYetDue,
+    attended,
+    absent,
+    exempt,
+    selfHealed: att.selfHealed,
+    testimony,
+    unterminated,
+    windowless,
+    crossBoard,
+    firedAndSilent,
+    emptyBody,
+    notDueByCadence,
+  };
 }
 
 // ---------- THE DERIVED ROSTER: windows measured, never guessed ----------
@@ -920,7 +1028,8 @@ export function rollCall(opts: {
 // board monotonic in one number, and a deadline is simply 14:00 ET on D-1 plus the derived offset.
 /** "6:55 PM" from absolute ET minutes-of-day — the shape the sequence tables print. */
 export function fmtClock(absMin: number): string {
-  const h24 = Math.floor(absMin / 60) % 24, m = Math.round(absMin % 60);
+  const h24 = Math.floor(absMin / 60) % 24,
+    m = Math.round(absMin % 60);
   const h = h24 % 12 === 0 ? 12 : h24 % 12;
   return `${h}:${String(m).padStart(2, '0')} ${h24 < 12 ? 'AM' : 'PM'}`;
 }
@@ -931,7 +1040,12 @@ export const PIPELINE_DAY_START_MIN = 14 * 60; // 14:00 ET on BRIEF_DATE-1 — w
 export function cycleDateOf(d: Date): string {
   const p = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/New_York',
-    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
   }).formatToParts(d);
   const g = (t: string) => p.find(x => x.type === t)!.value;
   const day = `${g('year')}-${g('month')}-${g('day')}`;
@@ -944,12 +1058,17 @@ export function cycleDateOf(d: Date): string {
 /** ET wall-clock minutes since 05:00 ET, wrapping post-midnight lines onto the same pipeline day. */
 export function pipelineDayMin(d: Date): number {
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
   }).formatToParts(d);
   const h = +parts.find(x => x.type === 'hour')!.value;
   const m = +parts.find(x => x.type === 'minute')!.value;
   const raw = h * 60 + m;
-  return raw >= PIPELINE_DAY_START_MIN ? raw - PIPELINE_DAY_START_MIN : raw + 1440 - PIPELINE_DAY_START_MIN;
+  return raw >= PIPELINE_DAY_START_MIN
+    ? raw - PIPELINE_DAY_START_MIN
+    : raw + 1440 - PIPELINE_DAY_START_MIN;
   // 14:09 (sweep-4, D-1) -> 9 · 20:48 (editor, D-1) -> 408 · 00:30 (feedback, D) -> 630
   // 05:06 (morning, D)   -> 906 · 07:06 (health-check, D) -> 1026 · 12:05 (sweep-3, D) -> 1325
 }
@@ -957,8 +1076,10 @@ export function pipelineDayMin(d: Date): number {
 /** A line that ENDS an episode. Measured vocabulary — IN-PROGRESS and WRITE-OK are deliberately out. */
 export const TERMINAL_RE =
   /^(SUCCESS|FAIL|SKIPPED|COMPLETE|HALTED|NO-?OP|PARTIAL|DEGRADED-KNOWN|NO-REPLY|ALERT)\b/i;
-export const isCanaryLine = (raw: string) => /^CANARY/i.test((raw.split('|')[2] || '').trim());
-export const isTerminalLine = (raw: string) => TERMINAL_RE.test((raw.split('|')[3] || '').trim());
+export const isCanaryLine = (raw: string) =>
+  /^CANARY/i.test((raw.split('|')[2] || '').trim());
+export const isTerminalLine = (raw: string) =>
+  TERMINAL_RE.test((raw.split('|')[3] || '').trim());
 
 /** STEP-0 canary written by the slot itself — not a Critic-invoked / SELF-HEAL decoy, not a retraction.
  *  Field 2 is CANARY; SELF-HEAL in the payload (08-23 Critic canary) does not count. */
@@ -1036,8 +1157,10 @@ export interface TaskWindow {
   /** boards where a canary opened and no terminal line ever closed it */
   unterminatedBoards: string[];
   /** in-force boards EXCLUDING the trailing RECENT_BOARDS — the uncontaminated reference period */
-  refClosed: number; refTotal: number;
-  recentClosed: number; recentTotal: number;
+  refClosed: number;
+  refTotal: number;
+  recentClosed: number;
+  recentTotal: number;
   /** classification from the REFERENCE period only. See REFERENCE-PERIOD note. */
   reliability: 'RELIABLE' | 'INTERMITTENT' | 'KNOWN-SILENT' | 'THIN-EVIDENCE';
 }
@@ -1070,11 +1193,18 @@ export const RECENT_BOARDS = 7;
  * the FIRST terminal line after it closes that episode. Receipt: cross-day pairs 51 -> 0, and
  * intel-sweep-5's median fell from 1,444.7 min to 9.0.
  */
-export function deriveWindows(root: string, upTo?: string): Map<string, TaskWindow> {
+export function deriveWindows(
+  root: string,
+  upTo?: string
+): Map<string, TaskWindow> {
   const dir = DB(root);
-  const boards = (fs.existsSync(dir)
-    ? fs.readdirSync(dir).filter(f => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(f)).sort()
-    : []
+  const boards = (
+    fs.existsSync(dir)
+      ? fs
+          .readdirSync(dir)
+          .filter(f => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(f))
+          .sort()
+      : []
   ).filter(f => !upTo || f.slice(0, 10) <= upTo);
   const canary = new Map<string, number[]>();
   const lat = new Map<string, number[]>();
@@ -1096,7 +1226,8 @@ export function deriveWindows(root: string, upTo?: string): Map<string, TaskWind
         if (!canary.has(task)) canary.set(task, []);
         canary.get(task)!.push(pipelineDayMin(ts));
         const cyc = cycleDateOf(ts);
-        if (!firstCycle.has(task) || cyc < firstCycle.get(task)!) firstCycle.set(task, cyc);
+        if (!firstCycle.has(task) || cyc < firstCycle.get(task)!)
+          firstCycle.set(task, cyc);
       }
     }
     for (const [task, list] of ev) {
@@ -1104,7 +1235,10 @@ export function deriveWindows(root: string, upTo?: string): Map<string, TaskWind
       let pending: Date | null = null;
       for (const e of list) {
         if (e.kind === 'C') {
-          if (pending) (open.get(task) ?? open.set(task, []).get(task)!).push(b.slice(0, 10));
+          if (pending)
+            (open.get(task) ?? open.set(task, []).get(task)!).push(
+              b.slice(0, 10)
+            );
           pending = e.ts;
         } else if (pending) {
           if (!lat.has(task)) lat.set(task, []);
@@ -1112,7 +1246,8 @@ export function deriveWindows(root: string, upTo?: string): Map<string, TaskWind
           pending = null;
         }
       }
-      if (pending) (open.get(task) ?? open.set(task, []).get(task)!).push(b.slice(0, 10));
+      if (pending)
+        (open.get(task) ?? open.set(task, []).get(task)!).push(b.slice(0, 10));
     }
   }
   // Reference vs recent termination rate, over the IN-FORCE boards only.
@@ -1132,7 +1267,8 @@ export function deriveWindows(root: string, upTo?: string): Map<string, TaskWind
     }
     return m;
   };
-  const R = tally(refB), C2 = tally(recB);
+  const R = tally(refB),
+    C2 = tally(recB);
 
   const out = new Map<string, TaskWindow>();
   for (const task of new Set([...canary.keys(), ...lat.keys()])) {
@@ -1142,7 +1278,13 @@ export function deriveWindows(root: string, upTo?: string): Map<string, TaskWind
     const rec = C2.get(task) ?? { c: 0, t: 0 };
     const rate = r.c ? r.t / r.c : NaN;
     const reliability: TaskWindow['reliability'] =
-      r.c < 5 ? 'THIN-EVIDENCE' : rate >= 0.9 ? 'RELIABLE' : rate >= 0.5 ? 'INTERMITTENT' : 'KNOWN-SILENT';
+      r.c < 5
+        ? 'THIN-EVIDENCE'
+        : rate >= 0.9
+          ? 'RELIABLE'
+          : rate >= 0.5
+            ? 'INTERMITTENT'
+            : 'KNOWN-SILENT';
     out.set(task, {
       task,
       canaryN: c.length,
@@ -1153,8 +1295,10 @@ export function deriveWindows(root: string, upTo?: string): Map<string, TaskWind
       latComputable: l.length >= MIN_N,
       firstCycle: firstCycle.get(task) ?? '',
       unterminatedBoards: open.get(task) ?? [],
-      refClosed: r.t, refTotal: r.c,
-      recentClosed: rec.t, recentTotal: rec.c,
+      refClosed: r.t,
+      refTotal: r.c,
+      recentClosed: rec.t,
+      recentTotal: rec.c,
       reliability,
     });
   }
@@ -1162,7 +1306,10 @@ export function deriveWindows(root: string, upTo?: string): Map<string, TaskWind
 }
 
 /** Per task on one board: did a canary open, and is the FINAL episode still open? */
-export function episodes(file: string, asOf?: Date): Map<string, { opened: number; stillOpen: Date | null }> {
+export function episodes(
+  file: string,
+  asOf?: Date
+): Map<string, { opened: number; stillOpen: Date | null }> {
   const out = new Map<string, { opened: number; stillOpen: Date | null }>();
   if (!fs.existsSync(file)) return out;
   const ev = new Map<string, { ts: Date; kind: 'C' | 'T' }[]>();
@@ -1179,10 +1326,13 @@ export function episodes(file: string, asOf?: Date): Map<string, { opened: numbe
   }
   for (const [task, list] of ev) {
     list.sort((a, b) => +a.ts - +b.ts);
-    let pending: Date | null = null, opened = 0;
+    let pending: Date | null = null,
+      opened = 0;
     for (const e of list) {
-      if (e.kind === 'C') { opened++; pending = e.ts; }
-      else if (pending) pending = null;
+      if (e.kind === 'C') {
+        opened++;
+        pending = e.ts;
+      } else if (pending) pending = null;
     }
     out.set(task, { opened, stillOpen: pending });
   }
@@ -1218,12 +1368,16 @@ export function writeAlert(
   rc: RollCall
 ): { path: string; wrote: string[]; skipped: string[] } {
   const file = path.join(DB(root), `${date}-pipeline-alert.md`);
-  const wrote: string[] = [], skipped: string[] = [];
+  const wrote: string[] = [],
+    skipped: string[] = [];
   if (!rc.absent.length || rc.exempt) return { path: file, wrote, skipped };
   const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
   let out = '';
   for (const a of rc.absent) {
-    if (existing.includes(ALARM_SUBJECT(a.task, date))) { skipped.push(a.task); continue; }
+    if (existing.includes(ALARM_SUBJECT(a.task, date))) {
+      skipped.push(a.task);
+      continue;
+    }
     wrote.push(a.task);
     out +=
       `\n## 🔴 SLOT ABSENT — ${a.task} (${date})\n\n` +
@@ -1277,15 +1431,15 @@ function fireFixture(root: string): { fixtureRoot: string; removed: number } {
   const kept: string[] = [];
   let removed = 0;
   for (const raw of src.split('\n')) {
-    if (lineTask(raw) === 'brief-editor') { removed++; continue; }
+    if (lineTask(raw) === 'brief-editor') {
+      removed++;
+      continue;
+    }
     kept.push(raw);
   }
   const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'psa-nonfire-'));
   fs.mkdirSync(path.join(fixtureRoot, 'daily-briefs'), { recursive: true });
-  fs.writeFileSync(
-    boardPath(fixtureRoot, '2026-08-21'),
-    kept.join('\n')
-  );
+  fs.writeFileSync(boardPath(fixtureRoot, '2026-08-21'), kept.join('\n'));
   return { fixtureRoot, removed };
 }
 
@@ -1310,14 +1464,24 @@ function blindnessFixture(
     if (!fs.existsSync(src)) continue;
     const kept: string[] = [];
     for (const raw of fs.readFileSync(src, 'utf8').split('\n')) {
-      if (boardLineTask(raw) !== task) { kept.push(raw); continue; }
+      if (boardLineTask(raw) !== task) {
+        kept.push(raw);
+        continue;
+      }
       removed++;
       if (d !== date && opts.keepOnSiblings) {
         if (opts.shiftHours) {
           const ts = parseTs(raw);
           if (ts) {
-            const moved = new Date(ts.getTime() + opts.shiftHours * 3600000).toISOString().replace(/\.\d+Z$/, 'Z');
-            kept.push(raw.replace(/\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})/, moved));
+            const moved = new Date(ts.getTime() + opts.shiftHours * 3600000)
+              .toISOString()
+              .replace(/\.\d+Z$/, 'Z');
+            kept.push(
+              raw.replace(
+                /\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})/,
+                moved
+              )
+            );
             continue;
           }
         }
@@ -1341,11 +1505,16 @@ function retractionFixture(root: string): { fixtureRoot: string } {
 }
 
 /** Every line the NARROW rule reads as coverage, with its board date — the identity pin's input. */
-function coverageLines(root: string): { date: string; task: string; line: string }[] {
+function coverageLines(
+  root: string
+): { date: string; task: string; line: string }[] {
   const dir = DB(root);
   const out: { date: string; task: string; line: string }[] = [];
   if (!fs.existsSync(dir)) return out;
-  for (const f of fs.readdirSync(dir).filter(x => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(x)).sort()) {
+  for (const f of fs
+    .readdirSync(dir)
+    .filter(x => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(x))
+    .sort()) {
     for (const raw of fs.readFileSync(path.join(dir, f), 'utf8').split('\n')) {
       const t = selfHealedTask(raw);
       if (t) out.push({ date: f.slice(0, 10), task: t, line: raw });
@@ -1356,7 +1525,8 @@ function coverageLines(root: string): { date: string; task: string; line: string
 
 function selftest(): number {
   const root = process.cwd();
-  let fails = 0, total = 0;
+  let fails = 0,
+    total = 0;
   const assert = (ok: boolean, label: string) => {
     total++;
     console.log(`  ${ok ? 'PASS' : 'FAIL'} — ${label}`);
@@ -1377,7 +1547,11 @@ function selftest(): number {
     '[roster] brief-editor read from the real table at 6:55 PM ET (not hardcoded)'
   );
   assert(
-    !names.some(n => /intel-sweep|system-update|daily-improvement|pipeline-health|brief-morning/.test(n)),
+    !names.some(n =>
+      /intel-sweep|system-update|daily-improvement|pipeline-health|brief-morning/.test(
+        n
+      )
+    ),
     '[roster] contains NO daytime or morning task — the roll call is EVENING slots only (Controller L52-54)'
   );
 
@@ -1389,11 +1563,20 @@ function selftest(): number {
   const observed = observedTasks(root);
   const drop = names.filter(n => !observed.has(n));
   assert(
-    drop.length > 0 && drop.every(n => /^(brief-validate-mechanical|brief-feedback-[23])$/.test(n)),
+    drop.length > 0 &&
+      drop.every(n =>
+        /^(brief-validate-mechanical|brief-feedback-[23])$/.test(n)
+      ),
     `[roster] never-observed slots dropped by ARCHIVE MEASUREMENT, not a hardcoded list: ${drop.join(', ') || '(none)'} (0 lines across the trailing ${OBSERVATION_BOARDS} boards)`
   );
   assert(
-    ['brief-editor', 'brief-critic', 'brief-draft', 'brief-light', 'brief-email'].every(n => observed.has(n)),
+    [
+      'brief-editor',
+      'brief-critic',
+      'brief-draft',
+      'brief-light',
+      'brief-email',
+    ].every(n => observed.has(n)),
     '[roster] the slots that DO write lines survive the filter — the filter drops silence, not stages'
   );
 
@@ -1434,7 +1617,12 @@ function selftest(): number {
   //     different claim. brief-light appears here too because at 19:35 ET it was 20 min late and
   //     had not yet written; that is lateness, and it is why the fixture is the primary receipt.
   const early = boardOK
-    ? rollCall({ docRoot: root, date: '2026-08-21', now: etWallClock('2026-08-20', 19, 35), replay: true })
+    ? rollCall({
+        docRoot: root,
+        date: '2026-08-21',
+        now: etWallClock('2026-08-20', 19, 35),
+        replay: true,
+      })
     : null;
   // THE WINDOW MOVED, AND THE OLD ASSERTION WAS THE THING THAT WAS WRONG. This used to assert that
   // the untouched 08-21 board names brief-editor absent at 19:35 ET. It did — because the deadline
@@ -1444,8 +1632,13 @@ function selftest(): number {
   // correct answer: at 19:35 the editor is early, not missing. The absence is proved at 23:59.
   assert(
     !boardOK ||
-      rollCall({ docRoot: root, date: '2026-08-21', now: etWallClock('2026-08-20', 19, 35), replay: true, windows: WIN })
-        .notYetDue.includes('brief-editor'),
+      rollCall({
+        docRoot: root,
+        date: '2026-08-21',
+        now: etWallClock('2026-08-20', 19, 35),
+        replay: true,
+        windows: WIN,
+      }).notYetDue.includes('brief-editor'),
     '[fire] at 19:35 ET brief-editor is NOT-YET-DUE, not absent — its DERIVED p95 canary is 8:48 PM, so the table deadline of 6:55 PM was accusing a slot 103 min before its own normal start'
   );
 
@@ -1454,7 +1647,12 @@ function selftest(): number {
   //     23:31:22Z. The Editor was SLOW and the Critic arrived first. Slow must not read as absent.
   const board20 = fs.existsSync(boardPath(root, '2026-08-20'));
   const rc20 = board20
-    ? rollCall({ docRoot: root, date: '2026-08-20', now: etWallClock('2026-08-19', 23, 59), replay: true })
+    ? rollCall({
+        docRoot: root,
+        date: '2026-08-20',
+        now: etWallClock('2026-08-19', 23, 59),
+        replay: true,
+      })
     : null;
   assert(
     !board20 || rc20!.absent.length === 0,
@@ -1471,14 +1669,20 @@ function selftest(): number {
   //     so that is asserted first.
   // NOTE: no `replay` here — this leg is the LIVE reading of the untouched board, which is what
   // pipeline-health-check actually does when it runs.
-  const present21 = boardOK ? boardTasks(boardPath(root, '2026-08-21')) : new Set<string>();
+  const present21 = boardOK
+    ? boardTasks(boardPath(root, '2026-08-21'))
+    : new Set<string>();
   const sweeps = [...present21].filter(t => /^intel-sweep/.test(t));
   assert(
     !boardOK || sweeps.length >= 3,
     `[routing] the 08-21 board really does carry daytime rows from the 08-20 cycle — ${sweeps.join(', ')}`
   );
   const rc21 = boardOK
-    ? rollCall({ docRoot: root, date: '2026-08-21', now: etWallClock('2026-08-20', 23, 59) })
+    ? rollCall({
+        docRoot: root,
+        date: '2026-08-21',
+        now: etWallClock('2026-08-20', 23, 59),
+      })
     : null;
   assert(
     !boardOK || !rc21!.absent.some(a => /intel-sweep/.test(a.task)),
@@ -1490,7 +1694,9 @@ function selftest(): number {
   assert(
     !boardOK ||
       (rc21!.attended.includes('intel-sweep-4') &&
-        !rc21!.absent.some(a => /^brief-/.test(a.task) && /intel-sweep/.test(a.evidence))),
+        !rc21!.absent.some(
+          a => /^brief-/.test(a.task) && /intel-sweep/.test(a.evidence)
+        )),
     '[routing] a daytime row is rostered for ITSELF and services no other slot — intel-sweep-4 attended, and no brief-* absence excused by a sweep line'
   );
   // THE INVERSION (2026-08-21). This assertion previously read `rc21!.absent.length === 0` and
@@ -1509,13 +1715,20 @@ function selftest(): number {
   );
   assert(
     !boardOK ||
-      boardAttendance(boardPath(root, '2026-08-21')).selfHealed.get('brief-editor') !== undefined,
+      boardAttendance(boardPath(root, '2026-08-21')).selfHealed.get(
+        'brief-editor'
+      ) !== undefined,
     '[selfheal] the coverage is RECORDED, not merely subtracted — boardAttendance carries the self-heal line that covered brief-editor'
   );
 
   // ── 4. NOT-YET-DUE IS NOT ABSENT ─────────────────────────────────────────────────────────────
   const earlyEve = boardOK
-    ? rollCall({ docRoot: root, date: '2026-08-21', now: etWallClock('2026-08-20', 17, 0), replay: true })
+    ? rollCall({
+        docRoot: root,
+        date: '2026-08-21',
+        now: etWallClock('2026-08-20', 17, 0),
+        replay: true,
+      })
     : null;
   assert(
     !boardOK || earlyEve!.absent.length === 0,
@@ -1529,7 +1742,9 @@ function selftest(): number {
   // ── 5. THE LINE FORMAT IS THE CONTRACT ───────────────────────────────────────────────────────
   assert(
     fireLines.length > 0 &&
-      /^MISSING-SLOT: [a-z0-9-]+ — expected by .+ ET, no canary at .+ ET$/.test(fireLines[0]!),
+      /^MISSING-SLOT: [a-z0-9-]+ — expected by .+ ET, no canary at .+ ET$/.test(
+        fireLines[0]!
+      ),
     '[format] the emitted line matches the mandated shape exactly: "MISSING-SLOT: {task} — expected by {deadline}, no canary at {now}"'
   );
 
@@ -1540,7 +1755,8 @@ function selftest(): number {
   {
     const dir = DB(root);
     const boards = fs.existsSync(dir)
-      ? fs.readdirSync(dir)
+      ? fs
+          .readdirSync(dir)
           .filter(f => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(f))
           .map(f => f.slice(0, 10))
           .sort()
@@ -1596,13 +1812,19 @@ function selftest(): number {
       `[no-storm] no board from ${EFFECTIVE_FROM} onward fires except the known non-fire night${unexpected.length ? ' — UNEXPECTED: ' + unexpected.map(x => `${x.d}(${x.n})`).join(', ') : ''} (${inWindow.length} boards swept)`
     );
     assert(
-      Object.entries(KNOWN_NOISY).every(([d, n]) => rollCall({ docRoot: root, date: d, windows: WIN }).absent.length === n) &&
-        rollCall({ docRoot: root, date: '2026-08-21', windows: WIN }).absent[0]!.task === 'brief-editor',
+      Object.entries(KNOWN_NOISY).every(
+        ([d, n]) =>
+          rollCall({ docRoot: root, date: d, windows: WIN }).absent.length === n
+      ) &&
+        rollCall({ docRoot: root, date: '2026-08-21', windows: WIN }).absent[0]!
+          .task === 'brief-editor',
       `[no-storm] and every known non-fire STILL fires — 08-21 brief-editor plus five intel-sweep non-fires the EVENING-ONLY roster could not see (pin both ways: 08-21 silent = the self-heal rule undone; sweeps silent = the roster narrowed)`
     );
     const preWindow = boards.filter(d => d < EFFECTIVE_FROM);
     assert(
-      preWindow.every(d => rollCall({ docRoot: root, date: d }).absent.length === 0),
+      preWindow.every(
+        d => rollCall({ docRoot: root, date: d }).absent.length === 0
+      ),
       `[no-storm] and the ${preWindow.length} PRE-CANARY boards are EXEMPT, not condemned — a sweep of them fired 71/92 before EFFECTIVE_FROM existed (IMP-125)`
     );
     assert(
@@ -1630,13 +1852,18 @@ function selftest(): number {
     );
     assert(
       ['2026-08-02', '2026-08-08', '2026-08-15'].every(
-        d => !rollCall({ docRoot: root, date: d }).rostered.some(s => s.task === 'selection-judge')
+        d =>
+          !rollCall({ docRoot: root, date: d }).rostered.some(
+            s => s.task === 'selection-judge'
+          )
       ),
       '[birth] a board more than one cycle before the slot does NOT roster it — the fourteen-board storm of 2026-08-26, at its source'
     );
     assert(
-      ['2026-08-17', '2026-08-20'].every(
-        d => rollCall({ docRoot: root, date: d }).rostered.some(s => s.task === 'selection-judge')
+      ['2026-08-17', '2026-08-20'].every(d =>
+        rollCall({ docRoot: root, date: d }).rostered.some(
+          s => s.task === 'selection-judge'
+        )
       ),
       '[birth] …and from its own first cycle FORWARD it is rostered exactly as before — the birth date narrows the EXPECTATION, never the DETECTOR'
     );
@@ -1645,7 +1872,9 @@ function selftest(): number {
     // precedes its first canary, so the one ambiguous cycle stays accusable — for the slot that
     // proved it (intel-sweep-4, verified real) and for the slot that motivated the fix alike.
     assert(
-      rollCall({ docRoot: root, date: '2026-08-01' }).absent.some(a => a.task === 'intel-sweep-4'),
+      rollCall({ docRoot: root, date: '2026-08-01' }).absent.some(
+        a => a.task === 'intel-sweep-4'
+      ),
       '[birth] GRACE=1: the REAL 2026-08-01 intel-sweep-4 non-fire SURVIVES — grace 0 deleted it, and sweeps 5 and 6 canarying that same 07-31 afternoon prove the protocol was in force'
     );
     assert(
@@ -1654,13 +1883,15 @@ function selftest(): number {
         if (!w?.firstCycle) return false;
         const grace = eveningDateOf(w.firstCycle);
         const before = eveningDateOf(grace);
-        const on = (d: string) => rollCall({ docRoot: root, date: d }).rostered.some(s => s.task === t);
+        const on = (d: string) =>
+          rollCall({ docRoot: root, date: d }).rostered.some(s => s.task === t);
         return on(grace) && !on(before);
       }),
       '[birth] …and BOTH slots get the identical treatment at their own boundary — rostered on the grace cycle, absent from the one before it. One rule, not a carve-out for the slot that broke the storm leg.'
     );
     assert(
-      !!LIVE.get('intel-sweep-1') && LIVE.get('intel-sweep-1')!.firstCycle === '2026-08-01',
+      !!LIVE.get('intel-sweep-1') &&
+        LIVE.get('intel-sweep-1')!.firstCycle === '2026-08-01',
       `[birth] the birth date is read from the STAMP, not the FILENAME: intel-sweep-1's first canary is 07:51 ET 08-01 written to the 08-02 BOARD, and its cycle is 08-01 (got ${LIVE.get('intel-sweep-1')?.firstCycle || 'NONE'}) — IMP-218's lesson does not get to reappear one layer up`
     );
 
@@ -1674,22 +1905,29 @@ function selftest(): number {
         date: '2026-08-26',
         now,
         replay: true,
-        schedulerLastRun: new Map(Object.entries(m).map(([k, v]) => [k, parseTs(v)!])),
+        schedulerLastRun: new Map(
+          Object.entries(m).map(([k, v]) => [k, parseTs(v)!])
+        ),
       }).firedAndSilent;
     const EDITOR_FIRED = '2026-08-25T23:20:18.472Z';
     const fired = fs2026({ 'brief-editor': EDITOR_FIRED });
     assert(
-      fired.length === 1 && fired[0]!.task === 'brief-editor' && Math.round(fired[0]!.tPlusMin) === 11,
+      fired.length === 1 &&
+        fired[0]!.task === 'brief-editor' &&
+        Math.round(fired[0]!.tPlusMin) === 11,
       `[fired] FIRES on the real 2026-08-26 brief-editor at T+11 — the discriminating test the 19:31 roll call failed with "✅ FULL ATTENDANCE" (got ${fired.map(f => `${f.task}@T+${f.tPlusMin.toFixed(0)}`).join(', ') || 'NOTHING'})`
     );
     assert(
-      fs2026({ 'brief-editor': EDITOR_FIRED, 'brief-quality-gate': '2026-08-25T22:41:38Z' })
-        .every(f => f.task !== 'brief-quality-gate'),
+      fs2026({
+        'brief-editor': EDITOR_FIRED,
+        'brief-quality-gate': '2026-08-25T22:41:38Z',
+      }).every(f => f.task !== 'brief-quality-gate'),
       '[fired] SILENT on brief-quality-gate — fired 22:41:38Z in the same cycle and wrote its own CANARY and SUCCESS lines. A slot that spoke is never accused for having been started.'
     );
     assert(
-      fs2026({ 'brief-editor': EDITOR_FIRED }).every(f => f.task !== 'brief-light') &&
-        fs2026({}).length === 0,
+      fs2026({ 'brief-editor': EDITOR_FIRED }).every(
+        f => f.task !== 'brief-light'
+      ) && fs2026({}).length === 0,
       '[fired] SILENT on genuinely not-yet-due slots with no lastRunAt in cycle (brief-light at 19:31), and SILENT with no scheduler evidence at all — this leg is EVIDENCE-DRIVEN, never inferred'
     );
     assert(
@@ -1697,7 +1935,10 @@ function selftest(): number {
       '[fired] a lastRunAt from ANOTHER cycle does not fire — the window is this board\'s own pipeline day, not "any time in the archive"'
     );
     assert(
-      fs2026({ 'brief-editor': EDITOR_FIRED }, etWallClock('2026-08-25', 19, 25)).length === 0,
+      fs2026(
+        { 'brief-editor': EDITOR_FIRED },
+        etWallClock('2026-08-25', 19, 25)
+      ).length === 0,
       `[fired] SILENT at T+5, inside the ${FIRED_GRACE_MIN}-min canary grace — the grace is real, so a slot that is merely STARTING is not a finding`
     );
     assert(
@@ -1711,11 +1952,18 @@ function selftest(): number {
     // Marker is on brief-editor only. Detector covers every rostered slot. Pin is the editor
     // outage: FIRE 08-21 through 08-26, SILENT 08-19. Critic-invoked canary on 08-23 is not STEP 0.
     const editorEmpty = (d: string) =>
-      rollCall({ docRoot: root, date: d }).emptyBody.some(e => e.task === 'brief-editor');
+      rollCall({ docRoot: root, date: d }).emptyBody.some(
+        e => e.task === 'brief-editor'
+      );
     assert(
-      ['2026-08-21', '2026-08-22', '2026-08-23', '2026-08-24', '2026-08-25', '2026-08-26'].every(
-        editorEmpty
-      ),
+      [
+        '2026-08-21',
+        '2026-08-22',
+        '2026-08-23',
+        '2026-08-24',
+        '2026-08-25',
+        '2026-08-26',
+      ].every(editorEmpty),
       `[empty-body] FIRE on brief-editor 08-21 through 08-26 (got silent: ${['2026-08-21', '2026-08-22', '2026-08-23', '2026-08-24', '2026-08-25', '2026-08-26'].filter(d => !editorEmpty(d)).join(', ') || 'none'})`
     );
     assert(
@@ -1728,16 +1976,32 @@ function selftest(): number {
         !bodiesMatchNormalized('pointer text', 'pointer text changed'),
       '[empty-body] trailing whitespace is stripped before a live-vs-snapshot diff — the scheduler drops the trailing newline'
     );
-    const editorSkill = path.join(root, 'system', 'task-bodies', 'brief-editor', 'SKILL.md');
+    const editorSkill = path.join(
+      root,
+      'system',
+      'task-bodies',
+      'brief-editor',
+      'SKILL.md'
+    );
     assert(
       fs.existsSync(editorSkill) &&
-        fs.readFileSync(editorSkill, 'utf8').includes('BODY_VERSION=brief-editor@2026-08-26b'),
+        fs
+          .readFileSync(editorSkill, 'utf8')
+          .includes('BODY_VERSION=brief-editor@2026-08-26b'),
       '[empty-body] executed brief-editor body carries BODY_VERSION=brief-editor@2026-08-26b (echoed on the STEP-0 canary)'
     );
-    const editorSnap = path.join(root, 'system', 'task-bodies-snapshot', 'brief-editor', 'SKILL.md');
+    const editorSnap = path.join(
+      root,
+      'system',
+      'task-bodies-snapshot',
+      'brief-editor',
+      'SKILL.md'
+    );
     assert(
       !fs.existsSync(editorSnap) ||
-        !fs.readFileSync(editorSnap, 'utf8').includes('BODY_VERSION=brief-editor@2026-08-26b'),
+        !fs
+          .readFileSync(editorSnap, 'utf8')
+          .includes('BODY_VERSION=brief-editor@2026-08-26b'),
       '[empty-body] the snapshot is the POINTER, not the 26 KB target — BODY_VERSION must not live there'
     );
     // 🔴 THE OTHER DIRECTION OF THE CORPUS FREEZE, AND THE ONLY REASON THE FREEZE IS SAFE
@@ -1757,8 +2021,16 @@ function selftest(): number {
     // The PROPERTY the assertion is about is kept and proved on a fixture nobody else can edit:
     // strip a slot from the board AND from both siblings, and the detector must still name it.
     {
-      const { fixtureRoot, removed } = blindnessFixture(root, '2026-08-22', 'intel-sweep-5');
-      const gone = rollCall({ docRoot: root, boardRoot: fixtureRoot, date: '2026-08-22' });
+      const { fixtureRoot, removed } = blindnessFixture(
+        root,
+        '2026-08-22',
+        'intel-sweep-5'
+      );
+      const gone = rollCall({
+        docRoot: root,
+        boardRoot: fixtureRoot,
+        date: '2026-08-22',
+      });
       assert(
         removed >= 2 &&
           gone.exempt === false &&
@@ -1767,10 +2039,19 @@ function selftest(): number {
       );
       // …AND THE OTHER DIRECTION, which is the whole of IMP-218: put the lines back on the SIBLING
       // board only — where the real intel-sweep-5 actually writes them — and the alarm must stop.
-      const { fixtureRoot: sibOnly } = blindnessFixture(root, '2026-08-22', 'intel-sweep-5', {
-        keepOnSiblings: true,
+      const { fixtureRoot: sibOnly } = blindnessFixture(
+        root,
+        '2026-08-22',
+        'intel-sweep-5',
+        {
+          keepOnSiblings: true,
+        }
+      );
+      const rescued = rollCall({
+        docRoot: root,
+        boardRoot: sibOnly,
+        date: '2026-08-22',
       });
-      const rescued = rollCall({ docRoot: root, boardRoot: sibOnly, date: '2026-08-22' });
       assert(
         !rescued.absent.some(a => a.task === 'intel-sweep-5') &&
           rescued.crossBoard.has('intel-sweep-5'),
@@ -1778,11 +2059,20 @@ function selftest(): number {
       );
       // The rescue is a WINDOW judgement, not a filename shrug: the same line dated 48h earlier is
       // outside board 08-22's cycle and must NOT buy attendance.
-      const { fixtureRoot: stale } = blindnessFixture(root, '2026-08-22', 'intel-sweep-5', {
-        keepOnSiblings: true,
-        shiftHours: -240, // 10 days: far enough that NO sibling line lands back inside the window
+      const { fixtureRoot: stale } = blindnessFixture(
+        root,
+        '2026-08-22',
+        'intel-sweep-5',
+        {
+          keepOnSiblings: true,
+          shiftHours: -240, // 10 days: far enough that NO sibling line lands back inside the window
+        }
+      );
+      const notRescued = rollCall({
+        docRoot: root,
+        boardRoot: stale,
+        date: '2026-08-22',
       });
-      const notRescued = rollCall({ docRoot: root, boardRoot: stale, date: '2026-08-22' });
       assert(
         notRescued.absent.some(a => a.task === 'intel-sweep-5'),
         `[no-storm] …and the rescue is a WINDOW judgement — the same sibling lines dated ten days earlier are OUTSIDE this board's cycle and do NOT excuse the slot (got: ${notRescued.absent.map(a => a.task).join(', ') || 'NOTHING — the window check is decorative'})`
@@ -1829,7 +2119,9 @@ function selftest(): number {
     // narrow rule has not silently re-broadened back to condemning the 61 narration lines.
     const covLines = coverageLines(root);
     const PINNED = ['2026-06-22', '2026-06-24', '2026-08-21'];
-    const stillPinned = PINNED.filter(d => covLines.some(c => c.date === d && c.task === 'brief-editor'));
+    const stillPinned = PINNED.filter(d =>
+      covLines.some(c => c.date === d && c.task === 'brief-editor')
+    );
     assert(
       bl.token >= 50 &&
         stillPinned.length === PINNED.length &&
@@ -1856,13 +2148,19 @@ function selftest(): number {
     // and the line reverts to what the broad rule would have made of it.
     assert(
       RETRACTION_LINE.length > 200 &&
-        selfHealedTask(RETRACTION_LINE.replace(/CANARY[- ]?RETRACTION/i, 'SELF-HEAL')) === 'brief-critic',
+        selfHealedTask(
+          RETRACTION_LINE.replace(/CANARY[- ]?RETRACTION/i, 'SELF-HEAL')
+        ) === 'brief-critic',
       '[selfheal] …and that silence is a JUDGEMENT, not a skip — the SAME real bytes with the retraction token swapped for a self-heal token DO read as coverage for brief-critic, which is exactly what the broad rule was banking'
     );
     // A retracted canary cannot launder an absent slot into an attended one.
     {
       const { fixtureRoot } = retractionFixture(root);
-      const withRetraction = rollCall({ docRoot: root, boardRoot: fixtureRoot, date: '2026-08-23' });
+      const withRetraction = rollCall({
+        docRoot: root,
+        boardRoot: fixtureRoot,
+        date: '2026-08-23',
+      });
       assert(
         withRetraction.absent.some(a => a.task === 'brief-editor'),
         `[selfheal] …and a RETRACTED canary does not buy attendance — brief-editor is still named absent on a board whose only brief-editor canary was retracted (got: ${withRetraction.absent.map(a => a.task).join(', ') || 'NOTHING — the retraction laundered an absent slot'})`
@@ -1876,10 +2174,13 @@ function selftest(): number {
     const missed: string[] = [];
     {
       const dir = DB(root);
-      for (const f of fs.readdirSync(dir).filter(x => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(x))) {
+      for (const f of fs
+        .readdirSync(dir)
+        .filter(x => /^\d{4}-\d{2}-\d{2}-pipeline-status\.md$/.test(x))) {
         const bpath = path.join(dir, f);
         const a = boardAttendance(bpath);
-        for (const t of absenceTestimony(bpath).keys()) if (a.attended.has(t)) missed.push(`${f.slice(0, 10)}:${t}`);
+        for (const t of absenceTestimony(bpath).keys())
+          if (a.attended.has(t)) missed.push(`${f.slice(0, 10)}:${t}`);
       }
     }
     assert(
@@ -1904,7 +2205,10 @@ function selftest(): number {
       `[testimony] and it accuses exactly one slot that night, not the night (${[...t21.keys()].join(', ') || 'none'})`
     );
     // The contradiction guard, on the two real boards where testimony is WRONG.
-    for (const [d, accused] of [['2026-08-13', 'brief-morning'], ['2026-08-17', 'brief-quality-gate']] as const) {
+    for (const [d, accused] of [
+      ['2026-08-13', 'brief-morning'],
+      ['2026-08-17', 'brief-quality-gate'],
+    ] as const) {
       const bpp = boardPath(root, d);
       if (!fs.existsSync(bpp)) continue;
       assert(
@@ -1913,8 +2217,11 @@ function selftest(): number {
       );
     }
     assert(
-      rollCall({ docRoot: root, date: '2026-08-21', now: etWallClock('2026-08-20', 23, 59) })
-        .absent.every(a => a.evidence && a.evidence.length > 20),
+      rollCall({
+        docRoot: root,
+        date: '2026-08-21',
+        now: etWallClock('2026-08-20', 23, 59),
+      }).absent.every(a => a.evidence && a.evidence.length > 20),
       '[testimony] every absentee carries the BOARD’S OWN WORDS as evidence, not our paraphrase'
     );
   }
@@ -1934,9 +2241,12 @@ function selftest(): number {
 
   // ── 6d. THE BRACKETED DIALECT ────────────────────────────────────────────────────────────────
   assert(
-    boardLineTask('[2026-06-23T23:58:04Z] | brief-editor | v2.md | SUCCESS | 2 validator runs') ===
-      'brief-editor' &&
-      lineTask('[2026-06-23T23:58:04Z] | brief-editor | v2.md | SUCCESS | 2 validator runs') === null,
+    boardLineTask(
+      '[2026-06-23T23:58:04Z] | brief-editor | v2.md | SUCCESS | 2 validator runs'
+    ) === 'brief-editor' &&
+      lineTask(
+        '[2026-06-23T23:58:04Z] | brief-editor | v2.md | SUCCESS | 2 validator runs'
+      ) === null,
     '[dialects] the [bracketed] timestamp form is READ here though editor-handoff-gate’s lineTask drops it — 12 such lines on the real boards, 8 of them brief-editor; an unparsed line would read as an absent slot'
   );
 
@@ -1945,20 +2255,28 @@ function selftest(): number {
   {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'slot-alarm-'));
     fs.mkdirSync(path.join(tmp, 'daily-briefs'), { recursive: true });
-    const rcA = rollCall({ docRoot: root, date: '2026-08-21', now: etWallClock('2026-08-20', 23, 59) });
+    const rcA = rollCall({
+      docRoot: root,
+      date: '2026-08-21',
+      now: etWallClock('2026-08-20', 23, 59),
+    });
     const w1 = writeAlert(tmp, '2026-08-21', rcA);
     assert(
-      w1.wrote.length === 1 && w1.wrote[0] === 'brief-editor' && fs.existsSync(w1.path),
+      w1.wrote.length === 1 &&
+        w1.wrote[0] === 'brief-editor' &&
+        fs.existsSync(w1.path),
       `[alarm] an absent slot WRITES A DURABLE ALERT FILE, not just a console line — ${path.basename(w1.path)} (${w1.wrote.join(', ')})`
     );
     const body = fs.readFileSync(w1.path, 'utf8');
     assert(
-      body.includes('🔴 PIPELINE ALARM — brief-editor missing/failed for 2026-08-21') &&
-        body.includes('cosmictrex11@gmail.com'),
+      body.includes(
+        '🔴 PIPELINE ALARM — brief-editor missing/failed for 2026-08-21'
+      ) && body.includes('cosmictrex11@gmail.com'),
       '[alarm] and it carries the EXACT subject and recipient the Controller mandates (L203), so the email is transcribed, never composed from memory'
     );
     assert(
-      body.includes('SELF-HEAL') && body.includes('editor-handoff-gate --can-self-heal'),
+      body.includes('SELF-HEAL') &&
+        body.includes('editor-handoff-gate --can-self-heal'),
       '[alarm] with the board’s own evidence and the named recovery step — an alert that does not say what to do is a second thing to triage'
     );
     const w2 = writeAlert(tmp, '2026-08-21', rcA);
@@ -1969,10 +2287,16 @@ function selftest(): number {
     // THE N/A STATE (standing rule: no metric ships without its N/A-state selftest).
     const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), 'slot-alarm-na-'));
     fs.mkdirSync(path.join(tmp2, 'daily-briefs'), { recursive: true });
-    const rcOK = rollCall({ docRoot: root, date: '2026-08-20', now: etWallClock('2026-08-19', 23, 59) });
+    const rcOK = rollCall({
+      docRoot: root,
+      date: '2026-08-20',
+      now: etWallClock('2026-08-19', 23, 59),
+    });
     const w3 = writeAlert(tmp2, '2026-08-20', rcOK);
     assert(
-      rcOK.absent.length === 0 && w3.wrote.length === 0 && !fs.existsSync(w3.path),
+      rcOK.absent.length === 0 &&
+        w3.wrote.length === 0 &&
+        !fs.existsSync(w3.path),
       '[alarm] N/A STATE: a full-attendance night creates NO alert file at all — an empty alarm file would read as an alarm that fired and found nothing, which is not the same thing as no alarm'
     );
     const rcEx = rollCall({ docRoot: root, date: '2026-05-17' });
@@ -1984,17 +2308,37 @@ function selftest(): number {
 
   // ── 6f. THE WIDENED ROSTER + DERIVED WINDOWS ─────────────────────────────────────────────────
   {
-    const names2 = new Set(rollCall({ docRoot: root, date: '2026-08-21', windows: WIN }).rostered.map(r => r.task));
+    const names2 = new Set(
+      rollCall({
+        docRoot: root,
+        date: '2026-08-21',
+        windows: WIN,
+      }).rostered.map(r => r.task)
+    );
     assert(
-      ['brief-editor', 'brief-morning', 'intel-sweep-1', 'intel-sweep-6', 'daily-improvement', 'pipeline-health-check', 'system-update'].every(t => names2.has(t)),
+      [
+        'brief-editor',
+        'brief-morning',
+        'intel-sweep-1',
+        'intel-sweep-6',
+        'daily-improvement',
+        'pipeline-health-check',
+        'system-update',
+      ].every(t => names2.has(t)),
       `[roster] WIDENED to all scheduled slots, morning and evening — ${names2.size} rostered (was 10, evening-only)`
     );
     assert(
-      ['verify-brief-publish', 'daily-portfolio-monitor'].every(t => names2.has(t)),
+      ['verify-brief-publish', 'daily-portfolio-monitor'].every(t =>
+        names2.has(t)
+      ),
       '[roster] including slots that canary every day and appear in NO sequence table — the roster is derived from the archive, not transcribed from a document'
     );
     // The three stale table hours. Derived beats documented, and the gap is the receipt.
-    for (const [t, docMin, expect] of [['pipeline-health-check', 11 * 60 + 6, 240], ['daily-improvement', 10 * 60 + 3, 180], ['system-update', 9 * 60 + 36, 150]] as const) {
+    for (const [t, docMin, expect] of [
+      ['pipeline-health-check', 11 * 60 + 6, 240],
+      ['daily-improvement', 10 * 60 + 3, 180],
+      ['system-update', 9 * 60 + 36, 150],
+    ] as const) {
       const w = WIN.get(t)!;
       const absMin = (PIPELINE_DAY_START_MIN + w.canaryP95) % 1440;
       assert(
@@ -2003,7 +2347,11 @@ function selftest(): number {
       );
     }
     assert(
-      rollCall({ docRoot: root, date: '2026-08-21', windows: WIN }).windowless.includes('selection-judge'),
+      rollCall({
+        docRoot: root,
+        date: '2026-08-21',
+        windows: WIN,
+      }).windowless.includes('selection-judge'),
       '[roster] N/A STATE: a slot with too few canaries to derive a window is NAMED windowless, never given a default — selection-judge is n=6 and bimodal (07:36 vs 21:12, 818-min spread), a p95 there describes neither mode'
     );
     assert(
@@ -2014,7 +2362,12 @@ function selftest(): number {
 
   // ── 6g. UNTERMINATED — the second rostered state ─────────────────────────────────────────────
   {
-    const rcU = rollCall({ docRoot: root, date: '2026-08-21', now: etWallClock('2026-08-21', 13, 0), windows: WIN });
+    const rcU = rollCall({
+      docRoot: root,
+      date: '2026-08-21',
+      now: etWallClock('2026-08-21', 13, 0),
+      windows: WIN,
+    });
     const u = new Set(rcU.unterminated.map(x => x.task));
     assert(
       u.has('pipeline-health-check') && u.has('daily-improvement'),
@@ -2028,13 +2381,16 @@ function selftest(): number {
     for (const t of ['pipeline-health-check', 'daily-improvement']) {
       const w = WIN.get(t)!;
       assert(
-        w.reliability === 'RELIABLE' && w.refClosed / w.refTotal >= 0.9 && w.recentClosed / w.recentTotal <= 0.2,
+        w.reliability === 'RELIABLE' &&
+          w.refClosed / w.refTotal >= 0.9 &&
+          w.recentClosed / w.recentTotal <= 0.2,
         `[unterminated] ${t} is classified from the REFERENCE period (${w.refClosed}/${w.refTotal}) not the contaminated whole (recent ${w.recentClosed}/${w.recentTotal}) — a base rate spanning the outage would rate this task "intermittent" and say nothing`
       );
     }
     // A task whose own norm is silence must not be accused nightly.
     assert(
-      !u.has('intel-sweep-4') && WIN.get('intel-sweep-4')!.reliability === 'INTERMITTENT',
+      !u.has('intel-sweep-4') &&
+        WIN.get('intel-sweep-4')!.reliability === 'INTERMITTENT',
       '[unterminated] a slot whose REFERENCE record is already patchy (intel-sweep-4, 9/13) is NOT warned nightly — the check reports departures from a task’s own norm, not the norm itself'
     );
     assert(
@@ -2046,7 +2402,8 @@ function selftest(): number {
       '[unterminated] every finding carries the reference record inline, so a reader can tell news from norm without leaving the line'
     );
     assert(
-      rollCall({ docRoot: root, date: '2026-05-17', windows: WIN }).unterminated.length === 0,
+      rollCall({ docRoot: root, date: '2026-05-17', windows: WIN }).unterminated
+        .length === 0,
       '[unterminated] EXEMPT dates never report it — the rule binds forward, exactly as the ABSENT leg does'
     );
     // Warn-level only: the alarm path belongs to ABSENT.
@@ -2079,21 +2436,37 @@ function selftest(): number {
       `[R6] the roster's daily-improvement entry is EITHER owner-observed/measured, OR contested-and-therefore-daily — a cadence claim may only silence an alarm on evidence, never on assertion (got source=${diEntry.source} cadence=${diEntry.cadence})`
     );
     assert(
-      !!diEntry.falsifier && /\d{4}-\d{2}-\d{2}/.test(String(diEntry.falsifier)),
+      !!diEntry.falsifier &&
+        /\d{4}-\d{2}-\d{2}/.test(String(diEntry.falsifier)),
       '[R6] and whatever it says, it carries a DATED falsifier — resolution narrows the window, it never removes the check'
     );
     // The mechanism itself is still proven, on a fixture that cannot drift with the roster.
     const FX = {
-      wk: { cadence: 'weekly' as const, dow: 6, source: 'measured', falsifier: 'x' },
+      wk: {
+        cadence: 'weekly' as const,
+        dow: 6,
+        source: 'measured',
+        falsifier: 'x',
+      },
       dy: { cadence: 'daily' as const, source: 'measured', falsifier: 'x' },
-      _default: { cadence: 'daily' as const, source: 'measured', falsifier: 'x' },
+      _default: {
+        cadence: 'daily' as const,
+        source: 'measured',
+        falsifier: 'x',
+      },
     };
     assert(
-      !isDue('wk', '2026-08-27', FX) && isDue('wk', '2026-08-29', FX) && isDue('dy', '2026-08-27', FX),
+      !isDue('wk', '2026-08-27', FX) &&
+        isDue('wk', '2026-08-29', FX) &&
+        isDue('dy', '2026-08-27', FX),
       '[W3] the cadence mechanism holds on a fixture — weekly quiet midweek, due Saturday, daily due always'
     );
     assert(
-      rollCall({ docRoot: root, date: '2026-08-27', windows: WIN }).emptyBody.some(e => e.task === 'daily-portfolio-monitor'),
+      rollCall({
+        docRoot: root,
+        date: '2026-08-27',
+        windows: WIN,
+      }).emptyBody.some(e => e.task === 'daily-portfolio-monitor'),
       '[W3] and an unrelated DAILY component with no canary is still reported on the same board'
     );
   }
@@ -2102,18 +2475,24 @@ function selftest(): number {
   //      present task as absent. (Not currently load-bearing for attendance, which is set
   //      membership, but --now/deadline arithmetic and any future ordering leg depend on it.)
   assert(
-    parseTs('2026-08-20T23:40:32Z')!.toISOString() === '2026-08-20T23:40:32.000Z' &&
-      parseTs('2026-08-20T17:28:16-04:00')!.toISOString() === '2026-08-20T21:28:16.000Z' &&
-      parseTs('2026-08-20T17:47:37-0400')!.toISOString() === '2026-08-20T21:47:37.000Z',
+    parseTs('2026-08-20T23:40:32Z')!.toISOString() ===
+      '2026-08-20T23:40:32.000Z' &&
+      parseTs('2026-08-20T17:28:16-04:00')!.toISOString() ===
+        '2026-08-20T21:28:16.000Z' &&
+      parseTs('2026-08-20T17:47:37-0400')!.toISOString() ===
+        '2026-08-20T21:47:37.000Z',
     '[dialects] all three real board timestamp forms parse to the same instant: Z, -04:00, -0400'
   );
   assert(
-    lineTask('2026-08-20T23:47:57Z | brief-critic | x.md | SUCCESS | the brief-editor slot NEVER FIRED') ===
-      'brief-critic',
+    lineTask(
+      '2026-08-20T23:47:57Z | brief-critic | x.md | SUCCESS | the brief-editor slot NEVER FIRED'
+    ) === 'brief-critic',
     '[dialects] a brief-critic line that NARRATES brief-editor is owned by brief-critic (IMP-184: the task is field 2, never a substring)'
   );
 
-  console.log(`\n${fails === 0 ? '✅' : '❌'} pipeline-slot-attendance --selftest: ${total - fails}/${total} assertions passed.`);
+  console.log(
+    `\n${fails === 0 ? '✅' : '❌'} pipeline-slot-attendance --selftest: ${total - fails}/${total} assertions passed.`
+  );
   return fails === 0 ? 0 : 1;
 }
 
@@ -2137,7 +2516,9 @@ function main(): void {
   if (nowIdx >= 0) {
     const v = argv[nowIdx + 1];
     if (!v) {
-      console.error('--now requires a value (HH:MM in ET, or a full ISO timestamp)');
+      console.error(
+        '--now requires a value (HH:MM in ET, or a full ISO timestamp)'
+      );
       process.exit(2);
     }
     const hm = v.match(/^(\d{1,2}):(\d{2})$/);
@@ -2148,7 +2529,9 @@ function main(): void {
     } else {
       const p = parseTs(v);
       if (!p) {
-        console.error(`--now: could not parse "${v}" (want HH:MM in ET, or a full ISO timestamp)`);
+        console.error(
+          `--now: could not parse "${v}" (want HH:MM in ET, or a full ISO timestamp)`
+        );
         process.exit(2);
       }
       now = p;
@@ -2164,19 +2547,29 @@ function main(): void {
     const spec = argv[i + 1];
     const eq = spec ? spec.indexOf('=') : -1;
     if (!spec || eq <= 0) {
-      console.error('--scheduler-lastrun requires <task>=<ISO timestamp> (repeatable)');
+      console.error(
+        '--scheduler-lastrun requires <task>=<ISO timestamp> (repeatable)'
+      );
       process.exit(2);
     }
     const ts = parseTs(spec.slice(eq + 1));
     if (!ts) {
-      console.error(`--scheduler-lastrun: could not parse "${spec.slice(eq + 1)}" as a timestamp`);
+      console.error(
+        `--scheduler-lastrun: could not parse "${spec.slice(eq + 1)}" as a timestamp`
+      );
       process.exit(2);
     }
     schedulerLastRun.set(spec.slice(0, eq), ts);
   }
 
   const cwdRoot = process.cwd();
-  const rc = rollCall({ docRoot: cwdRoot, date, now, replay: nowIdx >= 0, schedulerLastRun });
+  const rc = rollCall({
+    docRoot: cwdRoot,
+    date,
+    now,
+    replay: nowIdx >= 0,
+    schedulerLastRun,
+  });
 
   if (argv.includes('--json')) {
     console.log(
@@ -2212,7 +2605,9 @@ function main(): void {
     process.exit(rc.firedAndSilent.length || rc.emptyBody.length ? 1 : 0);
   }
 
-  console.log(`pipeline-slot-attendance ${date} (evening of ${rc.eveningDate}, now ${fmtET(rc.now)})`);
+  console.log(
+    `pipeline-slot-attendance ${date} (evening of ${rc.eveningDate}, now ${fmtET(rc.now)})`
+  );
   console.log(
     `   roster ${rc.rostered.length} slot(s), morning + evening, DERIVED from the archive (windows p95, n>=${MIN_N})` +
       (rc.dropped.length
@@ -2221,13 +2616,17 @@ function main(): void {
   );
   console.log(
     `   attended ${rc.attended.length} · not-yet-due ${rc.notYetDue.length} · MISSING ${rc.absent.length} · EMPTY-BODY ${rc.emptyBody.length} · UNTERMINATED ${rc.unterminated.length}` +
-      (rc.windowless.length ? ` · ${rc.windowless.length} slot(s) NOT ROSTERED, window not computable: ${rc.windowless.join(', ')}` : '')
+      (rc.windowless.length
+        ? ` · ${rc.windowless.length} slot(s) NOT ROSTERED, window not computable: ${rc.windowless.join(', ')}`
+        : '')
   );
   // IMP-221. Printed BEFORE the attendance verdict, and it overrides it: on 2026-08-26 the verdict
   // line said FULL ATTENDANCE eleven minutes into a brief-editor that never wrote anything.
   const printFiredSilent = () => {
     if (!rc.firedAndSilent.length) return;
-    console.log(`\n🔴 FIRED-AND-SILENT — the scheduler started these slots this cycle and they wrote no STEP-0 CANARY:`);
+    console.log(
+      `\n🔴 FIRED-AND-SILENT — the scheduler started these slots this cycle and they wrote no STEP-0 CANARY:`
+    );
     for (const f of rc.firedAndSilent) console.log('   ' + f.line);
     console.log(
       `   This OUTRANKS the attendance verdict below: a derived p95 window answers "when does this slot\n` +
@@ -2274,7 +2673,9 @@ function main(): void {
     );
     printUnterminated();
     if (rc.firedAndSilent.length || rc.emptyBody.length) process.exit(1);
-    process.exit(process.argv.includes('--red') && rc.unterminated.length ? 1 : 0);
+    process.exit(
+      process.argv.includes('--red') && rc.unterminated.length ? 1 : 0
+    );
   }
   printFiredSilent();
   printEmptyBody();
@@ -2288,12 +2689,21 @@ function main(): void {
   // THE ALARM — on the state, not on a flag. See "the alarm path" above.
   const al = writeAlert(cwdRoot, date, rc);
   console.log(`\n🔴 ALARM WRITTEN — ${al.path}`);
-  if (al.wrote.length) console.log(`   new alert block(s): ${al.wrote.join(', ')}`);
-  if (al.skipped.length) console.log(`   already alarmed for this date, not duplicated: ${al.skipped.join(', ')}`);
+  if (al.wrote.length)
+    console.log(`   new alert block(s): ${al.wrote.join(', ')}`);
+  if (al.skipped.length)
+    console.log(
+      `   already alarmed for this date, not duplicated: ${al.skipped.join(', ')}`
+    );
   console.log(
     `\n📧 ALARM EMAIL REQUIRED — this script cannot send mail; the transport is deliberately independent\n` +
       `   of the workspace mount (Pipeline_Controller, ENVIRONMENT CANARY & ZERO-WRITE ALARM). Send now:\n` +
-      rc.absent.map(a => `     To: cosmictrex11@gmail.com\n     Subject: ${ALARM_SUBJECT(a.task, date)}\n     Body:    ${a.line} · ${a.evidence}`).join('\n')
+      rc.absent
+        .map(
+          a =>
+            `     To: cosmictrex11@gmail.com\n     Subject: ${ALARM_SUBJECT(a.task, date)}\n     Body:    ${a.line} · ${a.evidence}`
+        )
+        .join('\n')
   );
   console.log(
     `\n⚠️  ${rc.absent.length} slot(s) NOT OBSERVED TO HAVE RUN (advisory — this check never blocks the brief).\n` +
@@ -2315,7 +2725,14 @@ function main(): void {
   // Exit code: 0 by default, because Pipeline_Controller L591 and Brief_Critic leg (iv) both ship
   // this check as warn-level and must never block a brief. `--red` is for a caller that wants the
   // non-zero exit. The DETECTION above does not depend on either — it already happened.
-  process.exit(process.argv.includes('--red') || rc.firedAndSilent.length || rc.emptyBody.length ? 1 : 0);
+  process.exit(
+    process.argv.includes('--red') ||
+      rc.firedAndSilent.length ||
+      rc.emptyBody.length
+      ? 1
+      : 0
+  );
 }
 
-if (process.argv[1] && process.argv[1].includes('pipeline-slot-attendance')) main();
+if (process.argv[1] && process.argv[1].includes('pipeline-slot-attendance'))
+  main();

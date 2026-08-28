@@ -6,7 +6,10 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseDailyBrief, isDisplayDateLine } from '../lib/daily-update-parser.ts';
+import {
+  parseDailyBrief,
+  isDisplayDateLine,
+} from '../lib/daily-update-parser.ts';
 import { validateDisplayDateMatchesSlug } from '../lib/brief-date.ts';
 
 let failures = 0;
