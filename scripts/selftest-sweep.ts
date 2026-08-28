@@ -35,7 +35,10 @@ export function rosteredSelftests(root: string): string[] {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
-    .filter(f => f.endsWith('.ts') && !/\.bak|scratch/.test(f))
+    // Dotfiles are scratch, not instruments — the first live run rostered a leftover
+    // `.vi_head_test` and reported it as a failing pipeline selftest. A roster that picks up
+    // debris reports debris.
+    .filter(f => f.endsWith('.ts') && !f.startsWith('.') && !/\.bak|scratch|_probe|_crdbg|_loctest|_sbchk/.test(f))
     .filter(f => fs.readFileSync(path.join(dir, f), 'utf-8').includes('--selftest'))
     .sort();
 }
