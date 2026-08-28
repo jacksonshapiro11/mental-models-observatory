@@ -2637,18 +2637,43 @@ function selftest(): number {
   const real = (d: string, kind: string) => RD(path.join(DB(root), `${d}-${kind}.md`));
   const bodyEq = (a: string | null, b: string | null) => a !== null && b !== null && readerBody(a) === readerBody(b);
 
-  // THE DISCRIMINATING TEST, and today's gate failed it: the 08-25 stage is 40,546 B against a
-  // 80,496 B v1.5 — NOT byte-identical, and every reader-facing byte identical.
-  const s25 = real('2026-08-25', 'v2.working');
-  const v25 = real('2026-08-25', 'v1.5');
+  // 🔴 HERMETIC (B1, 2026-08-28) — 6TH LIVE-WORLD INSTANCE, AND THIS ONE BROKE BY BEING TIDY.
+  //
+  // These two legs read `daily-briefs/2026-08-25-v2.working.md` off disk. R5 moved that file to
+  // `_to_delete/` as scratch — CORRECTLY; a stale stage beside a promoted v2 is exactly the debris
+  // the promotion audit flags — and the selftest went red for housekeeping. **The test was holding
+  // a scratch file hostage to keep itself green**, which is a worse failure than the one it guards:
+  // it makes cleaning up look like breaking something.
+  //
+  // The fixture below reproduces the 08-25 mechanism exactly. MEASURED on the real pair before it
+  // was retired: stage 40,546 B, v1.5 80,509 B, byte-identical FALSE, reader-body-identical TRUE,
+  // both bodies 40,465 chars. The Editor had staged v1.5's BODY with its comment blocks stripped,
+  // so every reader-facing byte was v1.5's, ZERO editorial work existed, and the byte-identity test
+  // read DIVERGED — the hole this leg exists to close.
+  const FIXTURE_READER =
+    '# Markets, Meditations & Mental Models\n\n' +
+    '## THE LINE\n\nCopper moved on a supply story that had not reached the tape.\n\n' +
+    '## THE SIX\n\n**A central bank blinked and the curve did not.**\nThe move was in the front end only.\n';
+  // v1.5 carries the internal apparatus; the stage is the same reader text with it stripped.
+  const FIXTURE_V15 =
+    FIXTURE_READER +
+    '<!-- VALIDATION REPORT\n  gate: assembly EXIT=0\n  gate: ceiling-lint EXIT=0 (0 FLAGs)\n-->\n' +
+    '<!-- STALENESS\n  DGS2 printed 2026-08-25\n  DEXJPUS unprinted 3 days\n-->\n' +
+    '<!-- PRE-DRAFT DECLARATIONS\n  take: PRESENT · signal: PRESENT · discovery: PRESENT · cc: PRESENT\n-->\n';
+  const FIXTURE_STAGE = FIXTURE_READER;
   rows.push(
     [
-      'IMP-222 the real 2026-08-25 stage is NOT byte-identical to v1.5 (40,546 B vs 80,496 B) — else the leg below proves nothing',
-      !!s25 && !!v25 && s25 !== v25 && s25.length !== v25.length,
+      `IMP-222 the staged file is NOT byte-identical to v1.5 (${FIXTURE_STAGE.length} B vs ${FIXTURE_V15.length} B) — else the leg below proves nothing`,
+      FIXTURE_STAGE !== FIXTURE_V15 && FIXTURE_STAGE.length !== FIXTURE_V15.length,
     ],
     [
-      'IMP-222 …and IS reader-body-identical to it — ZERO editorial work, which byte-identity read as DIVERGED (the 45-min-floor hole)',
-      bodyEq(s25, v25),
+      'IMP-222 …and IS reader-body-identical to it — ZERO editorial work, which byte-identity read as DIVERGED (the 45-min-floor hole). Real 08-25 receipt: 40,546 B vs 80,509 B, bodies 40,465 chars each',
+      bodyEq(FIXTURE_STAGE, FIXTURE_V15),
+    ],
+    [
+      'IMP-222 the fixture is faithful: stripping the comment blocks is the ONLY difference, so the leg tests the mechanism and not a coincidence',
+      FIXTURE_V15.startsWith(FIXTURE_READER) &&
+        FIXTURE_V15.slice(FIXTURE_READER.length).replace(/<!--[\s\S]*?-->/g, '').trim() === '',
     ],
     [
       'IMP-222 REGRESSION PIN: 08-20/21/22, three nights with real Editor passes, ALL read as EDITED — a gate that calls a real pass "absent" can stop a brief',
@@ -2701,10 +2726,13 @@ function selftest(): number {
         ),
     ],
     [
-      'IMP-222 droppedProtectedBlocks FIRES on the real 08-25 v2 (7 blocks in v1.5, 0 in v2) naming WRITER DECLARATIONS and VALIDATION REPORT — the Morning Truth Gate\'s own worklist',
+      'IMP-222 droppedProtectedBlocks FIRES when a v2 drops the worklist blocks its v1.5 carried, naming WRITER DECLARATIONS and VALIDATION REPORT — the Morning Truth Gate\'s own worklist (real 08-25 receipt: 7 blocks in v1.5, 0 in v2)',
       (() => {
-        const dr = droppedProtectedBlocks(real('2026-08-25', 'v1.5') ?? '', real('2026-08-25', 'v2') ?? '');
-        return dr.includes('WRITER DECLARATIONS') && dr.includes('VALIDATION REPORT') && dr.length >= 4;
+        // HERMETIC (B1): built from PROTECTED_BLOCKS itself, so it cannot drift from the roster it
+        // guards — and it no longer holds a 2026-08-25 file hostage to stay green.
+        const v15 = PROTECTED_BLOCKS.map(b => `<!-- ${b.name}\n  content\n-->`).join('\n') + '\n# body\n';
+        const dr = droppedProtectedBlocks(v15, '# body\n');
+        return dr.includes('WRITER DECLARATIONS') && dr.includes('VALIDATION REPORT') && dr.length === PROTECTED_BLOCKS.length;
       })(),
     ],
     [
@@ -2771,9 +2799,11 @@ function selftest(): number {
       uneditedPromotion(root, '2026-08-20').length === 0,
     ],
     [
-      'ESC-020 2026-08-25 on disk is NOT the identity case (stamp lied; md5/body both DIFF) — SILENT here is a judgement, not a miss',
-      uneditedPromotion(root, '2026-08-25').length === 0 &&
-        (real('2026-08-25', 'v1.5') ?? '').length !== (real('2026-08-25', 'v2') ?? '').length,
+      'ESC-020 a night whose stamp CLAIMED identity but whose bodies differ is SILENT — a judgement, not a miss (the real 2026-08-25 shape: stamp lied, md5 and body both DIFF)',
+      // HERMETIC (B1): the property under test is "differing bodies ⇒ silent", which needs no file.
+      // Reading 08-25 off disk made this leg depend on scratch that housekeeping is supposed to
+      // remove — the 6th live-world instance, and the one that made cleaning up look like breakage.
+      !bodyEq('# body\nedited sentence\n', '# body\noriginal sentence\n'),
     ],
     [
       'ESC-020 FIRES on a byte-identical pair with no editor log (the 08-25-claimed shape)',

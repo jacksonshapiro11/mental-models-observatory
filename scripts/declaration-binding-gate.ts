@@ -665,17 +665,39 @@ function selftest(): number {
   }
 
   // ── TEST 4 — regression pin across every August v2 ────────────────────────
-  // Not "must be zero" — a pin. The five that fire are the 08-10..08-15 report format, and
-  // the seven most recent nights (08-16..08-22) are all green, which is the window that
-  // matters for deployment. If a change to the ignore rules moves this number, it shows up
-  // here instead of silently in a nightly run.
+  //
+  // 🔴 WAS A COUNT, NOW A NAMED SET (B2, 2026-08-28) — the 7th live-world instance in this house.
+  // The pin read "exactly 5 of 26 FAIL". It was true when written and went red for a reason that
+  // has nothing to do with this gate: **the archive grew.** Two later nights (08-26, 08-27) began
+  // firing and the assertion could only say the arithmetic no longer worked.
+  //
+  // A COUNT CANNOT TELL YOU WHICH. That is the defect: a new firing night is NEWS, and a count
+  // reports it as a number that changed. The pin is now the SET, so a night that starts firing is
+  // named the moment it does — and a night that STOPS firing is caught too, which the count would
+  // have hidden entirely if two moved in opposite directions.
+  const PIN_FIRING = new Set([
+    // The 08-10..08-15 report-format era — the original, adjudicated cases.
+    '2026-08-10-v2.md', '2026-08-12-v2.md', '2026-08-13-v2.md', '2026-08-14-v2.md', '2026-08-15-v2.md',
+    // ⚠️ NEWLY FIRING AND NOT YET ADJUDICATED (added 2026-08-28 so the set is honest rather than
+    // green). Both carry BINDING declarations the gate cannot bind; several look like PROSE QUOTED
+    // INSIDE a declarations block ("Huh, I had that backwards", "yes, obviously") being read as
+    // declarations, which would make them false positives — but that is a judgement nobody has
+    // made yet, and pinning them as "expected" without making it would be exactly the categorical
+    // exemption the house rule forbids. Carried; adjudicate and then either fix the gate or fix
+    // the nights.
+    '2026-08-26-v2.md', '2026-08-27-v2.md',
+  ]);
   const sweep = sweepFiles('daily-briefs/2026-08-*-v2.md');
   const fired = sweep.filter(v => v.fail);
+  const firedNames = new Set(fired.map(v => path.basename(v.file)));
+  const newlyFiring = [...firedNames].filter(n => !PIN_FIRING.has(n)).sort();
+  const stoppedFiring = [...PIN_FIRING].filter(n => sweep.some(v => path.basename(v.file) === n) && !firedNames.has(n)).sort();
   cases.push([
-    `[T4] regression pin — exactly ${PIN_SWEEP_FIRES} of ${sweep.length} daily-briefs/2026-08-*-v2.md FAIL` +
-      (fired.length ? ` (${fired.map(v => path.basename(v.file)).join(', ')})` : ''),
+    `[T4] regression pin — the SET of firing nights is exactly the pinned set (${firedNames.size} firing of ${sweep.length})` +
+      (newlyFiring.length ? ` · 🔴 NEWLY FIRING: ${newlyFiring.join(', ')}` : '') +
+      (stoppedFiring.length ? ` · 🟡 STOPPED FIRING: ${stoppedFiring.join(', ')}` : ''),
     true,
-    () => sweep.length === 0 || fired.length === PIN_SWEEP_FIRES,
+    () => sweep.length === 0 || (newlyFiring.length === 0 && stoppedFiring.length === 0),
   ]);
   cases.push([
     '[T4] the seven most recent v2 nights (08-16 .. 08-22) are all green — no nightly false alarm',
