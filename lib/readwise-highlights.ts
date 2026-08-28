@@ -38,14 +38,14 @@ export interface ModelHighlights {
 import {
   getModelHighlightsFromAllDomains,
   parseAllDomainFiles,
-} from './parse-all-domains';
+} from './parse-all-domains.ts';
 
 // Parse all domain files to extract highlights
 export function parseAllDomainsHighlights(): ModelHighlights[] {
   return parseAllDomainFiles();
 }
 
-import { getCachedHighlight } from './readwise-cache';
+import { getCachedHighlight } from './readwise-cache.ts';
 
 // Fetch actual highlight text from Readwise API (with caching)
 export async function fetchReadwiseHighlight(

@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { NextRequest } from 'next/server';
-import { getCronAuthPath, isCronAuthorized } from '../lib/cron-auth';
+import { getCronAuthPath, isCronAuthorized } from '../lib/cron-auth.ts';
 
 process.env.CRON_SECRET = 'test-cron-secret';
 process.env.SNAPSHOT_SECRET = 'test-snapshot-secret';

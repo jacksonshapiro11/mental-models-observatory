@@ -11,8 +11,8 @@ import {
   parseAllDomainFiles,
   getModelHighlightsFromAllDomains,
   getAllAvailableModelIds,
-} from '../lib/parse-all-domains';
-import { READWISE_MODELS } from '../lib/readwise-data';
+} from '../lib/parse-all-domains.ts';
+import { READWISE_MODELS } from '../lib/readwise-data.ts';
 
 interface AuditResult {
   totalModels: number;

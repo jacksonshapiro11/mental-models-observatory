@@ -19,7 +19,7 @@ import {
   detectScaleBreaks,
   seriesFromYahooChart,
   mergeLatestIntoSeries,
-} from '../lib/dashboard-math';
+} from '../lib/dashboard-math.ts';
 
 // Mirrors ASSETS in app/api/dashboard/snapshot/route.ts.
 // changeYahoo: continuous proxy for % changes only (NATGAS spot stays NG=F; horizons use UNG).

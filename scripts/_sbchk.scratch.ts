@@ -1,6 +1,6 @@
-import { getLatestBriefLight, getAllBriefLightDates } from '../lib/brief-light-parser';
-import { currentWeeklyLightSlug } from '../lib/weekly-window';
-import { todayET } from '../lib/publish-date';
+import { getLatestBriefLight, getAllBriefLightDates } from '../lib/brief-light-parser.ts';
+import { currentWeeklyLightSlug } from '../lib/weekly-window.ts';
+import { todayET } from '../lib/publish-date.ts';
 console.log('todayET =', todayET());
 console.log('weeklyLightSlug =', currentWeeklyLightSlug());
 console.log('latest light dates =', getAllBriefLightDates().slice(0,4));

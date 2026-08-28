@@ -4,9 +4,9 @@ import {
   extractDisplayDateFromLine,
   formatDisplayDateFromSlug,
   isDisplayDateLine,
-} from './brief-date';
+} from './brief-date.ts';
 
-export { isDisplayDateLine } from './brief-date';
+export { isDisplayDateLine } from './brief-date.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

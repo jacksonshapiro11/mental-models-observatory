@@ -20,10 +20,10 @@ import path from 'path';
 
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 dotenv.config();
-import { getBriefLightByDate } from '../lib/brief-light-parser';
-import { resolvePublishDate } from '../lib/publish-date';
-import { renderBriefEmail } from '../lib/email/render-brief';
-import { sendEmail, sendBatch } from '../lib/email/resend-client';
+import { getBriefLightByDate } from '../lib/brief-light-parser.ts';
+import { resolvePublishDate } from '../lib/publish-date.ts';
+import { renderBriefEmail } from '../lib/email/render-brief.ts';
+import { sendEmail, sendBatch } from '../lib/email/resend-client.ts';
 import { Redis } from '@upstash/redis';
 
 // ─── Args ──────────────────────────────────────────────────────────────────

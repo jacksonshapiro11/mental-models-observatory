@@ -6,7 +6,7 @@
  * landed evening; `latestDaily >= weeklySunday` kept /daily-update on the daily.
  */
 import assert from 'node:assert/strict';
-import { weeklyIsCurrent } from '../lib/weekly-window';
+import { weeklyIsCurrent } from '../lib/weekly-window.ts';
 
 function main() {
   const today = '2026-07-19';

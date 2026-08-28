@@ -54,7 +54,7 @@ export interface SearchResult {
 }
 
 // Import the parsed Readwise data
-import { READWISE_DOMAINS, READWISE_MODELS } from './readwise-data';
+import { READWISE_DOMAINS, READWISE_MODELS } from './readwise-data.ts';
 
 /**
  * Mental models data from Readwise framework

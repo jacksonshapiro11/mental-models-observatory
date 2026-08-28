@@ -9,13 +9,13 @@ import path from 'path';
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 dotenv.config();
 
-import { resolveXPostContent } from '../lib/social/x-post-content';
+import { resolveXPostContent } from '../lib/social/x-post-content.ts';
 import {
   createXPostingClient,
   hasXPostingCredentials,
   loadXOAuthTokens,
   readXTokensFromRedis,
-} from '../lib/social/x-oauth';
+} from '../lib/social/x-oauth.ts';
 
 function envStatus(name: string): string {
   return process.env[name] ? 'set' : 'MISSING';

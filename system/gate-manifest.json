@@ -248,6 +248,12 @@
       "home": "library — read by slot-attendance and verify-improvements",
       "cadence": "n/a",
       "invocation": "imported, not invoked"
+    },
+    "selftest-sweep": {
+      "home": "pipeline-health-check leg 22 (weekly, Saturdays)",
+      "cadence": "weekly",
+      "invocation": "node --experimental-strip-types scripts/selftest-sweep.ts --red",
+      "note": "Enforces the runner rule. DIVERGENT rows mean prior health reports were false."
     }
   }
 }

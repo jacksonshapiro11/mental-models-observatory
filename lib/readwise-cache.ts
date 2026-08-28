@@ -1,5 +1,5 @@
 // Performance optimization: Cache Readwise API responses
-import { ReadwiseHighlight } from './readwise-highlights';
+import { ReadwiseHighlight } from './readwise-highlights.ts';
 
 interface CachedHighlight {
   highlight: ReadwiseHighlight;

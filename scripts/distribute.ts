@@ -30,16 +30,16 @@ import path from 'path';
 // Load .env.local explicitly (dotenv/config only loads .env by default)
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 dotenv.config(); // fallback to .env
-import { getBriefLightByDate } from '../lib/brief-light-parser';
-import { resolvePublishDate, todayET } from '../lib/publish-date';
-import { renderBriefEmail } from '../lib/email/render-brief';
-import { sendEmail, sendBatch } from '../lib/email/resend-client';
-import { resolveXPostContent } from '../lib/social/x-post-content';
+import { getBriefLightByDate } from '../lib/brief-light-parser.ts';
+import { resolvePublishDate, todayET } from '../lib/publish-date.ts';
+import { renderBriefEmail } from '../lib/email/render-brief.ts';
+import { sendEmail, sendBatch } from '../lib/email/resend-client.ts';
+import { resolveXPostContent } from '../lib/social/x-post-content.ts';
 import {
   hasXPostingCredentials,
   loadXOAuthTokens,
   refreshAndPersistXTokens,
-} from '../lib/social/x-oauth';
+} from '../lib/social/x-oauth.ts';
 import { Redis } from '@upstash/redis';
 
 const TwitterClient = require('./platforms/twitter-client.js');

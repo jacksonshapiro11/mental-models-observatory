@@ -23,12 +23,12 @@ dotenv.config();
 import {
   generateThreadFromDate,
   generateThreadForLatest,
-} from '../lib/social/thread-generator';
+} from '../lib/social/thread-generator.ts';
 import {
   hasXPostingCredentials,
   loadXOAuthTokens,
   refreshAndPersistXTokens,
-} from '../lib/social/x-oauth';
+} from '../lib/social/x-oauth.ts';
 
 // Use require for the JS Twitter client
 const TwitterClient = require('../scripts/platforms/twitter-client.js');

@@ -14,11 +14,11 @@
  * empty").
  */
 
-import { getAllBriefDates, getAllWeeklySlugs } from './daily-update-parser';
-import { getLatestBriefLight } from './brief-light-parser';
-import { getAllWeeklyLightSlugs } from './weekly-light-parser';
-import { todayET } from './publish-date';
-import { isoWeekSunday } from './brief-date';
+import { getAllBriefDates, getAllWeeklySlugs } from './daily-update-parser.ts';
+import { getLatestBriefLight } from './brief-light-parser.ts';
+import { getAllWeeklyLightSlugs } from './weekly-light-parser.ts';
+import { todayET } from './publish-date.ts';
+import { isoWeekSunday } from './brief-date.ts';
 
 /** Re-export — calendar math lives in brief-date (audio intro + weekly window share it). */
 export { isoWeekSunday };

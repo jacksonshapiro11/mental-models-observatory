@@ -378,4 +378,7 @@ function main(): number {
   return 0;
 }
 
-if (require.main === module) process.exit(main());
+// C1 CLASS (2026-08-28): `require.main === module` is a CJS idiom. Under `npx tsx` it works; under
+// the production runner `node --experimental-strip-types` it throws before main() ever runs — so
+// this script has been exiting 1 on every nightly invocation while reading green in every check.
+if (process.argv[1] && process.argv[1].includes('whatchanged-freshness')) process.exit(main());

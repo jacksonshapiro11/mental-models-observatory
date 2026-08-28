@@ -11,7 +11,7 @@ import {
   restoreVerbatimQuote,
   canonicalSectionKey,
   _test,
-} from '../lib/audio/text-preprocessor';
+} from '../lib/audio/text-preprocessor.ts';
 
 const { regexNormalize, extractRawContent } = _test as any;
 const DIR = path.join(__dirname, '..', 'content', 'daily-updates');

@@ -36,9 +36,9 @@ import {
   DAILY_LIGHT_SIGN_OFF,
   WEEKLY_LIGHT_SIGN_OFF,
   formatLineSectionForSpeech,
-} from '../lib/audio/text-preprocessor';
-import { auditAudioOutro } from '../lib/audio/audio-intro-gate';
-import { assertPlausibleChunkAudio } from '../lib/audio/tts-client';
+} from '../lib/audio/text-preprocessor.ts';
+import { auditAudioOutro } from '../lib/audio/audio-intro-gate.ts';
+import { assertPlausibleChunkAudio } from '../lib/audio/tts-client.ts';
 import {
   buildDeterministicIntroPrefix,
   buildDeterministicLightIntroPrefix,
@@ -50,9 +50,9 @@ import {
   validateIntroDate,
   validateDisplayDateMatchesSlug,
   assertAudibleYearIntact,
-} from '../lib/brief-date';
-import { auditAudioIntro } from '../lib/audio/audio-intro-gate';
-import { _test as preprocessorTest } from '../lib/audio/text-preprocessor';
+} from '../lib/brief-date.ts';
+import { auditAudioIntro } from '../lib/audio/audio-intro-gate.ts';
+import { _test as preprocessorTest } from '../lib/audio/text-preprocessor.ts';
 
 const { regexNormalize } = preprocessorTest;
 

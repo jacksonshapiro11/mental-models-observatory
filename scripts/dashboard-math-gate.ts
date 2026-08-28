@@ -20,7 +20,7 @@ import {
   calculateMAs,
   recomputeChangesFromLive,
   type PriceSeries,
-} from '../lib/dashboard-math';
+} from '../lib/dashboard-math.ts';
 
 let failures = 0;
 function check(name: string, ok: boolean, detail = '') {

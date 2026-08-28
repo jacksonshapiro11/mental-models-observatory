@@ -14,8 +14,8 @@ import dotenv from 'dotenv';
 // Load env vars from .env.local
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 
-import { OpenAITTSClient, generateFullAudio } from '../lib/audio/tts-client';
-import { preprocessBriefForTTS } from '../lib/audio/text-preprocessor';
+import { OpenAITTSClient, generateFullAudio } from '../lib/audio/tts-client.ts';
+import { preprocessBriefForTTS } from '../lib/audio/text-preprocessor.ts';
 
 // The example brief from Editorial Bible v11 — saved as a raw markdown string
 const EXAMPLE_BRIEF_MD = fs.readFileSync(

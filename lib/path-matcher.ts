@@ -3,7 +3,7 @@
  */
 
 import { UserProfile } from '@/types/user';
-import { CURATED_PATHS, CuratedPath } from './curated-learning-paths';
+import { CURATED_PATHS, CuratedPath } from './curated-learning-paths.ts';
 
 export class PathMatcher {
   /**
