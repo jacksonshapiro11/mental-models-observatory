@@ -1273,9 +1273,35 @@ function selftest(): number {
     const DEFECT = /\b(BUG|DEFECT|BROKEN|REGRESSION|LEAKED|LEAKS|LEAK|NEVER FIRED|NOT DONE|NON-?PRODUCTION|MISFIRE|UNAUTHORI[SZ]ED|DID NOT RUN|FAILED TO)\b/;
     const RESOLVED = /\b(RESOLVED|CLOSED|FIXED|CORRECTED|CLEARED|PASSED|WIN)\b/;
     const found = detectDroppedReds(process.cwd(), 7, DEFECT, RESOLVED);
-    // THE NAMED CASE. 2026-08-27 declared "🔴 SEGMENTER BUG" and nothing carried it.
-    const seg = found.some(f => f.date === '2026-08-27' && /SEGMENTER BUG/.test(f.phrase));
-    t2(seg, '[ITEM8] the drop detector CATCHES the segmenter-bug case — 🔴 on the 08-27 board, no CARRY or ledger row');
+    // THE NAMED CASE, HERMETICALLY. The first version of this assertion read the LIVE tree and
+    // checked that 2026-08-27's "🔴 SEGMENTER BUG" was reported dropped. It passed — and then went
+    // red an hour later, because the session wrote the CARRY row and the detector correctly went
+    // quiet. That is the instrument working and the assertion being a CLOCK: exactly the defect
+    // carried the same day as L-0828-2, where [IMP-223] asserts "no Critical row is starved as of
+    // now" and has been failing ever since the world moved. **A selftest must assert the mechanism,
+    // not today's world.** The fixture is the 08-27 declaration verbatim, against an empty CARRY.
+    const tmpSeg = fs.mkdtempSync(path.join(os.tmpdir(), 'drop-seg-'));
+    fs.mkdirSync(path.join(tmpSeg, 'daily-briefs'), { recursive: true });
+    fs.mkdirSync(path.join(tmpSeg, 'system'), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpSeg, 'daily-briefs', '2026-08-27-pipeline-status.md'),
+      '2026-08-27T00:00:00Z | brief-light | x.md | SUCCESS | (3) 🔴 SEGMENTER BUG: prepare appended the trailing DECLARATIONS blocks to the last unit\n'
+    );
+    fs.writeFileSync(path.join(tmpSeg, 'system', 'CARRY.md'), '# nothing carried\n');
+    const segHit = detectDroppedReds(tmpSeg, 7, DEFECT, RESOLVED);
+    t2(
+      segHit.some(f => /SEGMENTER BUG/.test(f.phrase)),
+      '[ITEM8] the drop detector CATCHES the segmenter-bug case — the 08-27 declaration verbatim against an empty CARRY (hermetic: this asserts the mechanism, not what happens to be uncarried today)'
+    );
+    // …and the complement: once a row carries it, the detector goes quiet. Both directions.
+    fs.writeFileSync(
+      path.join(tmpSeg, 'system', 'CARRY.md'),
+      '- L-0828-4 · CLOSED — THE SEGMENTER TRAILING-COMMENT BUG was declared and is now carried. BUG fixed by clamping the last unit.\n'
+    );
+    t2(
+      !detectDroppedReds(tmpSeg, 7, DEFECT, RESOLVED).some(f => /SEGMENTER BUG/.test(f.phrase)),
+      '[ITEM8] and it goes SILENT once a CARRY row references it — a drop detector that keeps firing after the drop is closed is noise'
+    );
     // …and it must not be catching it by flagging everything.
     t2(
       found.length > 0 && found.length <= 8,
@@ -1293,7 +1319,7 @@ function selftest(): number {
       detectDroppedReds(tmpNA, 7, DEFECT, RESOLVED).length === 0,
       '[ITEM8] N/A STATE: no boards means no findings — an empty archive is not a clean one, and it is not an error either'
     );
-    forensicAssertions += 4;
+    forensicAssertions += 5;
   }
 
   const total =
