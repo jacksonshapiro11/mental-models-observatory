@@ -65,31 +65,41 @@ function main(): void {
     t('[roster] loads and carries daily-improvement', !!R['daily-improvement']);
     t('[roster] EVERY entry carries a falsifier — an entry with no falsifier is a belief, not a record',
       Object.entries(R).filter(([k]) => !k.startsWith('_')).every(([, v]) => !!(v as CadenceEntry).falsifier));
-    t('[roster] and every DECLARED entry says so, so a reader can tell what was measured from what was asserted',
-      Object.entries(R).filter(([k]) => !k.startsWith('_')).every(([, v]) => ['measured', 'declared'].includes(String((v as CadenceEntry).source))));
+    // 'contested' is a third, load-bearing state: two readings disagree and the entry is set to
+    // whichever KEEPS THE ALARM ON. Admitting it beats picking a side quietly.
+    t('[roster] every entry declares its epistemic status — measured, declared, or contested — so a reader can tell what was observed from what was asserted',
+      Object.entries(R).filter(([k]) => !k.startsWith('_')).every(([, v]) => ['measured', 'declared', 'contested'].includes(String((v as CadenceEntry).source))));
 
-    // 🔴 THE TWO CASES W3 NAMES, side by side.
-    // 2026-08-27 (Thu) and 08-28 (Fri): daily-improvement is weekly/Sat, so it is NOT due — no alarm.
-    t('[W3] NO false alarm — daily-improvement is not due on 2026-08-27 (Thu) or 2026-08-28 (Fri) under its true cadence',
-      !isDue('daily-improvement', '2026-08-27', R) && !isDue('daily-improvement', '2026-08-28', R));
-    t('[W3] …and a GENUINELY missed Saturday still fires — 2026-08-29 is a Saturday and it IS due',
-      isDue('daily-improvement', '2026-08-29', R));
-    t('[W3] selection-judge follows the same order it stopped on the same day as', !isDue('selection-judge', '2026-08-27', R) && isDue('selection-judge', '2026-08-29', R));
+    // 🔴 THE MECHANISM ON A FIXTURE, not on today's roster. An earlier revision asserted these
+    // against the LIVE entry for daily-improvement — and when that entry was corrected from
+    // "weekly" to "contested/daily" the tests went red without a line of logic changing. Third
+    // instance in one session of the same defect: **a test that asserts today's world is a clock.**
+    const FX: Record<string, CadenceEntry> = {
+      'weekly-sat': { cadence: 'weekly', dow: 6, source: 'measured', falsifier: 'x' },
+      'weekly-sun': { cadence: 'weekly', dow: 0, source: 'measured', falsifier: 'x' },
+      'daily-thing': { cadence: 'daily', source: 'measured', falsifier: 'x' },
+      'paused-thing': { cadence: 'paused', source: 'measured', falsifier: 'x' },
+      _default: { cadence: 'daily', source: 'measured', falsifier: 'x' },
+    };
+    t('[W3] a WEEKLY/Saturday component is not due Thu or Fri, and IS due Saturday',
+      !isDue('weekly-sat', '2026-08-27', FX) && !isDue('weekly-sat', '2026-08-28', FX) && isDue('weekly-sat', '2026-08-29', FX));
+    t('[W3] and Sunday is quiet again — the exemption is one day wide, not a permanent excuse',
+      !isDue('weekly-sat', '2026-08-30', FX));
     t('[W3] a DAILY component is due every day, including the days the weekly one is not',
-      isDue('system-update', '2026-08-27', R) && isDue('system-update', '2026-08-29', R));
-    t('[W3] accountability-cycle-weekly is due on Sundays only — 08-30 yes, 08-29 no',
-      isDue('accountability-cycle-weekly', '2026-08-30', R) && !isDue('accountability-cycle-weekly', '2026-08-29', R));
-    t('[W3] a PAUSED component is never due, and never alarms', !isDue('source-health-check-monthly', '2026-08-29', R));
+      isDue('daily-thing', '2026-08-27', FX) && isDue('daily-thing', '2026-08-29', FX));
+    t('[W3] a Sunday-weekly is due 08-30 and not 08-29', isDue('weekly-sun', '2026-08-30', FX) && !isDue('weekly-sun', '2026-08-29', FX));
+    t('[W3] a PAUSED component is never due, and never alarms', !isDue('paused-thing', '2026-08-29', FX));
+    t('[W3] a daily component keeps the 2-day Critical budget (IMP-223 unchanged)', starveBudgetDays('daily-thing', '2026-08-27', FX) === 2);
+    t('[W3] a weekly component gets next-run+1 — Thursday to Saturday is 2 days, so budget 3', starveBudgetDays('weekly-sat', '2026-08-27', FX) === 3);
+    t('[W3] and on its own run-day the budget is a full week + 1, not zero', starveBudgetDays('weekly-sat', '2026-08-29', FX) === 8);
+    t('[W3] a paused component can never starve a row', starveBudgetDays('paused-thing', '2026-08-29', FX) === Number.POSITIVE_INFINITY);
+    t('[W3] an UNKNOWN task falls back to the default and is treated as daily', starveBudgetDays('nobody', '2026-08-27', FX) === 2 && isDue('nobody', '2026-08-27', FX));
 
-    // Starvation budgets read cadence, never "daily".
-    t('[W3] a daily component keeps the 2-day Critical budget (IMP-223 unchanged)', starveBudgetDays('system-update', '2026-08-27', R) === 2);
-    t('[W3] a weekly component gets next-run+1 — Thursday to Saturday is 2 days, so budget 3',
-      starveBudgetDays('daily-improvement', '2026-08-27', R) === 3);
-    t('[W3] and on its own run-day the budget is a full week + 1, not zero — a row raised just after a weekly run is not starved for existing during the week',
-      starveBudgetDays('daily-improvement', '2026-08-29', R) === 8);
-    t('[W3] a paused component can never starve a row', starveBudgetDays('source-health-check-monthly', '2026-08-29', R) === Number.POSITIVE_INFINITY);
-    t('[W3] an UNKNOWN task falls back to the default and is treated as daily — the fallback is explicit in the roster, not implicit in the code',
-      starveBudgetDays('some-new-task', '2026-08-27', R) === 2 && isDue('some-new-task', '2026-08-27', R));
+    // 🔴 AND THE LIVE ENTRY, asserted for the property that actually matters about it.
+    t('[R6] the contested components are set to DAILY, keeping their alarm ON while the question is open — a cadence claim that silences an alarm must be measured, never declared',
+      cadenceFor('daily-improvement', R).cadence === 'daily' && cadenceFor('selection-judge', R).cadence === 'daily');
+    t('[R6] and both are marked contested with the Saturday discriminator in the falsifier',
+      cadenceFor('daily-improvement', R).source === 'contested' && /2026-08-29/.test(cadenceFor('daily-improvement', R).falsifier ?? ''));
 
     console.log(`\n${fail ? '❌' : '✅'} cadence --selftest: ${pass}/${pass + fail} assertions passed.`);
     process.exit(fail ? 1 : 0);

@@ -2059,42 +2059,43 @@ function selftest(): number {
     );
   }
 
-  // ── W3 — CADENCE IS READ FROM THE ROSTER, NEVER ASSUMED (work order 2026-08-28) ─────────────
+  // ── W3/R6 — CADENCE IS READ FROM THE ROSTER, NEVER ASSUMED ──────────────────────────────────
   {
     const CR = loadCadence(root);
-    // 🔴 THE FALSE ALARM THIS KILLS. daily-improvement and selection-judge both stopped on 2026-08-26
-    // — the same board, one cadence order, not two deaths. Before this leg, BOTH the MISSING and the
-    // EMPTY-BODY paths reported them on 08-27 and 08-28: a healthy pair of weekly components read as
-    // a dead loop, on exactly the days an alarm needed to be trustworthy.
+    // 🔴 THE CORRECTION THAT MATTERS MORE THAN THE FEATURE. An earlier revision of this block
+    // asserted that daily-improvement raises NO alarm on 08-27/08-28, because the roster had it as
+    // weekly. The 2026-08-28 pipeline-health-check, with fuller evidence, concluded the component
+    // is DEAD — no improvements artifact on either day, no status line on either board (every
+    // apparent grep hit checked by hand), last ledger row 08-26, three Critical mandates vanished.
+    // **So the cadence entry had been silencing exactly the alarm that should have been firing** —
+    // the "exemption ate the signal" failure this system wrote a standing rule about two days
+    // earlier, committed by the session that wrote the rule.
+    // The entry is now `contested` and reads DAILY, and these assertions pin the alarm ON.
     for (const d of ['2026-08-27', '2026-08-28']) {
       const rc = rollCall({ docRoot: root, date: d, windows: WIN });
       const named = [...rc.absent.map(a => a.task), ...rc.emptyBody.map(e => e.task)];
       assert(
-        !named.includes('daily-improvement') && !named.includes('selection-judge'),
-        `[W3] ${d}: no false "loop dead" alarm — daily-improvement and selection-judge are weekly and not due (named: ${named.join(', ') || 'none'})`
-      );
-      assert(
-        rc.notDueByCadence.some(x => x.startsWith('daily-improvement')),
-        `[W3] ${d}: and the roll call SAYS they were skipped for cadence rather than passing over them in silence — ${rc.notDueByCadence.join(', ')}`
+        named.includes('daily-improvement'),
+        `[R6] ${d}: daily-improvement IS named — a contested cadence keeps the alarm on rather than assuming the silence is scheduled (${named.join(', ') || 'none'})`
       );
     }
-    // …and the other direction: a genuinely missed Saturday must still fire.
     assert(
-      isDue('daily-improvement', '2026-08-29', CR) && isDue('selection-judge', '2026-08-29', CR),
-      '[W3] a genuinely missed SATURDAY still fires — both are due 2026-08-29, so silence that day is a real finding'
+      cadenceFor('daily-improvement', CR).cadence === 'daily' && cadenceFor('daily-improvement', CR).source === 'contested',
+      '[R6] and the roster says WHY it is daily — contested, not measured, with Saturday 2026-08-29 as the discriminator'
     );
+    // The mechanism itself is still proven, on a fixture that cannot drift with the roster.
+    const FX = {
+      wk: { cadence: 'weekly' as const, dow: 6, source: 'measured', falsifier: 'x' },
+      dy: { cadence: 'daily' as const, source: 'measured', falsifier: 'x' },
+      _default: { cadence: 'daily' as const, source: 'measured', falsifier: 'x' },
+    };
     assert(
-      !isDue('daily-improvement', '2026-08-30', CR),
-      '[W3] and Sunday is quiet again — the exemption is one day wide, not a permanent excuse'
+      !isDue('wk', '2026-08-27', FX) && isDue('wk', '2026-08-29', FX) && isDue('dy', '2026-08-27', FX),
+      '[W3] the cadence mechanism holds on a fixture — weekly quiet midweek, due Saturday, daily due always'
     );
-    // The alarm that remains on those boards is a REAL one, and must not be suppressed with them.
     assert(
       rollCall({ docRoot: root, date: '2026-08-27', windows: WIN }).emptyBody.some(e => e.task === 'daily-portfolio-monitor'),
-      '[W3] a DAILY component with no canary is still reported on the same board — the cadence fix narrows the alarm, it does not mute the leg'
-    );
-    assert(
-      cadenceFor('daily-improvement', CR).source === 'declared' && !!cadenceFor('daily-improvement', CR).falsifier,
-      '[W3] the weekly claim is marked DECLARED and carries its falsifier — this session could not read the app scheduler, and says so instead of asserting a measurement it did not make'
+      '[W3] and an unrelated DAILY component with no canary is still reported on the same board'
     );
   }
 

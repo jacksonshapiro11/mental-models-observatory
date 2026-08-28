@@ -9,18 +9,18 @@
   "_effective_from": "2026-08-28",
   "tasks": {
     "daily-improvement": {
-      "cadence": "weekly",
+      "cadence": "daily",
       "dow": 6,
-      "source": "declared",
-      "evidence": "Ran EVERY day 08-01 → 08-26 (n=26). Last board line 2026-08-26; SILENT 08-27 and 08-28 while system-update and pipeline-health-check kept running daily through 08-28. Two silent days is consistent with the 08-26 cadence order moving it to weekly, and equally consistent with it having died on 08-26 — the boards cannot tell those apart, and this session cannot read the app scheduler.",
-      "falsifier": "🔴 IF daily-improvement does not write a board line by Saturday 2026-08-29 + its grace window, the 'weekly' claim is REFUTED and the component is DEAD. That is the only observation that separates the two readings; until it is made, this row is DECLARED, not measured."
+      "source": "contested",
+      "evidence": "Ran EVERY day 08-01 → 08-26 (n=26). Last board line 2026-08-26; SILENT 08-27 and 08-28 while system-update and pipeline-health-check kept running daily through 08-28. Two silent days is consistent with the 08-26 cadence order moving it to weekly, and equally consistent with it having died on 08-26 — the boards cannot tell those apart, and this session cannot read the app scheduler. 🔴 CONTESTED 2026-08-28: the 07:06 ET pipeline-health-check, with fuller evidence than this roster had, concludes the loop is DEAD — not weekly. Its receipts: daily-briefs/2026-08-27-improvements.md and -08-28-improvements.md both ABSENT (last is 08-26); zero daily-improvement status lines on either board, each apparent grep hit checked by hand and found to be a substring collision inside another task's prose; last ledger row IMP-228 dated 08-26; three Critical 08-27 mandates with no row in any state.",
+      "falsifier": "🔴 RESOLVES SATURDAY 2026-08-29: a board line + grace ⇒ WEEKLY confirmed, set cadence back to weekly/dow 6. No line ⇒ DEAD, and the task must be recreated in the app scheduler. UNTIL THEN THIS ENTRY READS 'daily' ON PURPOSE: an earlier revision recorded 'weekly (declared)' on the strength of a cadence order this session could not verify, and that entry SUPPRESSED the very alarm that should fire for a dead component. A cadence claim that silences an alarm must be measured, never declared — erring toward the alarm is the only safe direction while the question is open."
     },
     "selection-judge": {
-      "cadence": "weekly",
+      "cadence": "daily",
       "dow": 6,
-      "source": "declared",
-      "evidence": "Same shape and the same last day: ran daily 08-16 → 08-26 (n=11), silent 08-27 and 08-28. It stopped on the SAME board as daily-improvement, which is evidence of one cadence order rather than two independent deaths.",
-      "falsifier": "no board line by Saturday 2026-08-29 + grace → REFUTED, component dead."
+      "source": "contested",
+      "evidence": "Same shape and the same last day: ran daily 08-16 → 08-26 (n=11), silent 08-27 and 08-28. It stopped on the SAME board as daily-improvement, which is evidence of one cadence order rather than two independent deaths. 🔴 CONTESTED 2026-08-28: the 07:06 ET pipeline-health-check, with fuller evidence than this roster had, concludes the loop is DEAD — not weekly. Its receipts: daily-briefs/2026-08-27-improvements.md and -08-28-improvements.md both ABSENT (last is 08-26); zero daily-improvement status lines on either board, each apparent grep hit checked by hand and found to be a substring collision inside another task's prose; last ledger row IMP-228 dated 08-26; three Critical 08-27 mandates with no row in any state.",
+      "falsifier": "🔴 RESOLVES SATURDAY 2026-08-29: a board line + grace ⇒ WEEKLY confirmed, set cadence back to weekly/dow 6. No line ⇒ DEAD, and the task must be recreated in the app scheduler. UNTIL THEN THIS ENTRY READS 'daily' ON PURPOSE: an earlier revision recorded 'weekly (declared)' on the strength of a cadence order this session could not verify, and that entry SUPPRESSED the very alarm that should fire for a dead component. A cadence claim that silences an alarm must be measured, never declared — erring toward the alarm is the only safe direction while the question is open."
     },
     "accountability-cycle-weekly": {
       "cadence": "weekly",
@@ -29,9 +29,32 @@
       "evidence": "2026-08-02, 08-09, 08-16, 08-23 — four consecutive Sundays, no other day.",
       "falsifier": "a line on a non-Sunday, or a missed Sunday."
     },
-    "weekly-draft": { "cadence": "weekly", "dow": 6, "source": "measured", "evidence": "2026-08-02, 08-09, 08-16 canaries, Saturdays only.", "falsifier": "a missed Saturday." },
-    "weekly-critic": { "cadence": "weekly", "dow": 6, "source": "measured", "evidence": "same three Saturdays as weekly-draft.", "falsifier": "a missed Saturday." },
-    "source-health-check-monthly": { "cadence": "paused", "source": "measured", "evidence": "one canary in the whole archive (n=1); no observable schedule.", "falsifier": "a second line, which would make a cadence derivable." },
-    "_default": { "cadence": "daily", "source": "measured", "evidence": "every other rostered slot canaries every day in the archive.", "falsifier": "two consecutive silent days for a task carrying no explicit entry here." }
-  }
+    "weekly-draft": {
+      "cadence": "weekly",
+      "dow": 6,
+      "source": "measured",
+      "evidence": "2026-08-02, 08-09, 08-16 canaries, Saturdays only.",
+      "falsifier": "a missed Saturday."
+    },
+    "weekly-critic": {
+      "cadence": "weekly",
+      "dow": 6,
+      "source": "measured",
+      "evidence": "same three Saturdays as weekly-draft.",
+      "falsifier": "a missed Saturday."
+    },
+    "source-health-check-monthly": {
+      "cadence": "paused",
+      "source": "measured",
+      "evidence": "one canary in the whole archive (n=1); no observable schedule.",
+      "falsifier": "a second line, which would make a cadence derivable."
+    },
+    "_default": {
+      "cadence": "daily",
+      "source": "measured",
+      "evidence": "every other rostered slot canaries every day in the archive.",
+      "falsifier": "two consecutive silent days for a task carrying no explicit entry here."
+    }
+  },
+  "_contested_note": "A 'contested' source means two readings disagree and the entry is set to whichever one KEEPS THE ALARM ON until an observation settles it."
 }
