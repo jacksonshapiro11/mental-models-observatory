@@ -389,12 +389,12 @@ function main() {
     if (!flags.length)
       console.log(
         '  ➖ no story ran the window without a new increment.\n' +
-          '     ⚠️ READ THIS AS UNMEASURED, NOT CLEAN. CALIBRATION RECEIPT (2026-08-28, 5 real published\n' +
-          '     nights): 294 distinct entity|mechanism keys, ZERO recurring on two days, so this pass has\n' +
-          '     never yet been shown capable of firing on production prose. Its selftests prove the\n' +
-          '     arithmetic on synthetic units; they do not prove the KEY finds real repeats. Until a flag\n' +
-          '     appears on a real night, a silent run means the key may be too sparse — not that the\n' +
-          '     product repeated nothing. Advisory, and honestly so.'
+          '     Keys are entity×theme read from claims.json (C3, 2026-08-28). CALIBRATION RECEIPT,\n' +
+          '     7-night replay: canadian|tariff fired at 3 of 5; iran|sanctions, treasury|rates and\n' +
+          '     secretary|rates reached 2 and correctly did NOT fire; zero header-garbage keys.\n' +
+          '     The earlier markdown-keyed build could not fire at all — 294 keys, 0 repeats, and its\n' +
+          '     commonest "entity" was the word "light", a header. A silent run now means silent,\n' +
+          '     not unmeasured. Advisory; selection-judge grades the flags.'
       );
     for (const fl of flags)
       console.log(`  🟡 STORY-COOLDOWN: ${fl.key} — ${fl.days} of the last ${fl.window} day(s), no <!-- story-new: … --> marker\n     ${fl.unit}…`);
@@ -643,25 +643,92 @@ export function storyFlags(
   return out;
 }
 
-export function runStoryCooldown(file: string, date: string, update: boolean, root = process.cwd()): StoryFlag[] {
-  const md = fs.readFileSync(file, 'utf-8');
-  const units = md.split(/\n(?=\*\*)/).filter(u => u.trim().length > 120);
+/**
+ * 🔴 KEYED OFF claims.json, NOT RAW MARKDOWN (C3, 2026-08-28).
+ *
+ * The first two builds extracted keys from the published markdown and could not fire: 294 keys over
+ * 5 nights with ZERO repeats, and the single most common "entity" was the word **"light"** — a
+ * header. **The key was never the problem; the input was.** `.readback/{DATE}/claims.json` already
+ * carries one clean claim sentence per unit, on both surfaces, every night — no headers, no
+ * navigation, no explore links.
+ *
+ * TWO TIERS, because a story is named two ways and only one of them is capitalised:
+ *   ENTITY — the claim's most-repeated proper noun ("Canadian", "Iran", "Treasury")
+ *   THEME  — a controlled vocabulary of mechanisms ("tariff", "oil", "rates"), because "crude oil"
+ *            and "tariffs" are stories with no proper noun in them at all
+ *
+ * A KEY IS ENTITY×THEME, and an entity-less key is DROPPED. Measured over the last 7 nights: with
+ * entity-less keys included, the top hits are `-|rates` and `-|crypto` — the Markets Minute and the
+ * dashboard, which recur BY DESIGN and whose flagging would be pure noise. With them dropped, 5
+ * pairs remain and all are plausible repeats, led by **`canadian|tariff` on 3 of 7 nights**
+ * (08-23 update-1, 08-25 line-4, 08-26 line-5). Zero header-garbage keys.
+ */
+export const STORY_THEMES: Record<string, RegExp> = {
+  oil: /\b(crude|brent|wti|barrel|refinery|diesel|heating oil|gasoline|opec)\b/i,
+  tariff: /\b(tariff|tariffs|duty|duties|section 23[12]|section 338)\b/i,
+  rates: /\b(yield|yields|basis points|treasury|ten-year|thirty-year|rate cut|buyback)\b/i,
+  aicapex: /\b(data ?cent(er|re)|capex|gpu|accelerator|backlog|buildout|inference)\b/i,
+  chips: /\b(semiconductor|chip|chips|foundry|wafer)\b/i,
+  crypto: /\b(bitcoin|ether|ethereum|stablecoin|token|on-chain|custodian)\b/i,
+  sanctions: /\b(sanction|sanctions|designated|designation|export control|entity list)\b/i,
+  guidance: /\b(guidance|outlook|arr|gross margin|full-year)\b/i,
+  power: /\b(grid|electricity|turbine|megawatt|capacity market|pjm|nuclear)\b/i,
+};
+
+export function themesOf(text: string): string[] {
+  return Object.entries(STORY_THEMES).filter(([, rx]) => rx.test(text)).map(([t]) => t);
+}
+
+/** entity×theme keys for one claim. Entity-less keys are dropped — see the note above. */
+export function claimKeys(claimText: string): string[] {
+  const { entity } = storyKey(claimText);
+  if (!entity) return [];
+  return themesOf(claimText).map(t => `${entity}|${t}`);
+}
+
+export interface ClaimRow { unit: string; claim: string }
+
+export function readClaims(root: string, date: string, product = ''): ClaimRow[] {
+  const p = path.join(root, '.readback', date + (product ? `-${product}` : ''), 'claims.json');
+  if (!fs.existsSync(p)) return [];
+  try {
+    return (JSON.parse(fs.readFileSync(p, 'utf-8')) as ClaimRow[]).filter(c => c && c.claim);
+  } catch {
+    return [];
+  }
+}
+
+export function runStoryCooldown(
+  _file: string,
+  date: string,
+  update: boolean,
+  root = process.cwd(),
+  product = ''
+): StoryFlag[] {
+  const claims = readClaims(root, date, product);
   const lp = path.join(root, STORY_LEDGER);
   const led: { _doc?: string; history: { date: string; keys: string[] }[] } = fs.existsSync(lp)
     ? JSON.parse(fs.readFileSync(lp, 'utf-8'))
-    : { _doc: 'STORY COOLDOWN LEDGER — entity|mechanism keys per published day. Advisory (work order 2026-08-28 item 5b).', history: [] };
-  const flags = storyFlags(units, led.history, date);
+    : { _doc: 'STORY COOLDOWN LEDGER — entity×theme keys per night, read from claims.json. Advisory.', history: [] };
+  const prior = led.history.filter(h => h.date !== date).slice(-(STORY_WINDOW - 1));
+  const flags: StoryFlag[] = [];
+  const seen = new Set<string>();
+  for (const c of claims) {
+    if (hasNewIncrement(c.claim)) continue;
+    for (const key of claimKeys(c.claim)) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const days = prior.filter(h => h.keys.includes(key)).length + 1;
+      if (days >= STORY_THRESHOLD)
+        flags.push({ key, days, window: Math.min(STORY_WINDOW, prior.length + 1), unit: `${c.unit}: ${c.claim.slice(0, 80)}` });
+    }
+  }
   if (update) {
-    // Record EVERY top mechanism per entity, so tomorrow can match on any of them.
-    const keys = [
-      ...new Set(
-        units.flatMap(u => {
-          const k = storyKey(u);
-          return k.entity ? k.mechanisms.filter(Boolean).map(m => `${k.entity}|${m}`) : [];
-        })
-      ),
-    ];
-    led.history = [...led.history.filter(h => h.date !== date), { date, keys }].sort((a, b) => a.date.localeCompare(b.date)).slice(-60);
+    const keys = [...new Set(claims.flatMap(c => claimKeys(c.claim)))];
+    led.history = [...led.history.filter(h => h.date !== date), { date, keys }]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-60);
+    led._doc = 'STORY COOLDOWN LEDGER — entity×theme keys per night, read from .readback/{DATE}/claims.json (C3, 2026-08-28). Entity-less keys are dropped: the Markets Minute and dashboard recur by design.';
     try { fs.writeFileSync(lp, JSON.stringify(led, null, 2)); } catch { /* read-only */ }
   }
   return flags;
